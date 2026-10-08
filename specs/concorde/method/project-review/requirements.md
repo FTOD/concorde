@@ -141,12 +141,25 @@ While the Kernel's [unfinished-merge marker](../../glossary.json#concept.unfinis
 The refusal carries the Kernel's account of the merge or names the file. As every refusal of the
 record does, it ends the run `failed` with `record_unpublished` and keeps the verdict.
 
-### req.project-review.record-refused — A refused record fails the run, not the verdict
+### req.project-review.record-refused — A refused record leaves the committed record as it was
 
 When the committed record is not valid, the record file holds a change other than a valid record
 an interrupted write left, a merge into the primary branch is unfinished, or the commit fails, the
-Operation SHALL leave the committed record as
-it was and end the run `failed` with `record_unpublished` while keeping the verdict in its output.
+Operation SHALL leave the committed record as it was.
+
+### req.project-review.record-refused-fails — A refused record fails the run
+
+When the committed record is not valid, the record file holds a change other than a valid record
+an interrupted write left, a merge into the primary branch is unfinished, or the commit fails, the
+Operation SHALL end the run `failed` with `record_unpublished`.
+
+### req.project-review.record-refused-verdict — A refused record keeps the verdict
+
+When the committed record is not valid, the record file holds a change other than a valid record
+an interrupted write left, a merge into the primary branch is unfinished, or the commit fails, the
+Operation SHALL keep the verdict in its output.
+
+A refused record is a failure of the run, not of what the review judged.
 
 ### req.project-review.record-leftover — An interrupted write's record is put back
 
@@ -171,8 +184,14 @@ provenance `phase` of the part that made it:
 
 Where the issues part is installed, after every part, the Operation SHALL derive each complete
 Module's outcome from the open Issues that `spec_panel`, `code_review` or `project_review` made for
-it and that no part of the run found resolved: `changes_required` when one of a blocking tier
-stands, `accepted` otherwise.
+it and that stand: `changes_required` when one of a blocking tier stands, `accepted` otherwise.
+
+An Issue stands unless a resolution counts for it by
+[req.project-review.skipped-resolutions](#req.project-review.skipped-resolutions). A resolution
+counts when both of these hold:
+
+- A part of this run, or a skipped part's record entry, found the Issue resolved.
+- The Issue's revision still equals the one offered to that part.
 
 ### req.project-review.outcome-findings — Without Issues, outcomes come from the findings
 
