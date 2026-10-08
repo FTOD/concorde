@@ -1,5 +1,6 @@
 """Sessions in this checkout load both of Concorde's skills from the build's output."""
 
+import subprocess
 import unittest
 
 from concorde.distribution.build import build, skill_path
@@ -19,6 +20,14 @@ class DevelopmentSkillTests(unittest.TestCase):
                     (REPOSITORY_ROOT / skill_path(name)).parent.resolve(),
                     link.resolve(),
                 )
+                tracked = subprocess.run(
+                    ("git", "ls-files", "--", f".claude/skills/{name}"),
+                    cwd=REPOSITORY_ROOT,
+                    text=True,
+                    capture_output=True,
+                    check=True,
+                ).stdout
+                self.assertEqual(tracked, "")
         # The build renders exactly those skills, the development skill with the observation
         # rule Dogfooding shares with the develop guidance.
         outputs = {

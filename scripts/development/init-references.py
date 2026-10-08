@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Check out Concorde's vendored external references (git submodules) without their media.
+"""Check out Concorde's vendored external references (git submodules) without their media, and
+link the rendered skills where Claude Code finds them.
 
 A Module may declare third-party documentation or source as an ``includes`` of kind ``external``,
 vendored under ``references/`` as a git submodule pinned to a fixed revision. A plain
@@ -21,17 +22,24 @@ shared ``.git/config``, which every worktree reads. A registered submodule is no
 so preparing another worktree only reads that file: writing it needs its lock, ``config.lock``,
 which another Git command writing that configuration — one of another worktree's preparation, for
 instance — holds meanwhile.
+
+Claude Code finds the ``concorde`` and ``concorde-development`` skills of this checkout through
+``.claude/skills/<name>``, links into ``generated/skills/`` that Git does not track. The script
+creates each missing link, replaces a link that points elsewhere and leaves a real file or
+directory in its place as it is, saying so. ``--check`` reports them without linking.
 """
 
 from __future__ import annotations
 
 import argparse
+import os
 import shlex
 import subprocess
 import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
+SKILLS = ("concorde", "concorde-development")
 
 
 def git(
@@ -231,6 +239,46 @@ def complete(entry: dict[str, str]) -> None:
         )
 
 
+def link_skills(check: bool) -> int:
+    """Link ``.claude/skills/<name>`` to ``generated/skills/<name>`` for every skill; return how
+    many are not linked. A link pointing elsewhere is replaced, a real file or directory is never
+    touched, and ``check`` only reports."""
+    unlinked = 0
+    for name in SKILLS:
+        link = ROOT / ".claude" / "skills" / name
+        shown = link.relative_to(ROOT).as_posix()
+        target = (Path("../../generated/skills") / name).as_posix()
+        if link.is_symlink():
+            found = os.readlink(link)
+            if found == target:
+                print(f"{shown}: linked to {target}")
+                continue
+            if check:
+                unlinked += 1
+                print(f"{shown}: links to {found}, not {target}")
+                continue
+            link.unlink()
+            link.symlink_to(target)
+            print(f"{shown}: relinked to {target} (was {found})")
+        elif link.exists():
+            unlinked += 1
+            kind = "directory" if link.is_dir() else "file"
+            print(
+                f"{shown}: a {kind} stands where the link to {target} goes and is left as it "
+                f"is, so Claude Code reads it instead of the rendered skill; move it away and "
+                "run this script again to link the skill",
+                file=sys.stderr,
+            )
+        elif check:
+            unlinked += 1
+            print(f"{shown}: missing, not linked to {target}")
+        else:
+            link.parent.mkdir(parents=True, exist_ok=True)
+            link.symlink_to(target)
+            print(f"{shown}: linked to {target}")
+    return unlinked
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
@@ -241,10 +289,11 @@ def main(argv: list[str] | None = None) -> int:
         help="report the state of every reference without cloning",
     )
     arguments = parser.parse_args(argv)
+    unlinked = link_skills(arguments.check)
     entries = submodules()
     if not entries:
         print("no submodules declared in .gitmodules")
-        return 0
+        return 1 if arguments.check and unlinked else 0
     if not arguments.check:
         # Register every missing submodule before cloning any, so that a busy configuration lock
         # stops the script before it leaves some references checked out and others not.
@@ -274,7 +323,7 @@ def main(argv: list[str] | None = None) -> int:
         else:
             initialize(entry)
             print(f"{path}: initialized @ {commit}")
-    return 1 if arguments.check and missing else 0
+    return 1 if arguments.check and (missing or unlinked) else 0
 
 
 if __name__ == "__main__":
