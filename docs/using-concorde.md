@@ -709,6 +709,13 @@ another session, and sends the same report again to the name the command prints:
 concorde task wait retry --rebound <former name>
 ```
 
+The main agent learns of it from Concorde's session-start hook, which the installer adds to the
+project's `.claude/settings.json`. When a session starts, resumes or is compacted in the primary
+worktree, the hook runs `concorde task main-hook`, which adds to the session's context every task
+not ended with the session it names and its unanswered reports, and tells the main agent to call
+ListAgents and compare its own name with them. It prints nothing in a task worktree, nothing when
+no task is unended, and a single line, never an error, when it cannot read the tasks.
+
 The main agent, as soon as it notices its own name changed, reconciles its tasks before anything
 else. It lists the tasks not ended whose record still names its former name, since an ended task has
 no task session left to report and its end answered its reports; rebinds each to its current name,

@@ -132,6 +132,7 @@
         ".gitmodules",
         ".python-version",
         ".mcp.json",
+        ".claude/settings.json",
         ".github/workflows/validate-source-checkout.yml"
       ]
     },

@@ -28,7 +28,7 @@ import sys
 from contextlib import ExitStack
 from pathlib import Path
 
-from ...kernel import errors
+from ...kernel import binding, errors
 from ...kernel.tracing import reader
 from ...kernel.refusal import KernelError
 from ...kernel.schema import validate
@@ -618,6 +618,9 @@ def main_hook_text(here: Path, data: dict) -> str:
     the primary worktree or without a task not ended, and otherwise those tasks with the main
     agent's session each names and its unanswered reports, and what to do with them."""
     base = Path(data["cwd"]) if isinstance(data.get("cwd"), str) else here
+    if (base / binding.BINDING).is_file():
+        # A bound task worktree, known without Git, so that a worker's hook never fails there.
+        return ""
     primary = store.primary_of(base)
     if store.worktree_of(base) != primary:
         # A task session or a worker in a task worktree: the hook is the main agent's alone.

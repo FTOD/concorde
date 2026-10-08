@@ -865,6 +865,9 @@ class TaskStoreTests(unittest.TestCase):
         self.assertEqual(
             (0, ""), self.main_hook({"source": "startup", "cwd": str(worktree)})
         )
+        # A bound worktree is known without Git, so even an unreadable record there says nothing.
+        store.record_path(self.root, "t2").write_text("{not json")
+        self.assertEqual((0, ""), self.main_hook({"source": "startup"}, cwd=worktree))
         # Any failure is one line, and the session still starts.
         store.record_path(self.root, "t2").write_text("{not json")
         status, text = self.main_hook({"source": "startup"})
