@@ -5,10 +5,11 @@ tree, staged or not, plus the untracked paths Git does not ignore. A submodule c
 when its checked-out commit differs, never for changes inside its own worktree: the task commits
 only the submodule's commit, and looking inside may need objects a partial clone has to fetch
 over a network the caller may not have. Each gets its Git file mode and the SHA-256 digest of
-its bytes, both ``None`` when it no longer exists. The input digest covers the head and base
-commits, the changed paths and the digest of ``.concorde/config.json`` with the configured checks
-under ``.concorde/checks/``. Delivery measures through
-this module too, so both sides compute the same digest for the same worktree.
+its bytes, both ``None`` when it no longer exists or when Git would not commit it (see
+``ignored_paths``), which Delivery commits as deleted although its file stays on disk. The input
+digest covers the head and base commits, the changed paths and the digest of
+``.concorde/config.json`` with the configured checks under ``.concorde/checks/``. Delivery
+measures through this module too, so both sides compute the same digest for the same worktree.
 
 Git hands over a path as bytes, which this module keeps as a ``str`` decoded with
 ``surrogateescape``, so that it names the file exactly; the measurement records it as text with
@@ -154,11 +155,9 @@ def special_paths(worktree: Path) -> list[str]:
     return sorted(path for path in new if _special(worktree, path))
 
 
-def changed_paths(worktree: Path, base: str) -> list[str]:
-    """Every path changed since ``base``, committed or not, and every unignored new path.
-
-    New paths that are no content of the task (see ``special_paths``) are left out.
-    """
+def _changes(worktree: Path, base: str) -> tuple[list[str], set[str]]:
+    """The changed paths (see ``changed_paths``) and those of them Git would not commit (see
+    ``ignored_paths``)."""
     tracked = _paths(
         _output(
             worktree,
@@ -170,11 +169,43 @@ def changed_paths(worktree: Path, base: str) -> list[str]:
             base,
         )
     )
-    new = _paths(_output(worktree, "ls-files", "--others", "--exclude-standard", "-z"))
-    new = {path for path in new if not _special(worktree, path)}
-    return sorted(
+    unignored = _paths(
+        _output(worktree, "ls-files", "--others", "--exclude-standard", "-z")
+    )
+    new = {path for path in unignored if not _special(worktree, path)}
+    changed = sorted(
         tracked | new, key=lambda path: path.encode("utf-8", "surrogateescape")
     )
+    # Only a path the diff lists can be in the base and out of the index.
+    candidates = {
+        path
+        for path in tracked - unignored
+        if os.path.lexists(worktree / path)
+        and not any(other.startswith(path + "/") for other in unignored)
+    }
+    if candidates:
+        candidates -= _paths(_output(worktree, "ls-files", "--cached", "-z"))
+    return changed, candidates
+
+
+def changed_paths(worktree: Path, base: str) -> list[str]:
+    """Every path changed since ``base``, committed or not, and every unignored new path.
+
+    New paths that are no content of the task (see ``special_paths``) are left out.
+    """
+    return _changes(worktree, base)[0]
+
+
+def ignored_paths(worktree: Path, base: str) -> set[str]:
+    """The changed paths since ``base`` that exist but that Git would not commit.
+
+    Such a path is in the base, the index does not hold it and ``git add -A`` would add nothing
+    at it: Git ignores it, or it lies beyond a symbolic link, or it is a directory holding nothing
+    Git would add. This happens when the branch untracked the path, such as with
+    ``git rm --cached``, while its file stays on disk under an ignore rule. Delivery commits the
+    path's deletion, so the measurement records it as deleted.
+    """
+    return _changes(worktree, base)[1]
 
 
 def path_digest(worktree: Path, relative: str) -> str | None:
@@ -224,8 +255,13 @@ def path_mode(worktree: Path, relative: str) -> str | None:
     return None
 
 
-def _measured(worktree: Path, relative: str) -> dict:
-    """One changed path's entry; ``path_unreadable`` when the operating system refuses it."""
+def _measured(worktree: Path, relative: str, ignored: set[str]) -> dict:
+    """One changed path's entry; ``path_unreadable`` when the operating system refuses it.
+
+    A path in ``ignored`` (see ``ignored_paths``) is recorded as deleted.
+    """
+    if relative in ignored:
+        return {"path": recorded_path(relative), "mode": None, "digest": None}
     try:
         mode, digest = path_mode(worktree, relative), path_digest(worktree, relative)
     except OSError as error:
@@ -251,9 +287,8 @@ def measure(worktree: Path, base: str) -> dict:
         .decode()
         .strip()
     )
-    changed = [
-        _measured(worktree, path) for path in changed_paths(worktree, base_commit)
-    ]
+    paths, ignored = _changes(worktree, base_commit)
+    changed = [_measured(worktree, path, ignored) for path in paths]
     config_digest = configuration_digest(worktree)
     value = {
         "head": head,
@@ -322,6 +357,7 @@ __all__ = [
     "current_branch",
     "has_uncommitted",
     "head_commit",
+    "ignored_paths",
     "measure",
     "path_digest",
     "path_mode",
