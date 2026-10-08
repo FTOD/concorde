@@ -137,7 +137,7 @@ apply: "concorde docsite --apply\n--proposal FILE"
 match: "Matches the installed\ntemplate inventory?" {shape: diamond}
 same: "Every file already\nhas the proposed bytes?" {shape: diamond}
 exists: "Any destination\nexists?" {shape: diamond}
-write: "Create every file through\na file transaction"
+write: "Create each file only\nwhere nothing exists"
 invalid: "invalid" {shape: page}
 unchanged: "unchanged:\nnothing written" {shape: page}
 conflict: "conflict:\nnothing written" {shape: page}
@@ -270,11 +270,16 @@ package's `docsite/`. The scaffold proposes those files without `scaffold/`. Dis
 installer calls the same rule to ship them, `scaffold/` included, into a project's
 `.concorde/framework/docsite/`. An installed scaffold reads them there. A project therefore
 receives exactly the adapter Concorde runs itself. The proposal binds that inventory by digest.
-Applying goes through Spec core's [file transactions](../../glossary.json#concept.file-transaction).
-Every destination must be absent before staging and again before each write. On a concurrent
-change, the file transaction rolls back what was written. Because the scaffold can neither replace
-nor delete, accepting a proposal can never damage an existing site or Spec. Bringing a site up to
-a newer template is a manual, reviewed change.
+Applying creates each file only where nothing exists, in one step the operating system makes
+exclusive: the file is written apart and then hard-linked into place, which fails when anything
+is already there. Spec core's [file transaction](../../glossary.json#concept.file-transaction)
+cannot do this, since it replaces a file another process creates between its check and its
+rename. When a destination appears meanwhile, or a creation fails, the scaffold removes the files
+it created. It removes each only while it is still the file it created, judged by its device and
+inode, so a file another process put there keeps its bytes. Only a replacement made between that
+check and the removal itself can be lost, a window of one system call. Because the scaffold can
+neither replace nor delete what it did not create, accepting a proposal can never damage an
+existing site or Spec. Bringing a site up to a newer template is a manual, reviewed change.
 
 <a id="realization.views.concorde-site"></a>
 
@@ -306,7 +311,6 @@ distribution -> views
 - The project [registry](../../glossary.json#concept.registry).
 - Spec loading.
 - [impact indexes](../../glossary.json#concept.impact-index).
-- [file transactions](../../glossary.json#concept.file-transaction).
 
 The publisher relies on the registry for which Modules and documents exist and which contains
 which. It relies on the meaning of `selected-by` for the provenance it shows. The publisher parses
@@ -315,11 +319,12 @@ refuses it, failing the build and keeping the old site. It leaves full structura
 the Spec validator. The scaffold relies on Spec core for:
 
 - The root Module's title.
-- The common result shape.
-- A file transaction writing everything or nothing.
+- The common result shape and error record.
+- Safe project-relative paths without symbolic links.
 
-A null digest means the file must still be absent. When the project's Spec configuration isn't
-readable, the scaffold returns `invalid` and asks for initialization.
+It creates its files itself, as the scaffold's design above says. Both proposing and applying
+first read the project's Spec configuration. When it isn't readable, the scaffold returns
+`invalid` and asks for initialization, before it reads the proposal or touches a destination.
 
 Distribution calls the scaffold and packages it. The `distribution -> views` above is its own
 `uses`, declared there as an [optional integration](../../glossary.json#concept.optional-integration)

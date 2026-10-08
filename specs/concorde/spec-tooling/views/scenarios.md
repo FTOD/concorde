@@ -425,10 +425,20 @@ to it. A link to a page or anchor that does not exist stops promotion, as
 
 - GIVEN a valid proposal
 - AND when applying starts, its destinations are absent
-- WHEN another process creates one of the destinations during application of the proposal
+- WHEN another process creates one of the destinations during application of the proposal, even
+  just before that destination is created
 - THEN the result is `failed`
 - AND every file this application had already created is removed
 - BUT files it did not create keep their bytes
+- AND a created file that another process replaced keeps that process's bytes
+
+### scenario.views.scaffold-uninitialized — A proposal is not applied to an uninitialized project
+
+- GIVEN a saved valid proposal
+- AND the project's Spec configuration has since been removed or made unreadable
+- WHEN `concorde docsite --apply --proposal PATH` runs
+- THEN the result is `invalid`, asking for initialization
+- BUT nothing is written
 
 ### scenario.views.scaffold-conflict — Existing destinations block a scaffold
 

@@ -86,7 +86,7 @@
     {
       "type": "relates",
       "source": "realization.views.scaffold",
-      "verb": "writes files through",
+      "verb": "reads the root title and result shape from",
       "target": "module.spec"
     },
     {

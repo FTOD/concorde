@@ -188,7 +188,9 @@ custom docs.
 **Conflicts.** `conflicts` lists every proposed destination that already exists, with reason
 `target already exists`. It is information only. It authorizes nothing.
 
-**Apply.** Apply rebuilds the complete inventory from the installed package and the proposal's
+**Apply.** Apply first requires the project's Spec configuration to be readable, as propose does.
+Otherwise, it returns `invalid` with a `CONCORDE-DOCSITE-001` finding and writes nothing.
+Apply rebuilds the complete inventory from the installed package and the proposal's
 `identity` and `github_pages`.
 Apply requires the proposal's `template_digest` and `files` to equal it exactly.
 Otherwise, Apply returns `invalid` with a `CONCORDE-DOCSITE-004` finding and Spec tooling's
@@ -205,11 +207,14 @@ Then:
   written.
 - Otherwise, when any destination exists, whatever its content, the result is `conflict`, naming
   every existing destination. Nothing is written.
-- When every destination is absent, the files are created through a
-  [file transaction](../../glossary.json#concept.file-transaction).
-  The transaction checks each destination is still absent before staging and before each write.
-  If one appears, the transaction removes the files it created.
-  The result is `success` with the created paths, or `failed` after a rollback.
+- When every destination is absent, the files are created in path order.
+  Each is created only where nothing exists: it is written apart, then hard-linked into place.
+  On a filesystem without hard links, it is opened with exclusive creation instead.
+  When a destination appears meanwhile, or a creation fails, Apply removes the files it created.
+  It removes each only while its device and inode are still those of the file it created.
+  The result is `success` with the created paths, or `failed` after that removal.
+  The `failed` result names the destination that appeared or failed, and any created file another
+  process had replaced.
 
 Apply never replaces or deletes a file. Therefore, Apply cannot update an existing site or touch a
 [Spec](../../glossary.json#concept.spec).

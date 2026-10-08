@@ -12,11 +12,11 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import urlsplit
 
-from ..changes import apply_files
 from ..errors import system_cause
 from ..model import Finding, ToolResult
 from ..repository import SpecError, SpecRepository
 from ..typed_data import TypedDataError, checked_path, safe_path
+from .creation import create_files
 from .docsite_template import (
     TEMPLATE_ROOT,
     WORKFLOW_TEMPLATE,
@@ -566,6 +566,15 @@ def apply_docsite(
         if package_root is not None
         else _default_package_root()
     )
+    if _entry_module_title(root) is None:
+        finding = Finding(
+            "CONCORDE-DOCSITE-001",
+            "error",
+            ".concorde/config.json",
+            "The project has no configured Spec entry target.",
+            "Propose and apply project initialization first.",
+        )
+        return ToolResult("docsite", ".", "invalid", findings=(finding,))
     try:
         verify_package_root(package)
         resolved, identity, github_pages, digest = _load_accepted(
@@ -638,14 +647,10 @@ def apply_docsite(
             },
         )
     try:
-        # Every destination was found absent: each change carries the null digest, so a file
-        # another process creates meanwhile is refused rather than taken as the before-state.
-        changes = [
-            {"path": path, "before_digest": None, "content": content.decode("utf-8")}
-            for path, content in sorted(resolved.items())
-        ]
-        created = apply_files(root, changes, set(resolved))
-    except (OSError, SpecError, TypedDataError, UnicodeError) as error:
+        # Every destination was found absent. Each file is created only where nothing exists
+        # yet, so a file another process creates meanwhile is never replaced.
+        created = create_files(root, resolved)
+    except (OSError, SpecError, TypedDataError) as error:
         finding = Finding(
             "CONCORDE-DOCSITE-006",
             "error",
