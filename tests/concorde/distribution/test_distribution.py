@@ -1556,7 +1556,11 @@ class InstallTests(unittest.TestCase):
             "matcher": "startup",
             "hooks": [{"type": "command", "command": "echo hello"}],
         }
-        settings.write_text(json.dumps({"hooks": {"SessionStart": [theirs]}}))
+        # A group of an unusual shape, such as a matcher that is no text, stays as it is.
+        odd = {"matcher": ["x"], "hooks": [{"type": "command", "command": "true"}]}
+        settings.write_text(
+            json.dumps({"hooks": {"SessionStart": [theirs], "Stop": [odd]}})
+        )
         command = '"$CLAUDE_PROJECT_DIR"/.concorde/bin/concorde task main-hook'
         receipt = install(
             project,
@@ -1572,6 +1576,7 @@ class InstallTests(unittest.TestCase):
         }
         value = json.loads(settings.read_text())
         self.assertEqual([theirs, ours], value["hooks"]["SessionStart"])
+        self.assertEqual([odd], value["hooks"]["Stop"])
         # Only the hooks changed, so no permissions object was added for them.
         self.assertNotIn("permissions", value)
         self.assertEqual(
@@ -1607,12 +1612,12 @@ class InstallTests(unittest.TestCase):
         recorded["hooks"].append(retired)
         (project / ".concorde/install.json").write_text(json.dumps(recorded))
         value = json.loads(settings.read_text())
-        value["hooks"]["Stop"] = [
+        value["hooks"]["Stop"].append(
             {
                 "matcher": "",
                 "hooks": [{"type": "command", "command": retired["command"]}],
             }
-        ]
+        )
         settings.write_text(json.dumps(value))
         install(
             project,
@@ -1623,7 +1628,7 @@ class InstallTests(unittest.TestCase):
             dependencies=False,
         )
         value = json.loads(settings.read_text())
-        self.assertNotIn("Stop", value["hooks"])
+        self.assertEqual([odd], value["hooks"]["Stop"])
         self.assertEqual([theirs, ours], value["hooks"]["SessionStart"])
         # Hooks that are present but no object of lists are refused before any write.
         for text in ('{"hooks": []}', '{"hooks": {"SessionStart": {}}}'):

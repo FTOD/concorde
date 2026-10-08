@@ -479,8 +479,11 @@ def _hook_entries(registrations: dict) -> list[dict]:
     return entries
 
 
-def _hook_key(entry: dict) -> tuple:
-    return (entry.get("event"), entry.get("matcher"), entry.get("command"))
+def _hook_key(entry: dict) -> tuple | None:
+    """A hook's event, matcher and command line, or None when any of them is no text, as in a
+    receipt someone edited."""
+    key = (entry.get("event"), entry.get("matcher"), entry.get("command"))
+    return key if all(isinstance(item, str) for item in key) else None
 
 
 def _hook_group(entry: dict) -> dict:
@@ -509,7 +512,13 @@ def _group_key(event: str, group: object) -> tuple | None:
         or hooks[0].get("type") != "command"
     ):
         return None
-    return (event, group["matcher"], hooks[0].get("command"))
+    return _hook_key(
+        {
+            "event": event,
+            "matcher": group["matcher"],
+            "command": hooks[0].get("command"),
+        }
+    )
 
 
 def _hooks(settings: dict, entries: list[dict], recorded: list) -> bool:
@@ -521,7 +530,7 @@ def _hooks(settings: dict, entries: list[dict], recorded: list) -> bool:
         _hook_key(item)
         for item in recorded
         if isinstance(item, dict) and _hook_key(item) not in wanted
-    }
+    } - {None}
     if not wanted and not dropped:
         return False
     hooks = settings.get("hooks", {})
@@ -531,6 +540,9 @@ def _hooks(settings: dict, entries: list[dict], recorded: list) -> bool:
         kept = []
         for group in hooks[event]:
             key = _group_key(event, group)
+            if key is None:
+                kept.append(group)
+                continue
             if key in dropped:
                 changed = True
                 continue

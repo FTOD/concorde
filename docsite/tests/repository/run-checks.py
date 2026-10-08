@@ -34,6 +34,7 @@ FILES = (
     ".gitmodules",
     ".python-version",
     ".mcp.json",
+    ".claude/settings.json",
     "concorde.json",
     "conftest.py",
     "pyproject.toml",
