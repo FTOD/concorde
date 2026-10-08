@@ -4,7 +4,7 @@
 {
   "schema_version": 4,
   "id": "I-1eef5043ea0059d2bbaabbbe7c20612e",
-  "status": "open",
+  "status": "closed",
   "reports": [
     {
       "id": "sha256:f79598a312cc4d37d5bca6334cc3d81f71aaac46be2b0dcd5d6e215f57d66e5d",
@@ -39,6 +39,17 @@
       }
     }
   ],
-  "dispositions": []
+  "dispositions": [
+    {
+      "reason": "not-actionable",
+      "note": "False finding: project_review run r-20261008T024839-project_review-a7857ff6 ran check.project-review.tests in its unbound checkout, which has no build output (generated/), so it failed with 'no build found' (Concorde defect of unbound checkouts, fixed in a follow-up task). The same check passes on the primary branch's merge checks.",
+      "evidence": [
+        ".concorde/unbound/r-20261008T024839-project_review-a7857ff6/checks/check.project-review.tests/output.log"
+      ],
+      "duplicate_of": null,
+      "actor": "main-agent",
+      "created_at": "2026-10-08T04:25:56.963024+00:00"
+    }
+  ]
 }
 ```
