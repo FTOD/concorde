@@ -43,8 +43,17 @@ The result's facts come from the Operation's own diff. The worker's account stay
 
 The Operation is worker-backed, run with [task type](../../glossary.json#concept.task-type)
 `specify`. The bound Modules' own documents (reading files and metadata) and the project glossary
-are writable. Method's round validation includes a glossary ownership audit. It reports any changed
-glossary entry whose owner is not a bound Module. Other Modules' selected documents stay read-only.
+are writable. The glossary is writable as a whole file, so Method checks it by entry, as
+[Method's workers](../workers.md#the-round-validation) define:
+
+- In the round validation, after every round the worker ended `ok` with a clean audit.
+- Once more after each worker run, whatever its status. This covers a worker that ended `blocked`
+  or `failed`, timed out or returned an invalid result.
+
+A glossary entry added, changed or removed whose owner before or after is not a bound Module ends
+the run `failed` with `audit_violation`, like a write outside the grant. The check after the worker
+run comes before the Operation creates any proposed document. So such a violation also prevents
+document creation and the second worker. Other Modules' selected documents stay read-only.
 Implementation files show by name only. A worker may bind to a realization only a file that exists.
 The task level creates and binds a new file before the run that fills it. A file is never declared
 before it exists.
@@ -62,6 +71,18 @@ ended `ok` with a clean audit, the worker harness calls that validation and resu
 every error its change introduced, at most twice per worker launch. The worker thus repairs the
 Specs it broke itself. Only errors left after the last round stop the run for a decision at the task
 level.
+
+Specification asks Method for no configured checks. So in a `specify` run, Method's [round
+validation](../workers.md#the-round-validation) is the glossary ownership check followed by this
+comparison alone. No configured check ever fails, resumes or stops a `specify` worker.
+
+The registry sits outside the worker's grant, and step 6 regenerates its mirrored fields from the
+entries. So the comparison after a round validates the workspace against the registry as step 6
+would regenerate it, held in memory through Spec core's registry override. A mirror the worker's
+edit left stale is never an error the worker is asked to repair. Findings located in Concorde's own
+records under `.concorde/` are never given to the worker either, since it cannot write them. When an
+entry cannot be read, so that no registry can be regenerated, the comparison uses the registry on
+disk. The unreadable entry is then an error the worker repairs.
 
 ## Overview
 
@@ -160,9 +181,13 @@ relative path, such as `../module.md`. The Operation may not create a proposal i
 cases:
 
 - The Module is not one the run is bound to.
+- The path is not a canonical project-relative path of a Markdown file.
 - The path is outside the folder of that Module's entry.
-- The file is already there.
+- A component of the path, or of its metadata path, is a symbolic link, dangling or not.
+- A file, or a symbolic link, is already at the path or its metadata path.
 - The path is proposed more than once.
+- The metadata of that Module's entry cannot be read as JSON whose `module` block has an `owns`
+  list, such as after the worker left it malformed.
 
 If any proposal is one it may not create, the Operation refuses the whole list, since the change
 needs all of them. In that case, these things hold:
@@ -171,6 +196,23 @@ needs all of them. In that case, these things hold:
 - No second worker runs.
 - The run stays `blocked`, with `document-refused` evidence naming the reason for each refused
   proposal.
+
+The Operation checks every proposal and computes every file's content before it writes anything.
+It then writes the reading files, their metadata and the entries' metadata in one Spec core [file
+transaction](../../glossary.json#concept.file-transaction), as Spec core's
+[contract](../../spec-tooling/spec/contracts.md#file-transactions) defines it. The transaction refuses a
+symbolic link at any component of a path it writes, so no write follows a link out of the entry's
+folder. When the transaction fails, it restores every file it wrote. The run then stays `blocked`
+with `document-creation-failed` evidence holding the failure, and no document is created. Either
+way, the run goes on to steps 6–9, so the state the worker left is still observed.
+
+Each created document gets a document identity `document.<Module>.<name>`, where `<Module>` is the
+Module's identity after `module.`. The name is the file's stem in lowercase words joined by `-`.
+When that identity is already taken, by an existing document or another created one, the Operation
+prefixes the folders between the entry's folder and the file, joined by `-`, such as
+`document.a.details-rules` for `specs/a/details/rules.md`. When that is taken too, it adds a
+number, such as `document.a.rules-2`. Two created documents therefore never share an identity, and
+the second worker's grant can be computed.
 
 An owned document is deleted only by proposing it. After a clean audit, the
 Operation performs the deletion. A change spanning several Modules, such as a contract version
@@ -184,8 +226,8 @@ increment, needs them all bound in one run.
 | 2 | Compute and freeze the `specify` [grant](../../glossary.json#concept.grant) | Operation, Spec core | unknown Module (`failed`) |
 | 3 | Generate settings, tools and the [brief](../../glossary.json#concept.brief) | Workers | — |
 | 4 | Launch the worker and wait for its [worker result](../../glossary.json#concept.worker-result); after each round it ended `ok` with a clean audit, validate against the baseline and, at most twice per worker launch, resume it with every error its change introduced | Workers, worker, Operation | launch error/timeout (`failed`); worker `blocked`/`failed` (passed on) |
-| 5 | [Audit](../../glossary.json#concept.write-audit), perform proposed deletions, write the [run record](../../glossary.json#concept.run-record) | Workers | a write outside the grant (`failed`) |
-| 5a | When the worker ended `blocked` proposing new documents of bound Modules: create them, empty and owned, regenerate the registry mirror, and repeat steps 2–5 once with a brief naming them | Operation, Workers | a proposal it may not create (`blocked`, `document-refused`); the second worker's own outcome |
+| 5 | [Audit](../../glossary.json#concept.write-audit), perform proposed deletions, write the [run record](../../glossary.json#concept.run-record); then check glossary ownership once more, whatever the worker's status | Workers, Method | a write outside the grant or a glossary entry another Module owns changed (`failed`) |
+| 5a | When the worker ended `blocked` proposing new documents of bound Modules: create them, empty and owned, regenerate the registry mirror, and repeat steps 2–5 once with a brief naming them | Operation, Workers | a proposal it may not create (`blocked`, `document-refused`); a failed file transaction (`blocked`, `document-creation-failed`); the second worker's own outcome |
 | 6 | Regenerate the [registry](../../glossary.json#concept.registry) mirror from the changed entries | Operation, Spec core | — |
 | 7 | Validate again and compare with the baseline | Operation, Spec core | a new error left after the last repair round of a worker that ended `ok` (`blocked`) |
 | 8 | Compute changed documents, added entries and affected Modules via the [impact index](../../glossary.json#concept.impact-index) | Operation, Spec core | — |
@@ -240,12 +282,16 @@ reported in the validation findings. Only an audit violation skips those steps.
 Steps 6 and 8 never stop the run themselves. When an entry the worker edited cannot be read,
 the steps do the following:
 
-- Step 6 records the registry command's refusal as evidence and leaves the mirror unchanged.
+- Step 6 records the registry command's refusal in full as `registry` evidence: its message,
+  location, reason, remediation and causes. It leaves the mirror unchanged.
 - Step 7 reports the unreadable entry as a new error, treated like any other.
 - Step 8 reports the affected Modules it could still compute.
 
-In that case, step 8 also gives evidence naming each Module whose
-[Spec context](../../glossary.json#concept.spec-context) it could not compute.
+In that case, step 8 also gives `spec-context` evidence naming each Module whose
+[Spec context](../../glossary.json#concept.spec-context) it could not compute. When the Specs after
+the change do not load at all, step 8 gives `spec-load` evidence with the load error. It also gives
+`spec-context` evidence for every bound Module and every Module the baseline knew, since no context
+after the change can be computed. It then reports the affected Modules from the baseline alone.
 
 No grant shows the [Protocol copy](../../glossary.json#concept.protocol-copy), so the brief states
 the rules for writing Spec documents. It ends with the project's own copy of Spec writing
@@ -317,7 +363,10 @@ changing the workspace.
 - Calls the round validation after each clean round.
 - Writes the run record.
 
-Any change beyond the bound Modules' documents fails the run.
+Any change beyond the bound Modules' documents fails the run. Method's [standard worker
+sequence](../workers.md#standard-worker-sequence) composes what Workers receives. It computes the
+grant. It composes the round validation from the glossary ownership check and this Module's
+comparison with the baseline. It checks glossary ownership once more after the worker run.
 
 <a id="uses-spec"></a>
 

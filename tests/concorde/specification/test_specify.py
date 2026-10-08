@@ -129,6 +129,13 @@ class SpecifyTests(unittest.TestCase):
         self.assertEqual("A2", titles["module.a"])
         self.assertEqual(0, status, envelope)
         self.assertEqual([], envelope["output"]["validation"]["new_errors"])
+        # The round is validated against the reconciled registry: the stale mirror, which the
+        # worker cannot write, is never a repair request.
+        record = read_record(
+            self.project.root / ".concorde", envelope["worker_runs"][-1]
+        )
+        self.assertEqual(1, len(record["rounds"]))
+        self.assertEqual("clean", record["rounds"][0].get("validation"))
 
     @verifies("scenario.specification.missing-entry")
     def test_binding_a_file_that_does_not_exist_is_a_new_error(self):
@@ -387,6 +394,118 @@ class SpecifyTests(unittest.TestCase):
             [("specs/a/rules.md", "the path is proposed more than once")] * 2,
             [(item["ref"], item["detail"]) for item in refused],
         )
+
+    def needs_all(self, proposals: list[tuple[str, str]], writes=None) -> dict:
+        """A first round that ends blocked proposing every ``(module, path)`` of ``proposals``,
+        after making ``writes``."""
+        round = self.needs(proposals[0][1], proposals[0][0])
+        round["result"]["output"]["proposed_documents"] = [
+            {
+                "module": module,
+                "path": path,
+                "role": "implementation",
+                "reason": "the precise obligations need an implementation document",
+            }
+            for module, path in proposals
+        ]
+        if writes:
+            round["writes"] = writes
+        return round
+
+    @verifies("scenario.specification.document-identities")
+    def test_documents_of_the_same_name_get_distinct_identities(self):
+        worktree = self.open()
+        paths = ["specs/a/rules.md", "specs/a/details/rules.md"]
+        status, envelope = self.specify(
+            {
+                "first": [self.needs_all([("module.a", path) for path in paths])],
+                "relaunch": [{"result": {"output": CLAIMS}}],
+            }
+        )
+        self.assertEqual(0, status, envelope)
+        self.assertEqual(paths, envelope["output"]["created_documents"])
+        identities = [
+            json.loads((worktree / (path + ".json")).read_text())["document"]["id"]
+            for path in paths
+        ]
+        self.assertEqual(["document.a.rules", "document.a.details-rules"], identities)
+        self.assertEqual([], envelope["output"]["validation"]["new_errors"])
+        self.assertEqual(2, len(envelope["worker_runs"]))
+
+    @verifies("scenario.specification.document-symlink")
+    def test_a_proposal_through_a_symbolic_link_creates_nothing(self):
+        worktree = self.open()
+        outside = self.project.root.parent / "outside"
+        outside.mkdir()
+        (worktree / "specs/a/details").symlink_to(outside, target_is_directory=True)
+        (worktree / "specs/a/dangling.md").symlink_to(outside / "missing.md")
+        owns = (worktree / "specs/a/module.md.json").read_text()
+        for path in ("specs/a/details/rules.md", "specs/a/dangling.md"):
+            with self.subTest(path=path):
+                status, envelope = self.specify(
+                    {
+                        "first": [
+                            self.needs_all(
+                                [("module.a", "specs/a/rules.md"), ("module.a", path)]
+                            )
+                        ],
+                        "relaunch": [{"result": {"output": CLAIMS}}],
+                    }
+                )
+                self.assertEqual((1, "blocked"), (status, envelope["status"]))
+                self.assertEqual([], envelope["output"]["created_documents"])
+                [refused] = [
+                    item
+                    for item in envelope["host_evidence"]
+                    if item["kind"] == "document-refused"
+                ]
+                self.assertEqual(path, refused["ref"])
+                self.assertEqual([], list(outside.iterdir()))
+                self.assertFalse((worktree / "specs/a/rules.md").exists())
+                self.assertEqual(
+                    owns, (worktree / "specs/a/module.md.json").read_text()
+                )
+                self.assertEqual(1, len(envelope["worker_runs"]))
+
+    @verifies("scenario.specification.unreadable-entry")
+    def test_an_unreadable_entry_refuses_creation_and_is_still_observed(self):
+        worktree = self.open()
+        metadata = worktree / "specs/a/module.md.json"
+        status, envelope = self.specify(
+            {
+                "first": [
+                    self.needs_all(
+                        [("module.a", "specs/a/rules.md")],
+                        writes={str(metadata): "{ not json\n"},
+                    )
+                ],
+                "relaunch": [{"result": {"output": CLAIMS}}],
+            }
+        )
+        self.assertEqual((1, "blocked"), (status, envelope["status"]), envelope)
+        self.assertEqual(
+            "needs_new_document", link_at(envelope["error"], "worker")["code"]
+        )
+        self.assertFalse((worktree / "specs/a/rules.md").exists())
+        self.assertFalse((worktree / "specs/a/rules.md.json").exists())
+        evidence = {
+            (item["kind"], item["ref"]): item["detail"]
+            for item in envelope["host_evidence"]
+        }
+        self.assertIn(
+            "cannot register the document",
+            evidence["document-refused", "specs/a/rules.md"],
+        )
+        # Step 6 keeps the registry command's refusal; step 7 still validates; step 8 names
+        # every Module whose context after the change it could not compute.
+        self.assertIn("specs/a/module.md.json", evidence["registry", "failed"])
+        self.assertIn("validation", self.kinds(envelope))
+        self.assertIn(("spec-context", "after module.a"), evidence)
+        self.assertIn(("spec-context", "after module.b"), evidence)
+        output = envelope["output"]
+        self.assertEqual(["specs/a/module.md.json"], output["changed_documents"])
+        self.assertTrue(output["validation"]["new_errors"])
+        self.assertEqual(1, len(envelope["worker_runs"]))
 
     @verifies("scenario.specification.code-write")
     def test_a_write_to_code_fails_the_run(self):
