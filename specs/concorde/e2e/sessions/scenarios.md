@@ -9,19 +9,22 @@ Concrete situations that show the [requirements](requirements.md) of
 - WHEN the driver builds the round's command
 - THEN it runs `claude -p` with the prompt, the headless note followed by the test procedure as appended system prompt, `stream-json` output and the [main agent](../../glossary.json#concept.main-agent)'s tools granted
 - AND those tools include EnterWorktree and ExitWorktree
+- AND the command's own `--settings` turns Claude Code's Bash sandbox off
 - AND the test procedure overrides, for this session only, the rule to hand every task to a [task session](../../glossary.json#concept.task-session)
 - AND the test procedure states in order: open the task, enter its worktree with EnterWorktree, work it running Concorde commands in the foreground, validate and deliver
 - AND it then states: leave with ExitWorktree with action `keep`, merge from the primary worktree, and record in the [decision log](../../glossary.json#concept.decision-log) each decision it would otherwise ask about
-- BUT a headless workflow run's command carries the headless note alone
+- BUT a headless workflow run's command carries the headless note alone, with the sandbox off as well
 - AND a later round resumes the session by its identity
 - AND the environment keeps a background workflow alive
 
 ### scenario.headless-sessions.logs — A replayed empty turn is not the round's answer
 
 - GIVEN a round's log with the session's identity, a replayed result without a model turn, tool calls, texts and the round's own result
+- AND a command longer than 500 characters, and texts and a result holding unescaped Unicode line and paragraph separators
 - WHEN the driver reads the log
-- THEN it names the session, every tool call with its target (its command, path or skill) and every text
+- THEN it names the session, every tool call with its whole target (its command, path or skill) and every text
 - AND the round's result is the last one with a model turn
+- BUT a round whose log holds only a replayed result has no result
 
 ### scenario.headless-sessions.unsettled — Which runs a round left behind
 
@@ -30,8 +33,9 @@ Concrete situations that show the [requirements](requirements.md) of
 - AND one cancelled at the round's end, one cancelled long before the round's end and one failed otherwise
 - AND runs already reported in an earlier wake message, and a worker's [progress file](../../glossary.json#concept.progress-file)
 - WHEN a round ends
-- THEN the running run, the queued run and the run cancelled at the round's end are unsettled
-- BUT a run started before the session, a run whose runner is gone and a run that failed otherwise are not unsettled
+- THEN the running run, the queued run, the run whose runner is gone and the run cancelled at the round's end are unsettled
+- AND the wake message names the run whose runner is gone as ended without a result
+- BUT a run started before the session and a run that failed otherwise are not unsettled
 - AND neither are a run cancelled long before the round ended, a worker's progress file and a run already reported
 
 ### scenario.headless-sessions.wake — A run left running wakes the session

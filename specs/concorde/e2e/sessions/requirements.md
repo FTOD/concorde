@@ -13,11 +13,23 @@ with the headless note appended to its system prompt.
 Every round of a headless session SHALL be started with its tools granted on the
 command line.
 
+### req.headless-sessions.sandbox-off — A round runs without the Bash sandbox
+
+Every round of a headless session SHALL be started with Claude Code's Bash sandbox turned off by
+its own command line, never by a change of the developer's settings files.
+
+A [detached run](../../glossary.json#concept.detached-run) started from a sandboxed Bash call dies
+with that call, so it could never outlive the round.
+
+### req.headless-sessions.worktree-tools-granted — A headless main session may enter task worktrees
+
+The tools granted to every round of a headless [main
+agent](../../glossary.json#concept.main-agent) SHALL include EnterWorktree and ExitWorktree.
+
 ### req.headless-sessions.claude-works-tasks — A headless main session works its tasks itself
 
-Every round of a headless [main agent](../../glossary.json#concept.main-agent) SHALL be granted
-EnterWorktree and ExitWorktree and carry, after its headless note, a test procedure with these
-contents:
+Every round of a headless main agent SHALL carry, after its headless note, a test procedure with
+these contents:
 
 - It overrides, for that session only, the rule to hand every task to a
   [task session](../../glossary.json#concept.task-session).
@@ -47,7 +59,7 @@ naming each such run, once every such run has finished or its runner has gone:
 - A round other than the session's last ends.
 - A run of an [Operation](../../glossary.json#concept.operation) or
   [execution command](../../glossary.json#concept.execution-command) of the session is still
-  running at that end, or was stopped by it.
+  running at that end, was stopped by it, or is unfinished with its runner gone.
 
 The wait is bounded by [its own requirement](#req.headless-sessions.wait-bounded).
 
