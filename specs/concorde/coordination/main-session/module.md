@@ -327,7 +327,9 @@ The installed guidance gives the main agent this working method:
   - Commands that close tasks.
   - Commands that start task sessions.
 
-  None of the commands that work on the task's workspace names the task. The task worktree's
+  None of the [Operations](../../glossary.json#concept.operation),
+  [execution commands](../../glossary.json#concept.execution-command) and workflows that run on the
+  task's workspace names the task. The task worktree's
   [workspace binding](../../glossary.json#concept.workspace-binding), which `concorde task open`
   wrote, tells every run what it works on:
 
@@ -336,9 +338,25 @@ The installed guidance gives the main agent this working method:
   - The branch.
   - The base.
 
+  Tasks' own commands still take the task their
+  [contracts](../tasks/contracts.md#commands) name. An example is `concorde task deliver <task>`,
+  with which a task session delivers from its worktree where the method part is not installed.
+
   One workspace runs one of those Operations or execution commands at a time (`workspace_busy`
   otherwise). A task session starts them in background Bash, which wakes it when they end (see
   [Task sessions](../task-session/module.md)).
+
+  Direct changes and runs never overlap. While a run of its workspace runs, the task session leaves
+  its worktree untouched, editing and committing nothing
+  ([requirements](requirements.md#req.main-session.task-session-still-during-runs)). The run's
+  [write audit](../../glossary.json#concept.write-audit) attributes every change of the worktree to
+  the run's workers, so a change of the session's own fails the run or is blamed on its workers.
+  Before it validates and delivers, the task session lets every run of its workspace finish and
+  stops every other background command it started, confirming each ended
+  ([requirements](requirements.md#req.main-session.task-session-quiet-before-validation)). A run
+  that still runs holds the workspace lock, which refuses the validation and the delivery. The
+  delivery commits every uncommitted change, so a command still writing in the worktree would decide
+  what the delivery commit holds.
 - **Make only approved small changes in the primary worktree.** Only after both of the following may
   the main agent make a very small change directly in the primary worktree
   ([requirements](requirements.md#req.main-session.small-change)):
@@ -664,8 +682,12 @@ result's decisions and problems into the task's decision log for these reasons:
 - In no-ask mode, those are decisions taken without the developer.
 
 The session gives the decisions in its own report. The session escalates a result that is not `ok`
-with the saved workflow result as `--error-file`. The session escalates a decision of major impact
-with its own link alone. The main agent reads every problem's chain and merges a delivered task.
+and that it cannot repair within the task, with the saved workflow result as `--error-file`
+([requirements](requirements.md#req.main-session.task-session-workflow-failure)). When it repaired
+the cause of a failed step, it starts the workflow again with that step to retry. A result
+`awaiting_decision` is always escalated, as the interactive mode above says. The session escalates
+a decision of major impact with its own link alone. The main agent reads every problem's chain and
+merges a delivered task.
 
 The guidance names the [brownfield workflow](../../glossary.json#concept.brownfield-workflow) as
 the way to describe a project whose code came before its Specs, right after installation and
@@ -741,10 +763,16 @@ None of these actions changes an Issue:
 - Fixing a task
 - Delivering a task
 
-When an Issue is closed for another reason, or fixed without such a task, it is closed with
-`issue_close`. The closure uses `duplicate` naming another open Issue or `not-actionable`. It
-includes a note and evidence whose meaning the closer answers for. A recurrence uses `issue_reopen`,
-preserving history. On `stale_issue`, read the record again before deciding to retry.
+Any other closure uses `issue_close` with one of the closing reasons of the Issues'
+[lifecycle](../../issues/module.md#lifecycle):
+
+- `resolved`, for an Issue fixed without a task that names it, such as one a review found resolved.
+  Its evidence shows the fix, such as the review's run.
+- `duplicate`, naming another open Issue that tracks the same problem.
+- `not-actionable`, when no repair is warranted.
+
+The closure includes a note and evidence whose meaning the closer answers for. A recurrence uses
+`issue_reopen`, preserving history. On `stale_issue`, read the record again before deciding to retry.
 
 **After a review.** These review Operations report every finding as an Issue with the severity and
 tier their reviewer or chair gave it:
@@ -832,8 +860,8 @@ session:
 
 For Coordination's tools, the wait `register_wait` registers is that `concorde`'s
 `concorde task wait`. The wait runs as a process the server watches. The merge `task_merge` starts
-is the very process the call ran in. After taking both locks and answering, that process replaces
-itself with `concorde task merge`.
+is the very process the call ran in. After taking its three locks and answering, that process
+replaces itself with `concorde task merge`.
 
 - **Queries**:
 
@@ -882,9 +910,16 @@ itself with `concorde task merge`.
 
   - `task-session` with its task in a task worktree bound as a workspace.
   - `main-agent` otherwise.
-- **Long work**: `task_merge` never waits for a lock. It takes the task's workspace lock and the
-  [merge lock](../../glossary.json#concept.merge-lock) at once or is refused at once. The refusal
-  uses `workspace_busy` or `merge_busy` and names who holds the busy lock:
+- **Long work**: `task_merge` never waits for a lock. It takes three locks at once, in this order,
+  or is refused at once:
+
+  - The task's merge attempt lock, which a merge of the task holds until it has written its whole
+    answer.
+  - The task's workspace lock.
+  - The [merge lock](../../glossary.json#concept.merge-lock).
+
+  The refusal uses `merge_busy` for the attempt lock or the merge lock and `workspace_busy` for the
+  workspace lock. It names who holds the busy lock:
 
   - The holder's command.
   - The holder's process.
@@ -892,11 +927,13 @@ itself with `concorde task merge`.
   - The holder's Claude Code session.
   - The holder's task.
 
-  The call's process takes the locks. When it gets both, it becomes `concorde task merge`, a process
-  of its own session, keeping both locks. The `flock` belongs to the open file description, which
-  survives the change of program. The server never holds either lock. Therefore, the lock belongs to
-  the session's work, never to the server. The lock is released when the merge ends, however it
-  ends, even when the session and its server end first. The call returns at once with the merge it
+  The call's process takes the locks. When it gets all three, it becomes `concorde task merge`, a
+  process of its own session, keeping the three locked descriptors. The `flock` belongs to the open
+  file description, which survives the change of program. The server never holds any of the locks.
+  Therefore, the locks belong to the session's work, never to the server. They are released when the
+  merge ends, however it ends, even when the session and its server end first. The close that ends
+  the merge removes the task's workspace lock before the merge has written its answer. The attempt
+  lock still keeps another merge of the task out until that answer is complete. The call returns at once with the merge it
   started, not the merge's result. A channel event or the returned wait command delivers the result
   later.
 - **[Workflow steps](../../glossary.json#concept.workflow-step)**: where the workflow part is
@@ -1094,8 +1131,10 @@ The **Kernel** gives the main agent's commands the
 Concorde's behalf takes this lock. The guidance relies on one lock for merges and Issue writes
 alike, so it tells the main agent to retry a `merge_busy` rather than work around it. The Kernel
 also gives the commands the [workspace binding](../../glossary.json#concept.workspace-binding). The
-binding names a task worktree's workspace to every run started there, so no command the guidance
-names takes the task.
+binding names a task worktree's workspace to every run started there. So no Operation, execution
+command or workflow run there takes the task. Tasks' commands, such as `concorde task session
+<task>`, `concorde task merge <task>` and `concorde task deliver <task>`, take the task their
+contracts name.
 
 <a id="uses-tasks"></a>
 
@@ -1158,7 +1197,7 @@ The project MCP server presents Tasks' commands unchanged. When each command wai
 server answers and refuses as that command does. The results are the
 [task records](../tasks/contracts.md#contract.tasks.record) and the other results of
 [Tasks' commands](../tasks/contracts.md#commands). The server starts `concorde task merge` with the
-two locks it took. It runs the waits of `concorde task wait`, which Tasks provides for background
+three locks it took. It runs the waits of `concorde task wait`, which Tasks provides for background
 Bash too.
 
 <a id="uses-task-session"></a>

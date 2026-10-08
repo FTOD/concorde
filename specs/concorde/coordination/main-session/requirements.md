@@ -471,8 +471,16 @@ The queries also read the holder lines of the merge lock and the workspace locks
 
 ### req.main-session.project-mcp-merge-start — `task_merge` starts the command's merge
 
-Once it holds both locks, `task_merge` SHALL start the same `concorde task merge` the command line
-runs, with the task and the `checks`, `resume` or `abort` it was given.
+Once it holds the task's merge attempt lock, the task's
+[workspace lock](../../glossary.json#concept.workspace-lock) and the
+[merge lock](../../glossary.json#concept.merge-lock), `task_merge` SHALL start the same
+`concorde task merge` the command line runs, with the task and the `checks`, `resume` or `abort` it
+was given.
+
+The [contracts](contracts.md#starting-a-merge) give the order in which it takes the three locks.
+The attempt lock, which [Tasks](../tasks/requirements.md#req.tasks.merge-attempt-lock) defines,
+keeps a second merge of the task from starting until the first has written its whole answer, also
+after the close removed the task's workspace lock.
 
 ### req.main-session.project-mcp-merge-answer — `task_merge` answers at once with the start
 
@@ -493,8 +501,10 @@ Before the start, only these refuse the call:
 ### req.main-session.project-mcp-merge-output — A merge's output stays with its attempt
 
 `task_merge` SHALL save the started merge's standard output and error in its attempt node's folder
-in the task's trace and, without a channel, return `concorde task wait <task> --merge` as the wait
-command.
+in the task's trace.
+
+Without a channel, the call returns `concorde task wait <task> --merge`, as
+[Without a channel the server says so](#req.main-session.project-mcp-fallback) requires.
 
 The merge may outlive the server. The close that ends the merge removes the task's workspace lock
 before the merge has written its answer. The attempt's folder moves with the task to the history.
@@ -534,15 +544,15 @@ within moments. Examples of short writes are:
 
 ### req.main-session.project-mcp-handover — A granted lock belongs to the work
 
-When `task_merge` has both locks, the server SHALL hand them to the merge process it starts, so
-that they are released exactly when that process ends, however it ends, and never by the server or
-its session ending.
+When `task_merge` has its three locks, the server SHALL hand them to the merge process it starts,
+so that they are released exactly when that process ends, however it ends, and never by the server
+or its session ending.
 
 The call's process follows this sequence:
 
-- It takes both locks.
+- It takes the task's merge attempt lock, the task's workspace lock and the merge lock.
 - It answers.
-- It becomes `concorde task merge` in a session of its own, keeping both locked descriptors.
+- It becomes `concorde task merge` in a session of its own, keeping the three locked descriptors.
 
 The server itself never holds them.
 
@@ -1088,14 +1098,18 @@ The guidance SHALL tell a task session to report to the main agent the fix it ch
 The guidance SHALL tell a task session to escalate a `decision-needed` Issue, named by its identity,
 instead of settling it.
 
-### req.main-session.issues-severity — Work starts from the most severe Issues
+### req.main-session.issues-severity — Every Issue report carries a severity
 
 The guidance SHALL tell every session that records an Issue to give each report one of the
 [severities](../../glossary.json#concept.issue-severity) `critical`, `high`, `medium` and `low`,
-saying what each means, and the main agent to choose which Issues a task takes up from the open
-Issues listed by severity, most severe first.
+saying what each means.
 
 The severity says how much a problem matters, never who fixes it. The tier decides who fixes it.
+
+### req.main-session.issues-most-severe-first — Work starts from the most severe Issues
+
+The guidance SHALL tell the main agent to choose which Issues a task takes up from the open Issues
+listed by severity, most severe first.
 
 ### req.main-session.review-issues — A review's Issues are handled by their tier
 
@@ -1156,13 +1170,29 @@ The decision log and the escalation belong to a task. An Issue tool or command n
 failure met without a task has no record to carry it. The main agent opens a task only when the
 failure leads to work.
 
-### req.main-session.issues-recovery — The guidance knows how Issue records are put back
+### req.main-session.issues-recovery — A record a failed recovery left is put back by `issues recover`
 
 The guidance SHALL tell the main agent that a record a `recovery_failed` refusal left uncommitted is
-put back by `concorde issues recover` once the cause the refusal names is fixed, that an Issue
-record whose change no Issue write made, which `uncommitted_change` or a merge's `primary_dirty`
-names, is inspected and reverted and never committed by hand, and that a merge puts back by itself
-what a killed Issue write left, and tell task sessions to leave both refusals to the main agent.
+put back by `concorde issues recover` once the cause the refusal names is fixed.
 
 Recovery is the Issue system's own repair of its records in the primary worktree. A session that
 commits or discards such a record by hand may record what no write made, or lose what one did.
+
+### req.main-session.issues-unaccounted-record — A record no Issue write changed is reverted
+
+The guidance SHALL tell the main agent to inspect and revert an Issue record whose change no Issue
+write made, which `uncommitted_change` or a merge's `primary_dirty` names, and never to commit that
+record by hand.
+
+### req.main-session.issues-merge-recovers — A merge puts back what a killed Issue write left
+
+The guidance SHALL tell the main agent that a merge puts back by itself what a killed Issue write
+left.
+
+### req.main-session.issues-recovery-main-agent — Task sessions leave Issue-record repairs to the main agent
+
+The guidance SHALL tell task sessions to leave `recovery_failed` and `uncommitted_change` to the main
+agent.
+
+A task session has no authority over the primary worktree's records, so it escalates either refusal
+and never repairs the record itself.

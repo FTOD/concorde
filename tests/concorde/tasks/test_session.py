@@ -791,6 +791,9 @@ class EndOfTaskTests(unittest.TestCase):
             "`claude rm bbbb2222`",
         ):
             self.assertIn(text, unkept)
+        # It names the node where the close moved it, never the task's folder it left.
+        self.assertIn(str(self.root / ".concorde/history/t1/sessions/bbbb2222"), unkept)
+        self.assertNotIn(str(self.root / ".concorde/tasks/t1"), unkept)
         self.assertEqual(
             [["stop", "aaaa1111"], ["stop", "bbbb2222"], AGENTS, ["rm", "aaaa1111"]],
             [item["argv"] for item in self.calls()],
@@ -1004,8 +1007,8 @@ class EndOfTaskTests(unittest.TestCase):
                 for key in ("tokens_in", "tokens_out", "turns", "cost_usd")
             ),
         )
-        self.assertIsNone(node["content"]["data"]["model_usage"])
-        self.assertEqual((None, None), self.cost(records))
+        self.assertEqual(account, node["content"]["data"]["model_usage"])
+        self.assertEqual((None, account), self.cost(records))
         # A later account is final again.
         later = {"claude-opus-5-5": {"costUSD": 0.55}}
         restored = [
@@ -1068,6 +1071,7 @@ class EndOfTaskTests(unittest.TestCase):
             "could not be removed",
             "Permission denied",
             "`claude rm aaaa1111`",
+            f"{self.root / '.concorde/history/t1/sessions/aaaa1111' / session.TRANSCRIPT}",
         ):
             self.assertIn(text, warning)
         self.assertNotIn(["rm", "aaaa1111"], [item["argv"] for item in self.calls()])

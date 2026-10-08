@@ -560,7 +560,8 @@ illustrates [escalating a decision](requirements.md#req.main-session.issues-deci
   `issue_list` sorted by `severity`
 - BUT the severity is not said to decide who fixes an Issue, which stays the tier's
 
-This illustrates [severity deciding what is fixed first](requirements.md#req.main-session.issues-severity).
+This illustrates [every Issue report carrying a severity](requirements.md#req.main-session.issues-severity)
+and [severity deciding what is fixed first](requirements.md#req.main-session.issues-most-severe-first).
 
 ### scenario.main-session.project-review — The guidance reviews the whole project without a task
 
@@ -649,7 +650,10 @@ This illustrates [a failure without a task](requirements.md#req.main-session.iss
 - AND the main agent is told that a merge first puts back what a killed Issue write left
 - BUT a task session is told to leave both refusals to the main agent
 
-This illustrates [Issue recovery](requirements.md#req.main-session.issues-recovery).
+This illustrates [Issue recovery](requirements.md#req.main-session.issues-recovery),
+[reverting a record no Issue write changed](requirements.md#req.main-session.issues-unaccounted-record),
+[a merge's own recovery](requirements.md#req.main-session.issues-merge-recovers) and
+[task sessions leaving repairs to the main agent](requirements.md#req.main-session.issues-recovery-main-agent).
 
 ## The project MCP server
 
@@ -673,6 +677,14 @@ This illustrates [Issue recovery](requirements.md#req.main-session.issues-recove
 - THEN each answers from the primary worktree's records as `concorde task list`, `task show` and
   `trace show` do
 - AND `locks` says that nobody holds the merge lock or the workspace lock of `t1`
+
+### scenario.main-session.project-mcp-history-key — `task_show` takes a history key
+
+- GIVEN a project whose task identity `t1` was opened and closed twice, the closes keeping the
+  history keys `t1` and `t1.2`
+- WHEN the session calls `task_show` with `t1` or `t1.2`
+- THEN each answers the later closed task as `concorde task show` does
+- AND a history key no close gave, such as `t1.3`, is refused with Tasks' own `unknown_task` link
 
 ### scenario.main-session.project-mcp-refusals — Refusals are error links
 
@@ -844,6 +856,12 @@ This illustrates [queries and short writes answering as their commands](requirem
 - AND the answer says there is no channel
 - AND the answer returns `concorde task wait t1 --lock workspace` or
   `concorde task wait t1 --until closed,failed` to run in background Bash
+- AND while the task record's `main` is `concorde-7d`, a wait for `t1` to be rebound away from
+  ` concorde-7d ` does not answer that the rebind happened
+- AND that answer returns `concorde task wait t1 --rebound concorde-7d`, the former session's name
+  without its surrounding blanks, as `concorde task wait` reads it
+- AND a wait whose former session is only blanks is refused with `invalid_input`, as
+  `concorde task wait` refuses it
 
 ### scenario.main-session.project-mcp-channel-detection — The server reads its channel from the session's command line
 

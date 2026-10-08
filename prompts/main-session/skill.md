@@ -440,11 +440,12 @@ The server presents these short writes with structured arguments:
 
 `task_list` takes `main` as `--main`.
 
-`task_merge` merges a delivered task without ever waiting for a lock. It takes the task's workspace
-lock and the merge lock at once. If it cannot take both at once, it is refused at once with
-`workspace_busy` or `merge_busy` naming who holds the busy one. When it gets both, it starts
-`concorde task merge` as a process of its own and returns at once. Even if your session ends first,
-that process holds both locks until it ends. Its `checks`, `resume` and `abort` are the command's
+`task_merge` merges a delivered task without ever waiting for a lock. It takes three locks at once:
+the task's merge attempt lock, the task's workspace lock and the merge lock. If it cannot take one
+of them at once, it is refused at once with `workspace_busy` or `merge_busy` naming who holds the
+busy one. When it gets all three, it starts `concorde task merge` as a process of its own and
+returns at once. Even if your session ends first, that process holds the three locks until it
+ends. Its `checks`, `resume` and `abort` are the command's
 `--check`, `--resume` and `--abort`.
 
 Handle its outcome as a merge's (see "Merge delivered work" above). When it is refused with
