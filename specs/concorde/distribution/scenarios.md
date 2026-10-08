@@ -81,6 +81,13 @@ This illustrates [a guidance section standing without the parts it may lack](req
 - THEN the result is `invalid` with a finding naming the problem
 - BUT no output is written or removed
 
+### scenario.distribution.build-refuses-foreign-audience — Refuse text meant for another audience
+
+- GIVEN a `shared` prompt root that includes a `worker` prompt, or a `worker` root that includes an `ambient` prompt
+- WHEN the developer runs `build`
+- THEN the build is refused with `CONCORDE-PROMPT-AUDIENCE-001`, naming the included prompt and its audience
+- BUT no output is written or removed
+
 ### scenario.distribution.build-refuses-repeated-include — Refuse a prompt reached twice
 
 - GIVEN a prompt root that includes two prompts, each of which includes the same third prompt with its own values
@@ -402,6 +409,14 @@ This illustrates [refusing a call without an answer](requirements.md#req.distrib
 - GIVEN a server that listed its tools to the session
 - WHEN the session calls a tool the listing lacks, so that the server fetches the current code's listing to learn how it is served
 - AND the answer says the current code's tools differ from those listed
+- THEN the server tells its session that its tools changed
+
+This illustrates [the session hearing that its tools changed](requirements.md#req.distribution.mcp-tools-changed).
+
+### scenario.distribution.mcp-tools-changed-after-failed-listing — A failed listing is followed by a tools change
+
+- GIVEN a server whose fetch of the tools failed when its session listed them, so that the session was given no tools
+- WHEN a later call's answer names the current code's tools
 - THEN the server tells its session that its tools changed
 
 This illustrates [the session hearing that its tools changed](requirements.md#req.distribution.mcp-tools-changed).

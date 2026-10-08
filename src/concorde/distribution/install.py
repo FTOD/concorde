@@ -483,7 +483,15 @@ def _amend(project: Path, name: str, block: str) -> None:
         after = after[1:] if after.startswith("\n") else after
         text = before + section + after
     else:
-        text = (text.rstrip("\n") + "\n\n" if text.strip() else "") + section
+        # The project's own text stays byte for byte: only the blank line before the first
+        # block is added where it lacks.
+        if not text or text.endswith("\n\n"):
+            separator = ""
+        elif text.endswith("\n"):
+            separator = "\n"
+        else:
+            separator = "\n\n"
+        text = text + separator + section
     path.write_text(text, encoding="utf-8")
 
 

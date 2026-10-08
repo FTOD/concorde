@@ -390,6 +390,30 @@ class BuildTests(unittest.TestCase):
             write_build(root)
         self.assertEqual(before, (root / "generated/build-manifest.json").read_bytes())
 
+    @verifies("scenario.distribution.build-refuses-foreign-audience")
+    def test_a_root_takes_in_only_text_meant_for_its_audience(self):
+        root = package_copy(self)
+        before = (root / "generated/build-manifest.json").read_bytes()
+        skill = root / "prompts/development/skill.md"
+        self.assertIn("audience: shared", skill.read_text())
+        text = skill.read_text()
+        for audience in ("worker", "ambient"):
+            with self.subTest(audience=audience):
+                (root / "prompts/foreign.md").write_text(
+                    f"---\naudience: {audience}\n---\n\nForeign.\n"
+                )
+                skill.write_text(text + "\n@prompts/foreign.md\n")
+                with self.assertRaises(BuildError) as raised:
+                    write_build(root)
+                message = str(raised.exception)
+                self.assertIn("CONCORDE-PROMPT-AUDIENCE-001", message)
+                self.assertIn(
+                    f"cannot include prompts/foreign.md (audience: {audience})", message
+                )
+                self.assertEqual(
+                    before, (root / "generated/build-manifest.json").read_bytes()
+                )
+
     @verifies("scenario.distribution.build-refuses-repeated-include")
     def test_a_prompt_reached_twice_is_refused(self):
         root = package_copy(self)
@@ -846,6 +870,33 @@ class PartsTests(unittest.TestCase):
             str(raised.exception),
         )
 
+    def test_tools_and_instructions_follow_the_parts_table(self):
+        from concorde.distribution.project_mcp import tools
+
+        text = (REPOSITORY_ROOT / "specs/concorde/distribution/module.md").read_text()
+        section = text.split("\n### Parts and their registrations\n", 1)[1]
+        section = section.split("\n### ", 1)[0]
+        table = re.findall(
+            r"^\| ([a-z ]+) \| (?:\[|this Module)", section, re.MULTILINE
+        )
+        self.assertEqual(list(parts.TABLE), table)
+        installed = parts.installed()
+        owner = {
+            tool["name"]: registration.part
+            for registration in installed.values()
+            for tool in registration.data["mcp_tools"]
+        }
+        listed = [owner[tool["name"]] for tool in tools.listing(installed)]
+        self.assertEqual(sorted(listed, key=parts.TABLE.index), listed)
+        self.assertLess(listed.index("issues"), listed.index("coordination"))
+        sentences = tools.instructions(installed)
+        contributed = [
+            registration.data["mcp_instructions"]
+            for registration in parts.in_table_order(installed)
+            if registration.data["mcp_instructions"]
+        ]
+        self.assertTrue(sentences.endswith(" ".join(contributed)))
+
     def test_every_registration_satisfies_the_registration_contract(self):
         schema = contract_schema("contract.distribution.part-registration")
         for path in sorted(
@@ -890,6 +941,26 @@ class InstallTests(unittest.TestCase):
         self.assertEqual(
             text.replace("\nold\n", "\nnew\n"), (project / "CLAUDE.md").read_text()
         )
+
+    def test_the_first_block_keeps_the_project_text_as_it_is(self):
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        project = Path(directory.name)
+        section = "<!-- concorde:start -->\nnew\n<!-- concorde:end -->\n"
+        for text, separator in (
+            ("# Mine\n\n\n\n", ""),
+            ("# Mine  \n\n", ""),
+            ("# Mine\n", "\n"),
+            ("# Mine", "\n\n"),
+            ("\n", "\n"),
+            ("", ""),
+        ):
+            with self.subTest(text=text):
+                (project / "CLAUDE.md").write_text(text)
+                _amend(project, "CLAUDE.md", "new")
+                self.assertEqual(
+                    text + separator + section, (project / "CLAUDE.md").read_text()
+                )
 
     @verifies(
         "scenario.distribution.install",
