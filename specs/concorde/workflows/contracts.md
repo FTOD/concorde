@@ -2038,7 +2038,8 @@ exit status 1. The codes apply in these cases:
 When either of these conditions holds, the command line is answered with the response below:
 
 - The command line breaks the [step request](#contract.workflows.step-request) contract.
-- The report command line is malformed.
+- The report command line is malformed, such as a `--lost` value that is no step key. The command
+  answers so before it reads or writes anything.
 
 The response has these details:
 

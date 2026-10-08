@@ -1109,6 +1109,22 @@ class CliTests(unittest.TestCase):
         )
         self.assertEqual("workflow_conflict", value["error"]["code"])
 
+    def test_a_malformed_lost_key_is_refused_before_anything_is_written(self):
+        self.project.open_task()
+        worktree = self.project.worktree()
+        argv = ["report", "--workflow", "brownfield", "--mode", "no-ask"]
+        # Without a record, then with one: neither is touched.
+        for existing in (False, True):
+            if existing:
+                self.main([*argv, "--lost", "survey"], worktree)
+            before = store.load(store.workspace(worktree))
+            with self.subTest(existing=existing):
+                status, value = self.main([*argv, "--lost", "BAD key"], worktree)
+                self.assertEqual(2, status)
+                self.assertEqual("invalid_request", value["error"]["code"])
+                self.assertIn("BAD key", value["error"]["detail"])
+                self.assertEqual(before, store.load(store.workspace(worktree)))
+
     def test_a_request_naming_no_operation_or_command_is_refused_at_once(self):
         self.project.open_task()
         worktree = self.project.worktree()
