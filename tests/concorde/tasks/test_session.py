@@ -135,7 +135,7 @@ class TaskSessionTests(unittest.TestCase):
         self.assertIsNone(started["session_id"])
         self.recorded(started)
 
-    @verifies("scenario.task-session.start")
+    @verifies("scenario.task-session.start-failed")
     def test_a_session_claude_code_did_not_start_is_refused(self):
         claude = FakeClaude(
             returncode=1, stdout="Workspace not trusted. Run `claude` in ... once."
@@ -149,7 +149,7 @@ class TaskSessionTests(unittest.TestCase):
         self.assertEqual([], store.sessions(self.root, "t1"))
         self.assertFalse((self.folder / "sessions").exists())
 
-    @verifies("scenario.task-session.start")
+    @verifies("scenario.task-session.start-unrecorded")
     def test_a_session_started_but_not_recorded_is_removed(self):
         claude = FakeClaude()
 
@@ -187,23 +187,95 @@ class TaskSessionTests(unittest.TestCase):
         self.assertFalse((self.root / ".concorde/history/t1/runtime").exists())
         self.assertFalse(self.folder.exists())
 
-    def hook(self, target: Path) -> dict | None:
-        """The written hook's decision on an Edit of ``target``: None allows."""
-        hook = self.folder / "runtime/write_hook.py"
+    @verifies("scenario.task-session.one-working")
+    def test_a_working_session_refuses_another_start(self):
+        session.start(self.root, "t1", "concorde-7d", run=FakeClaude())
+        runtime = self.folder / "runtime"
+        written = {path.name: path.read_bytes() for path in runtime.iterdir()}
+        before = store.load_task(self.root, "t1")
+        # Claude Code lists the recorded session as working.
+        claude = FakeClaude(stdout="backgrounded · 44bbcd25 · task-t1\n")
+        with self.assertRaises(store.TaskError) as raised:
+            session.start(self.root, "t1", "concorde-8e", run=claude)
+        self.assertEqual("session_running", raised.exception.code)
+        for text in ("33afbc14", "'working'", "claude stop 33afbc14"):
+            self.assertIn(text, str(raised.exception))
+        # It asked Claude Code for its sessions and started none.
+        self.assertEqual(
+            [["claude", "agents", "--json", "--all"]], [c for c, _ in claude.calls]
+        )
+        self.assertEqual(
+            written, {path.name: path.read_bytes() for path in runtime.iterdir()}
+        )
+        self.assertEqual(before, store.load_task(self.root, "t1"))
+        self.assertEqual(
+            ["33afbc14"], [item["id"] for item in store.sessions(self.root, "t1")]
+        )
+
+    def test_a_start_that_cannot_read_claude_codes_sessions_is_refused(self):
+        session.start(self.root, "t1", "concorde-7d", run=FakeClaude())
+
+        def unreadable(command, **options):
+            return subprocess.CompletedProcess(command, 1, "", "not logged in")
+
+        with self.assertRaises(store.TaskError) as raised:
+            session.start(self.root, "t1", "concorde-8e", run=unreadable)
+        self.assertEqual("session_failed", raised.exception.code)
+        self.assertIn("not logged in", str(raised.exception))
+        self.assertEqual(1, len(store.sessions(self.root, "t1")))
+
+    @verifies("scenario.task-session.replace-ended")
+    def test_a_session_done_or_gone_is_replaced(self):
+        session.start(self.root, "t1", "concorde-7d", run=FakeClaude())
+        session.start(
+            self.root,
+            "t1",
+            "concorde-7d",
+            run=FakeClaude(
+                stdout="backgrounded · 44bbcd25 · task-t1\n",
+                listed=({"id": "33afbc14", "sessionId": SESSION_ID, "state": "done"},),
+            ),
+        )
+        # 33afbc14 is done, 44bbcd25 is no longer listed: neither refuses.
+        started = session.start(
+            self.root,
+            "t1",
+            "concorde-8e",
+            run=FakeClaude(
+                stdout="backgrounded · 55ccdd36 · task-t1\n",
+                listed=({"id": "33afbc14", "sessionId": SESSION_ID, "state": "done"},),
+            ),
+        )
+        self.assertEqual("55ccdd36", started["id"])
+        self.assertEqual(
+            ["33afbc14", "44bbcd25", "55ccdd36"],
+            sorted(item["id"] for item in store.sessions(self.root, "t1")),
+        )
+        self.assertEqual("concorde-8e", store.load_task(self.root, "t1")["main"])
+
+    def decide(self, hook: Path, hook_input: str) -> dict | None:
+        """The decision of the hook ``hook`` on ``hook_input``: None allows."""
         decided = subprocess.run(
             [sys.executable, str(hook)],
-            input=json.dumps(
+            input=hook_input,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        return json.loads(decided.stdout) if decided.stdout.strip() else None
+
+    def hook(self, target: Path, hook: Path | None = None) -> dict | None:
+        """The written hook's decision on an Edit of ``target``: None allows."""
+        return self.decide(
+            hook or self.folder / "runtime/write_hook.py",
+            json.dumps(
                 {
                     "tool_name": "Edit",
                     "cwd": str(self.worktree),
                     "tool_input": {"file_path": str(target)},
                 }
             ),
-            capture_output=True,
-            text=True,
-            check=True,
         )
-        return json.loads(decided.stdout) if decided.stdout.strip() else None
 
     @verifies("scenario.task-session.project-mcp")
     def test_a_task_session_gets_the_project_mcp_server_without_a_channel(self):
@@ -283,25 +355,37 @@ class TaskSessionTests(unittest.TestCase):
             },
             session.mcp_approvals(self.root, self.worktree, managed),
         )
-        # Approving every project server approves all but those rejected, never concorde.
+
+    @verifies("scenario.task-session.mcp-approve-all")
+    def test_approving_every_project_server_enables_all_but_the_rejected(self):
+        _, managed = self.claude_config()
+        self.write(self.root / ".mcp.json", self.servers("concorde", "local", "never"))
+        self.write(self.worktree / ".mcp.json", self.servers("fresh"))
         self.write(
             self.root / ".claude/settings.local.json",
             {"enableAllProjectMcpServers": True, "disabledMcpjsonServers": ["never"]},
         )
         self.assertEqual(
             {
-                "enabledMcpjsonServers": [
-                    "fresh",
-                    "legacy",
-                    "local",
-                    "managed",
-                    "rejected",
-                    "user.tool",
-                ],
+                "enabledMcpjsonServers": ["fresh", "local"],
                 "disabledMcpjsonServers": ["concorde", "never"],
             },
             session.mcp_approvals(self.root, self.worktree, managed),
         )
+
+    @verifies("scenario.task-session.mcp-task-approval")
+    def test_an_approval_in_the_task_worktree_alone_counts(self):
+        _, managed = self.claude_config()
+        self.write(self.root / ".mcp.json", self.servers("concorde", "docs"))
+        self.write(
+            self.worktree / ".claude/settings.local.json",
+            {"enabledMcpjsonServers": ["docs"]},
+        )
+        with patch.object(session, "MANAGED", managed):
+            shown = session.start(self.root, "t1", "m", dry_run=True)
+        written = json.loads(Path(shown["settings"]).read_text())
+        self.assertEqual(["docs"], written["enabledMcpjsonServers"])
+        self.assertEqual(["concorde"], written["disabledMcpjsonServers"])
 
     @verifies("scenario.task-session.mcp-approval")
     def test_the_session_settings_disable_the_project_concorde_entry(self):
@@ -313,12 +397,26 @@ class TaskSessionTests(unittest.TestCase):
         self.assertEqual([], written["enabledMcpjsonServers"])
         self.assertEqual(["concorde", "other"], written["disabledMcpjsonServers"])
 
-    @verifies("scenario.task-session.mcp-approval")
+    @verifies("scenario.task-session.mcp-unusable-file")
     def test_an_unusable_mcp_json_still_starts_the_session(self):
         _, managed = self.claude_config()
         self.write(self.root / ".mcp.json", "{not json")
+        self.write(self.worktree / ".mcp.json", self.servers("concorde", "local"))
+        self.write(
+            self.root / ".claude/settings.local.json",
+            {"enabledMcpjsonServers": ["local"]},
+        )
+        # The servers of the file Claude Code can read are judged all the same.
+        self.assertEqual(
+            {
+                "enabledMcpjsonServers": ["local"],
+                "disabledMcpjsonServers": ["concorde"],
+            },
+            session.mcp_approvals(self.root, self.worktree, managed),
+        )
         self.write(self.worktree / ".mcp.json", {"mcpServers": ["a list"]})
-        self.write(self.root / ".claude/settings.local.json", "[]")
+        # An unusable settings source approves nothing either.
+        self.write(self.worktree / ".claude/settings.local.json", "[]")
         expected = {"enabledMcpjsonServers": [], "disabledMcpjsonServers": ["concorde"]}
         self.assertEqual(
             expected, session.mcp_approvals(self.root, self.worktree, managed)
@@ -364,6 +462,42 @@ class TaskSessionTests(unittest.TestCase):
         # A dry run records no session.
         self.assertEqual([], store.sessions(self.root, "t1"))
 
+    @verifies("scenario.task-session.boundary")
+    def test_the_hook_denies_what_it_cannot_judge(self):
+        session.start(self.root, "t1", "m", dry_run=True)
+        hook = self.folder / "runtime/write_hook.py"
+        for hook_input in (
+            "{not json",
+            json.dumps({"tool_name": "Edit", "tool_input": {}}),
+            json.dumps(["a list"]),
+        ):
+            denied = self.decide(hook, hook_input)
+            self.assertEqual(
+                "deny", denied["hookSpecificOutput"]["permissionDecision"], hook_input
+            )
+            self.assertIn(
+                "could not decide",
+                denied["hookSpecificOutput"]["permissionDecisionReason"],
+            )
+
+    @verifies("scenario.task-session.closed-log")
+    def test_the_hook_refuses_the_decision_log_of_a_closed_task(self):
+        session.start(self.root, "t1", "m", dry_run=True)
+        # The hook the session runs, kept where its settings name it, outlives the move.
+        saved = self.project.home / "write_hook.py"
+        saved.write_bytes((self.folder / "runtime/write_hook.py").read_bytes())
+        log = store.decision_log_path(self.root, "t1")
+        history = self.root / ".concorde/history/t1"
+        history.parent.mkdir(parents=True, exist_ok=True)
+        self.folder.rename(history)
+        denied = self.hook(log, saved)
+        reason = denied["hookSpecificOutput"]["permissionDecisionReason"]
+        self.assertEqual("deny", denied["hookSpecificOutput"]["permissionDecision"])
+        self.assertIn("decision log of task t1, which is closed", reason)
+        # Judging the path recreates nothing.
+        self.assertFalse(self.folder.exists())
+        self.assertFalse(log.exists())
+
 
 # Stands in for Claude Code's ``claude stop``, ``claude rm`` and ``claude agents --json --all``:
 # appends each call, with whether the task worktree still exists then, to the log its
@@ -390,6 +524,15 @@ AGENTS = ["agents", "--json", "--all"]
 
 def full_id(short: str) -> str:
     return f"{short}-1111-2222-3333-444455556666"
+
+
+def said(at, message, model="claude-opus-5-5", **used):
+    """An assistant record of a transcript: one record of the API message ``message``."""
+    return {
+        "type": "assistant",
+        "timestamp": at,
+        "message": {"id": message, "model": model, "usage": used},
+    }
 
 
 class EndOfTaskTests(unittest.TestCase):
@@ -509,6 +652,19 @@ class EndOfTaskTests(unittest.TestCase):
         with contextlib.redirect_stdout(output):
             status = cli.main(list(argv), cwd=self.root)
         return status, json.loads(output.getvalue())
+
+    def merged(self) -> dict:
+        """Deliver and merge the task; the merge's output, which must succeed."""
+        deliver(self.worktree)
+        with store.decision_log_path(self.root, "t1").open("a") as stream:
+            stream.write("\n## Delivered\n")
+        check = shlex.join([sys.executable, "-c", ""])
+        status, value = self.command("merge", "t1", "--check", check)
+        self.assertEqual(0, status, value)
+        return value
+
+    def node(self, short: str) -> dict:
+        return trace.read(self.root / ".concorde/history/t1/sessions" / short)
 
     def kept(self, short: str, source: Path) -> None:
         """The history keeps the session's transcript and its folder in the session's node."""
@@ -671,16 +827,6 @@ class EndOfTaskTests(unittest.TestCase):
     @verifies("scenario.task-session.node-finished")
     def test_a_session_node_receives_its_figures_from_claude_code(self):
         self.claude_session("aaaa1111")
-        # Claude Code no longer lists the second; its id was learnt when it started.
-        self.claude_session("bbbb2222", state=None)
-
-        def said(at, message, model="claude-opus-5-5", **used):
-            return {
-                "type": "assistant",
-                "timestamp": at,
-                "message": {"id": message, "model": model, "usage": used},
-            }
-
         opus = {
             "inputTokens": 15,
             "outputTokens": 150,
@@ -739,20 +885,8 @@ class EndOfTaskTests(unittest.TestCase):
             ),
         ]
         self.transcript("aaaa1111", records=first, subagent=subagent)
-        second = [
-            {"type": "user", "timestamp": "2026-09-30T09:00:00.000Z"},
-            said("2026-09-30T09:00:10.500Z", "msg_9", input_tokens=7, output_tokens=8),
-        ]
-        self.transcript("bbbb2222", records=second)
-        deliver(self.worktree)
-        with store.decision_log_path(self.root, "t1").open("a") as stream:
-            stream.write("\n## Delivered\n")
-        check = shlex.join([sys.executable, "-c", ""])
-        status, value = self.command("merge", "t1", "--check", check)
-        self.assertEqual(0, status, value)
-        self.assertEqual([], value["warnings"])
-        sessions = self.root / ".concorde/history/t1/sessions"
-        node = trace.read(sessions / "aaaa1111")
+        self.assertEqual([], self.merged()["warnings"])
+        node = self.node("aaaa1111")
         self.assertEqual(
             {
                 "tokens_in": 16,
@@ -790,11 +924,35 @@ class EndOfTaskTests(unittest.TestCase):
             data["models"],
         )
         self.assertEqual(
-            (full_id("aaaa1111"), "done", {"claude-opus-5-5": opus}),
-            (data["session_id"], data["claude_state"], data["model_usage"]),
+            (full_id("aaaa1111"), "done", {"claude-opus-5-5": opus}, 0),
+            (
+                data["session_id"],
+                data["claude_state"],
+                data["model_usage"],
+                data["unreadable_lines"],
+            ),
         )
-        # Without a cost-state record the cost is null; unlisted, the status stays unknown.
-        node = trace.read(sessions / "bbbb2222")
+
+    @verifies("scenario.task-session.node-unlisted")
+    def test_a_session_claude_code_no_longer_lists_keeps_an_unknown_status(self):
+        # Claude Code no longer lists it; its id was learnt when it started.
+        self.claude_session("bbbb2222", state=None)
+        second = [
+            {"type": "user", "timestamp": "2026-09-30T09:00:00.000Z"},
+            said("2026-09-30T09:00:10.500Z", "msg_9", input_tokens=7, output_tokens=8),
+        ]
+        source = self.transcript("bbbb2222", records=second)
+        self.assertEqual([], self.merged()["warnings"])
+        node = self.node("bbbb2222")
+        self.assertEqual(
+            source.read_bytes(),
+            (
+                self.root
+                / ".concorde/history/t1/sessions/bbbb2222"
+                / session.TRANSCRIPT
+            ).read_bytes(),
+        )
+        # Without a cost-state record the cost is null.
         self.assertEqual(
             (7, 8, None, 1, 10.5),
             tuple(
@@ -819,6 +977,104 @@ class EndOfTaskTests(unittest.TestCase):
             ),
         )
 
+    def cost(self, records: list[dict]) -> tuple:
+        """The cost and model usage a transcript of ``records`` gives its session's node."""
+        path = self.project.home / "cost.jsonl"
+        path.write_text("".join(json.dumps(line) + "\n" for line in records))
+        figures = session.transcript_figures(path, [])
+        return figures["usage"]["cost_usd"], figures["model_usage"]
+
+    @verifies("scenario.task-session.cost-unaccounted")
+    def test_a_cost_account_an_assistant_record_follows_is_no_cost(self):
+        self.claude_session("aaaa1111")
+        account = {"claude-opus-5-5": {"costUSD": 0.42}}
+        records = [
+            {"type": "user", "timestamp": "2026-09-30T10:00:00.000Z"},
+            said("2026-09-30T10:00:05.000Z", "msg_1", input_tokens=10, output_tokens=1),
+            {"type": "cost-state", "totalCostUSD": 0.42, "modelUsage": account},
+            said("2026-09-30T10:00:09.000Z", "msg_2", input_tokens=5, output_tokens=2),
+        ]
+        self.transcript("aaaa1111", records=records)
+        self.assertEqual([], self.merged()["warnings"])
+        node = self.node("aaaa1111")
+        self.assertEqual(
+            (15, 3, 2, None),
+            tuple(
+                node["usage"][key]
+                for key in ("tokens_in", "tokens_out", "turns", "cost_usd")
+            ),
+        )
+        self.assertIsNone(node["content"]["data"]["model_usage"])
+        self.assertEqual((None, None), self.cost(records))
+        # A later account is final again.
+        later = {"claude-opus-5-5": {"costUSD": 0.55}}
+        restored = [
+            *records,
+            {"type": "cost-state", "totalCostUSD": 0.55, "modelUsage": later},
+        ]
+        self.assertEqual((0.55, later), self.cost(restored))
+        # Without any account the cost is null.
+        self.assertEqual((None, None), self.cost(records[:2]))
+
+    @verifies("scenario.task-session.unreadable-lines")
+    def test_unreadable_transcript_lines_are_counted_and_only_warn(self):
+        self.claude_session("aaaa1111")
+        records = [
+            {"type": "user", "timestamp": "2026-09-30T10:00:00.000Z"},
+            said("2026-09-30T10:00:05.000Z", "msg_1", input_tokens=10, output_tokens=1),
+        ]
+        source = self.transcript("aaaa1111", records=records)
+        # A killed session left its last line half written.
+        with source.open("a") as stream:
+            stream.write('{"type": "assistant", "mess')
+        [warning] = self.merged()["warnings"]
+        folder = self.root / ".concorde/history/t1/sessions/aaaa1111"
+        for text in ("aaaa1111", "1 line(s)", str(folder / session.TRANSCRIPT)):
+            self.assertIn(text, warning)
+        self.kept("aaaa1111", source)
+        node = self.node("aaaa1111")
+        self.assertEqual(1, node["content"]["data"]["unreadable_lines"])
+        self.assertEqual((10, 1), (node["usage"]["tokens_in"], node["usage"]["turns"]))
+        # The session is removed all the same: its node keeps every line.
+        self.assertIn(["rm", "aaaa1111"], [item["argv"] for item in self.calls()])
+
+    @verifies("scenario.task-session.keep-failed")
+    def test_a_transcript_that_cannot_be_copied_only_warns(self):
+        self.claude_session("aaaa1111")
+        self.transcript("aaaa1111")
+
+        def partial(source, target):
+            Path(target).write_text("half")
+            raise OSError(28, "No space left on device")
+
+        unlink = Path.unlink
+
+        def stuck(path, *arguments, **options):
+            if path.name == session.TRANSCRIPT:
+                raise PermissionError(13, "Permission denied", str(path))
+            return unlink(path, *arguments, **options)
+
+        with (
+            patch.object(session.shutil, "copyfile", partial),
+            patch.object(Path, "unlink", stuck),
+        ):
+            status, value = self.command("close", "t1", "--completed", "--note", "done")
+        self.assertEqual(0, status, value)
+        self.assertEqual("closed", value["record"]["state"])
+        [warning] = value["warnings"]
+        for text in (
+            "aaaa1111",
+            "No space left on device",
+            "could not be removed",
+            "Permission denied",
+            "`claude rm aaaa1111`",
+        ):
+            self.assertIn(text, warning)
+        self.assertNotIn(["rm", "aaaa1111"], [item["argv"] for item in self.calls()])
+        node = self.node("aaaa1111")
+        self.assertEqual([], node["artifacts"])
+        self.assertIsNone(node["content"]["data"]["unreadable_lines"])
+
     def test_a_node_written_before_version_2_is_finished(self):
         self.claude_session("aaaa1111")
         source = self.transcript("aaaa1111")
@@ -840,7 +1096,7 @@ class EndOfTaskTests(unittest.TestCase):
         self.assertEqual([], value["warnings"])
         self.kept("aaaa1111", source)
         node = trace.read(self.root / ".concorde/history/t1/sessions/aaaa1111")
-        self.assertEqual(2, node["content"]["schema_version"])
+        self.assertEqual(3, node["content"]["schema_version"])
 
 
 if __name__ == "__main__":

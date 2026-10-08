@@ -19,11 +19,43 @@ Commands and the session's [trace node](../../glossary.json#concept.trace-node) 
   `sessions/<id>/` with its identity and name
 - AND the [task record](../../glossary.json#concept.task-record) names `concorde-7d` as its `main`
 - AND the first prompt presents that name as the main agent's session when the task session started
-- BUT when Claude Code reports no started session, the command fails with `session_failed`, carrying
-  Claude Code's output
-- AND when Claude Code reports no started session, the task is unchanged
-- AND when the task closes after Claude Code started the session but before its recording, the
-  command fails with `task_closed` after removing that session with `claude rm` and says so
+
+### scenario.task-session.start-failed — Claude Code starts no session
+
+- GIVEN an open task `severity`
+- AND a Claude Code that exits without reporting a started background session
+- WHEN the main agent runs `concorde task session severity --main concorde-7d`
+- THEN the command fails with `session_failed`, carrying Claude Code's output
+- AND the task's record and trace are unchanged
+
+### scenario.task-session.start-unrecorded — A session started for a task that closed meanwhile is removed
+
+- GIVEN an open task `severity`
+- AND a Claude Code that reports a started background session `33afbc14`
+- AND the task closes after that report and before the session is recorded
+- WHEN the main agent runs `concorde task session severity --main concorde-7d`
+- THEN `claude rm 33afbc14` runs
+- AND the command fails with `task_closed`, saying that the session was removed
+- AND when `claude rm 33afbc14` fails, the refusal names `claude rm 33afbc14` to remove it by hand
+
+### scenario.task-session.one-working — A task session that still works refuses another start
+
+- GIVEN an open task `severity` whose trace records the task session `33afbc14`
+- AND `claude agents --json --all` lists `33afbc14` in the state `working`
+- WHEN the main agent runs `concorde task session severity --main concorde-7d`
+- THEN the command fails with `session_running`, naming `33afbc14`, `working` and
+  `claude stop 33afbc14`
+- AND no Claude Code session is started
+- AND the task's boundary files, record and trace are unchanged
+
+### scenario.task-session.replace-ended — A task session that is done or gone is replaced
+
+- GIVEN an open task `severity` whose trace records the task sessions `33afbc14` and `44bbcd25`
+- AND `claude agents --json --all` lists `33afbc14` in the state `done` and does not list
+  `44bbcd25`
+- WHEN the main agent runs `concorde task session severity --main concorde-8e`
+- THEN a new Claude Code session is started and recorded as a third node of the task's trace
+- AND the task record names `concorde-8e` as its `main`
 
 ### scenario.task-session.project-mcp — A task session gets the project MCP server without a channel
 
@@ -49,12 +81,41 @@ Commands and the session's [trace node](../../glossary.json#concept.trace-node) 
 - WHEN the main agent starts its task session
 - THEN the session's settings enable `legacy`, `local`, `managed` and `user.tool`
 - AND the session's settings disable `concorde`, which the `--mcp-config` server replaces
-- AND the session's settings disable `fresh`, `never` and `rejected`, which the primary worktree
-  never approved
-- AND when the primary worktree's local settings approve every project server, all but `concorde`
-  and the servers some source disables are enabled
-- BUT a `.mcp.json` that is missing, not JSON or without an `mcpServers` object names no server
-- AND with such a file, the session starts with only `concorde` disabled
+- AND the session's settings disable `fresh`, `never` and `rejected`, which neither worktree
+  approved or which a source rejects
+
+### scenario.task-session.mcp-approve-all — Approving every project server enables all but the rejected
+
+- GIVEN an open task `t1` whose task worktree lies inside the primary worktree
+- AND the primary worktree's `.mcp.json` declares `concorde`, `local` and `never`
+- AND the task worktree's `.mcp.json` declares `fresh`
+- AND the primary worktree's local settings set `enableAllProjectMcpServers` and disable `never`
+- WHEN the main agent starts its task session
+- THEN the session's settings enable `fresh` and `local`
+- AND the session's settings disable `concorde` and `never`
+
+### scenario.task-session.mcp-task-approval — An approval in the task worktree alone counts
+
+- GIVEN an open task `t1` whose task worktree lies inside the primary worktree
+- AND the primary worktree's `.mcp.json` declares `concorde` and `docs`
+- AND only the task worktree's local settings enable `docs`
+- WHEN the main agent starts its task session
+- THEN the session's settings enable `docs`
+- AND the session's settings disable `concorde`
+
+### scenario.task-session.mcp-unusable-file — An unusable `.mcp.json` names no server
+
+- GIVEN an open task `t1` whose task worktree lies inside the primary worktree
+- AND the primary worktree's `.mcp.json` is not JSON
+- AND the task worktree's `.mcp.json` declares `concorde` and `local`
+- AND the primary worktree's local settings enable `local`
+- WHEN the main agent starts its task session
+- THEN the session's settings enable `local`
+- AND the session's settings disable `concorde`
+- AND when the task worktree's `.mcp.json` has no `mcpServers` object instead, the session's
+  settings disable only `concorde`
+- AND when neither worktree has a `.mcp.json`, the session's settings disable only `concorde` and
+  the session starts
 
 ### scenario.task-session.boundary — The session's boundary confines its writes
 
@@ -68,9 +129,18 @@ Commands and the session's [trace node](../../glossary.json#concept.trace-node) 
   primary worktree
 - AND the hook allows an Edit of a symbolic link in the task worktree that points inside the task
   worktree
+- AND the hook denies a hook input that is not JSON or names no file
 - BUT the settings restrict nothing else
 - AND the settings carry no sandbox, so the session's commands reach every path, process, socket and
   network host
+
+### scenario.task-session.closed-log — A closed task's decision log is refused
+
+- GIVEN the hook written for a task session of task `severity`
+- AND the task was closed, so its folder moved to the history
+- WHEN the hook judges an Edit of the task's decision log at its former path
+- THEN the hook denies it with a reason naming the closed task
+- AND the task's folder is not recreated
 
 ## Ending with the task
 
@@ -95,6 +165,7 @@ Commands and the session's [trace node](../../glossary.json#concept.trace-node) 
 - AND the session's transcript records two API messages, one of them over two records
 - AND the session has a subagent transcript with a third message
 - AND the session's transcript records a last `cost-state` record of 0.42 USD
+- AND no `assistant` record follows that `cost-state` record
 - WHEN the task is merged
 - THEN the session's node in the history holds the full session id
 - AND the node holds the status `ok` with the outcome `done`
@@ -104,9 +175,38 @@ Commands and the session's [trace node](../../glossary.json#concept.trace-node) 
 - AND the node holds as usage a cost of 0.42 USD
 - AND the node's end is the transcript's latest record time
 - AND the node's content gives each model's tokens and the `cost-state` record's `modelUsage`
-- BUT for a session whose transcript has no `cost-state` record, the cost is null
-- AND for a session Claude Code no longer lists, whose transcript is found by the session id
-  recorded at its start, the status stays `unknown`
+- AND the node's content counts no unreadable line
+
+### scenario.task-session.cost-unaccounted — A session without a final cost account has no cost
+
+- GIVEN a task `severity` with a task session whose transcript Claude Code keeps
+- AND the session's transcript records a `cost-state` record of 0.42 USD followed by an
+  `assistant` record
+- WHEN the task is merged
+- THEN the session's node holds as usage the tokens of every assistant record and a null cost
+- AND the node's content holds no `modelUsage`
+- AND when a later `cost-state` record of 0.55 USD follows that `assistant` record instead, the cost
+  is 0.55 USD
+- AND when the transcript has no `cost-state` record, the cost is null
+
+### scenario.task-session.node-unlisted — A session Claude Code no longer lists keeps an unknown status
+
+- GIVEN a task `severity` with a task session whose full session id was recorded at its start
+- AND `claude agents --json --all` no longer lists the session
+- AND the session's transcript is in Claude Code's project folder of the task worktree
+- WHEN the task is merged
+- THEN the session's node holds the transcript and its figures
+- AND the node's status is `unknown` with no outcome
+
+### scenario.task-session.unreadable-lines — Unreadable transcript lines are counted and only warn
+
+- GIVEN a task `severity` with a task session whose transcript Claude Code keeps
+- AND the transcript's last line is half written, no JSON record
+- WHEN the task is merged
+- THEN the session's node holds the whole transcript and figures from its records alone
+- AND the node's content counts 1 unreadable line
+- AND the merge's `warnings` name the session, the count and where the transcript is kept
+- AND `claude rm <id>` removes the session
 
 ### scenario.task-session.close-stops — A close without a merge stops a Claude Code task session first
 
@@ -137,3 +237,15 @@ Commands and the session's [trace node](../../glossary.json#concept.trace-node) 
 - AND those warnings each give `claude rm <id>` to remove the session by hand
 - AND the second session is not removed
 - AND the second session's node in the history holds no transcript
+
+### scenario.task-session.keep-failed — A transcript that cannot be copied only warns
+
+- GIVEN a task `severity` with a task session whose transcript Claude Code keeps
+- AND copying the transcript into the session's node fails
+- AND removing the partial copy fails too
+- WHEN the main agent closes the task
+- THEN the task is closed
+- AND the close's `warnings` name the session, the copy's failure, what could not be removed and
+  `claude rm <id>`
+- AND the session is not removed
+- AND the session's node in the history lists no transcript

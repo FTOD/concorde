@@ -223,7 +223,19 @@ Claude Code's output in the detail:
 
 - A task that is closed or failed (`task_closed`).
 - A missing worktree (`missing_worktree`).
+- A task session of the task that still works (`session_running`).
 - A Claude Code that does not report a started background session (`session_failed`).
+
+One task worktree has one working task session at a time. A second session writing the same
+worktree would confuse the write audits of its runs and its delivery. So before it writes anything,
+a start asks Claude Code for the state of every session the task's trace records. While one is in a
+state other than `done` or `failed`, such as `working`, the start is refused. The refusal names that
+session and `claude stop <id>`. A session that is `done` waits for its next message, so the main
+agent messages it rather than starting another. A session that is `done`, `failed` or no longer
+listed does not refuse a start. The main agent can thus replace a session that stalled or ended
+without another step. Every start starts and records a session of its own. A start never reuses an
+earlier session. A caller that retries a start whose answer it lost is refused while the session it
+started works. The task's trace then shows that session.
 
 The session receives the main agent's answers through SendMessage. Once `concorde task report`
 recorded the session's reports, the session sends them the same way. `claude stop` stops the
@@ -256,48 +268,20 @@ entry `concorde` that `--mcp-config` passes as well. This was seen with Claude C
 2026-10-01. So the session's settings answer the dialog beforehand, server by server, from what
 Claude Code itself would read:
 
-- The servers are those of every `.mcp.json` Claude Code loads for a session in the task worktree.
-  Claude Code loads that of each folder from the task worktree up to, but not including, the
-  filesystem root. When the task worktree lies inside the primary worktree, Claude Code includes the
-  primary worktree's file. A file names no server in any of these cases:
+- The entry `concorde` is disabled. The `--mcp-config` server replaces it. With both, Claude Code
+  loads only the latter, so nothing is lost.
+- A server that the primary worktree or the task worktree approved, and that no settings source
+  rejects, is enabled. The developer approves servers in the primary worktree, where the main agent
+  runs. Claude Code itself honours the task worktree's own approvals in a session started there.
+- Every other server is disabled, as the dialog's "Continue without using this MCP server" would.
+- A `.mcp.json` that Claude Code loads no server from names no server, and the session starts all
+  the same.
 
-  - The file is missing.
-  - The file is unreadable.
-  - The file has no `mcpServers` object.
-
-  Since Claude Code loads no server from such a file, it asks about none. The session starts all the
-  same.
-- The entry `concorde` is disabled (`disabledMcpjsonServers`). The `--mcp-config` server replaces
-  it. With both, Claude Code loads only the latter, so nothing is lost.
-- When the primary worktree approved any other server, that server is enabled
-  (`enabledMcpjsonServers`). Otherwise, the server is disabled, as the dialog's "Continue without
-  using this MCP server" would.
-
-When any settings source lists a server in `disabledMcpjsonServers`, Claude Code 2.1.285 judges the
-server rejected. Otherwise, Claude Code judges the server approved when any source lists it in
-`enabledMcpjsonServers` or sets `enableAllProjectMcpServers`. When comparing names, Claude Code
-leaves these characters unchanged:
-
-- Letters.
-- Digits.
-- `_`.
-- `-`.
-
-When comparing names, Claude Code reads every other character as `_`.
-
-Task sessions judges the same way over every source that records such an approval for the primary
-worktree or the task worktree:
-
-- The user's settings.
-- Both worktrees' `.claude/settings.json` and `.claude/settings.local.json`.
-- The managed settings with their drop-ins.
-- The primary worktree's entry in Claude Code's global configuration. When Claude Code next starts
-  there, it moves that entry's approvals into the local settings.
-
-A source that is missing or unreadable approves nothing.
-
-The dialog records its answer in the local settings of the folder it was shown in. These settings
-only reach the session through `--settings`, so they change no approval anywhere else.
+Claude Code 2.1.285 judges approvals over several settings sources and compares server names in a
+normalized form. Task sessions judges the same way. [The contracts](contracts.md#project-mcp-approvals)
+give the sources and the comparison exactly. The dialog records its answer in the local settings of
+the folder it was shown in. These settings only reach the session through `--settings`, so they
+change no approval anywhere else.
 
 ## The session boundary
 
@@ -384,7 +368,9 @@ the developer accepted a disclaimer once does Claude Code start a background ses
 model without `auto` mode would fall back to asking and stall, so `--model` must name one that has
 it. Reads are open because the session needs the whole project's context.
 
-The boundary's hook guards Edit and Write only. Tools that MCP servers add are outside that hook,
+The boundary's hook guards only the file-writing tools the
+[contracts](contracts.md#task-session-settings) list. Tools that MCP servers add are outside that
+hook,
 and so are the server's own writes. The
 [project MCP server](../../glossary.json#concept.project-mcp-server)'s task tools can change any
 task's record and take any lock. The developer accepted this for these reasons:
@@ -453,13 +439,11 @@ points:
   moves to the history. It asks Claude Code once, with `claude agents --json --all`, for every
   session it still lists. When the node does not record the full session id yet, the close takes
   that id from the session's entry. The close also takes the session's working directory and state
-  from that entry. It opens the transcript by that exact id:
-  `projects/<the working directory, every character that is no letter or digit as ->/<session id>.jsonl`
-  of Claude Code's configuration folder (`$CLAUDE_CONFIG_DIR`, by default `~/.claude`). Otherwise,
-  it opens the file of that name in any project folder. When Claude Code does not tell a session's
-  id, a warning names the session. When the transcript is in neither place, a warning also names the
-  session. In either case, the warning says what was asked and where the close looked. The
-  transcript becomes `transcript.jsonl`, an artifact of the node. The folder Claude Code keeps
+  from that entry. It opens the transcript by that exact id, never by a pattern that could match
+  another session's ([contracts](contracts.md#at-the-end-of-a-task)). When Claude Code does not tell
+  a session's id, or the transcript cannot be found, copied or read, a warning names the session. The
+  warning says what was asked and where the close looked. The transcript becomes
+  `transcript.jsonl`, an artifact of the node. The folder Claude Code keeps
   beside it, with subagent transcripts and long tool results, becomes `transcript/`. From these
   records the node receives what the session consumed and when it ended
   ([below](#finishing-a-session-node)). The history thus keeps each session's conversation and its
@@ -481,41 +465,30 @@ points:
 When a task session starts, its node is written. Concorde sees nothing of the session until its task
 ends. Its figures then come from Claude Code's own records, as
 [Tracing](../../kernel/tracing/requirements.md#req.tracing.reported-usage) requires. The figures are
-written into the node because retention later removes the transcript:
+written into the node because retention later removes the transcript. The
+[session trace](contracts.md#contract.task-session.session-trace) gives each figure exactly. The
+design behind them is this:
 
-- **usage**: the following tokens, summed over the `assistant` records of the transcript and of the
-  subagent transcripts beside it:
+- **usage** sums the tokens of the session's own transcript and of its subagents' transcripts. One
+  API message may span several records, so each message counts once. The cost is Claude Code's own
+  account, never a price Concorde computes. An account that an assistant record follows is stale,
+  so the cost is then null. A background session's transcript often has no account at all.
+- **end** is the latest time the transcript's records carry, since Concorde never sees a session
+  end.
+- **status** comes from Claude Code's state of the session, `ok` for `done` and `failed` for
+  `failed`, otherwise `unknown`. The state itself is the node's outcome.
+- **content** keeps the full session id, Claude Code's state, the tokens of each model and Claude
+  Code's own account per model.
 
-  - Tokens read.
-  - Tokens written.
-  - Tokens read from the prompt cache.
-  - Tokens written to the prompt cache.
-
-  Each API message is counted by its `message.id` once, since one message may span several records.
-  The turns are those messages. The duration runs from the earliest time the transcript's records
-  carry to the latest. Claude Code's own cost account is the `totalCostUSD` of the transcript's last
-  `cost-state` record. When that record exists and no `assistant` record follows it, the cost is
-  that account. Otherwise, the cost is null. A background session's transcript often has no such
-  record. Concorde computes no price.
-- **end**: when a transcript was kept, the latest time the transcript's records carry.
-- **status**: from the session's state in `claude agents --json --all`, as follows:
-
-  - `ok` for `done`, a session waiting for its next message.
-  - `failed` for `failed`.
-  - `unknown` for any other state or when Claude Code no longer lists the session.
-
-  The state itself is the node's outcome.
-- **content**: the following:
-
-  - The full session id.
-  - Claude Code's state.
-  - The tokens and messages of each model.
-  - When there is one, the `modelUsage` of that `cost-state` record, per model with its cost.
+A transcript may hold lines that are no record, such as a last line a killed session left half
+written. The figures count the records alone. The node counts the unreadable lines, and the close's
+warnings name that count. The session is still removed, since its node keeps the whole transcript.
+After retention, the count still tells a reader that the figures leave some lines out.
 
 When Claude Code tells them, a session whose transcript was not kept still receives its session id
-and status. Its usage stays null. Claude Code judges a session's state by whether its process lives.
-Thus, a state read while a session still works says nothing about how it ended. For this reason,
-Concorde takes the state only at the close, when the task has ended.
+and status. Every measurement of its usage stays null. Claude Code judges a session's state by
+whether its process lives. Thus, a state read while a session still works says nothing about how it
+ended. For this reason, Concorde takes the state only at the close, when the task has ended.
 
 ## Escalating
 

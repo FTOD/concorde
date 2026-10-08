@@ -25,9 +25,9 @@ Those workers may run on pi.
 The boundary Task sessions writes for a task session SHALL let the session's file-writing tools
 change only the task worktree and its [decision log](../../glossary.json#concept.decision-log).
 
-The file-writing tools are Edit and Write. The
-[session boundary](../../glossary.json#concept.session-boundary)'s hook checks these tools. The hook
-leaves reads open. An [Issue](../../glossary.json#concept.issue) record is outside the task
+The file-writing tools are those the [task-session settings](contracts.md#task-session-settings)
+list. The [session boundary](../../glossary.json#concept.session-boundary)'s hook checks every one
+of them. The hook leaves reads open. An [Issue](../../glossary.json#concept.issue) record is outside the task
 worktree, so these tools never write one. The session writes Issues through the Issue tools or the
 Issue command, as the runs it starts do.
 
@@ -65,20 +65,33 @@ the session registered never woke the session. Told so, `register_wait` answers 
 ### req.task-session.mcp-approval — A task session is never asked to approve a project MCP server
 
 The settings Task sessions writes for a task session SHALL disable the project `.mcp.json` entry
-`concorde`, enable every other `.mcp.json` server the session loads that the primary worktree
-approved, and disable every one the primary worktree never approved.
+`concorde`, enable every other `.mcp.json` server the session loads that the primary worktree or
+the task worktree approved, and disable every one that neither approved.
 
 Nobody answers Claude Code's dialog "New MCP server found in this project" in a background session,
 which otherwise waits on it for ever. The `--mcp-config` server replaces the entry `concorde`. A
 server counts as approved as Claude Code judges it from the settings sources that record approvals
-([module](module.md#project-mcp-approvals)). A `.mcp.json` that is missing or unusable names no
-server. Such a file does not keep the session from starting.
+for either worktree ([contracts](contracts.md#project-mcp-approvals)). Claude Code itself honours
+the task worktree's approvals in a session started there. A `.mcp.json` that is missing or unusable
+names no server. Such a file does not keep the session from starting.
 
 ### req.task-session.boundary-first — The boundary is written before the session starts
 
 Before it starts a task session, Task sessions SHALL write that session's boundary.
 
 `--dry-run` writes the boundary and starts nothing, so no task session runs without its boundary.
+
+### req.task-session.one-working — One task session works in a task at a time
+
+While Claude Code lists a recorded task session of a task in a state other than `done` or `failed`,
+Task sessions SHALL refuse to start another task session of that task, before writing anything.
+
+Two sessions writing one task worktree would confuse the
+[write audits](../../glossary.json#concept.write-audit) of its runs and its delivery.
+A session that is `done` waits for its next message. A session that is `done`, `failed` or no longer
+listed does not refuse a start, so a stalled or ended session can be replaced. Every start starts
+and records a session of its own and never reuses an earlier one. A caller that retries a start
+whose result it did not see is refused while the session it started still works.
 
 ### req.task-session.recorded — A started session is recorded
 
@@ -117,11 +130,21 @@ delivered task's session has reported and waits.
 
 When a task ends, Task sessions SHALL copy the transcript of each of its task sessions into that
 session's [trace node](../../glossary.json#concept.trace-node) before the task's folder moves to the
-[history](../../glossary.json#concept.history), and never write into the history afterwards.
+[history](../../glossary.json#concept.history), naming in the close's warnings, without failing the
+close, each transcript it cannot find, copy or read.
 
 The transcript is found by the session's full session id, which Claude Code's own list of sessions
-gives. It is never found by a pattern that could match another session's. A transcript that cannot
-be found or copied does not fail the close. The close's warnings name that transcript.
+gives. It is never found by a pattern that could match another session's. A failed copy leaves no
+part of the transcript in the node, or the warning names what could not be removed. Either way the
+node lists no transcript.
+
+### req.task-session.history-untouched — Ending task sessions never writes the history
+
+Task sessions SHALL write nothing into a task's [history](../../glossary.json#concept.history)
+folder once the task's folder has moved there.
+
+Everything a session's node receives is written before the move. Removing the sessions afterwards
+only reads the history.
 
 ### req.task-session.node-finished — A task session's node receives its figures from Claude Code
 
@@ -129,15 +152,19 @@ When a task ends, Task sessions SHALL write the following into each task session
 [trace node](../../glossary.json#concept.trace-node) before the task's folder moves to the
 [history](../../glossary.json#concept.history):
 
-- The session's full session id.
+- The session's full session id, when Claude Code told it at the start or tells it now.
 - Its status from Claude Code's state of the session.
-- Its usage from its kept transcript.
-- Its end from its kept transcript.
-- Its cost, taken only from Claude Code's own account in the transcript and left null without one.
+- When its transcript was kept, its usage and its end from that transcript, with the number of the
+  transcript's unreadable lines.
+- When its transcript was kept, its cost, taken only from Claude Code's own account in the
+  transcript and left null without one.
 
 The figures are written into the node, not computed when a trace is read, because retention later
 removes the transcript they come from while the node stays. When Claude Code does not report a state
-as `done` or `failed`, the status is `unknown`.
+as `done` or `failed`, the status is `unknown`. A value Claude Code never told stays null, as the
+[session trace](contracts.md#contract.task-session.session-trace) says. The usage counts only the
+transcript's records. The count of unreadable lines tells a reader after retention that the figures
+leave some lines out.
 
 ### req.task-session.removed — An ended task leaves no task session in Claude's session list
 
@@ -145,8 +172,9 @@ Once a task has ended, by any outcome, Task sessions SHALL remove each of its ta
 transcript it kept from Claude's session list with `claude rm`, as a best effort whose failure
 leaves the close as it succeeded.
 
-When a session's transcript was not kept or `claude rm` failed, the close's warnings name each
-session not removed, with these details:
+A session whose transcript was kept with unreadable lines is removed all the same, since its node
+keeps every line. When a session's transcript was not kept or `claude rm` failed, the close's
+warnings name each session not removed, with these details:
 
 - The whole reason.
 - The command that removes it by hand.

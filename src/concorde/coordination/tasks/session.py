@@ -8,7 +8,8 @@ log, delivers the task, and reports to the main agent, which alone merges and cl
 Its boundary is generated here, in the task's folder under ``.concorde/tasks/<task>/runtime/``,
 which the close removes, and guards against mistakes, not a malicious session:
 
-- a PreToolUse hook lets Edit and Write change only the task worktree and its decision log;
+- a PreToolUse hook lets the file-writing tools (Edit, Write, MultiEdit, NotebookEdit) change
+  only the task worktree and its decision log;
 - nothing else is restricted. The session's shell runs under no operating-system sandbox: it
   reaches every path, process, socket and host its commands need, and what keeps it inside its
   task is the task-session guidance, Claude Code's ``auto`` mode and, at the end, the audit
@@ -29,8 +30,13 @@ which the close removes, and guards against mistakes, not a malicious session:
   and then waits on for ever (seen with Claude Code 2.1.285 on 2026-10-01), even for ``concorde``,
   which ``--mcp-config`` passes as well. So the settings disable the ``.mcp.json`` entry
   ``concorde``, which the ``--mcp-config`` server replaces (with both, Claude Code loads only the
-  latter), enable every other ``.mcp.json`` server the primary worktree approved and disable every
-  one it never approved, as that dialog's "Continue without using this MCP server" would;
+  latter), enable every other ``.mcp.json`` server the primary worktree or the task worktree
+  approved and disable every one neither approved, as that dialog's "Continue without using this
+  MCP server" would;
+- one task worktree has one working session at a time: a start is refused with
+  ``session_running`` while Claude Code lists a recorded session of the task in a state other
+  than ``done`` or ``failed``, since two sessions writing one worktree would confuse its runs'
+  write audits and its delivery;
 - nobody answers permission prompts in a background session, so it runs in Claude Code's
   ``auto`` mode, where a classifier approves or refuses each action instead of asking; the hook
   stays the boundary of the file tools, and ``auto`` needs no one-time consent the way
@@ -283,6 +289,7 @@ def start(
             "missing_worktree",
             f"the worktree {worktree} of task {task_id} does not exist",
         )
+    refuse_working(primary, task_id, run)
     directory = session_directory(primary, task_id)
     directory.mkdir(parents=True, exist_ok=True)
     hook = directory / "write_hook.py"
@@ -362,6 +369,39 @@ def start(
             error.code, f"{error}; {_unrecorded(found['id'], name, run)}"
         ) from error
     return session
+
+
+def refuse_working(primary: Path, task_id: str, run=None) -> None:
+    """Refuse a start while Claude Code lists a recorded session of the task in a state other
+    than ``done`` or ``failed``, such as ``working``: two sessions writing one task worktree would
+    confuse its runs' write audits and its delivery. A session done, failed or no longer listed
+    does not refuse, so a stalled or ended session can be replaced. ``session_failed`` when
+    Claude Code's list cannot be read, since the start cannot then tell."""
+    recorded = store.sessions(primary, task_id)
+    if not recorded:
+        return
+    try:
+        listed = claude_sessions(run)
+    except LookupError as error:
+        raise store.TaskError(
+            "session_failed",
+            f"the start cannot tell whether a recorded task session of task {task_id} still "
+            f"works, so it starts none: {error}",
+        ) from error
+    for found in recorded:
+        short = _short(found)
+        if short not in listed:
+            continue
+        state = listed[short].get("state")
+        if state in STATES:
+            continue
+        raise store.TaskError(
+            "session_running",
+            f"the task session {short} ({found['name']}) of task {task_id} still works: "
+            f"`{shlex.join(['claude', *AGENTS])}` lists it as {state!r}; a second session "
+            f"would write the same worktree. Message that session, or stop it with "
+            f"`claude stop {short}` and start the task session again",
+        )
 
 
 def _unrecorded(short: str, name: str, run) -> str:
@@ -548,19 +588,23 @@ def find_transcript(cwd: str, session_id: str, directory: Path | None = None) ->
     )
 
 
-def _records(path: Path):
-    """The JSON objects of a transcript's lines; a line that is not one is skipped."""
-    try:
-        lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
-    except OSError:
-        return
-    for line in lines:
+def _records(path: Path) -> tuple[list[dict], int]:
+    """The JSON objects of a transcript's lines and the number of its lines that are neither
+    blank nor a JSON object, such as a last line a killed session left half written; ``OSError``
+    when the transcript cannot be read."""
+    records, unreadable = [], 0
+    for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
+        if not line.strip():
+            continue
         try:
             value = json.loads(line)
         except ValueError:
-            continue
+            value = None
         if isinstance(value, dict):
-            yield value
+            records.append(value)
+        else:
+            unreadable += 1
+    return records, unreadable
 
 
 def _moment(text) -> datetime | None:
@@ -582,13 +626,18 @@ def transcript_figures(transcript: Path, subagents: list[Path]) -> dict:
     subagents, as Claude Code recorded them: each API message's tokens, counted once by its
     ``message.id`` since one message may span several records; the cost of the transcript's last
     ``cost-state`` record, when no assistant record follows it; the times of the transcript's
-    first and last records. ``usage``, ``ended_at``, ``models`` and ``model_usage``."""
+    first and last records; the number of lines of them all that are no record. ``usage``,
+    ``ended_at``, ``models``, ``model_usage`` and ``unreadable_lines``; ``OSError`` when one of
+    them cannot be read."""
     messages: dict[str, tuple[str, dict]] = {}
     times: list[datetime] = []
     cost_state, stale = None, False
+    unreadable = 0
     for path in [transcript, *subagents]:
         main = path == transcript
-        for number, record in enumerate(_records(path)):
+        records, skipped = _records(path)
+        unreadable += skipped
+        for number, record in enumerate(records):
             kind = record.get("type")
             if main:
                 moment = _moment(record.get("timestamp"))
@@ -654,6 +703,7 @@ def transcript_figures(transcript: Path, subagents: list[Path]) -> dict:
         "ended_at": (max(times).strftime("%Y-%m-%dT%H:%M:%S.%fZ") if times else None),
         "models": models,
         "model_usage": model_usage if isinstance(model_usage, dict) else None,
+        "unreadable_lines": unreadable,
     }
 
 
@@ -681,9 +731,19 @@ def _keep(folder: Path, source: Path) -> dict:
     )
 
 
-def _discard(folder: Path) -> None:
-    (folder / TRANSCRIPT).unlink(missing_ok=True)
-    shutil.rmtree(folder / TRANSCRIPT_FILES, ignore_errors=True)
+def _discard(folder: Path) -> str:
+    """Remove what a failed keep left in a session's node; what could not be removed, said, or
+    nothing. It never raises, so a failed keep only warns."""
+    left = []
+    try:
+        (folder / TRANSCRIPT).unlink(missing_ok=True)
+    except OSError as error:
+        left.append(f"{folder / TRANSCRIPT} could not be removed: {error}")
+    files = folder / TRANSCRIPT_FILES
+    shutil.rmtree(files, ignore_errors=True)
+    if files.exists() or files.is_symlink():
+        left.append(f"{files} could not be removed whole")
+    return "; ".join(left)
 
 
 def finish_sessions(primary: Path, task_id: str, run=None) -> list[str]:
@@ -738,9 +798,9 @@ def finish_sessions(primary: Path, task_id: str, run=None) -> list[str]:
                 record["ended_at"] = figures["ended_at"]
                 data["models"] = figures["models"]
                 data["model_usage"] = figures["model_usage"]
+                data["unreadable_lines"] = figures["unreadable_lines"]
             except (LookupError, OSError) as error:
-                _discard(folder)
-                problem = error
+                problem = _failed(error, _discard(folder))
             record["content"] = {
                 "type_id": store.SESSION_TRACE,
                 "schema_version": type_version(store.SESSION_TRACE),
@@ -749,8 +809,7 @@ def finish_sessions(primary: Path, task_id: str, run=None) -> list[str]:
             try:
                 trace.write(folder, record)
             except trace.TraceError as error:
-                _discard(folder)
-                problem = error
+                problem = _failed(error, _discard(folder))
             if problem is not None:
                 warnings.append(
                     f"the transcript of the Claude Code task session {short} "
@@ -762,15 +821,33 @@ def finish_sessions(primary: Path, task_id: str, run=None) -> list[str]:
     return warnings
 
 
+def _failed(error: Exception, left: str) -> str:
+    """A failed keep's account: its error, and what its clean-up could not remove."""
+    return f"{error}; besides, {left}" if left else str(error)
+
+
 def remove_sessions(primary: Path, task_id: str, folder: Path) -> list[str]:
     """Remove every Claude Code session of an ended task, whose folder is now ``folder`` in the
     history, from Claude's session list with ``claude rm``, once its transcript is kept there.
-    Best effort: a warning for each session not removed, naming the reason and the command."""
+    Best effort: a warning for each session not removed, naming the reason and the command. A
+    warning too for each kept transcript with lines that are no record, whose session is still
+    removed, since its node keeps every line."""
     warnings = []
     for found in store.sessions(primary, task_id, folder):
         short = _short(found)
-        if not _kept(trace.read(Path(found["directory"])) or {}):
+        record = trace.read(Path(found["directory"])) or {}
+        if not _kept(record):
             continue
+        kept = Path(found["directory"]) / TRANSCRIPT
+        unreadable = ((record.get("content") or {}).get("data") or {}).get(
+            "unreadable_lines"
+        )
+        if unreadable:
+            warnings.append(
+                f"the transcript of the Claude Code task session {short} ({found['name']}) "
+                f"of task {task_id} has {unreadable} line(s) that are no JSON record, which "
+                f"its usage does not count; it is kept whole in {kept}"
+            )
         command = f"claude rm {short}"
         try:
             result = _claude("rm", short)
@@ -783,7 +860,7 @@ def remove_sessions(primary: Path, task_id: str, folder: Path) -> list[str]:
         warnings.append(
             f"the Claude Code task session {short} ({found['name']}) of task {task_id} was "
             f"not removed from Claude's session list: {problem}; its transcript is kept in "
-            f"{Path(found['directory']) / TRANSCRIPT}; remove it by hand with `{command}`"
+            f"{kept}; remove it by hand with `{command}`"
         )
     return warnings
 
@@ -795,6 +872,7 @@ __all__ = [
     "finish_sessions",
     "hook_source",
     "mcp_config",
+    "refuse_working",
     "remove_sessions",
     "session_name",
     "settings",
