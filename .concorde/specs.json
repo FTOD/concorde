@@ -514,6 +514,17 @@
           "relies_on": [
             "concept.issue-report"
           ]
+        },
+        {
+          "target": "module.workers",
+          "meaning": "#uses-workers",
+          "relies_on": [
+            "concept.worker-configuration",
+            "concept.model-map",
+            "contract.workers.worker-configuration",
+            "contract.workers.model-map",
+            "req.workers.model-map-entry"
+          ]
         }
       ],
       "includes": [
