@@ -251,7 +251,7 @@ def _admit_reference(schema: dict, root: Any, field: str, contract: bool) -> Non
             )
         if not isinstance(root, dict) or name not in root.get("$defs", {}):
             raise _refuse_schema(field, f"$ref {reference!r} names no entry of $defs")
-    elif not contract and set(schema) != {"$ref"}:
+    elif set(schema) != {"$ref"}:
         raise _refuse_schema(field, "a $ref embedding a typed value stands alone")
 
 
@@ -273,13 +273,13 @@ def register(type_id: str, version: int, schema: dict | bool) -> None:
         or type_id != type_id.strip()
     ):
         raise KernelError(
-            "invalid_input", "a type identity is a nonblank name", field="type_id"
+            "invalid_input", "a type identity is a nonblank name", field="/type_id"
         )
     if type(version) is not int or version < 1:
         raise KernelError(
             "invalid_input",
             f"the version of {type_id} must be a positive integer, not {version!r}",
-            field="schema_version",
+            field="/schema_version",
         )
     try:
         admit(schema)
@@ -298,7 +298,7 @@ def register(type_id: str, version: int, schema: dict | bool) -> None:
             "duplicate_type",
             f"{type_id} is already registered at version {existing[0]} with another version or "
             "schema; the existing registration stays in force",
-            field="type_id",
+            field="/type_id",
         )
     _TYPES[type_id] = (version, copy.deepcopy(schema))
 
@@ -370,6 +370,9 @@ _PYTHON = {
 }
 
 
+_JSON_KINDS = frozenset(kind for kinds in _PYTHON.values() for kind in kinds)
+
+
 def check_schema(value: Any, schema: Any, field: str = "", *, root: Any = None) -> None:
     """Check ``value`` against an admitted ``schema`` as JSON Schema does for these keywords.
 
@@ -382,8 +385,16 @@ def check_schema(value: Any, schema: Any, field: str = "", *, root: Any = None) 
 def _check(value: Any, schema: Any, field: str, root: Any, depth: int) -> None:
     if depth > MAX_DEPTH:
         raise _invalid(field, f"the value nests deeper than {MAX_DEPTH} levels")
+    if type(value) not in _JSON_KINDS:
+        raise _invalid(field, f"a {type(value).__name__} is no JSON value")
+    if isinstance(value, dict):
+        for key in value:
+            if not isinstance(key, str):
+                raise _invalid(field, f"the field name {key!r} is no string")
+    # A schema that constrains nothing still checks the value's kind, its numbers and its depth,
+    # down to its last item, like any other schema.
     if schema is True:
-        return
+        schema = {}
     if schema is False:
         raise _invalid(field, "no value is admitted here")
     if "anyOf" in schema:

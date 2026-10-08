@@ -259,7 +259,23 @@ class TypedValueTests(unittest.TestCase):
                 self.assertRaises(KernelError) as refused,
             ):
                 schema.register("example-note", version, other)
-            self.assertEqual("duplicate_type", refused.exception.code)
+            self.assertEqual(
+                ("duplicate_type", "/type_id"),
+                (refused.exception.code, refused.exception.field),
+            )
+        for type_id, version, field in (
+            (" padded", 1, "/type_id"),
+            ("example-other", 0, "/schema_version"),
+        ):
+            with (
+                self.subTest(field=field),
+                self.assertRaises(KernelError) as refused,
+            ):
+                schema.register(type_id, version, NOTE)
+            self.assertEqual(
+                ("invalid_input", field),
+                (refused.exception.code, refused.exception.field),
+            )
         self.assertEqual(1, schema.type_version("example-note"))
         value = schema.typed("example-note", {"text": "kept"})
         self.assertEqual(
@@ -337,6 +353,10 @@ class TypedValueTests(unittest.TestCase):
             (
                 {"properties": {"x/y": {"items": {"type": "bogus"}}}},
                 "/properties/x~1y/items",
+            ),
+            (
+                {"properties": {"note": {"$ref": "example-note", "type": "object"}}},
+                "/properties/note",
             ),
         ):
             with self.subTest(field), self.assertRaises(KernelError) as refused:
@@ -450,6 +470,35 @@ class DialectTests(unittest.TestCase):
             ("invalid_field", "/data"),
             (refused.exception.code, refused.exception.field),
         )
+
+    def test_an_unconstrained_schema_still_checks_numbers_kinds_and_depth(self):
+        schema.register("example-any", 1, True)
+        schema.register(
+            "example-open",
+            1,
+            {"type": "object", "properties": {"x": {"type": "array"}}},
+        )
+        deep: object = 1
+        for _ in range(schema.MAX_DEPTH + 1):
+            deep = [deep]
+        for type_id, data, field in (
+            ("example-any", {"x": float("inf")}, "/data/x"),
+            ("example-any", {"x": [float("nan")]}, "/data/x/0"),
+            ("example-any", {"x": deep}, None),
+            ("example-any", {"x": {1, 2}}, "/data/x"),
+            ("example-any", {1: "a"}, "/data"),
+            ("example-open", {"y": {"z": float("-inf")}}, "/data/y/z"),
+            ("example-open", {"x": [float("inf")]}, "/data/x/0"),
+            ("example-open", {"y": deep}, None),
+        ):
+            with (
+                self.subTest(type_id=type_id, field=field),
+                self.assertRaises(KernelError) as refused,
+            ):
+                schema.typed(type_id, data)
+            self.assertEqual("invalid_field", refused.exception.code)
+            if field is not None:
+                self.assertEqual(field, refused.exception.field)
 
     def test_numbers_beyond_float_range(self):
         huge = 10**400
