@@ -63,7 +63,8 @@ or starts changes nothing handed over. The span is not recorded.
 | `summarize(spans)` | the timing summary of finished span records |
 
 The timing summary is `{complete, summed_span_seconds, covered_seconds_by_process}`: what the
-spans measured, and nothing they cannot, such as elapsed wall time.
+spans measured, and nothing they cannot, such as elapsed wall time. When spans are given but none of
+them has a duration, `summed_span_seconds` is null.
 
 The directory conditions keep diagnostic files apart from the project and from Concorde's
 lifecycle records and locks. Concorde keeps those records and locks under these paths:
@@ -76,7 +77,8 @@ lifecycle records and locks. Concorde keeps those records and locks under these 
 When called while no trace is open but `CONCORDE_DIAGNOSTIC_TIMING_DIR` is set, a function marked
 with `timed` opens a trace of its own. The trace's sink is `diagnostic_sink` of that directory.
 When the directory is refused, the trace has no sink. The `CONCORDE_TIMING_INCOMPLETE` line is
-written instead.
+written instead. A `Span` used directly while no trace is open opens no trace, even when
+`CONCORDE_DIAGNOSTIC_TIMING_DIR` is set. It records nothing.
 
 A caller performs these steps:
 
@@ -172,7 +174,7 @@ timestamps are used only to correlate records.
 - AND the directory is outside any `.concorde/history` directory
 - AND the directory is outside any `.concorde/unbound` directory
 - AND the directory is outside any `.concorde/locks` directory
-- WHEN host code marks a unit of work as a span
+- WHEN host code calls a function decorated with `timed`
 - THEN a new trace file for that work is created in the directory with mode 0600, without following
   a symbolic link
 
@@ -182,7 +184,7 @@ timestamps are used only to correlate records.
 - AND `CONCORDE_DIAGNOSTIC_TIMING_DIR` names a directory that is relative, missing, a symbolic link,
   not canonical, the working directory or inside it, or inside a `.concorde/tasks`,
   `.concorde/history`, `.concorde/unbound` or `.concorde/locks` directory
-- WHEN host code marks a unit of work as a span
+- WHEN host code calls a function decorated with `timed`
 - THEN nothing is written to that directory or to the working directory
 - AND one `CONCORDE_TIMING_INCOMPLETE` line is written to standard error
 - AND the work returns exactly as unmarked work would
@@ -224,6 +226,7 @@ timestamps are used only to correlate records.
   intervals
 - AND the summary reports the summed span seconds separately
 - AND spans without a duration make the summary incomplete instead of counting as zero
+- AND when no span has a duration, the summed span seconds are null
 - BUT no span name appears in the summary
 - AND no trace identity appears in the summary
 - AND no label appears in the summary

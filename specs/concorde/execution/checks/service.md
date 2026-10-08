@@ -39,21 +39,24 @@ execution refuses the file or entry with `invalid_check`, naming the file and th
 - The file holds another field or an entry with a field the table does not name.
 - The file's name is not a Module identity.
 - An `id` is used twice in the project.
-- An input is not a canonical project-relative path or escapes the worktree through a directory
-  that is a symbolic link.
+- An input is not a canonical project-relative path, as the Kernel's
+  [typed values](../../kernel/contracts.md#typed-values) define it, or escapes the worktree through
+  a directory that is a symbolic link.
 
-For a caller that wants the checks files judged before any check runs, `validate_checks(worktree)`
-does the same alone. Method's `task-validation` does this. When `kinds` is `module`, a call of
-`run_checks` narrowed to the ordinary checks reads only the checks files of the selected Modules.
-The measurement after a check reads only the file of the check's own Module. Thus, a malformed
-checks file of another Module never stops their checks. Only when both files are read is an `id`
-used twice then found. `validate_checks` reads them all. Before it runs the first command, the
-service validates these fields of every check it keeps:
+Before it runs the first command, the service validates these fields of every check it keeps:
 
 - `argv`
 - `env`
 - `when`
 - `timeout_seconds`
+
+For a caller that wants the checks files judged before any check runs, `validate_checks(worktree)`
+does the same alone. Method's `task-validation` does this. `validate_checks` reads every checks
+file. It validates those four fields of every check and finds every declared input. It replaces no
+`{python}` and runs no command. When `kinds` is `module`, a call of `run_checks` narrowed to the
+ordinary checks reads only the checks files of the selected Modules. The measurement after a check
+reads only the file of the check's own Module. Thus, a malformed checks file of another Module
+never stops their checks. Only when both files are read is an `id` used twice then found.
 
 An input names a regular file or a directory. Below a directory, the service measures every regular
 file outside `__pycache__` directories. When any of these conditions holds, an input stops the run
@@ -130,7 +133,27 @@ messages.
 ## Running checks
 
 `run_checks(worktree, *, modules, trace_directory, measured=None, tests=None, python=None,
-stage="work", kinds="all")` in `src/concorde/execution/checks/checks.py` runs these steps:
+stage="work", kinds="all")` in `src/concorde/execution/checks/checks.py` runs the configured checks.
+Two of its arguments say what a check result is measured over:
+
+| Argument | Accepted value | When omitted or empty |
+| --- | --- | --- |
+| `measured` | A mapping from a Module label, as `modules` gives it, to the files that Module's results depend on besides its checks' inputs. In Concorde, these are its implementation files. Each file is a canonical project-relative POSIX path of a regular file of the worktree, reached through no symbolic link. A file named twice is measured once. | No implementation file is measured. A Module that `measured` does not name has none measured either. Its results still cover its checks' definitions, their inputs and `CHECK_POLICY`. |
+| `tests` | A list of test identities, each `<path>` or `<path>::<name>`, where `<path>` is a canonical project-relative POSIX path of a regular file of the worktree, reached through no symbolic link. The order is kept. | No selective check is kept. |
+
+The service judges both arguments before any command runs:
+
+- The service refuses with `invalid_check` a `measured` of another shape. Such a `measured` is no
+  mapping, or has a Module label that is no string or files that are no list of strings.
+- The service refuses with `invalid_check` a measured path that is not canonical, such as an
+  absolute path or one holding `..`.
+- `tests` that are a string, an identity that is no string, or an identity whose path is not
+  canonical are refused with `invalid_check`.
+- A measured file of a kept check's Module, or a test file of a kept selective check, that is
+  missing, not a regular file or a symbolic link is refused with `check_input_missing`, naming the
+  path.
+
+The call runs these steps:
 
 1. The service takes the Modules to check from `modules`, as labels that select checks files.
   The caller decides which Modules a change concerns and which Modules use one of them. This
@@ -155,13 +178,13 @@ stage="work", kinds="all")` in `src/concorde/execution/checks/checks.py` runs th
   - `env`
   - `timeout_seconds`
 
-  The service replaces `{python}` and `{tests}`. The service finds every declared input of every
-  kept check. Whichever Module the kept check belongs to, any of these problems stops the call
-  before the first command:
+  The service replaces `{python}` and `{tests}`. The service finds every declared input, measured
+  file and selected test file of every kept check. Whichever Module the kept check belongs to, any
+  of these problems stops the call before the first command:
 
-  - an invalid check
+  - an invalid check or argument
   - a missing interpreter
-  - a missing input
+  - a missing input, measured file or test file
 
 5. For each kept check, the service computes its measured digest with `measured_digest`, in the
   same file. For an ordinary check, the digest is `check_revision` of the check's own Module.
@@ -302,9 +325,32 @@ value:
 }
 ```
 
-A consumer decides whether a stored check result is still current by recomputing `measured_digest`
-for the same check. For a selective check, the consumer uses the same selected Modules too. The
-consumer compares the recomputed digest with `source_digest`.
+A consumer decides whether a stored check result is still current by recomputing its measured digest
+and comparing it with the result's `source_digest`. The call is
+`measured_digest(worktree, check, modules, *, checks=None, measured=None, tests=())`. It takes these
+arguments:
+
+- `check`: the configured check as `configured_checks(worktree)` gives it, with its `module`.
+- `modules`: the Modules the call that ran the check selected. Only a selective check's digest
+  depends on them.
+- `measured` and `tests`: the same values that call received. They are judged as `run_checks` judges
+  them.
+- `checks`: the configured checks to measure against. When it is omitted, the service reads the
+  check's own checks file again.
+
+A changed file, check definition, input or selection gives another digest. A measured file or test
+file that is gone, or became a symbolic link, is refused with `check_input_missing`. This means
+that the stored result is no longer current. For example, Method runs the checks of `module.a` and
+later asks whether the result still holds:
+
+```python
+measured = {"module.a": ["src/a/calc.py"]}
+[result] = run_checks(worktree, modules=["module.a"], trace_directory=logs,
+                      measured=measured, python=".venv/bin/python")
+check = next(c for c in configured_checks(worktree) if c["id"] == result["check_id"])
+current = measured_digest(worktree, check, ["module.a"], measured=measured)
+still_current = current == result["source_digest"]
+```
 
 ### Errors
 
@@ -319,13 +365,15 @@ Check execution raises its own `CheckError`. Its record carries these fields:
 
 The record uses these codes:
 
-- `invalid_check`: a checks file or entry that breaks [the format](#checks-files), or a check with
+- `invalid_check`: a checks file or entry that breaks [the format](#checks-files), a `measured` or
+  `tests` argument of another shape than [Running checks](#running-checks) accepts, or a check with
   any of these defects:
   - no nonempty argv
   - no positive timeout
   - an `env` that is not an object of variable names to strings
   - a `when` other than `always` or `readiness`
-- `check_input_missing`
+- `check_input_missing`: a declared input, measured file or selected test file that is missing,
+  not a regular file (a directory, for an input) or a symbolic link
 - `project_python_missing`: a check uses `{python}` but the configuration names no project
   interpreter, or none that is an executable file where it was looked for
 - `check_sandbox_unavailable`: the read-only boundary cannot be established
@@ -566,6 +614,16 @@ start.
 - WHEN the service measures the check revision again
 - THEN the call fails with `stale_evidence` and returns no result
 - AND Check execution's link for it has the level `component`, the actor `Check execution`, the code `stale_evidence` and the reason `environment`
+
+### scenario.checks.service-between-checks — A change between two checks is no stale evidence
+
+- GIVEN two configured checks of one Module
+- AND the Module's implementation file changes after the first check ended and before the second
+  check started
+- WHEN the service runs both checks in one call
+- THEN both checks have a result
+- AND each result's `source_digest` is the digest the service measured before that check's own run
+- AND the two `source_digest` values differ
 
 ### scenario.checks.service-refused — A refused check has no status
 

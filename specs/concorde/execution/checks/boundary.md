@@ -150,8 +150,9 @@ namespace is private only for System V IPC and POSIX message queues. No task inp
 
 ### req.checks.project-read-only — Files cannot change during a run
 
-For the whole run, the check runner SHALL prevent a command and every process it starts from these
-actions, in the operating system, on any host filesystem file outside its own scratch:
+For the whole run without `writable_project`, the check runner SHALL prevent a command and every
+process it starts from these actions, in the operating system, on any host filesystem file outside
+its own scratch:
 
 - create
 - modify
@@ -165,7 +166,9 @@ This covers these cases:
 - inherited file descriptors
 - nested namespaces
 
-The check runner restricts file writes only. As [the entry's design](module.md#design) explains,
+A run with `writable_project` may also write the project
+([req.checks.writable-project-only](#req.checks.writable-project-only)). The check runner restricts
+file writes only. As [the entry's design](module.md#design) explains,
 the check runner does not limit these:
 
 - reads
@@ -178,8 +181,8 @@ the check runner does not limit these:
 With `writable_project`, the check runner SHALL let a command and every process it starts write
 only files inside the project and its scratch.
 
-Every other host file stays read-only as
-[req.checks.project-read-only](#req.checks.project-read-only) says.
+Every other host file stays read-only, against the same actions and in the same cases as
+[req.checks.project-read-only](#req.checks.project-read-only) lists.
 
 This covers files reached through a symbolic link of the project and through a hard link made into
 it. Every other requirement of the boundary holds unchanged.
