@@ -45,7 +45,9 @@
         "meaning": "#uses-workers",
         "relies_on": [
           "concept.worker-id",
-          "concept.run-record"
+          "concept.run-record",
+          "contract.workers.worker-run-record",
+          "req.workers.transient-retried"
         ]
       },
       {
@@ -70,7 +72,9 @@
         "relies_on": [
           "concept.execution-runner",
           "concept.run-result",
-          "concept.unbound-run"
+          "concept.unbound-run",
+          "contract.execution.run-result",
+          "req.execution.unbound-origin-untouched"
         ]
       },
       {
@@ -116,6 +120,11 @@
         "kind": "document",
         "target": "document.tracing.contracts",
         "reason": "the Framework's error contract, which this Module's errors follow"
+      },
+      {
+        "kind": "document",
+        "target": "document.method.module",
+        "reason": "Method's account of the Operations it registers and of its review Issue helpers, which read, settle and report the earlier Issues of every part of the review"
       },
       {
         "kind": "document",

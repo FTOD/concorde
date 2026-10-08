@@ -469,6 +469,7 @@ Spec review is part of Method, the part that composes the others. It has these r
 - Where the issues part is installed, it records its findings through Issues.
 - Like every Operation, it runs through the Execution runner.
 - Method registers its Operation with that runner.
+- Its result carries the step output that Workflows defines.
 
 ```d2
 review: Spec review
@@ -477,11 +478,13 @@ workers: Workers
 operations: Operations
 execution: Execution
 issues: Issues
+workflows: Workflows
 review -> spec
 review -> workers
 review -> operations
 review -> execution
 review -> issues
+review -> workflows
 ```
 
 <a id="uses-spec"></a>
@@ -578,3 +581,12 @@ Spec review relies on it for these things:
 
 Spec review's duty is to fill the envelope honestly. It keeps worker claims apart from its own
 evidence.
+
+<a id="uses-workflows"></a>
+
+**Workflows** owns the [step output convention](../../workflows/contracts.md#contract.workflows.step-output).
+A workflow reads the result of each of its steps through it, without knowing the step's own
+payload. The panel's payload carries one `workflow` object under that convention. Spec review fills
+it with one `review` note, which holds the verdict and each Module's outcome with its count of
+blocking findings that stand. Workflows defines the fields of the object. Spec review defines only
+what its note says.

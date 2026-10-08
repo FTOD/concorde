@@ -379,3 +379,9 @@ base, paths, check results, Issues, outcomes and verdict.
   It relies on its [severities](../../glossary.json#concept.issue-severity) for how much a finding
   matters. When the store refuses, the Module is `incomplete`, with the store's error as the cause.
   The Operation never retries it. It never records it as an Issue.
+- <a id="uses-workflows"></a>**Workflows** owns the
+  [step output convention](../../workflows/contracts.md#contract.workflows.step-output). A workflow
+  reads the result of each of its steps through it, without knowing the step's own payload. The
+  report carries one `workflow` object under that convention. Code review fills it with one
+  `review` note, which holds the verdict and each Module's outcome with its count of findings by
+  tier. Workflows defines the fields of the object. Code review defines only what its note says.

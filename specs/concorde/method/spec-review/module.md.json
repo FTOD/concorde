@@ -30,7 +30,10 @@
         "relies_on": [
           "concept.brief",
           "concept.worker-result",
-          "concept.run-record"
+          "concept.run-record",
+          "contract.workers.grant-input",
+          "contract.workers.worker-result",
+          "contract.workers.worker-run-record"
         ]
       },
       {
@@ -41,7 +44,9 @@
           "concept.issue-report",
           "concept.issue-revision",
           "concept.issue-tier",
-          "concept.issue-severity"
+          "concept.issue-severity",
+          "contract.issues.report",
+          "contract.issues.receipt"
         ]
       },
       {
@@ -57,7 +62,15 @@
         "relies_on": [
           "concept.execution-runner",
           "concept.run-result",
-          "concept.unbound-run"
+          "concept.unbound-run",
+          "contract.execution.run-result"
+        ]
+      },
+      {
+        "target": "module.workflows",
+        "meaning": "#uses-workflows",
+        "relies_on": [
+          "contract.workflows.step-output"
         ]
       }
     ],
@@ -66,6 +79,21 @@
         "kind": "document",
         "target": "document.tracing.contracts",
         "reason": "the Framework's error contract, which this Module's errors follow"
+      },
+      {
+        "kind": "document",
+        "target": "document.spec.contracts",
+        "reason": "Spec core's library of grants, context identities and validation the host steps call"
+      },
+      {
+        "kind": "document",
+        "target": "document.method.module",
+        "reason": "Method's account of the Operations it registers and of its review Issue helpers, which read, settle and report this Module's earlier Issues"
+      },
+      {
+        "kind": "document",
+        "target": "document.method.workers",
+        "reason": "Method's standard worker sequence, through which every worker of this Module is launched, with its round validation, worker settings and errors"
       },
       {
         "kind": "external",
