@@ -201,6 +201,7 @@ specific ones.
 | `invalid_target` | the identity does not name a document, scenario or context of the requested kind | name an identity of the requested kind |
 | `invalid_focus` | a scenario focus must belong to the Module it narrows | focus on a scenario of the selected Module |
 | `shared_file` | a task may write a file only when every Module that binds it is bound by the task, so no other Module's promise changes behind its back | bind every Module that binds the shared file, or leave the file unchanged |
+| `installed_file` | an installed file is the installer's and is never writable, so no writable directory entry may cover it (CHK.binds.installed) | bind each installed file by its exact path and keep it out of the realization's directory entries |
 | `invalid_context` | a context holds each registered document member once, with its owner's role and provenance | recompute the context from the current Specs instead of editing it |
 | `stale_context` | a context is valid only for the exact Spec sources it was computed from | compute the context again from the current Specs |
 | `invalid_proposal` | a proposal is applied only in exactly the shape and content it was proposed with | propose again and apply the new proposal unchanged |

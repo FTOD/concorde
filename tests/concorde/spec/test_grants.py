@@ -389,6 +389,21 @@ class GrantTests(unittest.TestCase):
         self.assertIn(".concorde/install.json", finding.message)
         self.assertTrue(finding.remediation)
 
+    @verifies("scenario.spec.grant-installed-directory")
+    def test_a_writable_directory_never_covers_an_installed_file(self):
+        self.installed_project([".claude/"])
+        with self.assertRaises(SpecError) as raised:
+            self.grant(["module.i"], "implement")
+        self.assertEqual("installed_file", raised.exception.code)
+        message = raised.exception.message
+        self.assertIn(".claude/ (covers", message)
+        self.assertIn(".claude/skills/concorde/SKILL.md", message)
+        self.assertIn(".claude/workflows/concorde-brownfield.js", message)
+        self.assertNotIn("settings.json", message)
+        # A task type that does not write the code still receives the directory's files by name.
+        levels = self.levels(self.grant(["module.i"], "understand"))
+        self.assertEqual("names", levels[".claude/skills/concorde/SKILL.md"])
+
     def with_shared_entry(self):
         value = self.project.metadata("specs/a/module.md")
         for record in value["defines"]:

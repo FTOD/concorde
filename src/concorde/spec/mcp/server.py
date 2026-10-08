@@ -93,21 +93,31 @@ class Session:
             self.set_root(Path(configured))
             return
         if not self.client_roots:
-            self.root_error = "no CLAUDE_PROJECT_DIR and the client offers no roots"
-            return
-        response = self.request_client("roots/list")
-        result = response.get("result") if isinstance(response, dict) else None
-        roots = result.get("roots") if isinstance(result, dict) else None
-        roots = roots if isinstance(roots, list) else []
-        files = [item.get("uri") for item in roots if isinstance(item, dict)]
-        files = [uri for uri in files if isinstance(uri, str)]
-        files = [uri for uri in files if uri.startswith("file://")]
-        if len(files) != 1:
             self.root_error = (
-                f"expected exactly one file:// client root, got {len(files)}"
+                "no CLAUDE_PROJECT_DIR and the client declared no roots capability"
             )
             return
-        self.set_root(Path(unquote(urlparse(files[0]).path)))
+        response = self.request_client("roots/list")
+        if response is None:
+            self.root_error = "the input ended before the client answered roots/list"
+            return
+        if "error" in response:
+            self.root_error = "the client refused roots/list with a JSON-RPC error"
+            return
+        result = response.get("result")
+        roots = result.get("roots") if isinstance(result, dict) else None
+        if not isinstance(roots, list):
+            self.root_error = "the client's roots/list reply holds no roots list"
+            return
+        # Exactly one root, whatever its scheme: several roots never resolve to one of them.
+        if len(roots) != 1:
+            self.root_error = f"expected exactly one client root, got {len(roots)}"
+            return
+        uri = roots[0].get("uri") if isinstance(roots[0], dict) else None
+        if not isinstance(uri, str) or not uri.startswith("file://"):
+            self.root_error = f"the client's one root is not a file:// URI: {uri!r}"
+            return
+        self.set_root(Path(unquote(urlparse(uri).path)))
 
     def set_root(self, path: Path) -> None:
         resolved = Path(os.path.realpath(path))

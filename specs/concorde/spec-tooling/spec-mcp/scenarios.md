@@ -20,10 +20,34 @@ Concrete situations of the [Spec MCP server](module.md). Exact tools and results
 
 ### scenario.spec-mcp.no-root — Without a root the server answers nothing
 
-- GIVEN a server started without `CLAUDE_PROJECT_DIR` whose client reports no root or several roots
+- GIVEN a server started without `CLAUDE_PROJECT_DIR` whose client reports no root or several roots,
+  even when only one of them is a `file://` URI
 - WHEN any tool is called
 - THEN the call fails with `no_root`
 - AND a later `initialized` notification resolves no root
+
+### scenario.spec-mcp.roots-unavailable — Root discovery that cannot complete
+
+- GIVEN a server started without `CLAUDE_PROJECT_DIR`
+- AND a client that declared no roots capability, or that answers `roots/list` with a JSON-RPC
+  error or with a result that lacks a `roots` list
+- WHEN any tool is called
+- THEN the call fails with `no_root`, whose message names that case
+- AND the session goes on answering every later request
+
+### scenario.spec-mcp.roots-pending — Requests wait for the roots reply
+
+- GIVEN a server started without `CLAUDE_PROJECT_DIR` that has sent `roots/list`
+- AND a client that sends a tool call before it answers with one `file://` root
+- WHEN the client then answers `roots/list`
+- THEN the tool call is answered from that root
+
+### scenario.spec-mcp.initialize-revision — The MCP revision is negotiated
+
+- GIVEN a client that sends `initialize`
+- WHEN it requests revision `2025-03-26`
+- THEN the result names `2025-03-26` and declares the tools capability
+- BUT when it requests a revision the server does not support, the result names `2025-06-18`
 
 ## Answers
 
@@ -107,6 +131,8 @@ Concrete situations of the [Spec MCP server](module.md). Exact tools and results
 - WHEN any tool other than `validate` is called
 - THEN the call fails with `protocol_mismatch`
 - AND no partial or earlier answer is returned
+- BUT `validate` answers without a tool error, with status `invalid`, exactly one error finding
+  describing the mismatch and Spec core's error record as `result.load_error`
 
 ### scenario.spec-mcp.malformed-call — A malformed call is refused and the session goes on
 

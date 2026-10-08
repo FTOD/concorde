@@ -7,13 +7,32 @@ is answered in its project-relative form.
 
 ## Session
 
-The server is started as `concorde spec-mcp`. The server speaks MCP over standard input and output.
-It declares the tools capability and no resources or prompts. After the client's first
-`initialized` notification, the server resolves its root once. When set, `CLAUDE_PROJECT_DIR`
-provides the root. Otherwise, the single `file://` root from `roots/list` provides it. The root is
-the real path of that directory. The root does not change for the life of the process. A malformed
-message never ends the session. When the server cannot answer a request, it answers with a
-JSON-RPC error and reads the next message.
+The server is started as `concorde spec-mcp`. The server speaks MCP over standard input and output,
+as newline-delimited JSON-RPC 2.0. It supports the MCP revisions `2025-06-18`, `2025-03-26` and
+`2024-11-05`. The `initialize` result names the revision the client requested when the server
+supports it. Otherwise, the result names the newest of the three, and a client that cannot use it
+ends the session, as MCP's version negotiation says. The result declares the tools capability and
+no resources or prompts.
+
+After the client's first `initialized` notification, the server resolves its root once:
+
+- When set, `CLAUDE_PROJECT_DIR` provides the root. The server sends no `roots/list`.
+- Otherwise, when the client declared the roots capability in `initialize`, the server sends one
+  `roots/list` request. The root is the one `file://` root of the reply, when the reply lists
+  exactly one root and that root is a `file://` URI.
+- Otherwise, the session has no root. Every tool call then fails with `no_root`, whose message
+  says which case applied:
+  - The client declared no roots capability.
+  - The reply is a JSON-RPC error.
+  - The reply lacks a `roots` list.
+  - The list holds no root, several roots or one root that is not a `file://` URI.
+
+The server waits for the reply to `roots/list` without a time limit. Requests that arrive
+meanwhile are answered, in their order, once the reply has arrived. When the input ends before the
+reply, the session ends. The root is the real path of the chosen directory. The root does not
+change for the life of the process. A later `initialized` notification resolves nothing. A
+malformed message never ends the session. When the server cannot answer a request, it answers with
+a JSON-RPC error and reads the next message.
 
 Every tool returns one text content item holding canonical JSON. A failure sets `isError: true`.
 Its JSON is `{"error": <record>}`, where the record is Spec tooling's
@@ -28,12 +47,12 @@ Its JSON is `{"error": <record>}`, where the record is Spec tooling's
 
 | Code | When |
 | --- | --- |
-| `no_root` | no root could be resolved; the message says why, such as the number of client roots |
+| `no_root` | no root could be resolved; the message says why: no roots capability, a refused or malformed `roots/list` reply, the number of client roots, a root that is not a `file://` URI, or a root that is not a directory |
 | `outside_root` | a path argument resolves outside the root, through `..`, another absolute path or a symbolic link; the message names what it resolved to |
 | `invalid_input` | the call's params or its `arguments`, when present, are not an object, an argument is missing or of the wrong type (an optional argument given as `null` among them), the tool is unknown or its name is not a string, or a path names the root itself; the message names the argument and the value |
 | `system_error` | the operating system refused to read the [Specs](../../glossary.json#concept.spec); the cause names the path |
 | `unexpected_error` | a defect of the server; the record names where it was raised |
-| any Spec core code | loading or the computation failed, for example `protocol_mismatch`, `unsupported_profile`, `invalid_target`, `invalid_task_type`, `unknown_module` or `shared_file`, with Spec core's record unchanged |
+| any Spec core code | loading or the computation failed, for example `protocol_mismatch`, `unsupported_profile`, `invalid_target`, `invalid_task_type`, `unknown_module`, `shared_file` or `installed_file`, with Spec core's record unchanged |
 
 ## Tools
 

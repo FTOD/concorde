@@ -87,6 +87,12 @@ CODES: dict[str, tuple[str, str]] = {
         "so no other Module's promise changes behind its back",
         "bind every Module that binds the shared file, or leave the file unchanged",
     ),
+    "installed_file": (
+        "an installed file is the installer's and is never writable, so no writable directory "
+        "entry may cover it (CHK.binds.installed)",
+        "bind each installed file by its exact path and keep it out of the realization's "
+        "directory entries",
+    ),
     "invalid_context": (
         "a context holds each registered document member once, with its owner's role and "
         "provenance",

@@ -1388,7 +1388,18 @@
           ]
         }
       ],
-      "includes": [],
+      "includes": [
+        {
+          "kind": "document",
+          "target": "document.kernel.contracts",
+          "reason": "the Kernel's typed values, registered schemas and file transactions, whose exact formats and schema dialect Spec core's own copy follows"
+        },
+        {
+          "kind": "document",
+          "target": "document.distribution.contracts",
+          "reason": "Distribution's build manifest and installation record (the install result's receipt), whose shapes validation and grant computation read"
+        }
+      ],
       "participates": []
     },
     {
@@ -1416,7 +1427,18 @@
           ]
         }
       ],
-      "includes": [],
+      "includes": [
+        {
+          "kind": "document",
+          "target": "document.spec.contracts",
+          "reason": "Spec core's source and term records, validation result and grant, which the tools return unchanged"
+        },
+        {
+          "kind": "document",
+          "target": "document.spec.errors",
+          "reason": "Spec core's error record, which every refusal of a tool carries unchanged"
+        }
+      ],
       "participates": [
         {
           "contract": "contract.spec-mcp.boundary-result",

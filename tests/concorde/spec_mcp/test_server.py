@@ -11,10 +11,12 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from concorde.spec.diagnostics import tool_envelope
 from concorde.spec.grants import TASK_TYPES, grant
 from concorde.spec.repository import SpecRepository
 from concorde.spec.errors import ERROR_SCHEMA
 from concorde.spec.schema import validate
+from concorde.spec.validation import validate_repository
 from concorde.spec.verification import verifies
 from tests.concorde.spec.test_grants import document, realization
 from tests.concorde.support.environment import child_environment
@@ -28,8 +30,12 @@ TOOLS = {"boundary", "modules", "module", "context", "impact", "validate"}
 class Client:
     """A minimal MCP client: initialize, answer ``roots/list``, call tools."""
 
-    def __init__(self, test, environment, roots=None):
+    def __init__(
+        self, test, environment, roots=None, reply=None, revision="2025-06-18"
+    ):
         self.roots = roots
+        # ``reply`` answers ``roots/list`` instead of the listed roots.
+        self.reply = reply
         self.process = subprocess.Popen(
             COMMAND,
             stdin=subprocess.PIPE,
@@ -43,7 +49,7 @@ class Client:
         self.initialized = self.request(
             "initialize",
             {
-                "protocolVersion": "2025-06-18",
+                "protocolVersion": revision,
                 "capabilities": capabilities,
                 "clientInfo": {"name": "test", "version": "0"},
             },
@@ -72,13 +78,18 @@ class Client:
         while True:
             message = json.loads(self.process.stdout.readline())
             if message.get("method") == "roots/list":
+                if self.reply is not None:
+                    self.send(self.reply(message))
+                    continue
                 self.send(
                     {
                         "jsonrpc": "2.0",
                         "id": message["id"],
                         "result": {
                             "roots": [
-                                {"uri": Path(root).as_uri(), "name": "root"}
+                                {"uri": root, "name": "root"}
+                                if isinstance(root, str)
+                                else {"uri": Path(root).as_uri(), "name": "root"}
                                 for root in self.roots or ()
                             ]
                         },
@@ -131,12 +142,12 @@ class SpecMcpTests(unittest.TestCase):
             document("d", "D", [realization("realization.d.code", ["src/shared.py"])]),
         )
 
-    def client(self, root=None, roots=None):
+    def client(self, root=None, roots=None, **options):
         environment = child_environment()
         environment.pop("CLAUDE_PROJECT_DIR", None)
         if root is not None:
             environment["CLAUDE_PROJECT_DIR"] = str(root)
-        return Client(self, environment, roots)
+        return Client(self, environment, roots, **options)
 
     def repository(self, root=None):
         return SpecRepository(root or self.root, REPOSITORY_ROOT)
@@ -172,12 +183,94 @@ class SpecMcpTests(unittest.TestCase):
     def test_without_a_root_every_call_fails(self):
         other = self.root.parent / "other"
         other.mkdir()
-        for roots in (None, [], [self.root, other]):
+        # Several roots never resolve to their one file:// root.
+        for roots in (
+            None,
+            [],
+            [self.root, other],
+            [self.root, "https://example.org/x"],
+        ):
             with self.subTest(roots=roots):
                 client = self.client(roots=roots)
                 value, error = client.call("modules")
                 self.assertTrue(error)
                 self.assertEqual("no_root", value["error"]["code"])
+
+    @verifies("scenario.spec-mcp.roots-unavailable")
+    def test_root_discovery_that_cannot_complete_leaves_no_root(self):
+        replies = {
+            "refused roots/list": lambda message: {
+                "jsonrpc": "2.0",
+                "id": message["id"],
+                "error": {"code": -32601, "message": "not supported"},
+            },
+            "no roots list": lambda message: {
+                "jsonrpc": "2.0",
+                "id": message["id"],
+                "result": {},
+            },
+        }
+        cases = [("no roots capability", {"roots": None})] + [
+            (case, {"roots": [], "reply": reply}) for case, reply in replies.items()
+        ]
+        for case, options in cases:
+            with self.subTest(case=case):
+                client = self.client(**options)
+                value, error = client.call("modules")
+                self.assertTrue(error)
+                self.assertEqual("no_root", value["error"]["code"])
+                self.assertIn(
+                    {
+                        "no roots capability": "no roots capability",
+                        "refused roots/list": "refused roots/list",
+                        "no roots list": "no roots list",
+                    }[case],
+                    value["error"]["message"],
+                )
+                # The session goes on.
+                self.assertEqual(
+                    TOOLS, {t["name"] for t in client.request("tools/list")["tools"]}
+                )
+
+    @verifies("scenario.spec-mcp.roots-pending")
+    def test_requests_wait_for_the_roots_reply(self):
+        client = self.client(roots=[])
+        # The server sends roots/list after initialized; the client holds its reply and calls a
+        # tool first.
+        client.next += 1
+        client.send(
+            {
+                "jsonrpc": "2.0",
+                "id": client.next,
+                "method": "tools/call",
+                "params": {"name": "modules", "arguments": {}},
+            }
+        )
+        message = json.loads(client.process.stdout.readline())
+        self.assertEqual("roots/list", message["method"])
+        client.send(
+            {
+                "jsonrpc": "2.0",
+                "id": message["id"],
+                "result": {"roots": [{"uri": self.root.as_uri()}]},
+            }
+        )
+        result = client.answer(client.next)
+        self.assertFalse(result["isError"])
+        value = json.loads(result["content"][0]["text"])
+        self.assertEqual(3, len(value["modules"]))
+
+    @verifies("scenario.spec-mcp.initialize-revision")
+    def test_the_mcp_revision_is_negotiated(self):
+        for requested, answered in (
+            ("2025-03-26", "2025-03-26"),
+            ("2024-11-05", "2024-11-05"),
+            ("1999-01-01", "2025-06-18"),
+        ):
+            with self.subTest(requested=requested):
+                client = self.client(root=self.root, revision=requested)
+                self.assertEqual(answered, client.initialized["protocolVersion"])
+                self.assertIn("tools", client.initialized["capabilities"])
 
     @verifies("scenario.spec-mcp.no-root")
     def test_a_repeated_initialized_does_not_resolve_again(self):
@@ -382,6 +475,23 @@ class SpecMcpTests(unittest.TestCase):
                 value, error = client.call(name, **arguments)
                 self.assertTrue(error)
                 self.assertEqual("protocol_mismatch", value["error"]["code"])
+        # validate alone answers, with the load failure as its one error finding.
+        expected = json.loads(
+            json.dumps(tool_envelope(validate_repository(self.root)), default=str)
+        )
+        value, error = client.call("validate")
+        self.assertFalse(error)
+        self.assertEqual(
+            ("spec-validation", "invalid"), (value["tool"], value["status"])
+        )
+        errors = [f for f in value["findings"] if f["strictness"] == "error"]
+        self.assertEqual(1, len(errors))
+        self.assertIn("protocol", errors[0]["message"].lower())
+        self.assertEqual("protocol_mismatch", value["result"]["load_error"]["code"])
+        self.assertEqual(
+            expected["result"]["load_error"], value["result"]["load_error"]
+        )
+        self.assertEqual(expected["findings"], value["findings"])
 
 
 if __name__ == "__main__":

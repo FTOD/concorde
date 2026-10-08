@@ -43,19 +43,31 @@ The following activities SHALL NOT write any project file:
 
 ### req.spec.snapshot-reconstruct — A repository is a snapshot
 
-A repository SHALL answer every query from the sources as they were when it was constructed.
+A repository SHALL answer every query of the loaded Specs from the sources as they were when it
+was constructed.
 
-A caller that needs to see a change constructs a new repository.
+The loaded Specs are the configuration, the registry, the documents and the glossary.
+A query that lists or reads other files reads them when it is asked.
+Such files are the files a realization entry binds, pinned external material and the installation
+record.
+`recheck_context` also reads the current files, so that it detects a change since a context was
+computed.
+A caller that needs to see a change of the loaded Specs constructs a new repository.
 Replacement bytes handed to the constructor for the registry or for documents stay in memory.
 These bytes are never written.
 
 ### req.spec.deterministic-order — Same input, same answer
 
-Repeated queries against the same repository SHALL return equal results in the same order.
+Repeated queries of the loaded Specs against the same repository SHALL return equal results in the
+same order.
+
+A query that reads other files returns equal results in the same order while those files do not
+change.
 
 ### req.spec.no-implementation-read — Boundary sets never read code
 
-The following activities SHALL NOT read the contents of implementation files:
+Except for the `covered-by` index and validation's coverage scan, the following activities SHALL
+NOT read the contents of implementation files:
 
 - Loading the Specs.
 - Computing [boundary sets](../../glossary.json#concept.boundary-set).
@@ -63,8 +75,7 @@ The following activities SHALL NOT read the contents of implementation files:
 - Computing impact indexes.
 
 Listing a directory to expand its entries is allowed. Only paths are used.
-The `covered-by` index and validation's coverage scan are the exception.
-They parse bound test files for their verification declarations.
+The two exceptions parse bound test files for their verification declarations.
 Neither feeds a boundary set or a grant.
 
 ### req.spec.no-partial-repository — No partial repository
@@ -227,14 +238,15 @@ scenario.
 
 ### req.spec.indexes-derived — Impact indexes come from declarations alone
 
-Every [impact index](../../glossary.json#concept.impact-index) SHALL be computed from the loaded
-declarations and realization entries alone.
+Every [impact index](../../glossary.json#concept.impact-index) except `covered-by` SHALL be
+computed from the loaded declarations and realization entries alone.
 
-No index reads implementation file contents, test results or recorded evidence. No index query
-changes a boundary set. The one exception is `covered-by`, which reads the
+`covered-by` also reads the
 [verification declarations](../../glossary.json#concept.verification-declaration) of bound test
-sources as [req.spec.coverage-from-tests](#req.spec.coverage-from-tests) says. It reads them
+sources, as [req.spec.coverage-from-tests](#req.spec.coverage-from-tests) says. It reads them
 without importing, compiling or running the test sources.
+No index reads other implementation file contents, test results or recorded evidence. No index
+query changes a boundary set.
 
 ## Grants
 
@@ -249,8 +261,17 @@ The levels are serialized as `names`, `ro` and `rw`. The table is repeated in th
 
 ### req.spec.grant-highest-level — The highest level wins
 
-When a path falls into several boundary sets of one or more bound Modules, the grant SHALL give it
-the highest level any of those sets assigns, ordered none, `names`, `ro`, `rw`.
+When a path falls into several boundary sets of one or more bound Modules, the grant SHALL first
+choose for it the highest level any of those sets assigns, ordered none, `names`, `ro`, `rw`.
+
+The rules that follow then apply to that level:
+
+- An `rw` level that would cover a file another Module binds fails the grant
+  ([req.spec.grant-shared-write](#req.spec.grant-shared-write)).
+- An `rw` directory level that would cover an installed file fails the grant
+  ([req.spec.grant-installed-read-only](#req.spec.grant-installed-read-only)).
+- An installed file's exact entry is lowered to `ro`
+  ([req.spec.grant-installed-read-only](#req.spec.grant-installed-read-only)).
 
 ### req.spec.grant-deny-omitted — Denied paths are absent
 
@@ -279,8 +300,11 @@ The cap applies after the highest level is chosen.
 It therefore overrides an `rw` that an implementation scope would give.
 A file the installer only amends is the project's.
 Such a file keeps its level.
-A directory entry covering an installed file is the `CHK.binds.installed` error.
-Only validation reports this error.
+A directory entry covering an installed file is the `CHK.binds.installed` error of validation.
+When such a directory entry would be `rw` in a grant, computing the grant SHALL fail with
+`installed_file`.
+The failure names each such directory entry and every installed file it covers.
+A grant can therefore never make an installed file writable through a directory.
 
 ### req.spec.grant-shared-write — Shared files need every binder
 
@@ -292,12 +316,18 @@ The caller can therefore bind the task to them or split the work.
 
 ### req.spec.grant-one-worktree — One worktree answers
 
-A grant SHALL be computed only from the following sources of the worktree named as its root:
+Every source a grant is computed from SHALL be a file of the worktree named as its root.
+
+The sources are these files of that worktree:
 
 - The configuration.
 - The registry.
-- The documents.
-- The realization entries.
+- The documents and the glossary.
+- The realization entries and the paths they bind.
+- The pinned external material.
+- The installation record `.concorde/install.json`.
+
+No other worktree's files, no build output and no environment variable change a grant.
 
 ### req.spec.grant-deterministic — Same Specs, same grant
 
@@ -348,6 +378,8 @@ Checking a [typed value](../../glossary.json#concept.typed-value) SHALL reject a
 - Any `data` its registered schema refuses as JSON Schema would, including a missing required field
   and a field an object closed by `additionalProperties: false` does not name.
 
+### req.spec.typed-schema-admitted — Only checkable schemas are registered
+
 When a type's schema uses a keyword that checking its values would not evaluate, registering the
 type SHALL fail.
 
@@ -370,9 +402,11 @@ An owner's code may therefore be loaded twice.
 ### req.spec.transaction-all-or-nothing — A transaction applies completely or not at all
 
 A [file transaction](../../glossary.json#concept.file-transaction) SHALL either write every listed
-file with its new content or, when a write or its final check fails while the process runs, leave every
-listed file with its original bytes.
+file with its new content or, when a write or its final check fails while the process runs, restore
+every listed file it wrote to its original bytes.
 
+When a restore is refused, that file keeps its new content and the failure names it
+([req.spec.transaction-restore-reported](#req.spec.transaction-restore-reported)).
 The guarantee covers only failures the process observes as an exception.
 If any of the following happens part-way, the process leaves the files in the state listed below:
 
@@ -391,12 +425,12 @@ No listed file therefore ever holds part of each.
 
 ### req.spec.transaction-restore-reported — A failed restore is named
 
-When a file transaction fails and the operating system refuses to restore a file it wrote,
-the transaction SHALL fail with a `system_error` with these properties:
+When a file transaction fails and a file it wrote cannot be restored, the transaction SHALL fail with
+a `system_error` with these properties:
 
 - It names every file the transaction could not restore.
 - It carries the first failure and each refused restore as causes.
-- It states that those files still hold the new content.
+- It states that those files still hold the new content, or what replaced their destination.
 - It states that every other written file was restored.
 
 ### req.spec.transaction-system-errors — Refused writes are Spec errors

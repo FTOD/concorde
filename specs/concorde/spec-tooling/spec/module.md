@@ -118,8 +118,10 @@ Spec core does not enforce it.
 
 ### Its own data utilities
 
-The records Spec core reads and writes are [typed values](../../glossary.json#concept.typed-value)
-`{type_id, schema_version, data}`. Every write it makes, such as initialization or a registry
+A record that is handed between parts, such as an initialization proposal, is a
+[typed value](../../glossary.json#concept.typed-value) `{type_id, schema_version, data}`. The
+project configuration, the registry file, a grant and a validation result are not typed values.
+Each keeps the format its own contract defines ([contracts](contracts.md)). Every write it makes, such as initialization or a registry
 regeneration, is a [file transaction](../../glossary.json#concept.file-transaction). Both formats are
 the Kernel's ([typed values](../../kernel/contracts.md#typed-values),
 [file transactions](../../kernel/contracts.md#file-transactions)). Spec core does not use the
@@ -441,7 +443,9 @@ the grant is computed. Thus, the grant needs no mark for files still to be creat
 
 The computation runs in a fixed order ([definition](contracts.md#grants)). This lets the refusal
 of a shared file see every level the task type assigns. An installed file is lowered only after
-that refusal.
+that refusal. A writable directory entry that covers an installed file refuses the grant with
+`installed_file`. Lowering only the file's exact entry would leave the file writable below the
+directory.
 
 ```d2 illustrative
 direction: down
@@ -449,14 +453,17 @@ input: "Bound Modules, task type,\nSpecs of one worktree"
 check: "Check the input"
 levels: "Give each path of the boundary sets\nthe task type's level; a path keeps\nits highest (names < ro < rw)"
 shared: "Does an rw entry cover a file\nan unbound Module also binds?" {shape: diamond}
-installed: "Lower installed files\nfrom rw to ro"
+covered: "Does an rw directory entry\ncover an installed file?" {shape: diamond}
+installed: "Lower installed files'\nexact entries from rw to ro"
 drop: "Drop exact paths a directory entry\nof equal or higher level covers"
 identity: "Compute the context identity over the\nSpec sources, terms and pinned\nexternal material (and every\nModule's Specs for review-architecture)"
 grant: "Grant: sorted entries, terms,\nglossary path, context identity" {shape: page}
-refused: "Refused, no grant:\ninvalid_input, invalid_task_type,\nunknown_module or shared_file" {shape: page}
+refused: "Refused, no grant:\ninvalid_input, invalid_task_type,\nunknown_module, shared_file\nor installed_file" {shape: page}
 
 input -> check -> levels -> shared
-shared -> installed: no
+shared -> covered: no
+covered -> installed: no
+covered -> refused: yes
 installed -> drop -> identity -> grant
 check -> refused: invalid input,\ntask type or Module
 shared -> refused: yes
