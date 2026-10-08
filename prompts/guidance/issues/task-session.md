@@ -13,8 +13,10 @@ Read and write them with these tools of the project MCP server:
 - `issue_close`
 - `issue_reopen`
 
-These tools record you as the task session of your task. The `concorde issues` command does the
-same from your shell. It also does the same for the runs you start.
+These tools record you as the task session of your task. Prefer them. The `concorde issues`
+command from your shell records the main agent instead. Its `report --task <task>` names your task
+in the report's provenance, and its `report --provenance <file>` records a provenance its caller
+vouches for. The runs you start record their own provenance, which names their Operation.
 A problem you find that this task will not fix is worth an Issue. First read the Issues of the
 Module concerned with `issue_list` filtered by `module` and `status` `open`.
 When the problem may have been fixed before, include `closed` in the filter. Never read the
