@@ -967,6 +967,17 @@ A main agent that reconciles after a restart sends recorded answers again
 ([A recorded answer is sent again after a restart](#req.main-session.reconcile-resend-answer)),
 since it cannot tell whether one was sent.
 
+### req.main-session.session-start-compare — The main agent compares its name when the hook lists tasks
+
+The guidance SHALL tell the main agent, when the session-start hook lists tasks not ended, to call
+ListAgents before anything else and compare the name it reports for its session with the `main` of
+each task listed, treating a `main` that is neither its current name nor a session ListAgents lists
+as its former name.
+
+A restart, a resume or a compaction gives the main agent no sign that its name changed. The hook's
+list is that sign. A task that names another listed session belongs to another main agent, which
+the main agent leaves alone.
+
 ### req.main-session.reconcile-after-restart — A main agent whose name changed lists its tasks first
 
 The guidance SHALL tell the main agent, when ListAgents reports another name for its session than it

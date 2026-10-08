@@ -432,6 +432,20 @@ their derived state. The list is optionally filtered by `--state`: one or more d
 separated by commas. It is also optionally filtered by `--main`: the main agent's session a record
 names. Given both filters, the command lists the tasks that satisfy both.
 
+`concorde task main-hook` is the main agent's Claude Code `SessionStart` hook, which
+[Coordination](../module.md) has the installer add for the matchers `startup`, `resume` and
+`compact`. A Claude Code session's name may change at a restart or a resume, and nothing else
+makes the main agent look at its name then. So the hook prints, as plain text for the session's
+context, every task not ended with the main agent's session its record names and the numbers of
+its unanswered reports. The text then tells the main agent to call ListAgents and compare its
+current name with those. When a task names a former name of the main agent, the text tells it to
+follow the guidance's steps for a changed name first. It reads only the current tasks' records, as stored, and derives
+no state, so it answers in a fraction of a second however long the history is. The hook runs in
+every session whose settings carry it, task sessions and workers in a task worktree too, so it
+prints nothing outside the primary worktree. It also prints nothing when no task is unended. A
+hook must never fail the start of a session. On any failure it prints one line that says what
+failed and which listing to run instead, and it always exits with status 0.
+
 `concorde task show <task-id>` prints what the task level needs to know about one task in one value:
 
 - The record with its derived state.

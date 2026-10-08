@@ -127,6 +127,18 @@ This illustrates
 [sending it again](requirements.md#req.main-session.task-session-report-resent) and
 [an answer acted on once](requirements.md#req.main-session.task-session-answer-once).
 
+### scenario.main-session.session-start-compare — The main agent compares its name when the hook lists tasks
+
+- GIVEN the rendered main-session guidance
+- WHEN the session-start hook lists tasks not ended after a start, a resume or a compaction
+- THEN the main agent is told to call ListAgents before anything else
+- AND to compare the name it reports for the session with each task's `main`
+- AND to leave a task whose `main` is another session ListAgents lists
+- AND to take a `main` that is neither as its former name and follow "When your session name
+  changed"
+
+This illustrates [comparing the name](requirements.md#req.main-session.session-start-compare).
+
 ### scenario.main-session.reconcile-after-restart — The main agent rebinds its tasks after its session name changed
 
 - GIVEN the rendered main-session guidance

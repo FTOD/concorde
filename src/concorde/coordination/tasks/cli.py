@@ -1,5 +1,6 @@
 """``concorde task open|list|show|session|resolve|rebind|close|merge|deliver|escalate|report|answer|wait``:
-print one JSON value; refusals exit 1, bad usage 2.
+print one JSON value; refusals exit 1, bad usage 2. ``main-hook`` is the main agent's Claude Code
+SessionStart hook instead: it prints plain text for the session's context and always exits 0.
 
 While a merge is unfinished, every one of them that changes something is refused with
 ``merge_incomplete`` apart from ``merge --resume`` and ``merge --abort`` of that task; ``list`` and ``show`` still answer.
@@ -27,7 +28,7 @@ import sys
 from contextlib import ExitStack
 from pathlib import Path
 
-from ...kernel import errors
+from ...kernel import binding, errors
 from ...kernel.tracing import reader
 from ...kernel.refusal import KernelError
 from ...kernel.schema import validate
@@ -604,10 +605,98 @@ def wait_for(here: Path, arguments) -> dict:
     return wait.wait_task(primary, arguments.task_id, until, arguments.timeout)
 
 
+# The SessionStart sources the hook names; Claude Code passes one of them as ``source``.
+HOOK_SOURCES = {
+    "startup": "started",
+    "resume": "resumed",
+    "compact": "was compacted",
+}
+
+
+def _hook_input(stream) -> dict:
+    """The hook input Claude Code writes on standard input, or nothing when there is none."""
+    if stream is None or stream.isatty():
+        return {}
+    text = stream.read()
+    value = json.loads(text) if text.strip() else {}
+    return value if isinstance(value, dict) else {}
+
+
+def main_hook_text(here: Path, data: dict) -> str:
+    """What the main agent's session-start hook adds to the session's context: nothing outside
+    the primary worktree or without a task not ended, and otherwise those tasks with the main
+    agent's session each names and its unanswered reports, and what to do with them."""
+    base = Path(data["cwd"]) if isinstance(data.get("cwd"), str) else here
+    if (base / binding.BINDING).is_file():
+        # A bound task worktree, known without Git, so that a worker's hook never fails there.
+        return ""
+    primary = store.primary_of(base)
+    if store.worktree_of(base) != primary:
+        # A task session or a worker in a task worktree: the hook is the main agent's alone.
+        return ""
+    tasks = store.unended(primary)
+    if not tasks:
+        return ""
+    how = HOOK_SOURCES.get(data.get("source"), "started")
+    lines = [
+        f"Concorde: this session {how}. These tasks have not ended. Each names the main agent's "
+        "session its task session reports to:",
+        "",
+    ]
+    for record in tasks:
+        waiting = [
+            str(item["number"])
+            for item in record["reports"]
+            if item.get("answer") is None
+        ]
+        lines.append(
+            f"- `{record['id']}`: main `{record['main'] or '(none)'}`"
+            + (f"; unanswered reports {', '.join(waiting)}" if waiting else "")
+            + "."
+        )
+    lines += [
+        "",
+        "Before anything else, call the ListAgents tool. Compare the name it reports for this "
+        "session with the main each task names.",
+        "A task whose main is another session that ListAgents lists belongs to that main agent. "
+        "Leave it.",
+        "When a task names a main other than your current name, and no session that "
+        'ListAgents lists has that name, it is your former name. Follow "When your session '
+        'name changed" of the concorde skill for it before anything else.',
+    ]
+    if any(
+        item.get("answer") is None for record in tasks for item in record["reports"]
+    ):
+        lines.append(
+            "Then read the unanswered reports listed above with `concorde task show <task>` "
+            "and answer them."
+        )
+    return "\n".join(lines) + "\n"
+
+
+def main_hook(here: Path, stream=None) -> int:
+    """``concorde task main-hook``: print :func:`main_hook_text`; on any failure, one line saying
+    so, and exit 0 either way, so that the hook never fails the session's start."""
+    try:
+        text = main_hook_text(here, _hook_input(stream))
+    except Exception as error:  # noqa: BLE001 -- the session starts whatever failed
+        text = (
+            "Concorde: the session-start hook could not list the tasks not ended "
+            f"({type(error).__name__}: {error}); run `concorde task list --state "
+            "open,active,delivered,merging` and compare each task's main with the name "
+            "ListAgents reports for this session.\n"
+        )
+    sys.stdout.write(text)
+    sys.stdout.flush()
+    return 0
+
+
 def main(argv, cwd: Path | None = None) -> int:
     words = list(argv)
     command = words[0] if words else "?"
     here = Path(cwd or Path.cwd())
+    if words == ["main-hook"]:
+        return main_hook(here, sys.stdin)
     try:
         arguments = parser().parse_args(words)
     except store.TaskError as error:

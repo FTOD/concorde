@@ -912,6 +912,32 @@ This illustrates [the parts Coordination does without](../module.md#optional-int
 - THEN only the open task naming `concorde-7d` is listed
 - AND `--state` naming a state that does not exist is refused with `invalid_input`
 
+### scenario.tasks.main-hook — The session-start hook lists the tasks not ended
+
+- GIVEN an open task `t1` naming `concorde-7d` with an unanswered report 1, an open task `t2`
+  naming `concorde-8e` and a closed task `t3`
+- WHEN Claude Code runs `concorde task main-hook` in the primary worktree with the `source` `resume`
+- THEN it says the session resumed
+- AND it lists `t1` with main `concorde-7d` and unanswered report 1, then `t2` with main
+  `concorde-8e`
+- AND it does not list `t3`
+- AND it tells the main agent to call ListAgents before anything else and to follow "When your
+  session name changed" for a former name
+- AND with the `source` `compact` it says the session was compacted
+- BUT run in a task worktree it prints nothing
+- AND with no task it prints nothing either, and exits with status 0
+
+This illustrates [the hook's list](requirements.md#req.tasks.main-hook-lists).
+
+### scenario.tasks.main-hook-failure — The session-start hook fails in one line
+
+- GIVEN a task whose record cannot be read, or a directory outside any Git repository
+- WHEN Claude Code runs `concorde task main-hook` there
+- THEN it prints one line saying it could not list the tasks not ended, with the reason
+- AND it exits with status 0
+
+This illustrates [never failing a start](requirements.md#req.tasks.main-hook-never-fails).
+
 ### scenario.tasks.wait-rebound — A task session waits for the main agent to rebind the task
 
 - GIVEN a task whose record names `concorde-7d`, a session that no longer exists

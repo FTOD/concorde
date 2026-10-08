@@ -38,7 +38,7 @@ is called with and answers:
 ```concorde-contract
 {
   "id": "contract.distribution.part-registration",
-  "version": 5,
+  "version": 6,
   "schema": {
     "type": "object",
     "additionalProperties": false,
@@ -105,6 +105,20 @@ is called with and answers:
           "defaults": {"type": "object", "additionalProperties": {"type": "string"}},
           "gitignore": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
           "permissions": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+          "hooks": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["event", "matcher", "command", "timeout"],
+              "properties": {
+                "event": {"type": "string", "pattern": "^[A-Z][A-Za-z]*$"},
+                "matcher": {"type": "string"},
+                "command": {"type": "string", "pattern": "^[a-z][a-z-]*( [a-z][a-z0-9-]*)*$"},
+                "timeout": {"type": "integer", "minimum": 1}
+              }
+            }
+          },
           "programs": {"type": "array", "uniqueItems": true, "items": {"enum": ["d2", "pi-runtime"]}},
           "python_dependencies": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
           "prepare": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/entry"}]},
@@ -119,7 +133,7 @@ is called with and answers:
       "section": {"oneOf": [{"type": "null"}, {"type": "string", "pattern": "^generated/[a-z0-9_./-]+\\.md$"}]}
     }
   },
-  "semantics": "The registration of one part, the file registration.json of its directory of src/concorde/. part is its installer name and module the top-level Module the part is made of; the part carries the version of the package it was built from, the same for every part, which concorde.json names. depends_on names the parts it depends on; the installer installs them with it, and no other part is required for it to work. loads names the part's modules that register what its code provides when they load (typed value types, trace roots, Operation and command definitions, workflows), which Distribution imports for every installed part before it routes a command of a part, answers an MCP tool or renders the build. commands are the concorde subcommands it adds, each routed to its entry, which prints its own output or, with output envelope, answers Spec core's shared envelope for concorde to print. mcp_tools are the tools the project MCP server presents for it, each answered by its entry in a fresh process of the primary worktree's concorde, or of the session's own worktree's when worktree is session, under the protocol of contract.distribution.mcp-call and contract.distribution.mcp-answer; long_work allows it to take locks without waiting and become the work it starts, handing them on; threaded serves its calls on a thread of their own, for calls that wait; requires names parts without which the tool is not presented. mcp_definitions names the mapping from each of its tool names to its description and inputSchema, and mcp_instructions the sentence it adds to the server's instructions. typed_types lists the typed value types its code registers. guidance names the part's guidance sections, or is null when it has none: skill its section of the project skill, task_session its section of the task-session prompt and claude_md its section of the CLAUDE.md block, each the build-relative path of a rendered section, generated/<path> rendered from prompts/<path>, or null when the part contributes no section of that kind; Distribution composes each kind from the sections of a set of parts, Coordination's first and the others in the order of the parts table. renders names the entry through which the build renders the part's own outputs, such as the workflow part's Claude Code workflows. install lists what the installer places for it: files names, relative to the package and to the Framework copy alike, the files the part ships beside its code directory src/concorde/<directory>/, which is always shipped, a path ending with / naming a whole directory, such as the spec part's protocol/ or the worker harness's scripts/available_models.py; defaults the Concorde-owned defaults written where absent, by project path; gitignore its .gitignore lines; permissions the Claude Code permission rules a placed workflow needs, added only when a workflow is placed; programs the programs it needs placed, d2 or pi-runtime; python_dependencies the runtime dependencies of the package's pyproject.toml its code imports, which the installer places, from uv.lock, only where an installed part names one; prepare names the service deciding, before any write, the files it places or refusing the install, and bind the service binding the installed files after the receipt. idle_check names the function reporting the part's work still running in the project, as a list of descriptions, or null when it has none; after_update the function reporting the part's open tasks for the update result's open_tasks, each {id, branch, worktree}, or null. An idle_check or after_update entry that raises or answers anything else is refused with part_failed. Every entry is <module>:<attribute> relative to the part's own package. A behaviour or field change increments the version.",
+  "semantics": "The registration of one part, the file registration.json of its directory of src/concorde/. part is its installer name and module the top-level Module the part is made of; the part carries the version of the package it was built from, the same for every part, which concorde.json names. depends_on names the parts it depends on; the installer installs them with it, and no other part is required for it to work. loads names the part's modules that register what its code provides when they load (typed value types, trace roots, Operation and command definitions, workflows), which Distribution imports for every installed part before it routes a command of a part, answers an MCP tool or renders the build. commands are the concorde subcommands it adds, each routed to its entry, which prints its own output or, with output envelope, answers Spec core's shared envelope for concorde to print. mcp_tools are the tools the project MCP server presents for it, each answered by its entry in a fresh process of the primary worktree's concorde, or of the session's own worktree's when worktree is session, under the protocol of contract.distribution.mcp-call and contract.distribution.mcp-answer; long_work allows it to take locks without waiting and become the work it starts, handing them on; threaded serves its calls on a thread of their own, for calls that wait; requires names parts without which the tool is not presented. mcp_definitions names the mapping from each of its tool names to its description and inputSchema, and mcp_instructions the sentence it adds to the server's instructions. typed_types lists the typed value types its code registers. guidance names the part's guidance sections, or is null when it has none: skill its section of the project skill, task_session its section of the task-session prompt and claude_md its section of the CLAUDE.md block, each the build-relative path of a rendered section, generated/<path> rendered from prompts/<path>, or null when the part contributes no section of that kind; Distribution composes each kind from the sections of a set of parts, Coordination's first and the others in the order of the parts table. renders names the entry through which the build renders the part's own outputs, such as the workflow part's Claude Code workflows. install lists what the installer places for it: files names, relative to the package and to the Framework copy alike, the files the part ships beside its code directory src/concorde/<directory>/, which is always shipped, a path ending with / naming a whole directory, such as the spec part's protocol/ or the worker harness's scripts/available_models.py; defaults the Concorde-owned defaults written where absent, by project path; gitignore its .gitignore lines; permissions the Claude Code permission rules a placed workflow needs, added only when a workflow is placed; hooks, the one optional field, read as empty when absent, the Claude Code hooks the installer adds to .claude/settings.json, each with its hook event, its matcher, the arguments of the project's concorde command it runs and its time limit in seconds; programs the programs it needs placed, d2 or pi-runtime; python_dependencies the runtime dependencies of the package's pyproject.toml its code imports, which the installer places, from uv.lock, only where an installed part names one; prepare names the service deciding, before any write, the files it places or refusing the install, and bind the service binding the installed files after the receipt. idle_check names the function reporting the part's work still running in the project, as a list of descriptions, or null when it has none; after_update the function reporting the part's open tasks for the update result's open_tasks, each {id, branch, worktree}, or null. An idle_check or after_update entry that raises or answers anything else is refused with part_failed. Every entry is <module>:<attribute> relative to the part's own package. A behaviour or field change increments the version.",
   "example": {
     "part": "coordination",
     "module": "module.coordination",
@@ -145,6 +159,7 @@ is called with and answers:
       "defaults": {},
       "gitignore": [".concorde/tasks/", ".concorde/history/", ".concorde/workspace.json", ".claude/worktrees/"],
       "permissions": [],
+      "hooks": [{"event": "SessionStart", "matcher": "startup|resume|compact", "command": "task main-hook", "timeout": 20}],
       "programs": [],
       "python_dependencies": [],
       "prepare": null,
@@ -599,7 +614,7 @@ and only then, the printed result adds `binding_error`. The receipt file never h
 ```concorde-contract
 {
   "id": "contract.distribution.install-result",
-  "version": 3,
+  "version": 4,
   "schema": {
     "type": "object",
     "required": [
@@ -617,7 +632,8 @@ and only then, the printed result adds `binding_error`. The receipt file never h
       "files",
       "defaults",
       "amended",
-      "permissions"
+      "permissions",
+      "hooks"
     ],
     "additionalProperties": false,
     "properties": {
@@ -691,13 +707,26 @@ and only then, the printed result adds `binding_error`. The receipt file never h
       "defaults": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
       "amended": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
       "permissions": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+      "hooks": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": ["event", "matcher", "command"],
+          "additionalProperties": false,
+          "properties": {
+            "event": {"type": "string", "minLength": 1},
+            "matcher": {"type": "string"},
+            "command": {"type": "string", "minLength": 1}
+          }
+        }
+      },
       "binding_error": {
         "type": "object",
         "required": ["code", "message", "reason", "location", "remediation", "causes"]
       }
     }
   },
-  "semantics": "The result of a successful install, equal to the receipt .concorde/install.json it wrote except for binding_error. version is the installed package's version from concorde.json; parts names every installed part, the parts asked for with every part they depend on and Distribution, each mapped to the version it carries, which is the package's version for every part; source the absolute path of the Concorde checkout installed from, which concorde update installs from again; mode normal, or develop for a develop install; source_commit the commit installed, the develop source check's commit in a develop install and otherwise the checkout's HEAD, or null outside a Git checkout. framework and command are where the Framework runtime and the command lie. python names Concorde's own environment: its path, the Python requirement concorde.json names under runtime.python, the interpreter uv chose (base, an absolute path) and that interpreter's version. dependencies is null when the install left Concorde's Python dependencies out, and otherwise names the requirements file exported from the package's uv.lock, the SHA-256 of that lock and the number of packages installed. dependencies is also null when no installed part needs a Python dependency. tools holds d2 when the pinned d2 is placed (its release, platform key, the archive's pinned SHA-256 and the program's path), which happens only where the spec part is installed, and pi-runtime when the pi runtime is placed (the package, its locked version, the SHA-256 of the lockfile and its folder), only where the worker harness part is; a tool left out has no key. pi_runtime is false when the install was made with --without-pi-runtime, a choice concorde update keeps. files lists, sorted, every file Concorde owns in the project, a default an earlier install wrote included; defaults lists, sorted, those of them that are Concorde-owned defaults, which hold the project's own data: the defaults of the installed parts and every default an earlier receipt recorded that is still in place, whether or not this install's parts or this package still declare it, so that no later install removes it; amended lists the project's own files the installer only amends (.gitignore, CLAUDE.md, .mcp.json and, once written, .claude/settings.json); permissions lists the permission rules of .claude/settings.json the installer added and owns. binding_error is present only when Spec core refused to bind the installed files after the receipt was written: it is Spec core's error record (contract.spec.error) and the install has still succeeded. A behaviour or field change increments the version.",
+  "semantics": "The result of a successful install, equal to the receipt .concorde/install.json it wrote except for binding_error. version is the installed package's version from concorde.json; parts names every installed part, the parts asked for with every part they depend on and Distribution, each mapped to the version it carries, which is the package's version for every part; source the absolute path of the Concorde checkout installed from, which concorde update installs from again; mode normal, or develop for a develop install; source_commit the commit installed, the develop source check's commit in a develop install and otherwise the checkout's HEAD, or null outside a Git checkout. framework and command are where the Framework runtime and the command lie. python names Concorde's own environment: its path, the Python requirement concorde.json names under runtime.python, the interpreter uv chose (base, an absolute path) and that interpreter's version. dependencies is null when the install left Concorde's Python dependencies out, and otherwise names the requirements file exported from the package's uv.lock, the SHA-256 of that lock and the number of packages installed. dependencies is also null when no installed part needs a Python dependency. tools holds d2 when the pinned d2 is placed (its release, platform key, the archive's pinned SHA-256 and the program's path), which happens only where the spec part is installed, and pi-runtime when the pi runtime is placed (the package, its locked version, the SHA-256 of the lockfile and its folder), only where the worker harness part is; a tool left out has no key. pi_runtime is false when the install was made with --without-pi-runtime, a choice concorde update keeps. files lists, sorted, every file Concorde owns in the project, a default an earlier install wrote included; defaults lists, sorted, those of them that are Concorde-owned defaults, which hold the project's own data: the defaults of the installed parts and every default an earlier receipt recorded that is still in place, whether or not this install's parts or this package still declare it, so that no later install removes it; amended lists the project's own files the installer only amends (.gitignore, CLAUDE.md, .mcp.json and, once written, .claude/settings.json); permissions lists the permission rules of .claude/settings.json the installer added and owns; hooks lists the hooks of .claude/settings.json the installer owns, those the installed parts register, each by its event, its matcher and its command line, \"$CLAUDE_PROJECT_DIR\"/.concorde/bin/concorde followed by the registered arguments. binding_error is present only when Spec core refused to bind the installed files after the receipt was written: it is Spec core's error record (contract.spec.error) and the install has still succeeded. A behaviour or field change increments the version.",
   "example": {
     "version": "9.0.0",
     "parts": {
@@ -745,7 +774,8 @@ and only then, the printed result adds `binding_error`. The receipt file never h
     "files": [".claude/skills/concorde/SKILL.md", ".claude/workflows/concorde-brownfield.js", ".concorde/bin/concorde", ".concorde/issues/.gitignore"],
     "defaults": [".concorde/issues/.gitignore"],
     "amended": [".gitignore", "CLAUDE.md", ".mcp.json", ".claude/settings.json"],
-    "permissions": ["Workflow(concorde-brownfield)", "mcp__concorde__workflow_step", "Bash(.concorde/bin/concorde workflow report:*)"]
+    "permissions": ["Workflow(concorde-brownfield)", "mcp__concorde__workflow_step", "Bash(.concorde/bin/concorde workflow report:*)"],
+    "hooks": [{"event": "SessionStart", "matcher": "startup|resume|compact", "command": "\"$CLAUDE_PROJECT_DIR\"/.concorde/bin/concorde task main-hook"}]
   }
 }
 ```

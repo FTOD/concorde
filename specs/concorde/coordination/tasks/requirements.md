@@ -781,6 +781,25 @@ state among those `--state` names, and the main agent's session `--main` names.
 A main agent whose session name changed lists with both the tasks it must rebind, those not ended
 that still name its former name.
 
+### req.tasks.main-hook-lists — The session-start hook lists the tasks not ended
+
+In the primary worktree, `concorde task main-hook` SHALL print every task not ended, read from the
+current tasks' records alone, with the main agent's session its record names and the numbers of its
+unanswered reports, and print nothing outside the primary worktree or when no task is unended.
+
+A main agent learns of its tasks from this list after a restart, a resume or a compaction. It
+compares the names with the one ListAgents reports. The history holds only ended tasks, and
+deriving a state needs Git, so the hook reads neither and stays fast. Task sessions and workers may
+load the same settings in a task worktree. The hook is the main agent's alone.
+
+### req.tasks.main-hook-never-fails — The session-start hook never fails a session's start
+
+`concorde task main-hook` SHALL exit with status 0 whatever happens, printing one line that names
+the failure and the listing to run instead when it cannot list the tasks.
+
+A hook that fails would put an error in front of the main agent at every start and say nothing of
+its tasks. One line keeps the start working and still points at the tasks.
+
 ### req.tasks.old-records-read — A record written before its main is read with one
 
 Tasks SHALL read a task record written before the current version by its `schema_version`:

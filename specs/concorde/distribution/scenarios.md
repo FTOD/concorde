@@ -337,6 +337,31 @@ This illustrates [refusing a part the package does not build](requirements.md#re
 - AND the missing workflow rules are added
 - AND the rule no longer shipped is removed
 
+### scenario.distribution.install-hooks — The installer adds and removes only its own hooks
+
+- GIVEN a project whose `.claude/settings.json` has its own `SessionStart` hook
+- WHEN the installer installs the coordination part
+- THEN `.claude/settings.json` keeps the developer's hook
+- AND it gains, after that hook, a `SessionStart` group with the matcher `startup|resume|compact`
+  whose one command hook runs `"$CLAUDE_PROJECT_DIR"/.concorde/bin/concorde task main-hook` with a
+  time limit of 20 seconds
+- AND no `permissions` object is added for it
+- AND the receipt records that hook under `hooks`
+- AND installing again adds no second copy
+- BUT once the receipt records a hook the package no longer ships, the next install removes it and
+  keeps the developer's hook
+
+This illustrates [the installer's own hooks](requirements.md#req.distribution.installer-own-hooks).
+
+### scenario.distribution.install-hooks-invalid — Unusable hooks refuse the install
+
+- GIVEN a project whose `.claude/settings.json` has `hooks` that are no object of lists
+- WHEN the installer runs
+- THEN the install is refused with `settings_invalid`
+- AND the file stays as it was
+
+This illustrates [refusing unusable settings first](requirements.md#req.distribution.installer-settings-checked).
+
 ### scenario.distribution.install-settings-invalid — Unusable settings refuse the install
 
 - GIVEN a project whose `.claude/settings.json` is not a JSON object

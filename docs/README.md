@@ -79,7 +79,8 @@ major impact.
 The task session and the main agent talk in Claude Code messages, but each side records what it
 says first, `concorde task report` and `concorde task answer`, in the task's record and decision
 log, so a lost message loses nothing, and a task's merge or close answers every report still
-unanswered. When the main agent's session name changes, as after a resume, it lists the tasks not
+unanswered. A session-start hook lists the tasks not ended for the main agent when its session
+starts, resumes or is compacted. When the main agent's session name changes, as after a resume, it lists the tasks not
 ended that name its former name with `concorde task list --main <former> --state
 open,active,delivered,merging` and rebinds each with `concorde task rebind`; a task session whose
 message reached nobody waits for that with `concorde task wait <task> --rebound <former>`.

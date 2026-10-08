@@ -265,8 +265,20 @@ how the task ended. So merging a delivered task is also the answer to its delive
 
 A Claude Code session's name does not survive a restart or a resume. After either, the ListAgents
 tool may report another name for your session than the one you gave your tasks with `--main`. A task
-session that messages the old name reaches nobody. Whenever ListAgents reports a name for your
-session other than the one you gave your tasks, follow these steps before anything else:
+session that messages the old name reaches nobody.
+
+Concorde's session-start hook reminds you. When your session starts, resumes or is compacted in the
+primary worktree, the hook adds to your context the tasks not ended. It gives each task's `main`
+and its unanswered reports. When it lists tasks, call ListAgents before anything else and compare
+the name it reports for your session with each task's `main`:
+
+- A task whose `main` is your current name needs nothing.
+- A task whose `main` is another session that ListAgents lists belongs to that main agent. Leave
+  it.
+- A task whose `main` is neither of these names your former name. Nobody receives its reports.
+
+Whenever ListAgents reports a name for your session other than the one you gave your tasks, follow
+these steps before anything else:
 
 1. List the tasks not ended that still name your former name:
    `concorde task list --main <former name> --state open,active,delivered,merging`. A task that

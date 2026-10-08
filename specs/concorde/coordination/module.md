@@ -262,8 +262,9 @@ task.
 ### The children and what they rely on
 
 A task session gets its harness from Task sessions' own
-[session boundary](../glossary.json#concept.session-boundary). The main session gets only the
-guidance Distribution installs. The task level gets its workspace from Tasks.
+[session boundary](../glossary.json#concept.session-boundary). The main session gets the
+guidance Distribution installs and Tasks' session-start hook, which Distribution adds to the
+project's Claude Code settings for Coordination. The task level gets its workspace from Tasks.
 
 ```d2
 coordination: Coordination {

@@ -1541,6 +1541,111 @@ class InstallTests(unittest.TestCase):
                 )
                 self.assertEqual(text, settings.read_text())
 
+    @verifies(
+        "scenario.distribution.install-hooks",
+        "scenario.distribution.install-hooks-invalid",
+    )
+    def test_install_adds_and_removes_only_its_own_hooks(self):
+        package = package_copy(self)
+        project = package.parent / "project"
+        project.mkdir()
+        subprocess.run(["git", "init", "-q", str(project)], check=True)
+        settings = project / ".claude/settings.json"
+        settings.parent.mkdir(parents=True)
+        theirs = {
+            "matcher": "startup",
+            "hooks": [{"type": "command", "command": "echo hello"}],
+        }
+        # A group of an unusual shape, such as a matcher that is no text, stays as it is.
+        odd = {"matcher": ["x"], "hooks": [{"type": "command", "command": "true"}]}
+        settings.write_text(
+            json.dumps({"hooks": {"SessionStart": [theirs], "Stop": [odd]}})
+        )
+        command = '"$CLAUDE_PROJECT_DIR"/.concorde/bin/concorde task main-hook'
+        receipt = install(
+            project,
+            package,
+            part_names=["coordination"],
+            pi_runtime=False,
+            d2=False,
+            dependencies=False,
+        )
+        ours = {
+            "matcher": "startup|resume|compact",
+            "hooks": [{"type": "command", "command": command, "timeout": 20}],
+        }
+        value = json.loads(settings.read_text())
+        self.assertEqual([theirs, ours], value["hooks"]["SessionStart"])
+        self.assertEqual([odd], value["hooks"]["Stop"])
+        # Only the hooks changed, so no permissions object was added for them.
+        self.assertNotIn("permissions", value)
+        self.assertEqual(
+            [
+                {
+                    "event": "SessionStart",
+                    "matcher": "startup|resume|compact",
+                    "command": command,
+                }
+            ],
+            receipt["hooks"],
+        )
+        self.assertIn(".claude/settings.json", receipt["amended"])
+        # Installing again adds no second copy.
+        install(
+            project,
+            package,
+            part_names=["coordination"],
+            pi_runtime=False,
+            d2=False,
+            dependencies=False,
+        )
+        self.assertEqual(
+            [theirs, ours], json.loads(settings.read_text())["hooks"]["SessionStart"]
+        )
+        # A hook Concorde recorded and no longer ships is removed; the developer's stays.
+        retired = {
+            "event": "Stop",
+            "matcher": "",
+            "command": '"$CLAUDE_PROJECT_DIR"/.concorde/bin/concorde task retired',
+        }
+        recorded = json.loads((project / ".concorde/install.json").read_text())
+        recorded["hooks"].append(retired)
+        (project / ".concorde/install.json").write_text(json.dumps(recorded))
+        value = json.loads(settings.read_text())
+        value["hooks"]["Stop"].append(
+            {
+                "matcher": "",
+                "hooks": [{"type": "command", "command": retired["command"]}],
+            }
+        )
+        settings.write_text(json.dumps(value))
+        install(
+            project,
+            package,
+            part_names=["coordination"],
+            pi_runtime=False,
+            d2=False,
+            dependencies=False,
+        )
+        value = json.loads(settings.read_text())
+        self.assertEqual([odd], value["hooks"]["Stop"])
+        self.assertEqual([theirs, ours], value["hooks"]["SessionStart"])
+        # Hooks that are present but no object of lists are refused before any write.
+        for text in ('{"hooks": []}', '{"hooks": {"SessionStart": {}}}'):
+            with self.subTest(settings=text):
+                settings.write_text(text)
+                with self.assertRaises(InstallError) as raised:
+                    install(
+                        project,
+                        package,
+                        part_names=["coordination"],
+                        pi_runtime=False,
+                        d2=False,
+                        dependencies=False,
+                    )
+                self.assertEqual("settings_invalid", raised.exception.code)
+                self.assertEqual(text, settings.read_text())
+
     @verifies("scenario.distribution.install-defaults-kept")
     def test_a_default_stays_once_no_part_or_package_declares_it(self):
         package = package_copy(self)
