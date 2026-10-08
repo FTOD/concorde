@@ -217,6 +217,30 @@ class ValidateTests(unittest.TestCase):
         self.assertNotIn("vendor/lib", unbound)
         self.assertIn("vendor/other", unbound)
 
+    @verifies("scenario.validation.submodule-reference")
+    def test_a_file_at_an_included_submodules_place_is_unbound(self):
+        from tests.concorde.support.spec_project import include_external
+
+        (self.worktree / "src/a/calc.py").write_text(FIXED)
+        include_external(self.worktree, "module.a", "vendor/lib/docs/")
+        git(self.worktree, "add", "-A")
+        git(self.worktree, "commit", "-qm", "include vendor/lib/docs/")
+        place = self.worktree / "vendor/lib"
+        place.parent.mkdir(parents=True)
+        for make in (
+            lambda: place.write_text("not a submodule\n"),
+            lambda: place.symlink_to("../src"),
+        ):
+            make()
+            readiness = self.project.validate()[1]["output"]
+            unbound = [
+                item["ref"]
+                for item in readiness["blocking"]
+                if item["kind"] == "unbound"
+            ]
+            self.assertEqual(["vendor/lib"], unbound, readiness)
+            place.unlink()
+
     @verifies(
         "scenario.validation.submodule-content", "scenario.validation.submodule-commit"
     )
@@ -415,6 +439,42 @@ class ValidateTests(unittest.TestCase):
         self.assertIn("src/a/calc.py", cause["detail"])
         self.assertEqual(
             ["path_unreadable"], [e["ref"] for e in evidence_of(envelope, "git")]
+        )
+
+    def test_a_changed_path_with_no_git_file_mode_fails_the_measurement(self):
+        calc = self.worktree / "src/a/calc.py"
+        calc.unlink()
+        os.mkfifo(calc)
+        status, envelope = self.project.validate()
+        self.assertEqual((status, envelope["status"]), (1, "failed"), envelope)
+        [cause] = envelope["error"]["causes"]
+        self.assertEqual(
+            ("measurement_failed", "path_unreadable"),
+            (envelope["error"]["code"], cause["code"]),
+        )
+        self.assertIn("src/a/calc.py", cause["detail"])
+        self.assertIn("no Git file mode", cause["detail"])
+
+    def test_git_that_cannot_be_started_fails_the_measurement(self):
+        from types import SimpleNamespace
+
+        from concorde.method.validation import measurement
+
+        def refused(*arguments, **options):
+            raise PermissionError(13, "Permission denied", "git")
+
+        with patch.object(measurement, "subprocess", SimpleNamespace(run=refused)):
+            status, envelope = self.project.validate()
+        self.assertEqual((status, envelope["status"]), (1, "failed"), envelope)
+        error = envelope["error"]
+        [cause] = error["causes"]
+        self.assertEqual(
+            ("measurement_failed", "environment", "git_failed"),
+            (error["code"], error["unhandled"]["reason"], cause["code"]),
+        )
+        self.assertIn("could not be started", cause["detail"])
+        self.assertEqual(
+            ["git_failed"], [e["ref"] for e in evidence_of(envelope, "git")]
         )
 
     def test_a_directory_that_is_no_repository_of_its_own_is_measured_by_the_index(
@@ -756,6 +816,53 @@ class IgnoredLeftoverTests(unittest.TestCase):
         )
         self.assertEqual(saved["inputs"]["digest"], readiness["inputs"]["digest"])
         self.assertEqual(status_lines(self.worktree), "")
+
+
+class SelectiveCheckTests(unittest.TestCase):
+    @verifies("scenario.validation.selective-check")
+    def test_a_selective_check_of_an_unselected_module_runs_once_after_the_own_checks(
+        self,
+    ):
+        project = ValidationProject(self)
+        worktree = project.task()
+        (worktree / "checks/selected.py").write_text(
+            "import sys\nprint(sys.argv[1:])\n"
+        )
+        write_checks(
+            worktree,
+            [
+                *read_checks(worktree),
+                {
+                    "id": "check.selective",
+                    "module": "module.b",
+                    "argv": ["{python}", "checks/selected.py", "{tests}"],
+                    "timeout_seconds": 30,
+                    "inputs": ["checks/selected.py"],
+                },
+            ],
+        )
+        (worktree / "src/a/calc.py").write_text(FIXED)
+        readiness = project.validate()[1]["output"]
+        # Without a test that verifies a scenario of the selection, nothing is selected.
+        self.assertEqual(
+            [("check.a", "module.a", "passed")],
+            [(c["check"], c["module"], c["status"]) for c in readiness["checks"]],
+        )
+        self.assertNotIn("module.b", readiness["modules"])
+        self.assertEqual([], readiness["blocking"])
+        (worktree / "src/a/test_answer.py").write_text(
+            "from concorde.spec.verification import verifies\n\n\n"
+            '@verifies("scenario.a.answer")\ndef test_answer():\n    pass\n'
+        )
+        status, envelope = project.validate()
+        readiness = envelope["output"]
+        self.assertEqual((status, envelope["status"]), (0, "ok"), envelope)
+        self.assertEqual(
+            [("check.a", "module.a"), ("check.selective", "module.b")],
+            [(c["check"], c["module"]) for c in readiness["checks"]],
+        )
+        log = workspace_run(project.root, envelope) / readiness["checks"][1]["log"]
+        self.assertIn("src/a/test_answer.py", log.read_text())
 
 
 class BindingTests(unittest.TestCase):

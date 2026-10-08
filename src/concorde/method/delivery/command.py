@@ -365,7 +365,10 @@ def check_branch(ctx: RunContext):
     outcome = require_bound_branch(ctx)
     if isinstance(outcome, Stop):
         return outcome
-    _state(ctx).head = head_commit(ctx.worktree)
+    try:
+        _state(ctx).head = head_commit(ctx.worktree)
+    except MeasurementError as error:
+        return measurement_failed(ctx, error)
     return Continue()
 
 

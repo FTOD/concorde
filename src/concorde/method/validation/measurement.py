@@ -40,9 +40,16 @@ def sha256(data: bytes) -> str:
 
 
 def git(worktree: Path, *arguments: str) -> subprocess.CompletedProcess:
-    return subprocess.run(
-        ["git", *arguments], cwd=worktree, capture_output=True, check=False
-    )
+    """Run Git in ``worktree``; ``git_failed`` when the operating system cannot start it."""
+    try:
+        return subprocess.run(
+            ["git", *arguments], cwd=worktree, capture_output=True, check=False
+        )
+    except OSError as error:
+        raise MeasurementError(
+            "git_failed",
+            f"git {' '.join(arguments)} could not be started in {worktree}: {error}",
+        ) from error
 
 
 def _output(worktree: Path, *arguments: str) -> bytes:
@@ -264,11 +271,20 @@ def _measured(worktree: Path, relative: str, ignored: set[str]) -> dict:
         return {"path": recorded_path(relative), "mode": None, "digest": None}
     try:
         mode, digest = path_mode(worktree, relative), path_digest(worktree, relative)
+        # Neither a file, a symbolic link nor a directory, such as a FIFO, a socket or a
+        # device, has no Git file mode; only a path that is gone is measured as deleted.
+        unsupported = mode is None and os.path.lexists(worktree / relative)
     except OSError as error:
         raise MeasurementError(
             "path_unreadable",
             f"the changed path {recorded_path(relative)} cannot be read: {error}",
         ) from error
+    if unsupported:
+        raise MeasurementError(
+            "path_unreadable",
+            f"the changed path {recorded_path(relative)} is neither a file, a symbolic link "
+            "nor a directory, so it has no Git file mode",
+        )
     return {"path": recorded_path(relative), "mode": mode, "digest": digest}
 
 
