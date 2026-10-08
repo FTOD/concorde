@@ -544,12 +544,23 @@ Because the Spec is the source of truth, every other choice follows from making 
 - A missing promise stops work instead of being inferred from code.
 
 A step needing an unstated promise stops with a [Spec gap](glossary.json#concept.spec-gap) instead.
-Outside a `specify` run and the [Adoption](method/adoption/module.md) route, only these actors
-change Specs:
+A worker changes Specs only where its [grant](glossary.json#concept.grant) makes them writable,
+and its [task type](glossary.json#concept.task-type) fixes that grant. Workers change Specs in
+these flows:
+
+- A `specify` run.
+- The [Adoption](method/adoption/module.md) route.
+- A [`general`](method/general-work/module.md) run whose `--type` names a task type that makes Specs
+  writable, such as `specify`
+  ([req.general-work.grant-by-type](method/general-work/requirements.md#req.general-work.grant-by-type)).
+
+Besides workers, only these actors change Specs:
 
 - The developer.
 - The main agent.
 - A task session within its task's goal.
+
+Only the `code-to-spec` task type derives promises from code, as the route below says.
 
 Concorde's normal flow is therefore Spec first.
 A promise is written, then realized.
