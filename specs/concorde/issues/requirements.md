@@ -209,13 +209,9 @@ The store check reports each of these with its repair
 
 ### req.issues.archive — Misplaced records are moved into their folder
 
-The bookkeeping command's `archive` SHALL move every committed record of the primary worktree whose
-folder does not match its status into the folder its status names, unchanged, in one commit under
-the merge lock.
+The bookkeeping command's `archive` SHALL move every committed record of the primary worktree whose folder does not match its status into the folder its status names, unchanged, in one commit under the merge lock, except an Issue committed in both folders and a record whose path or destination holds a change recovery left, committing nothing when no such record is left to move.
 
-It leaves an Issue committed in both folders and a record holding a change no Issue write made.
-The reason is that moving either would decide what only its inspection can.
-With nothing to move, it commits nothing.
+It leaves those records because moving one would decide what only its inspection can.
 
 ### req.issues.archive-reported — Archive names what it moved and left
 
@@ -244,10 +240,11 @@ Module concerned. Those Issues fit its context however many Issues the project k
 Asked to sort by severity, the bookkeeping command's `list` and the `issue_list` tool SHALL list
 the Issues in this order:
 
-- Most severe first.
-- Among Issues of equal severity, by tier from `decision-needed` down to `suggestion`.
+- Most severe first, with every Issue without a severity after every Issue with one.
+- Among Issues of equal severity, by tier from `decision-needed` down to `suggestion`, with every
+  Issue without a tier after the Issues of that severity with one.
 - Then, in the order they were first reported.
-- Issues without a severity or tier after every one with it.
+- Then, by identity.
 
 Without that request they list the Issues by identity. Every row shows the Issue's severity
 beside its tier. When the Issue's latest report has no severity, the row shows none beside its
