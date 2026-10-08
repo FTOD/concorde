@@ -16,6 +16,19 @@
     "contains": [],
     "uses": [
       {
+        "target": "module.method",
+        "meaning": "#uses-method",
+        "relies_on": [
+          "concept.standard-worker-sequence",
+          "req.method.workspace-specs",
+          "req.method.models-placed-first",
+          "req.method.grant-as-data",
+          "req.method.trace-writes-reported",
+          "req.method.glossary-by-entry",
+          "req.method.gaps-never-repaired"
+        ]
+      },
+      {
         "target": "module.operations",
         "meaning": "#uses-operations"
       },
@@ -45,6 +58,11 @@
         "kind": "document",
         "target": "document.tracing.contracts",
         "reason": "the Framework's error contract, which this Module's errors follow"
+      },
+      {
+        "kind": "document",
+        "target": "document.method.workers",
+        "reason": "the steps and errors of Method's standard worker sequence, which this Module's workers run through and whose error codes its results pass on"
       }
     ],
     "participates": []

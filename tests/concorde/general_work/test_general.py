@@ -141,8 +141,10 @@ class GeneralTests(unittest.TestCase):
             "You may read"
         )[0]
         self.assertIn("(none)", writable)
-        # The reviewer has the instruction, the change, the earlier content and the claim.
+        # The reviewer has the instruction, the workspace's goal, the change, the earlier
+        # content and the claim.
         self.assertIn("Restyle the module document.", review_brief)
+        self.assertIn("The workspace's goal: Fix A.", review_brief)
         self.assertIn(f"- `{SPEC}`: modified", review_brief)
         self.assertIn("+One more sentence.", review_brief)
         self.assertIn(change["before"], review_brief)
@@ -151,6 +153,32 @@ class GeneralTests(unittest.TestCase):
         self.assertNotIn("## This review", brief)
         kinds = {item["kind"] for item in envelope["host_evidence"]}
         self.assertTrue({"instruction", "change", "verdict"} <= kinds, kinds)
+
+    @verifies("scenario.general-work.review-inputs")
+    def test_the_reviewer_reads_the_admitted_inputs_the_worker_read(self):
+        self.bound()
+        self.script(
+            worker={"result": {"output": {"answer": "the earlier answer is 42"}}}
+        )
+        _, earlier = self.run_general(
+            "--type", "understand", "--instruction", "What does A answer?"
+        )
+        self.assertEqual("ok", earlier["status"], earlier)
+        self.script()
+        status, envelope = self.run_general(
+            "--type",
+            "understand",
+            "--instruction",
+            "Summarize the admitted run's answer.",
+            "--input",
+            earlier["run_id"],
+        )
+        self.assertEqual((0, "ok"), (status, envelope["status"]), envelope)
+        worker, reviewer = self.records(envelope)
+        for record in (worker, reviewer):
+            brief = self.brief(record)
+            self.assertIn("## Admitted inputs", brief)
+            self.assertIn("the earlier answer is 42", brief)
 
     @verifies("scenario.general-work.instruction-file")
     def test_an_instruction_file_is_kept_as_it_was(self):

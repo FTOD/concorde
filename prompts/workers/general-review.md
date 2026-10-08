@@ -14,6 +14,9 @@ Any change to the worktree fails the run.
 Below you find these items:
 
 - The caller's instruction.
+- In a bound workspace, the workspace's goal.
+- The material of the earlier runs the caller admitted, when there are any. The worker received the
+  same material. Check a result that uses it against it.
 - The change the host observed in the worktree: a diff, and a folder with the earlier content of
   every modified or deleted file.
 - The worker's answer. It is the worker's claim. Check it against the change. Never take it as a

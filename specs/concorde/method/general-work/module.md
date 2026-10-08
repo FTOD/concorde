@@ -86,8 +86,12 @@ every writable level lowered to read. It therefore reads what the worker could r
 nothing. Its brief gives it this task context:
 
 - The instruction.
-- The observed change: the diff, and the earlier content of each changed file to read.
+- In a bound workspace, the workspace's goal.
+- The material of every admitted input, as the worker's brief carries it.
+- The observed change: the diff, and the earlier content of each modified or deleted file to read.
 - The worker's answer, marked as a claim to check and never as a fact.
+
+The reviewer can therefore check a result against the same goal and inputs the worker worked from.
 
 The reviewer judges whether the result does what the instruction asks. For a rewrite that must
 keep its meaning, it judges whether the new text says what the old text said. It reports every
@@ -183,7 +187,7 @@ no fixed task type ([Operations](../../execution/operations/module.md)).
 | 1 | Read the instruction, keep its copy in the run's trace node and record its digest | Operation | unreadable or empty instruction (`failed`) |
 | 2 | Record the worktree as a Git tree, with a temporary index | Operation, Git | Git fails (`failed`) |
 | 3 | Run the worker through the standard worker sequence for the `--type` grant, writes withheld with `--read-only` | Operation, Spec core, Workers, worker | a code of the worker sequence (`failed`); `blocked` passed on |
-| 4 | Record the worktree again; keep the diff and the earlier content of each changed file | Operation, Git | Git fails (`failed`) |
+| 4 | Record the worktree again; keep the diff and the earlier content of each modified or deleted file | Operation, Git | Git fails (`failed`) |
 | 5 | Run the reviewer through the standard worker sequence for the same type, writes withheld | Operation, Spec core, Workers, reviewer | a code of the worker sequence (`failed`); `blocked` passed on |
 | 6 | Check the review, derive the verdict and return the result | Operation, Execution runner | duplicate finding ids (`failed`) |
 
@@ -208,6 +212,28 @@ uses the prompts `prompts/workers/general.md` for the worker and `prompts/worker
 for the reviewer. It is tested against a fake worker in `tests/concorde/general_work/`.
 
 ## What it relies on
+
+<a id="uses-method"></a>
+
+**Method**, this Module's parent, owns the
+[standard worker sequence](../../glossary.json#concept.standard-worker-sequence) through which
+`general` launch the worker and the reviewer of `general`. General work relies on these promises of Method for that sequence:
+
+- Grants come from the Specs of the worktree the run works on
+  ([req.method.workspace-specs](../requirements.md#req.method.workspace-specs)).
+- Every worker is placed before the first launches
+  ([req.method.models-placed-first](../requirements.md#req.method.models-placed-first)).
+- The worker harness receives the effective grant as data
+  ([req.method.grant-as-data](../requirements.md#req.method.grant-as-data)).
+- A refused trace write below the run is in its result
+  ([req.method.trace-writes-reported](../requirements.md#req.method.trace-writes-reported)).
+- The glossary is audited by entry
+  ([req.method.glossary-by-entry](../requirements.md#req.method.glossary-by-entry)).
+- [Spec gaps](../../glossary.json#concept.spec-gap) and grant denials are never repaired
+  ([req.method.gaps-never-repaired](../requirements.md#req.method.gaps-never-repaired)).
+
+[How an Operation runs its workers](../workers.md) gives the sequence's steps and the
+[errors](../workers.md#errors-of-the-worker-sequence) that General work's results pass on.
 
 <a id="uses-operations"></a>
 

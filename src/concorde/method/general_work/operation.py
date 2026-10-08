@@ -434,8 +434,10 @@ def reviewer_instructions(ctx: RunContext) -> str:
         + "\n\n## This review\n\n"
         + grant_line(ctx, True)
         + f"Bound Modules: {', '.join(ctx.modules)}\n\n"
+        + f"The workspace's goal: {ctx.goal or '(none: an unbound run)'}\n\n"
         + "## The instruction\n\n"
         + fenced(ctx.state["instruction_text"], "markdown")
+        + inputs_material(ctx)
         + "\n## The change\n\n"
         + change_material(ctx)
         + "\n## The worker's answer\n\nThis is the worker's claim. Check it against the "
