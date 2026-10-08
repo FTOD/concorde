@@ -484,7 +484,20 @@ def report(
         for step in (record or {}).get("steps", []):
             if store.starting(step):
                 store.adopt(space, step)
-            if step["run_id"]:
+            if store.starting(step):
+                # No run entered the node. Unless a run of the workspace may still enter it, the
+                # run never started, and the step's node ends lost, as its row says.
+                if step.get("superseded") or not busy(space):
+                    store.end_step(
+                        space,
+                        step,
+                        "lost",
+                        None,
+                        unstarted_link(
+                            space, record["workflow"], step["key"], step["name"]
+                        ),
+                    )
+            elif step["run_id"]:
                 state = run_state(space.store, step["run_id"])
                 lost_now = (
                     lost_link(

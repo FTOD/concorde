@@ -832,6 +832,18 @@ class StepTests(unittest.TestCase):
             ("step_lost", "environment"),
             (result["error"]["code"], result["error"]["unhandled"]["reason"]),
         )
+        # The report ends the step's node lost at once, as its row says.
+        node = trace.read(folder)
+        self.assertEqual(
+            ("lost", "failed", "lost", "step_lost"),
+            (
+                node["content"]["data"]["state"],
+                node["status"],
+                node["outcome"],
+                node["error"]["code"],
+            ),
+        )
+        self.assertIsNotNone(node["ended_at"])
         with self.starter(output=SURVEY_OUTPUT):
             status, value = run_step(self.space, self.request())
         self.assertEqual((0, "finished"), (status, value["state"]))
