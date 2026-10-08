@@ -152,7 +152,7 @@ def envelope_problems(value: Any, *, entry: bool) -> list[tuple[str, str]]:
     if shape:
         problems.append(("CHK.document.schema", f"document: {shape}"))
     if isinstance(document, dict):
-        if "role" not in document or document.get("role") not in {
+        if not isinstance(document.get("role"), str) or document["role"] not in {
             "module",
             "implementation",
         }:
@@ -362,7 +362,11 @@ def module_block_problems(block: Any) -> list[tuple[str, str]]:
             if shape:
                 problems.append(("CHK.document.schema", f"includes entry: {shape}"))
                 continue
-            if item["kind"] not in {"module", "document", "external"}:
+            if not isinstance(item["kind"], str) or item["kind"] not in {
+                "module",
+                "document",
+                "external",
+            }:
                 problems.append(
                     (
                         "CHK.document.schema",
@@ -403,7 +407,10 @@ def module_block_problems(block: Any) -> list[tuple[str, str]]:
                         "participation version must be a positive integer",
                     )
                 )
-            if item["role"] not in {"provided", "required"}:
+            if not isinstance(item["role"], str) or item["role"] not in {
+                "provided",
+                "required",
+            }:
                 problems.append(
                     (
                         "CHK.document.schema",

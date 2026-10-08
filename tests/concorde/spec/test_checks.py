@@ -1119,6 +1119,31 @@ class CheckTests(unittest.TestCase):
         )
         self.assertEqual([], self.project.findings("CHK.registry.mirror"))
 
+    def test_an_unreadable_entry_reading_member_leaves_a_stale_registry_unchanged(self):
+        value = self.project.metadata(self.entry("consumer"))
+        value["module"]["title"] = "Viewer"
+        self.project.save_metadata(self.entry("consumer"), value)
+        entry = self.root / self.entry("consumer")
+        original = entry.read_bytes()
+        before = (self.root / ".concorde/specs.json").read_bytes()
+        for kind, damage in (
+            ("missing", entry.unlink),
+            ("not UTF-8", lambda: entry.write_bytes(b"# Consumer\n\xff\n")),
+        ):
+            with self.subTest(kind):
+                damage()
+                result = registry_command(self.root, write=True)
+                self.assertEqual("failed", result.status)
+                self.assertEqual("missing_source", result.error.code)
+                self.assertEqual(self.entry("consumer"), result.error.path)
+                self.assertEqual("module.consumer", result.error.subject)
+                self.assertEqual(1, len(result.error.causes))
+                self.assertEqual(
+                    before, (self.root / ".concorde/specs.json").read_bytes()
+                )
+                entry.write_bytes(original)
+        self.assertEqual("success", registry_command(self.root, write=True).status)
+
     @verifies("scenario.spec.reject-inconsistent-inventory")
     def test_an_unreadable_registry_yields_no_repository(self):
         path = self.root / ".concorde/specs.json"
