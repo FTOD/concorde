@@ -646,9 +646,15 @@ def check_evidence(
     finding's index, and the document that defines each basis. Locations are rewritten relative
     to the worktree."""
     repository = SpecRepository(ctx.worktree)
-    documents: set[str] = set()
+    # Each reviewed Module's own Spec context: a finding's basis must lie in the context of the
+    # Module it concerns, its documents or its glossary terms, never another reviewed Module's.
+    contexts: dict[str, tuple[set[str], set[str]]] = {}
     for module in modules:
-        documents.update(repository.spec_context(module).paths)
+        context = repository.spec_context(module)
+        contexts[module] = (
+            set(context.paths),
+            {item["entry"]["id"] for item in context.terms},
+        )
     changed = set(state.reviewed) | set(state.named)
     defined: dict[str, str | None] = {}
     unresolved: dict[int, list[dict]] = {}
@@ -664,21 +670,29 @@ def check_evidence(
                 )
             )
         basis = finding["basis"]
-        if is_identity(basis):
-            document = repository.definer(basis)
-        else:
-            document = basis.split("#", 1)[0]
-        if document is None or document not in documents:
-            problems.append(
-                evidence(
-                    "unresolved-basis",
-                    basis,
-                    f"{label} cites {basis}, which the reviewed Modules' Spec context does "
-                    "not define",
+        context = contexts.get(finding["module"])
+        # A finding about a Module not reviewed has no context to judge its basis in.
+        if context is not None:
+            documents, terms = context
+            if basis in terms:
+                # A concept of the context is defined by its glossary entry, whether or not
+                # its explanation lies in a selected document.
+                document = repository.glossary_path
+            elif is_identity(basis):
+                document = repository.definer(basis)
+            else:
+                document = basis.split("#", 1)[0]
+            if document is None or (basis not in terms and document not in documents):
+                problems.append(
+                    evidence(
+                        "unresolved-basis",
+                        basis,
+                        f"{label} cites {basis}, which the Spec context of "
+                        f"{finding['module']} does not define",
+                    )
                 )
-            )
-        else:
-            defined[basis] = document
+            else:
+                defined[basis] = document
         located = []
         for item in finding["locations"]:
             parsed = issues.location(item)

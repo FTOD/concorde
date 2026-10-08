@@ -23,6 +23,11 @@ from concorde.spec.verification import verifies
 from concorde.method.review_issues import NOT_RECORDED
 from tests.concorde.support.operation_project import OperationProject
 from tests.concorde.support.paths import REPOSITORY_ROOT
+from tests.concorde.support.spec_project import (
+    read_glossary,
+    upsert_concepts,
+    write_glossary,
+)
 
 FIXED = "def add(a, b):\n    return a + b\n"
 FAKE_REVIEWER = Path(__file__).with_name("fake_reviewer.py")
@@ -603,6 +608,61 @@ class CodeReviewTests(unittest.TestCase):
                 (item["module"], item["outcome"])
                 for item in envelope["output"]["modules"]
             ],
+        )
+
+    def test_a_change_review_judges_each_finding_against_its_own_module_context(self):
+        # Both Modules are reviewed together, but module.b does not use module.a: a finding of
+        # module.b citing only module.a's promise has no basis in module.b's context.
+        b = finding(
+            "scenario.a.answer", module="module.b", locations=["src/bmod/secret.py"]
+        )
+        _, envelope = self.review(
+            {"module.a": reviewer(finding(), b)}, modules=("module.a", "module.b")
+        )
+        [problem] = self.unresolved(envelope, "module.b")
+        self.assertEqual(
+            ("unresolved-basis", "scenario.a.answer"), (problem["kind"], problem["ref"])
+        )
+        self.assertEqual([], self.module_entry(envelope, "module.b")["findings"])
+        [reported] = self.module_entry(envelope, "module.a")["findings"]
+        self.assertEqual("scenario.a.answer", reported["basis"])
+
+    def test_a_concept_of_the_context_is_a_basis_without_an_explanation(self):
+        upsert_concepts(
+            self.worktree,
+            "specs/a/module.md",
+            [
+                {
+                    "id": "concept.a.sum",
+                    "title": "Sum",
+                    "owner": "module.a",
+                    "definition": "The value add returns.",
+                }
+            ],
+        )
+        glossary = read_glossary(self.worktree)
+        for entry in glossary["concepts"]:
+            entry.pop("explanation")
+        write_glossary(self.worktree, glossary)
+        entry = self.worktree / "specs/a/module.md"
+        entry.write_text(
+            entry.read_text()
+            + "\nThe [sum](../glossary.json#concept.a.sum) is what add returns.\n"
+        )
+        _, envelope = self.change(
+            finding("concept.a.sum"), finding("concept.a.nothing", title="unknown")
+        )
+        [problem] = self.unresolved(envelope)
+        self.assertEqual("concept.a.nothing", problem["ref"])
+        [reported] = self.module_entry(envelope)["findings"]
+        self.assertEqual("concept.a.sum", reported["basis"])
+        [report] = self.issues()[reported["issue"]]["reports"]
+        self.assertIn(
+            {
+                "path": "specs/glossary.json",
+                "description": "defines concept.a.sum, the finding's basis",
+            },
+            report["report"]["evidence"],
         )
 
     @verifies("scenario.code-review.module-review-base")
