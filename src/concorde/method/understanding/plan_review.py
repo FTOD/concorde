@@ -414,12 +414,15 @@ def unresolved_bases(
     every ``violation`` without one.
 
     A basis is a stable identity whose defining document lies in the Spec context of a bound
-    Module, or a document path of that context, optionally followed by ``#anchor``.
+    Module, a concept whose glossary entry that context selects, wherever its explanation lies,
+    or a document path of that context, optionally followed by ``#anchor``.
     """
     repository = SpecRepository(worktree)
     documents: set[str] = set()
+    concepts: set[str] = set()
     for module in modules:
         documents.update(repository.spec_context(module).paths)
+        concepts.update(repository.terms(module))
     problems = []
     for finding in findings:
         basis = finding["basis"]
@@ -429,7 +432,9 @@ def unresolved_bases(
             continue
         if is_identity(basis):
             document = repository.definer(basis)
-            known = document is not None and document in documents
+            known = basis in concepts or (
+                document is not None and document in documents
+            )
         else:
             known = basis.split("#", 1)[0] in documents
         if not known:

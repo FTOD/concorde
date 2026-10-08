@@ -17,20 +17,30 @@ place a planned file without learning what existing code does.
 ### req.understanding.task-worktree — Assessments describe the run worktree's Specs
 
 The understand [Operation](../../glossary.json#concept.operation) SHALL compute the grant from the
-Specs of the worktree the run starts in, which for a bound run is its workspace.
+Specs of the worktree the run works on.
+
+For a bound run, that worktree is its workspace, uncommitted changes included. For an
+[unbound run](../../glossary.json#concept.unbound-run), it is Execution's
+[unbound checkout](../../glossary.json#concept.unbound-checkout), which holds the committed head of
+the worktree the run starts in. The uncommitted Spec edits of that worktree therefore never reach
+the grant, as
+[scenario.understanding.unbound-committed-specs](scenarios.md#scenario.understanding.unbound-committed-specs)
+shows.
 
 ## Answers
 
 ### req.understanding.gaps-reported — Missing promises are gaps
 
 An assessment SHALL report as a [Spec gap](../../glossary.json#concept.spec-gap), rather than as a
-fact inferred from code or file names, every promise that meets both conditions:
+fact inferred from code or file names, every promise that meets all these conditions:
 
 - The stated goal relies on the promise.
 - A bound [Module](../../glossary.json#concept.module)'s Spec does not state the promise.
+- The promise is not a new promise of the goal's change for which the Specs already say where it
+  belongs.
 
-For a goal that changes the Modules, when the Specs say where a new promise the change adds belongs,
-that promise is not a gap. It becomes a `specify` step of the plan.
+A goal that changes the Modules adds new promises. When the Specs say where such a promise belongs,
+the assessment's plan writes it there in a `specify` step.
 
 ### req.understanding.insufficient-no-plan — No plan on an insufficient Spec
 
@@ -104,8 +114,7 @@ A worktree without a binding has no goal to review the plan against, so the run 
 ### req.understanding.plan-review-kept — The reviewed plan is kept
 
 The `plan_review` Operation SHALL keep an exact copy of the plan file it reviews in the run's
-[trace node](../../glossary.json#concept.trace-node) and return that copy's path and the digest of
-its bytes in the report.
+[trace node](../../glossary.json#concept.trace-node).
 
 Before any worker launches, a plan file with any of these problems ends the run `failed` with
 `plan_unreadable`:
@@ -114,6 +123,12 @@ Before any worker launches, a plan file with any of these problems ends the run 
 - It is unreadable.
 - It is not UTF-8 text.
 - It is empty.
+
+### req.understanding.plan-review-copy-reported — The report names the kept copy
+
+The `plan_review` Operation SHALL return in its report the path of the copy that
+[req.understanding.plan-review-kept](#req.understanding.plan-review-kept) keeps and the digest of
+that copy's bytes, which are the bytes the reviewer reviewed.
 
 ### req.understanding.plan-review-read-only — The reviewer reads Specs and code and writes nothing
 
@@ -156,6 +171,8 @@ conditions holds:
 When a finding's basis does not resolve in the bound Modules'
 [Spec context](../../glossary.json#concept.spec-context) or a `violation` finding has no basis, the
 `plan_review` Operation SHALL end the run `failed` with `unresolved_basis`.
+
+A concept resolves when the Spec context selects its glossary entry, wherever its explanation lies.
 
 ### req.understanding.plan-review-verdict — The verdict follows the findings
 
