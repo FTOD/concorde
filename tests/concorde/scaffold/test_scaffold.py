@@ -8,17 +8,28 @@ import os
 from pathlib import Path
 from unittest.mock import patch
 
-from concorde.method.scaffold.command import SCAFFOLD_RECORD_SCHEMA
+from concorde.method.scaffold.command import SCAFFOLD_RECORD_SCHEMA, parent_reading
 from concorde.spec.registry import registry_command
 from concorde.spec.validation import validate_repository
 from concorde.spec.verification import verifies
-from tests.concorde.support.adoption_case import PROPOSAL, AdoptionCase, contract
+from tests.concorde.support.adoption_case import (
+    PROPOSAL,
+    AdoptionCase,
+    contract,
+    register_db,
+)
 from tests.concorde.support.brownfield_project import commit, git
 
 
 def sections(text: str) -> list[str]:
     """The titles of an entry's level-2 sections, in order."""
     return [line[3:].strip() for line in text.splitlines() if line.startswith("## ")]
+
+
+def errors(root: Path) -> list[str]:
+    return [
+        f.message for f in validate_repository(root).findings if f.strictness == "error"
+    ]
 
 
 class ScaffoldTests(AdoptionCase):
@@ -103,11 +114,9 @@ class ScaffoldTests(AdoptionCase):
             [], [f.message for f in report.findings if f.strictness == "error"]
         )
 
-    @verifies("scenario.scaffold.vendored-external")
-    def test_vendored_code_becomes_external_material_of_its_user(self):
-        worktree = self.open()
-        # Vendored code is never also a child's entry (surveyed before the scaffold, since a
-        # survey after it needs a fresh workspace).
+    @verifies("scenario.scaffold.vendored-child-entry")
+    def test_vendored_code_that_is_a_childs_entry_fails_the_survey(self):
+        self.open()
         overlapping = json.loads(json.dumps(PROPOSAL))
         overlapping["externals"] = [
             {"path": "src/checkout/", "used_by": "module.checkout", "reason": "r"}
@@ -115,6 +124,10 @@ class ScaffoldTests(AdoptionCase):
         _, envelope = self.survey(overlapping)
         self.assertEqual("inconsistent_proposal", envelope["error"]["code"])
         self.assertIn("overlaps a child's entries", envelope["error"]["detail"])
+
+    @verifies("scenario.scaffold.vendored-external")
+    def test_vendored_code_becomes_external_material_of_its_user(self):
+        worktree = self.open()
         vendored = json.loads(json.dumps(PROPOSAL))
         vendored["externals"] = [
             {
@@ -157,7 +170,7 @@ class ScaffoldTests(AdoptionCase):
             [], [f.message for f in report.findings if f.strictness == "error"]
         )
 
-    @verifies("scenario.scaffold.vendored-external")
+    @verifies("scenario.scaffold.vendored-inside-child")
     def test_vendored_code_inside_a_child_narrows_that_child(self):
         worktree = self.open()
         vendored = json.loads(json.dumps(PROPOSAL))
@@ -397,7 +410,7 @@ class ScaffoldTests(AdoptionCase):
         )
         self.assertFalse((worktree / "specs/project/checkout").exists())
 
-    @verifies("scenario.scaffold.write-failed")
+    @verifies("scenario.scaffold.restore-failed")
     def test_a_file_that_could_not_be_restored_is_named(self):
         worktree = self.open()
         broken = json.loads(json.dumps(PROPOSAL))
@@ -455,7 +468,10 @@ class ScaffoldTests(AdoptionCase):
                 self.assertEqual("failed", envelope["status"])
                 self.assertEqual("invalid_request", envelope["error"]["code"])
         self.assertFalse((worktree / "specs/project/checkout").exists())
-        # A survey of another task is refused before the run begins.
+
+    @verifies("scenario.scaffold.foreign-input")
+    def test_a_survey_of_no_workspace_is_refused_before_the_scaffold(self):
+        worktree = self.open()
         _, foreign = self.survey(task=False)
         _status, envelope = self.project.run(
             "scaffold", "--task", "adopt", "--input", foreign["run_id"]
@@ -464,9 +480,10 @@ class ScaffoldTests(AdoptionCase):
         self.assertIn(
             "input_not_admissible", [item["ref"] for item in envelope["host_evidence"]]
         )
+        self.assertFalse((worktree / "specs/project/checkout").exists())
 
     @verifies("scenario.scaffold.unbound")
-    def test_the_scaffold_is_an_execution_command_of_a_bound_workspace(self):
+    def test_the_scaffold_is_refused_without_a_workspace_binding(self):
         _, survey = self.survey(task=False)
         status, envelope = self.project.run("scaffold", "--input", survey["run_id"])
         self.assertEqual((1, "failed"), (status, envelope["status"]))
@@ -477,6 +494,9 @@ class ScaffoldTests(AdoptionCase):
         self.assertIn("Command scaffold", error["actor"])
         self.assertEqual("binding_required", error["causes"][0]["code"])
         self.assertFalse((self.project.root / "specs/project/checkout").exists())
+
+    @verifies("scenario.scaffold.bound")
+    def test_the_scaffold_runs_in_a_bound_workspace(self):
         self.open()
         _, survey = self.survey()
         status, envelope = self.project.run(
@@ -505,3 +525,210 @@ class ScaffoldTests(AdoptionCase):
             {"kind": "trace", "ref": envelope["run_id"], "detail": folder.as_posix()},
             envelope["host_evidence"][0],
         )
+
+    # --- parent entries, anchors, concurrent edits, stale and unloadable workspaces ------------
+
+    @verifies("scenario.scaffold.no-parts-section")
+    def test_a_parent_entry_without_a_parts_section_gets_one(self):
+        root = self.project.root
+        entry = root / "specs/project/module.md"
+        text = entry.read_text()
+        heading = text.index("## Parts\n")
+        realizations = text.index('<a id="realization.shop.existing-files">')
+        entry.write_text(text[:heading] + "## Code\n\n" + text[realizations:])
+        commit(root, "explain the code without a Parts section")
+        before = entry.read_text()
+        worktree = self.open()
+        _, survey = self.survey()
+        status, envelope = self.project.run(
+            "scaffold", "--task", "adopt", "--input", survey["run_id"]
+        )
+        self.assertEqual(0, status, envelope)
+        after = (worktree / "specs/project/module.md").read_text()
+        self.assertEqual(
+            ["Purpose", "Not yet specified", "Code", "Parts"], sections(after)
+        )
+        kept, parts = after.split("\n## Parts\n", 1)
+        self.assertEqual(before.rstrip("\n"), kept.rstrip("\n"))
+        self.assertIn('<a id="contains-checkout"></a>', parts)
+        self.assertIn('<a id="contains-inventory"></a>', parts)
+        self.assertEqual([], errors(worktree))
+
+    @verifies("scenario.scaffold.distinct-anchors")
+    def test_distinct_identities_get_distinct_anchors(self):
+        worktree = self.open()
+        colliding = json.loads(json.dumps(PROPOSAL))
+        colliding["children"] = [
+            {
+                "id": "module.checkout",
+                "title": "Checkout",
+                "purpose": "Checkout turns a basket into one order.",
+                "entries": ["src/checkout/"],
+                "uses": [
+                    {"target": "module.stock-hold", "reason": "it holds stock."},
+                    {"target": "module.stock.hold", "reason": "it connects."},
+                ],
+            },
+            {
+                "id": "module.stock-hold",
+                "title": "Stock hold",
+                "purpose": "Stock hold holds stock for baskets.",
+                "entries": ["src/inventory/"],
+                "uses": [],
+            },
+            {
+                "id": "module.stock.hold",
+                "title": "Connection",
+                "purpose": "Connection connects to the store.",
+                "entries": ["src/db.py"],
+                "uses": [],
+            },
+        ]
+        colliding["checks"] = []
+        status, survey = self.survey(colliding)
+        self.assertEqual(0, status, survey)
+        status, envelope = self.project.run(
+            "scaffold", "--task", "adopt", "--input", survey["run_id"]
+        )
+        self.assertEqual(0, status, envelope)
+        parent = (worktree / "specs/project/module.md").read_text()
+        self.assertIn('<a id="contains-stock-hold"></a>', parent)
+        self.assertIn('<a id="contains-stock.hold"></a>', parent)
+        root = json.loads((worktree / "specs/project/module.md.json").read_text())
+        self.assertEqual(
+            {
+                "module.stock-hold": "#contains-stock-hold",
+                "module.stock.hold": "#contains-stock.hold",
+            },
+            {
+                item["target"]: item["meaning"]
+                for item in root["module"]["contains"]
+                if item["target"].startswith("module.stock")
+            },
+        )
+        checkout = worktree / "specs/project/checkout/module.md"
+        self.assertIn('<a id="uses-stock-hold"></a>', checkout.read_text())
+        self.assertIn('<a id="uses-stock.hold"></a>', checkout.read_text())
+        self.assertEqual(
+            ["#uses-stock-hold", "#uses-stock.hold"],
+            [
+                item["meaning"]
+                for item in json.loads(Path(f"{checkout}.json").read_text())["module"][
+                    "uses"
+                ]
+            ],
+        )
+        self.assertEqual([], errors(worktree))
+
+    @verifies("scenario.scaffold.concurrent-edit")
+    def test_a_file_changed_after_the_recheck_keeps_its_change(self):
+        worktree = self.open()
+        _, survey = self.survey()
+        entry = worktree / "specs/project/module.md"
+        edit = "\nA paragraph another process appended.\n"
+        reading = parent_reading
+
+        def edited_meanwhile(text, children):
+            # Another process appends to the parent's entry after the recheck loaded it and
+            # before the transaction writes it.
+            with entry.open("a") as stream:
+                stream.write(edit)
+            return reading(text, children)
+
+        with patch("concorde.method.scaffold.command.parent_reading", edited_meanwhile):
+            _status, envelope = self.project.run(
+                "scaffold", "--task", "adopt", "--input", survey["run_id"]
+            )
+        self.assertEqual("blocked", envelope["status"], envelope)
+        error = envelope["error"]
+        self.assertEqual("stale_proposal", error["code"])
+        self.assertEqual(
+            ["stale_proposal"], [cause["code"] for cause in error["causes"]]
+        )
+        text = entry.read_text()
+        self.assertTrue(text.endswith(edit))
+        self.assertNotIn("contains-checkout", text)
+        self.assertFalse((worktree / "specs/project/checkout").exists())
+        self.assertFalse((worktree / "specs/project/inventory").exists())
+        self.assertEqual(
+            " M specs/project/module.md\n",
+            git(worktree, "status", "--porcelain", "--untracked-files=all"),
+        )
+
+    @verifies("scenario.scaffold.surveyed-module-removed")
+    def test_a_renamed_surveyed_module_is_a_stale_proposal(self):
+        worktree = self.open()
+        _, survey = self.survey()
+        for path in ("specs/project/module.md.json", ".concorde/specs.json"):
+            text = (worktree / path).read_text()
+            (worktree / path).write_text(
+                text.replace('"module.shop"', '"module.store"')
+            )
+        before = git(worktree, "status", "--porcelain", "--untracked-files=all")
+        _status, envelope = self.project.run(
+            "scaffold", "--task", "adopt", "--input", survey["run_id"]
+        )
+        self.assertEqual("blocked", envelope["status"], envelope)
+        error = envelope["error"]
+        self.assertEqual(("command", "stale_proposal"), (error["level"], error["code"]))
+        self.assertEqual(
+            [
+                (
+                    "proposal_mismatch",
+                    "the surveyed Module module.shop is no longer registered",
+                )
+            ],
+            [(cause["code"], cause["detail"]) for cause in error["causes"]],
+        )
+        self.assertEqual(
+            before, git(worktree, "status", "--porcelain", "--untracked-files=all")
+        )
+
+    @verifies("scenario.scaffold.specs-unloadable")
+    def test_specs_that_do_not_load_stop_the_scaffold(self):
+        worktree = self.open()
+        _, survey = self.survey()
+        (worktree / ".concorde/specs.json").write_text("{")
+        before = git(worktree, "status", "--porcelain", "--untracked-files=all")
+        _status, envelope = self.project.run(
+            "scaffold", "--task", "adopt", "--input", survey["run_id"]
+        )
+        self.assertEqual("failed", envelope["status"], envelope)
+        error = envelope["error"]
+        self.assertEqual(
+            ("command", "specs_unloadable"), (error["level"], error["code"])
+        )
+        (cause,) = error["causes"]
+        self.assertEqual(("component", "Spec core"), (cause["level"], cause["actor"]))
+        self.assertEqual(
+            before, git(worktree, "status", "--porcelain", "--untracked-files=all")
+        )
+
+    @verifies("scenario.scaffold.vendored-bound-elsewhere")
+    def test_vendored_code_another_module_binds_is_refused(self):
+        worktree = self.open()
+        vendored = json.loads(json.dumps(PROPOSAL))
+        vendored["externals"] = [
+            {
+                "path": "src/db.py",
+                "used_by": "module.checkout",
+                "reason": "a copy of another project's connection helper",
+            }
+        ]
+        status, survey = self.survey(vendored)
+        self.assertEqual(0, status, survey)
+        register_db(worktree)
+        before = git(worktree, "status", "--porcelain", "--untracked-files=all")
+        _status, envelope = self.project.run(
+            "scaffold", "--task", "adopt", "--input", survey["run_id"]
+        )
+        self.assertEqual("blocked", envelope["status"], envelope)
+        error = envelope["error"]
+        self.assertEqual("stale_proposal", error["code"])
+        (cause,) = error["causes"]
+        self.assertEqual("proposal_mismatch", cause["code"])
+        self.assertIn("external src/db.py is also bound by module.db", cause["detail"])
+        self.assertEqual(
+            before, git(worktree, "status", "--porcelain", "--untracked-files=all")
+        )
+        self.assertFalse((worktree / "specs/project/checkout").exists())

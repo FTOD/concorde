@@ -47,7 +47,11 @@ One scaffold changes the bindings as follows:
 - Each child takes the paths the survey proposed for it.
 - The parent keeps every path no child took.
 
-So no file is bound twice. [Narrowing the parent](#narrowing-the-parent) gives the rule.
+So no file stays bound by both the parent and a child. Two children still share a file when the
+proposal deliberately gave it to both. Vendored code leaves every Module.
+[Narrowing the parent](#narrowing-the-parent) gives the rule, and
+[req.scaffold.parent-narrowed](requirements.md#req.scaffold.parent-narrowed) states it with its
+exceptions.
 
 ```d2 illustrative
 direction: right
@@ -78,7 +82,9 @@ starts in. The runner records it in the [run store](../../glossary.json#concept.
 a workflow takes it as a step. Its result records exactly what it wrote. In a worktree without a
 binding, the runner refuses it with `binding_required`. In that case, it writes nothing. It admits
 exactly one input, an `ok` survey of the same workspace. Before the first step, the runner refuses a
-survey of another workspace, or an unbound one.
+survey of another workspace, or an unbound one. The runner admits no Modules for the scaffold. The
+scaffold's own steps find a surveyed Module that the workspace removed or renamed, which makes the
+proposal stale, and Specs that do not load.
 
 ## What it writes
 
@@ -95,17 +101,29 @@ reading order. It invents nothing:
 The scaffold changes the parent and registry as follows:
 
 - Adds the children to the parent's `contains` with one explaining paragraph each at the end of the
-  parent's `Parts` section. Each paragraph repeats the child's purpose from the survey.
+  parent's `Parts` section. Each paragraph repeats the child's purpose from the survey. When the
+  parent's entry has no `Parts` section, the scaffold adds one at the end of the entry and puts the
+  paragraphs there. It leaves the existing prose unchanged.
 - Removes the children's paths from the parent's realization entries.
 - Adds the registry records.
+
+Each paragraph and each explained `uses` has an anchor that names the Module by its identity after
+`module.`, dots kept, such as `contains-checkout.payment`. So two distinct identities, such as
+`module.a-b` and `module.a.b`, never share an anchor.
 
 Vendored code leaves the parent's realizations too. It never becomes a Module. It becomes an
 `includes` of kind `external` of the Module that uses it. That Module reads it. Nobody describes or
 reviews it as the project's code, as the Protocol treats pinned third-party material. The scaffold
 never configures the proposed checks. A check is a command the host later runs. Before use, the
 developer must accept a command a model chose after reading code nobody vouched for. So the checks
-stay a proposal the workflow reports. Everything is written in one file transaction. Scaffold keeps
-the transaction only if validation finds no new error.
+stay a proposal the workflow reports.
+
+Everything is written in one file transaction. Scaffold keeps the transaction only if validation
+finds no new error. Scaffold computes each new content of an existing file from the bytes its
+recheck loaded and validated. It binds the change to the digest of those bytes. So a file that
+changed since then fails the transaction as stale, and the change made to it is kept. Scaffold
+never computes a change from one read and checks it against a later one. A file it creates must
+still be absent when it is written.
 
 ## Results and errors
 
@@ -121,8 +139,10 @@ contains these:
 When any of these conditions holds, the run is `blocked` with `stale_proposal`:
 
 - The proposal no longer fits the worktree. A child's folder that already exists is such a mismatch.
+  So is a surveyed Module that the workspace removed or renamed. So is a vendored path that a Module
+  other than the surveyed one binds.
 - A file it would create exists.
-- A file changed while it was written.
+- A file changed after its recheck loaded it.
 
 When any of these conditions holds, the run is `failed`:
 
@@ -135,6 +155,13 @@ cause. When the file transaction fails for another reason, such as the operating
 write, the run is `failed` with `write_failed`. When the transaction cannot restore a file it wrote,
 the run also has this status and code. In either case, the result names every file that still holds
 the scaffold's content, to be removed or restored by hand. It says every other file is as before.
+
+Rollback covers only the failures the file transaction observes, as Spec core's
+[file transactions](../../spec-tooling/spec/contracts.md#file-transactions) state. A killed or
+interrupted run restores nothing and produces no report. Each file already renamed into place keeps
+the scaffold's content. Temporary `.concorde-write-` files may remain beside them. Before running
+the scaffold again after a run that was lost or interrupted, inspect the workspace with Git and
+repair it.
 
 A stale proposal is `blocked` because what follows is the
 [main agent](../../glossary.json#concept.main-agent)'s decision: survey again, or undo the change
@@ -182,6 +209,12 @@ alike. It is then bound by no Module. For example, a child bound to `src/checkou
 vendored `src/checkout/payment.py` binds the rest of the directory. When the proposal names the
 child as that file's user, the child includes the vendored file as external material.
 
+The scaffold changes no Module but the surveyed one and its new children. So when another
+registered Module also binds a vendored path, the scaffold refuses before writing. The run is
+`blocked` with `stale_proposal`, and one cause names each such Module with the path. Adoption's
+proposal checks refuse the same proposal in the survey, so only a change made after the survey
+reaches the scaffold.
+
 ## The Scaffold command
 
 <a id="realization.scaffold.command"></a>
@@ -192,9 +225,9 @@ execution command. The command launches no worker:
 | # | Step | Actor | Stops the run when |
 | --- | --- | --- | --- |
 | 1 | Admit exactly one `ok` survey of the same workspace as input | host | none or several, not a survey, or a survey output that breaks its contract (`failed`, `invalid_request`) |
-| 2 | Validate the worktree as a baseline and check the proposal against it again | host, Spec core | the Specs cannot be loaded (`failed`, `specs_unloadable`); the proposal no longer fits, such as a child's folder that already exists (`blocked`, `stale_proposal`) |
-| 3 | Compute every file change: child entries, parent entry, the metadata of every parent document declaring a realization, registry | host | a target file already exists (`blocked`, `stale_proposal`) |
-| 4 | Apply them as one file transaction, kept only if validation finds no new error | host, Spec core | a new error (`failed`, `scaffold_invalid`), nothing kept; a file changed while it was written (`blocked`, `stale_proposal`), nothing kept; a write the operating system refused or a file it could not restore (`failed`, `write_failed`), naming every file not restored |
+| 2 | Validate the worktree as a baseline and check the proposal against it again | host, Spec core | the Specs cannot be loaded (`failed`, `specs_unloadable`); the proposal no longer fits, such as a child's folder that already exists, a surveyed Module no longer registered or a vendored path another Module binds (`blocked`, `stale_proposal`) |
+| 3 | Compute every file change from the bytes step 2 loaded: child entries, parent entry, the metadata of every parent document declaring a realization, registry | host | a target file already exists (`blocked`, `stale_proposal`); a parent document step 2 could not read (`failed`, `specs_unloadable`) |
+| 4 | Apply them as one file transaction, kept only if validation finds no new error | host, Spec core | a new error (`failed`, `scaffold_invalid`), nothing kept; a file changed after step 2 loaded it (`blocked`, `stale_proposal`), nothing kept; a write the operating system refused or a file it could not restore (`failed`, `write_failed`), naming every file not restored |
 | 5 | Return the run result with the scaffold record | host | — |
 
 Its tests, under `tests/concorde/scaffold/`, run a survey and the scaffold in a bound task worktree
@@ -243,8 +276,8 @@ command's name.
   paths and vendored code.
 
 Since the worktree can change after the survey, Scaffold applies the same checks again before
-writing. It relies on a proposal that passes them naming only paths the parent binds and identities
-nobody registered. It computes the parent's and the children's entries again with the same rule,
+writing. It relies on a proposal that passes them naming only paths the parent binds, identities
+nobody registered and vendored paths no other Module binds. It computes the parent's and the children's entries again with the same rule,
 from the worktree as it is then. It does not take the survey's `remaining_entries`.
 
 <a id="uses-spec"></a>

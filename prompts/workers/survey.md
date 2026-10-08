@@ -57,7 +57,9 @@ It has these characteristics:
 
   Vendored code is never a child. It is never another child's entry. It becomes external material
   its user reads. Nobody describes or reviews it as the project's code. The project's own code
-  that wraps or patches it stays the project's.
+  that wraps or patches it stays the project's. Never propose a path that another registered Module
+  also binds as vendored code. The host refuses it, since the scaffold changes only the surveyed
+  Module and its children.
 - `checks`: configured checks, each with these fields:
   - An `id` `check.<module name>.<name>`.
   - The `module` it checks (the surveyed Module or a child).
