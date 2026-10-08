@@ -819,6 +819,63 @@ class TaskStoreTests(unittest.TestCase):
             (1, "invalid_input"), self.refusal("list", "--state", "open,finished")
         )
 
+    def main_hook(self, data: dict | None, cwd=None) -> tuple[int, str]:
+        output = io.StringIO()
+        stream = io.StringIO("" if data is None else json.dumps(data))
+        with contextlib.redirect_stdout(output):
+            status = cli.main_hook(cwd or self.root, stream)
+        return status, output.getvalue()
+
+    @verifies("scenario.tasks.main-hook", "scenario.tasks.main-hook-failure")
+    def test_the_main_hook_lists_the_tasks_not_ended_with_their_main(self):
+        self.assertEqual((0, ""), self.main_hook({"source": "startup"}))
+        self.project.open_task("t1")
+        self.started("t1", main="concorde-7d", session_id="s-t1")
+        self.project.open_task("t2")
+        self.started("t2", main="concorde-8e", session_id="s-t2")
+        self.project.open_task("t3")
+        self.started("t3", main="concorde-7d", session_id="s-t3")
+        self.assertEqual(
+            0, self.command("close", "t3", "--completed", "--note", "done")[0]
+        )
+        worktree = self.project.worktree("t1")
+        self.assertEqual(
+            0, self.command("report", "t1", "--text", "x", cwd=worktree)[0]
+        )
+        status, text = self.main_hook({"source": "resume", "cwd": str(self.root)})
+        self.assertEqual(0, status)
+        self.assertIn("this session resumed", text)
+        self.assertIn("- `t1`: main `concorde-7d`; unanswered reports 1.", text)
+        self.assertIn("- `t2`: main `concorde-8e`.", text)
+        self.assertNotIn("`t3`", text)
+        self.assertLess(text.index("`t1`"), text.index("`t2`"))
+        self.assertIn("call the ListAgents tool", text)
+        self.assertIn('Follow "When your session name changed"', text)
+        self.assertIn("read the unanswered reports", text)
+        # The command line runs it too, without hook input, as a compaction would name it.
+        output = io.StringIO()
+        with (
+            contextlib.redirect_stdout(output),
+            patch.object(sys, "stdin", io.StringIO(json.dumps({"source": "compact"}))),
+        ):
+            self.assertEqual(0, cli.main(["main-hook"], cwd=self.root))
+        self.assertIn("this session was compacted", output.getvalue())
+        # A task session or worker in a task worktree gets nothing.
+        self.assertEqual((0, ""), self.main_hook({"source": "startup"}, cwd=worktree))
+        self.assertEqual(
+            (0, ""), self.main_hook({"source": "startup", "cwd": str(worktree)})
+        )
+        # Any failure is one line, and the session still starts.
+        store.record_path(self.root, "t2").write_text("{not json")
+        status, text = self.main_hook({"source": "startup"})
+        self.assertEqual(0, status)
+        self.assertEqual(1, text.count("\n"))
+        self.assertTrue(text.startswith("Concorde: the session-start hook could not"))
+        self.assertIn("cannot be read", text)
+        status, text = self.main_hook(None, cwd=self.root.parent)
+        self.assertEqual(0, status)
+        self.assertTrue(text.startswith("Concorde: the session-start hook could not"))
+
     @verifies("scenario.tasks.report-merge-incomplete")
     def test_reports_and_rebinds_go_on_while_a_merge_is_unfinished(self):
         self.project.open_task("t1")

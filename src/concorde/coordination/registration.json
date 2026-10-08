@@ -160,6 +160,14 @@
       ".claude/worktrees/"
     ],
     "permissions": [],
+    "hooks": [
+      {
+        "event": "SessionStart",
+        "matcher": "startup|resume|compact",
+        "command": "task main-hook",
+        "timeout": 20
+      }
+    ],
     "programs": [],
     "python_dependencies": [],
     "prepare": null,

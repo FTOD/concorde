@@ -242,14 +242,22 @@ The installer's receipt SHALL list under `amended` the project's own files that 
 
 ### req.distribution.installer-own-permissions — The installer adds only its own permission rules
 
-The installer SHALL change the project's `.claude/settings.json` only by adding the missing permission rules its workflows need and removing the rules it recorded in its receipt and no longer ships.
+The installer SHALL change the `permissions` of the project's `.claude/settings.json` only by adding the missing permission rules its workflows need and removing the rules it recorded in its receipt and no longer ships.
 
 Every other setting, including rules the developer wrote that equal one of Concorde's, stays as
 it was.
 
+### req.distribution.installer-own-hooks — The installer adds only its own hooks
+
+The installer SHALL change the `hooks` of the project's `.claude/settings.json` only by adding or refreshing the hooks the installed parts register and removing the hooks it recorded in its receipt and no longer ships, recording in the receipt every hook it owns.
+
+A matcher group is the installer's only when it holds exactly the one command hook of such a hook.
+Every other group, such as a hook the developer wrote, stays as it was. Every other setting stays
+as it was too.
+
 ### req.distribution.installer-settings-checked — Unusable settings are refused first
 
-When a project's `.claude/settings.json` is not a JSON object with an optional `permissions.allow` list, the installer SHALL refuse the project before writing anything.
+When a project's `.claude/settings.json` is not a JSON object with an optional `permissions.allow` list and an optional `hooks` object of lists, the installer SHALL refuse the project before writing anything.
 
 The refusal is `settings_invalid`.
 

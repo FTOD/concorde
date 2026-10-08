@@ -1708,12 +1708,24 @@ def list_tasks(
             f"--state names {', '.join(map(repr, wrong)) or 'no state'}; it takes one or more "
             f"of {', '.join(STATES)}, separated by commas",
         )
-    records = _records(primary, history=True)
+    # The history holds only ended tasks, so a listing of states none of which is an ended one
+    # never reads it, which keeps the main agent's listing after a restart fast.
+    ended = states is None or any(item in ENDED for item in states)
+    records = _records(primary, history=ended)
     records = [item for item in records if main is None or item["main"] == main]
     records.sort(key=lambda item: (item["created_at"], item["id"]))
     for record in records:
         record["state"] = derived_state(primary, record)
     return [item for item in records if states is None or item["state"] in states]
+
+
+def unended(primary: Path) -> list[dict]:
+    """The records of the tasks not ended, as stored and oldest first, read from the current
+    tasks' folders alone and without deriving a state, which needs Git: the cheap list the main
+    agent's session-start hook prints."""
+    records = [item for item in _records(primary) if item["state"] not in ENDED]
+    records.sort(key=lambda item: (item["created_at"], item["id"]))
+    return records
 
 
 def show_task(primary: Path, task_id: str) -> dict:

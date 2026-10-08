@@ -443,25 +443,130 @@ def _read_settings(project: Path) -> dict:
             "settings_invalid",
             f"{path} cannot be read as JSON: {error}; nothing was written",
         ) from error
-    # An absent permissions is fine; one that is present must be an object, even a falsy one.
+    # An absent permissions or hooks is fine; one that is present must be an object, even a
+    # falsy one.
     permissions = value.get("permissions", {}) if isinstance(value, dict) else None
+    hooks = value.get("hooks", {}) if isinstance(value, dict) else None
     if (
         not isinstance(value, dict)
         or not isinstance(permissions, dict)
         or not isinstance(permissions.get("allow", []), list)
+        or not isinstance(hooks, dict)
+        or not all(isinstance(groups, list) for groups in hooks.values())
     ):
         raise InstallError(
             "settings_invalid",
-            f"{path} is not a JSON object with an optional permissions.allow list; nothing was "
-            "written",
+            f"{path} is not a JSON object with an optional permissions.allow list and an "
+            "optional hooks object of lists; nothing was written",
         )
     return value
 
 
+def hook_command(arguments: str) -> str:
+    """The command line of a hook that runs ``concorde <arguments>`` from the project root."""
+    return f'"$CLAUDE_PROJECT_DIR"/{COMMAND} {arguments}'
+
+
+def _hook_entries(registrations: dict) -> list[dict]:
+    """The hooks the installed parts register, each ``{event, matcher, command, timeout}`` with
+    its full command line, in the order of the parts."""
+    entries: list[dict] = []
+    for registration in parts.ordered(registrations):
+        for hook in registration.data["install"].get("hooks", []):
+            entry = {**hook, "command": hook_command(hook["command"])}
+            if all(_hook_key(entry) != _hook_key(item) for item in entries):
+                entries.append(entry)
+    return entries
+
+
+def _hook_key(entry: dict) -> tuple:
+    return (entry.get("event"), entry.get("matcher"), entry.get("command"))
+
+
+def _hook_group(entry: dict) -> dict:
+    """The matcher group of ``.claude/settings.json`` that carries one hook of Concorde's."""
+    return {
+        "matcher": entry["matcher"],
+        "hooks": [
+            {
+                "type": "command",
+                "command": entry["command"],
+                "timeout": entry["timeout"],
+            }
+        ],
+    }
+
+
+def _group_key(event: str, group: object) -> tuple | None:
+    """The key of a matcher group shaped as one of Concorde's, or None for any other."""
+    if not isinstance(group, dict) or set(group) != {"matcher", "hooks"}:
+        return None
+    hooks = group["hooks"]
+    if (
+        not isinstance(hooks, list)
+        or len(hooks) != 1
+        or not isinstance(hooks[0], dict)
+        or hooks[0].get("type") != "command"
+    ):
+        return None
+    return (event, group["matcher"], hooks[0].get("command"))
+
+
+def _hooks(settings: dict, entries: list[dict], recorded: list) -> bool:
+    """Add or refresh the hooks of ``entries`` and remove the recorded ones no longer shipped;
+    whether ``settings`` changed. A matcher group is Concorde's only when it carries exactly the
+    one command hook of a shipped or recorded entry; every other group stays as it is."""
+    wanted = {_hook_key(entry): entry for entry in entries}
+    dropped = {
+        _hook_key(item)
+        for item in recorded
+        if isinstance(item, dict) and _hook_key(item) not in wanted
+    }
+    if not wanted and not dropped:
+        return False
+    hooks = settings.get("hooks", {})
+    changed = False
+    placed = set()
+    for event in list(hooks):
+        kept = []
+        for group in hooks[event]:
+            key = _group_key(event, group)
+            if key in dropped:
+                changed = True
+                continue
+            if key in wanted:
+                fresh = _hook_group(wanted[key])
+                changed = changed or fresh != group
+                kept.append(fresh)
+                placed.add(key)
+                continue
+            kept.append(group)
+        if kept:
+            hooks[event] = kept
+        else:
+            del hooks[event]
+    for key, entry in wanted.items():
+        if key not in placed:
+            hooks.setdefault(entry["event"], []).append(_hook_group(entry))
+            changed = True
+    if hooks:
+        settings["hooks"] = hooks
+    else:
+        settings.pop("hooks", None)
+    return changed
+
+
 def _settings(
-    project: Path, settings: dict, rules: list[str], recorded: list[str]
+    project: Path,
+    settings: dict,
+    rules: list[str],
+    recorded: list[str],
+    hooks: list[dict],
+    recorded_hooks: list,
 ) -> list[str]:
-    """Add the missing rules, remove recorded ones no longer shipped; the rules Concorde owns."""
+    """Add the missing rules and hooks, remove recorded ones no longer shipped; the rules
+    Concorde owns."""
+    had_permissions = "permissions" in settings
     permissions = settings.setdefault("permissions", {})
     before = list(permissions.get("allow", []))
     owned = [rule for rule in recorded if rule in rules]
@@ -470,9 +575,14 @@ def _settings(
         if rule not in allow:
             allow.append(rule)
             owned.append(rule)
-    if allow == before:
+    hooked = _hooks(settings, hooks, recorded_hooks)
+    if allow == before and not hooked:
         return sorted(set(owned))
-    permissions["allow"] = allow
+    if allow != before:
+        permissions["allow"] = allow
+    if not had_permissions and not permissions:
+        # Only the hooks changed: no permissions object is added for them.
+        del settings["permissions"]
     path = project / CLAUDE_SETTINGS
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(settings, indent=2) + "\n", encoding="utf-8")
@@ -802,11 +912,14 @@ def _place(
     for path, source in placed.items():
         (project / path).parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(source, project / path)
+    hooks = _hook_entries(registrations)
     owned_rules = _settings(
         project,
         settings,
         _permission_rules(placed, registrations),
         list(previous.get("permissions") or []),
+        hooks,
+        list(previous.get("hooks") or []),
     )
     _register_server(project, mcp_config)
     _ignore(project, ignored(registrations))
@@ -866,6 +979,12 @@ def _place(
         # lines, permission rules. They stay the project's own files.
         "amended": amended,
         "permissions": owned_rules,
+        # The hooks of .claude/settings.json the installer added and owns, each by its event,
+        # matcher and command line, which a later install removes once no part ships it.
+        "hooks": [
+            {key: entry[key] for key in ("event", "matcher", "command")}
+            for entry in hooks
+        ],
     }
     # Replaced whole, so that a failure leaves either the previous receipt or this one.
     partial = project / (RECEIPT + ".partial")

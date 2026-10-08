@@ -66,6 +66,11 @@ INSTALL_FIELDS = (
     "prepare",
     "bind",
 )
+# A Claude Code hook a part has the installer add to ``.claude/settings.json``: the event, the
+# matcher, the ``concorde`` arguments the hook runs and its time limit in seconds.
+HOOK_FIELDS = ("event", "matcher", "command", "timeout")
+HOOK_EVENT = re.compile(r"^[A-Z][A-Za-z]*$")
+HOOK_COMMAND = re.compile(r"^[a-z][a-z-]*( [a-z][a-z0-9-]*)*$")
 # A framework-relative file a part ships beside its code directory, or a whole directory when the
 # path ends with ``/``.
 SHIPPED_PATH = re.compile(r"^[A-Za-z0-9_.-]+(?:/[A-Za-z0-9_.-]+)*/?$")
@@ -223,12 +228,35 @@ def check(data, path: str) -> dict:
                 )
     _optional(path, "renders", data["renders"], ENTRY)
     install = data["install"]
-    _exact(path, "install", install, INSTALL_FIELDS)
+    # hooks is the one optional field: a registration without it registers no hook, so that the
+    # parts that add none need not name it. The registration is read with it, as an empty list.
+    if isinstance(install, dict):
+        install.setdefault("hooks", [])
+    _exact(path, "install", install, (*INSTALL_FIELDS, "hooks"))
     for field in ("gitignore", "permissions", "python_dependencies"):
         _strings(path, f"install.{field}", install[field])
     _strings(path, "install.files", install["files"], SHIPPED_PATH)
     if any(".." in item.split("/") for item in install["files"]):
         raise _fail(path, "install.files leaves the Framework copy")
+    if not isinstance(install["hooks"], list):
+        raise _fail(path, "install.hooks is not a list")
+    for hook in install["hooks"]:
+        _exact(path, "an install.hooks item", hook, HOOK_FIELDS)
+        if (
+            not isinstance(hook["event"], str)
+            or not HOOK_EVENT.match(hook["event"])
+            or not isinstance(hook["matcher"], str)
+            or not isinstance(hook["command"], str)
+            or not HOOK_COMMAND.match(hook["command"])
+            or isinstance(hook["timeout"], bool)
+            or not isinstance(hook["timeout"], int)
+            or hook["timeout"] < 1
+        ):
+            raise _fail(
+                path,
+                f"install.hooks item {hook!r} is not a Claude Code event, a matcher, the "
+                "concorde arguments to run and a time limit of at least 1 second",
+            )
     _strings(path, "install.programs", install["programs"])
     unknown = sorted(set(install["programs"]) - set(PROGRAMS))
     if unknown:

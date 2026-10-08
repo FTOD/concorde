@@ -74,6 +74,7 @@ Its install contributions are:
 - The files it ships beside its code.
 - The `.gitignore` lines.
 - The permission rules.
+- The Claude Code hooks, such as Coordination's session-start hook for the main agent.
 - The programs it needs, such as the worker harness's pi runtime.
 - The Python dependencies its code imports, such as Method's LangGraph.
 
@@ -280,7 +281,7 @@ write: "Write" {
   env: "4. Create Concorde's Python\nenvironment (uv venv, dependencies)" {style.stroke-dash: 3}
   cmd: "5. Write .concorde/bin/concorde"
   guidance: "6. Install the guidance"
-  workflows: "7. Install the workflows, their\npermission rules and the project MCP server"
+  workflows: "7. Install the workflows, their\npermission rules, the hooks and\nthe project MCP server"
   record: "8. Add ignore rules,\nwrite the receipt"
   bound: "9. Keep the installed\nfiles bound"
   tools -> files -> env -> cmd -> guidance -> workflows -> record -> bound
@@ -652,8 +653,8 @@ passes, it goes through these steps in order:
    - In a project, an installed part reports work running (`concorde_busy`, described below).
    - In a project, an installed part's idle check fails (`part_failed`).
    - A `concorde.json` names no Python requirement (`invalid_descriptor`).
-   - A `.claude/settings.json` is not a JSON object with an optional `permissions.allow` list
-     (`settings_invalid`,
+   - A `.claude/settings.json` is not a JSON object with an optional `permissions.allow` list and an
+     optional `hooks` object of lists (`settings_invalid`,
      [checked first](requirements.md#req.distribution.installer-settings-checked)).
    - A `.mcp.json` is not a JSON object with an optional `mcpServers` object
      (`mcp_config_invalid`,
@@ -759,6 +760,20 @@ passes, it goes through these steps in order:
    The installer adds only rules that are missing. The installer records them in the receipt.
    On a later install, the installer removes the recorded rules it no longer ships. It leaves every other
    setting untouched ([requirements](requirements.md#req.distribution.installer-own-permissions)).
+
+   In every install, the `hooks` of the project's `.claude/settings.json` gain the hooks the
+   installed parts register under `install.hooks`. Each hook is one matcher group under its event.
+   The group holds one command hook that runs the project's `concorde` with the registered
+   arguments, `"$CLAUDE_PROJECT_DIR"/.concorde/bin/concorde <arguments>`, with the registered time
+   limit. Coordination registers one such hook for `SessionStart`, with the matcher
+   `startup|resume|compact`. The hook runs `concorde task main-hook`, which tells a main agent its
+   tasks not ended after a start, a resume or a compaction of its session
+   ([Main session](../coordination/main-session/module.md)). The installer adds a hook that is
+   missing and refreshes one whose time limit changed. The installer records each hook in the
+   receipt by its event, matcher and command line. On a later install, the installer removes the
+   recorded hooks it no longer ships. A group is Concorde's only when it holds exactly the one
+   command hook of a recorded or shipped hook. Every other group stays as it was
+   ([requirements](requirements.md#req.distribution.installer-own-hooks)).
    In every install, it registers the [project MCP server](../glossary.json#concept.project-mcp-server)
    in the project's `.mcp.json`. The server serves the tools of the installed parts.
    The entry is `"concorde": {"command": ".concorde/bin/concorde", "args": ["project-mcp"]}`.
@@ -1110,7 +1125,7 @@ The table lists these details for every refusal:
 | `concorde_busy` | an installed part's idle check reports work running, in Concorde a run whose runner holds its run lock | `environment` | no |
 | `part_failed` | an installed part's `idle_check` or `after_update` entry raises or answers what the [registration contract](contracts.md#contract.distribution.part-registration) does not allow, refused before any write for `idle_check` and after the update's install and mark for `after_update` | `environment` | for `after_update` |
 | `invalid_descriptor` | `concorde.json` names no Python requirement or pins no `d2` release, or the pi runtime's lockfile pins no runtime | `input` | no |
-| `settings_invalid` | `.claude/settings.json` is not a JSON object with an optional `permissions.allow` list | `input` | no |
+| `settings_invalid` | `.claude/settings.json` is not a JSON object with an optional `permissions.allow` list and an optional `hooks` object of lists | `input` | no |
 | `mcp_config_invalid` | `.mcp.json` is not a JSON object with an optional `mcpServers` object | `input` | no |
 | `uv_missing` | `uv` is not on `PATH` | `environment` | no |
 | `npm_missing` | `npm` is not on `PATH` and the pi runtime is still to be placed | `environment` | no |
