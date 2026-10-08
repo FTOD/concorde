@@ -86,6 +86,13 @@ class BindingTests(unittest.TestCase):
         self.assertEqual(self.root, binding.toplevel(self.root / ".concorde"))
         self.assertIsNone(binding.load(repository()))
 
+    def test_a_binding_is_ignored_without_coordination(self):
+        from concorde.distribution import install, parts
+
+        alone = parts.closure(parts.package_parts(), ["kernel"])
+        self.assertNotIn("coordination", alone)
+        self.assertIn(binding.BINDING, install.ignored(alone))
+
     @verifies("scenario.kernel.binding-refused")
     def test_a_broken_binding_is_refused_whole(self):
         cases = (

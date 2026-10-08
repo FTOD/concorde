@@ -25,7 +25,8 @@
     "defaults": {},
     "gitignore": [
       ".concorde/locks/",
-      ".concorde/unfinished-merge.json"
+      ".concorde/unfinished-merge.json",
+      ".concorde/workspace.json"
     ],
     "permissions": [],
     "programs": [],
