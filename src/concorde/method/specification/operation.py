@@ -446,7 +446,7 @@ def create_documents(ctx: RunContext, proposals: list[dict]):
             )
             owns = metadata["module"]["owns"]
             if not isinstance(owns, list):
-                raise ValueError("its module block's owns is not a list")
+                raise TypeError("its module block's owns is not a list")
         except (OSError, ValueError, KeyError, TypeError) as error:
             reason = (
                 f"the metadata {entry}.json cannot register the document: "

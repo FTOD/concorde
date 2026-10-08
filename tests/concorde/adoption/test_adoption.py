@@ -845,8 +845,10 @@ class AdoptionTests(AdoptionCase):
             (unasked, ["--input", first["run_id"]], "d.invented"),
         ):
             for run in (
-                lambda: self.survey(PROPOSAL, "--answers", path, *inputs),
-                lambda: self.describe(
+                lambda path=path, inputs=inputs: self.survey(
+                    PROPOSAL, "--answers", path, *inputs
+                ),
+                lambda path=path, inputs=inputs: self.describe(
                     [{}], "--answers", path, *inputs, modules="module.shop"
                 ),
             ):
