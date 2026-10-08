@@ -84,6 +84,37 @@ class TypedDataTests(unittest.TestCase):
         self.assertEqual("unknown_type", raised.exception.code)
         register("concorde-fixture-late", 2, obj({}))
         self.assertEqual(holder, validate_typed(holder))
+        # Inside anyOf, an unregistered type is still unknown_type, not a mismatched alternative,
+        # whether the value matches another alternative or none.
+        register(
+            "concorde-fixture-optional",
+            1,
+            obj(
+                {
+                    "inner": {
+                        "anyOf": [
+                            typed_schema("concorde-fixture-missing"),
+                            {"type": "null"},
+                        ]
+                    }
+                }
+            ),
+        )
+        for inner in ({"type_id": "concorde-fixture-missing"}, None):
+            optional = {
+                "type_id": "concorde-fixture-optional",
+                "schema_version": 1,
+                "data": {"inner": inner},
+            }
+            with (
+                self.subTest(inner=inner),
+                self.assertRaises(TypedDataError) as raised,
+            ):
+                validate_typed(optional)
+            self.assertEqual(
+                ("unknown_type", "/data/inner"),
+                (raised.exception.code, raised.exception.field),
+            )
 
     @verifies("scenario.spec.typed-value-reject")
     def test_values_that_do_not_fit_their_registration_are_refused(self):
@@ -232,6 +263,48 @@ class TypedDataTests(unittest.TestCase):
             ):
                 validate(data, schema)
 
+    def test_integers_beyond_the_float_range_compare_exactly(self):
+        # An int of any size is finite: as a value or a bound it is compared, never overflows.
+        from concorde.spec.schema import ContractError, admit, validate
+        from concorde.spec.typed_data import check_schema
+
+        big = 10**400
+        admitted = [
+            (big, {"type": "integer", "minimum": 0}),
+            (big, {"type": "number", "minimum": big, "maximum": big}),
+            (5, {"minimum": -big, "maximum": big}),
+            (0.5, {"type": "number", "maximum": big}),
+        ]
+        refused = [
+            (big, {"type": "integer", "maximum": big - 1}),
+            (-big, {"type": "number", "minimum": 0.5}),
+            (big - 1, {"type": "integer", "minimum": big}),
+        ]
+        for data, schema in admitted:
+            with self.subTest(data=data, schema=schema):
+                admit(schema)
+                validate(data, schema)
+                check_schema(data, schema)
+        for data, schema in refused:
+            with self.subTest(data=data, schema=schema):
+                admit(schema)
+                with self.assertRaises(ContractError):
+                    validate(data, schema)
+                with self.assertRaises(TypedDataError) as raised:
+                    check_schema(data, schema)
+                self.assertEqual("invalid_field", raised.exception.code)
+        with self.assertRaises(ContractError):
+            admit({"minimum": big, "maximum": big - 1})
+        register(
+            "concorde-fixture-big", 1, obj({"n": {"type": "integer", "minimum": big}})
+        )
+        value = {
+            "type_id": "concorde-fixture-big",
+            "schema_version": 1,
+            "data": {"n": big},
+        }
+        self.assertEqual(value, validate_typed(value))
+
     @verifies("scenario.spec.typed-register-conflict")
     def test_a_second_registration_must_be_identical(self):
         schema = obj({"name": STRING})
@@ -246,6 +319,19 @@ class TypedDataTests(unittest.TestCase):
             self.assertEqual("duplicate_type", raised.exception.code)
         self.assertEqual(1, type_version("concorde-fixture-conflict"))
         self.assertEqual(schema, data_schema("concorde-fixture-conflict"))
+        # Schemas compare as JSON values: a boolean never equals a number, though Python's does.
+        for name, first, second in (
+            ("const", {"const": True}, {"const": 1}),
+            ("enum", {"enum": [False, "x"]}, {"enum": [0, "x"]}),
+        ):
+            register(f"concorde-fixture-conflict-{name}", 1, first)
+            with (
+                self.subTest(name=name),
+                self.assertRaises(TypedDataError) as raised,
+            ):
+                register(f"concorde-fixture-conflict-{name}", 1, second)
+            self.assertEqual("duplicate_type", raised.exception.code)
+            self.assertEqual(first, data_schema(f"concorde-fixture-conflict-{name}"))
         with self.assertRaises(TypedDataError):
             register("concorde-fixture-bad", 1, {"type": "object", "unknown": True})
         # A keyword the checker would not evaluate is refused, so no type promises more.

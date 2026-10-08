@@ -133,8 +133,12 @@ def _parse_block(
                 if raw_value.strip():
                     record[key] = _scalar(raw_value, source, line)
                     index += 1
+                elif index + 1 >= len(tokens) or tokens[index + 1][1] <= indent + 2:
+                    record[key] = {}
+                    index += 1
                 else:
-                    value, index = _parse_block(tokens, index + 1, indent + 2, source)
+                    # The key stands at indent + 2, after "- ", so its value nests below it.
+                    value, index = _parse_block(tokens, index + 1, indent + 4, source)
                     record[key] = value
                 if (
                     index < len(tokens)
