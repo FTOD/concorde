@@ -103,10 +103,17 @@ def load(root: Path) -> dict | None:
     root is another worktree (a copied binding would bind the wrong workspace).
     """
     path = path_of(root)
-    if not path.exists():
-        return None
     try:
         value = json.loads(path.read_text(encoding="utf-8"))
+    except FileNotFoundError as error:
+        # A dangling symbolic link is a binding that exists and cannot be read, never none.
+        if not os.path.lexists(path):
+            return None
+        raise KernelError(
+            "binding_unreadable",
+            f"the workspace binding {path} cannot be read: {error}",
+            field=str(path),
+        ) from error
     except (OSError, ValueError) as error:
         raise KernelError(
             "binding_unreadable",

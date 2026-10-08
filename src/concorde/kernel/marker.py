@@ -81,8 +81,16 @@ def read_marker(concorde: Path) -> dict | None:
     path = marker_path(concorde)
     try:
         text = path.read_text(encoding="utf-8")
-    except FileNotFoundError:
-        return None
+    except FileNotFoundError as error:
+        # A dangling symbolic link is a marker that exists and cannot be read, never none.
+        if not os.path.lexists(path):
+            return None
+        raise KernelError(
+            "marker_unreadable",
+            f"the unfinished-merge marker {path} cannot be read: {error}",
+            field=str(path),
+            causes=[error],
+        ) from error
     except (OSError, ValueError) as error:
         raise KernelError(
             "marker_unreadable",

@@ -133,6 +133,23 @@ class BindingTests(unittest.TestCase):
             ):
                 binding.write(self.root, broken)
             self.assertEqual("binding_invalid", refused.exception.code)
+        path = binding.path_of(self.root)
+        path.unlink()
+        path.symlink_to(self.root / "gone.json")
+        with self.assertRaises(KernelError) as refused:
+            binding.load(self.root)
+        self.assertEqual(
+            ("binding_unreadable", str(path)),
+            (refused.exception.code, refused.exception.field),
+        )
+        path.unlink()
+        failure = PermissionError(13, "Permission denied", str(path))
+        with (
+            patch.object(Path, "read_text", side_effect=failure),
+            self.assertRaises(KernelError) as refused,
+        ):
+            binding.load(self.root)
+        self.assertEqual("binding_unreadable", refused.exception.code)
 
     def test_a_binding_the_system_cannot_write_is_refused_with_a_code(self):
         failure = PermissionError(13, "Permission denied")
@@ -844,6 +861,14 @@ class MarkerTests(unittest.TestCase):
             marker.write_marker(concorde, broken)
         self.assertEqual("marker_invalid", refused.exception.code)
         self.assertEqual(written, path.read_bytes())
+        path.unlink()
+        path.symlink_to(concorde / "gone.json")
+        with self.assertRaises(KernelError) as refused:
+            marker.read_marker(concorde)
+        self.assertEqual(
+            ("marker_unreadable", str(path)),
+            (refused.exception.code, refused.exception.field),
+        )
 
     def test_a_marker_the_system_cannot_write_is_refused_with_a_code(self):
         _, value = self.marked()

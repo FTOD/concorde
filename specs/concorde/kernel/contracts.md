@@ -562,7 +562,7 @@ Tracing ([Tracing contracts](tracing/contracts.md)).
 | Operation | Takes | Returns | Refuses with |
 | --- | --- | --- | --- |
 | Find the worktree | a directory | the real root of the Git worktree it lies in | `not_a_worktree` |
-| Read a binding | a worktree | its workspace binding, or none when the worktree has no binding file | `binding_unreadable` (the file cannot be read or is no JSON), `binding_invalid` (it breaks the contract, names a `root` that is not an absolute real path, a relative folder or a workspace folder that does not exist), `binding_misplaced` (its `root` is another worktree) |
+| Read a binding | a worktree | its workspace binding, or none when the worktree has no binding file | `binding_unreadable` (the file cannot be read, as a symbolic link to nothing cannot, or is no JSON), `binding_invalid` (it breaks the contract, names a `root` that is not an absolute real path, a relative folder or a workspace folder that does not exist), `binding_misplaced` (its `root` is another worktree) |
 | Write a binding | a worktree and a binding | the file's path, having checked the binding as reading it does and replaced any binding there in one rename | `binding_invalid` (reading it would refuse it, its `root` naming another worktree included), `system_error` |
 | Register a type | an identity, a version and a schema | nothing | `duplicate_type`, `invalid_input` |
 | Make or check a typed value | a type identity and data, or a value and the type expected | a checked copy | `unknown_type`, `unsupported_version`, `incompatible_handoff`, `invalid_field` |
@@ -575,7 +575,7 @@ Tracing ([Tracing contracts](tracing/contracts.md)).
 | Take the [workspace lock](../glossary.json#concept.workspace-lock) | the `.concorde` a binding names, the workspace, the holder, how long to wait and whether to take a lock file its holder removed meanwhile | holds it until released | `workspace_busy` naming the holder, `workspace_retired` (its holder removed the file while the taker waited, as a close does), `system_error` |
 | Take the merge lock | the primary worktree's `.concorde`, the holder, the task when there is one and how long to wait, 300 seconds by default | holds it until released | `merge_busy` naming the holder, `system_error` |
 | Read a lock's holder | the workspace lock or the merge lock | its holder line, or none when nobody holds it | nothing |
-| Read the [unfinished-merge marker](#unfinished-merge-marker) | the primary worktree's `.concorde` | the marker, or none when there is none | `marker_unreadable` (the file cannot be read or is no JSON), `marker_invalid` (it breaks its contract) |
+| Read the [unfinished-merge marker](#unfinished-merge-marker) | the primary worktree's `.concorde` | the marker, or none when there is none | `marker_unreadable` (the file cannot be read, as a symbolic link to nothing cannot, or is no JSON), `marker_invalid` (it breaks its contract) |
 | Write the unfinished-merge marker | the primary worktree's `.concorde` and a marker | the file's path, having checked the marker and replaced any marker there in one rename | `marker_invalid`, `system_error` |
 | Remove the unfinished-merge marker | the primary worktree's `.concorde` | whether there was a marker | `system_error` |
 | Describe an unfinished merge | the primary worktree's `.concorde` and its marker | the account a reader's refusal carries: the command, its process and start, the commit merged into which branch at which commit, where the primary worktree's head is now and the commands that finish the merge | nothing |
