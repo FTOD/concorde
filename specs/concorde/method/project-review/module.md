@@ -44,8 +44,11 @@ every Module the examined worktree registers. It judges them in these parts:
 | Spec panel | each covered Module's own Specs | `reviewer1` … `reviewer5`, `chair` |
 | Code review | each covered Module's whole code against its Specs | `code_reviewer` |
 
-The first four parts are deterministic. They run on every run. The last three launch workers. Each
-of them is skipped when what it would judge is unchanged since it was last judged.
+The first four parts are deterministic. They run on every run that is not refused. The last three
+launch workers. Each of them is skipped when what it would judge is unchanged since it was last
+judged. When every one of them would be skipped, the run has nothing to review. Its admission
+refuses it with `nothing_to_review` before any step. It runs no check and writes no Issue and no
+record. `--full` reviews the parts anyway.
 
 The architecture review is a Spec panel with architects and a chair but no reviewers. Its reviewed
 subject is the whole project: every Module's documents may carry a blocking finding. Each finding
@@ -101,7 +104,8 @@ when its workers finished and all of its Issues were written. The Operation comm
 on the primary branch under the [merge lock](../../glossary.json#concept.merge-lock), as an Issue
 write commits its record. The examined checkout stays untouched.
 
-The record changes only through such a commit. Every run that could skip takes the merge lock once
+The record changes only through such a commit. Every run that could skip and is not refused takes
+the merge lock once
 to check the record, even when it has nothing new to record. When the record file holds a valid
 record no commit holds, a write was interrupted after it published the file. The run puts that file
 back first. It refuses any other change of the file with `uncommitted_change`, changing nothing. When the
@@ -261,6 +265,9 @@ In a task worktree, it examines the bound [workspace](../../glossary.json#concep
 uncommitted changes included. Either way, its Issues and the review record go to the primary branch.
 The command waits for the result. Start it in background Bash.
 
+When every worker part would be skipped, the run is refused with `nothing_to_review` before any
+step. Its result is `failed`, and its error names `--full`.
+
 The run's status is `ok` when every part completed and the record was written or had nothing new.
 Otherwise it is `blocked` or `failed`, with an [error chain](../../glossary.json#concept.error-chain)
 that has one cause per part that did not complete. The output carries the verdict either way. The
@@ -283,7 +290,7 @@ It may run unbound, since it launches only reading workers.
 | # | Step | Actor | Stops when |
 | --- | --- | --- | --- |
 | 1 | Admit every worker against the worker configuration and the [model map](../../glossary.json#concept.model-map) | Method | a worker cannot be configured (`failed`) |
-| 2 | Validate the whole project. Compute each covered Module's identities and the architecture's. Read the review record. Decide what is skipped | Operation, Spec core | Specs that do not load, Issues that cannot be read (`failed`); a Module with a structural error or no grant is `incomplete` and not reviewed; a record that cannot be read skips nothing |
+| 2 | Validate the whole project. Compute each covered Module's identities and the architecture's. Read the review record. Decide what is skipped. The Operation's admission does this work before step 1 and the step returns what it found | Operation, Spec core | every worker part skipped (refused with `nothing_to_review` before any step); Specs that do not load, Issues that cannot be read (`failed`); a Module with a structural error or no grant is `incomplete` and not reviewed; a record that cannot be read skips nothing |
 | 3 | Run every covered Module's configured checks of the work stage. Find the uncovered scenarios and the unowned files. Settle them with their earlier Issues and report them | Operation, Check execution, Issues | — (checks that cannot run, or a refusal of the Issue store, make the project and the Modules concerned `incomplete`) |
 | 4 | Unless skipped or left out, run the architecture review: read its earlier Issues, run the panel graph without reviewers, report the chair's findings with phase `architecture` | Operation, Workers, Issues | — (a stop, a grant that cannot be computed or LangGraph missing makes the project `incomplete`) |
 | 5 | Run every Spec panel and code review not skipped, at most `--parallel` at once. A Spec panel runs as `spec_panel` runs one Module's panel without architects, with phase `spec-panel`. A code review runs as `code_review --scope module` reviews one Module, with phase `code-review` | Operation, Workers, Issues | — (a stop makes that Module `incomplete`) |
@@ -328,9 +335,15 @@ code change. So an entry needs no history to compare. It holds wherever the cont
 
 **The record is committed like an Issue.** The developer decided that a review's memory is tracked
 in Git and shared by every collaborator. An unbound run may change nothing in what it examines. It
-may only publish through a commit of its own under the merge lock. The Issues are such commits
-([Execution](../../execution/requirements.md#req.execution.unbound-origin-untouched)). The record
-follows the same rule.
+may only publish through a commit of its own under the merge lock. Execution allows exactly two such
+publications: the Issues and this record
+([req.execution.unbound-origin-untouched](../../execution/requirements.md#req.execution.unbound-origin-untouched)).
+
+**Nothing to review is a refusal.** An Operation launches a worker in every run it does not refuse
+([req.concorde.operations-are-ai](../../requirements.md#req.concorde.operations-are-ai)). A run
+whose every worker part is skipped would launch none. The Issues that stand already give every
+outcome of such a run. So the developer decided that the Operation refuses it before any step,
+rather than run only its deterministic parts.
 
 **Checks run on every run.** A Module whose own code is unchanged can still fail its tests when a
 Module it uses changes. Checks cost no model spend. So they run for every covered Module, skipped

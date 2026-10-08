@@ -15,11 +15,19 @@ record's shapes are in the [contracts](contracts.md).
 
 ### scenario.project-review.skips-unchanged — A repeated review skips what is unchanged
 
-- GIVEN a project with the issues part, whose every part a `project_review` completed and recorded, and that has not changed since
+- GIVEN a project with the issues part and two Modules, whose every part a `project_review` completed and recorded, then a commit that changes only the code of the second Module
 - WHEN the main agent runs `project_review` again
-- THEN no worker runs, and every Spec panel, code review and the architecture review is skipped
-- AND each Module's outcome comes from the Issues that stand for it
+- THEN only the second Module's code review runs, and the first Module's Spec panel and code review, the second Module's Spec panel and the architecture review are skipped
+- AND the first Module's outcome comes from the Issues that stand for it
 - AND the configured checks still run, and the unchanged deterministic problems are carried with no new report
+
+### scenario.project-review.nothing-to-review — A review with nothing to review is refused
+
+- GIVEN a project with the issues part, whose every part a `project_review` completed and recorded, and that has not changed since
+- WHEN the main agent runs `project_review` again, with or without `--architects 0`
+- THEN before any step, the run is refused with `nothing_to_review`, and no worker runs
+- AND no check runs, and no Issue and no review record is written
+- AND its error names `--full` as the way to review the parts anyway
 
 ### scenario.project-review.code-change — A code change reviews only that Module's code
 

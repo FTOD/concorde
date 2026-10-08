@@ -150,12 +150,14 @@ An unbound run has these properties:
 - It takes its run lock like every run.
 - It may launch only reading workers, so it changes no Spec or code.
 
-Besides its own record, the one lasting change an unbound run may make is publishing
-[Issues](../glossary.json#concept.issue). Where the issues part is installed, a Spec or code review
-reports its findings this way. It publishes only through the [Issues](../issues/module.md) store.
-The store commits each Issue on the primary branch as a commit of its own under the
-[merge lock](../glossary.json#concept.merge-lock). The run never publishes through the checkout it
-examines
+Besides its own record, the lasting changes an unbound run may make are publishing
+[Issues](../glossary.json#concept.issue) and a `project_review` run's review record. Where the
+issues part is installed, a Spec or code review reports its findings this way. It publishes them
+only through the [Issues](../issues/module.md) store. The store commits each Issue on the primary
+branch as a commit of its own under the [merge lock](../glossary.json#concept.merge-lock).
+`project_review` commits its review record alone on the primary branch the same way, as
+[Project review](../method/project-review/module.md) says. The run never publishes through the
+checkout it examines
 ([req.execution.unbound-origin-untouched](requirements.md#req.execution.unbound-origin-untouched)).
 Every other definition is refused unbound with `binding_required`.
 

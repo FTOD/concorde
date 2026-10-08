@@ -269,17 +269,26 @@ class ProjectReviewTests(unittest.TestCase):
             if item["title"] == title
         )
 
+    def change_b(self) -> None:
+        """A commit that changes only module.b's code."""
+        (self.root / "src/bmod/extra.py").write_text("VALUE = 1\n")
+        commit(self.root, "change module.b's code")
+
     @verifies("scenario.project-review.skips-unchanged")
     def test_a_repeated_review_skips_what_is_unchanged(self):
         first = self.first()
-        recorded = self.head()
+        self.change_b()
         status, envelope = self.review()
         self.assertEqual((0, "ok"), (status, envelope["status"]), envelope)
         output = envelope["output"]
         validate(output, PAYLOAD_SCHEMA)
-        # No worker ran: every part is skipped, and the record does not change.
-        self.assertEqual([], envelope["worker_runs"])
+        # Only module.b's code review ran; every other part is skipped.
+        self.assertEqual(["code_reviewer module.b"], self.workers())
         self.assertEqual("skipped", output["architecture"]["state"])
+        b = self.module(envelope, "module.b")
+        self.assertEqual(
+            ("skipped", "reviewed"), (b["panel"]["state"], b["code_review"]["state"])
+        )
         a = self.module(envelope)
         self.assertEqual(
             ("skipped", None, "skipped", None),
@@ -295,12 +304,8 @@ class ProjectReviewTests(unittest.TestCase):
             ("changes_required", self.module(first)["standing"]),
             (a["outcome"], a["standing"]),
         )
-        self.assertEqual(
-            (False, None, recorded),
-            (output["record"]["published"], output["record"]["commit"], self.head()),
-        )
         skips = [item for item in envelope["host_evidence"] if item["kind"] == "skip"]
-        self.assertEqual(5, len(skips), skips)
+        self.assertEqual(4, len(skips), skips)
         # The checks still ran, and the unchanged deterministic problems were carried, not
         # reported again.
         self.assertEqual(["passed"], [item["outcome"] for item in output["checks"]])
@@ -308,6 +313,35 @@ class ProjectReviewTests(unittest.TestCase):
         self.assertTrue(
             all(len(item["reports"]) == 1 for item in self.issues().values())
         )
+
+    @verifies("scenario.project-review.nothing-to-review")
+    def test_a_review_with_nothing_to_review_is_refused(self):
+        self.first()
+        recorded = self.head()
+        issues = self.issues()
+        status, envelope = self.review()
+        self.assertEqual((1, "failed"), (status, envelope["status"]), envelope)
+        self.assertEqual([], envelope["worker_runs"])
+        self.assertEqual(
+            ["nothing_to_review"],
+            [
+                item["ref"]
+                for item in envelope["host_evidence"]
+                if item["kind"] == "refused"
+            ],
+        )
+        (cause,) = envelope["error"]["causes"]
+        self.assertEqual("nothing_to_review", cause["code"])
+        self.assertIn("--full", " ".join(envelope["error"]["options"]))
+        self.assertIn("--full", cause["detail"])
+        # No step ran: no check, no Issue and no record.
+        self.assertFalse(
+            [item for item in envelope["host_evidence"] if item["kind"] == "check"]
+        )
+        self.assertEqual((recorded, issues), (self.head(), self.issues()))
+        # Without the architecture review the same holds.
+        status, envelope = self.review(None, "--architects", "0")
+        self.assertEqual("nothing_to_review", envelope["error"]["causes"][0]["code"])
 
     @verifies("scenario.project-review.code-change")
     def test_a_code_change_reviews_only_that_modules_code(self):
@@ -454,12 +488,20 @@ class ProjectReviewTests(unittest.TestCase):
 
     def test_a_run_with_nothing_new_still_refuses_a_changed_record(self):
         self.first()
+        self.change_b()
         path = self.root / record.PATH
         path.write_text(path.read_text() + "edited by hand\n")
-        status, envelope = self.review()
+        # module.b's code review stops, so the run has nothing new to record.
+        status, envelope = self.review({"code module.b 1": worker(nonsense=True)})
         self.assertEqual((1, "failed"), (status, envelope["status"]))
-        self.assertEqual([], envelope["worker_runs"])
-        (cause,) = envelope["error"]["causes"]
+        self.assertEqual(["code_reviewer module.b"], self.workers())
+        codes = [cause["code"] for cause in envelope["error"]["causes"]]
+        self.assertIn("record_unpublished", codes, envelope["error"])
+        (cause,) = [
+            cause
+            for cause in envelope["error"]["causes"]
+            if cause["code"] == "record_unpublished"
+        ]
         self.assertIn("uncommitted_change", cause["detail"])
 
     def test_a_narrowed_review_without_issues_counts_only_its_modules(self):
@@ -522,6 +564,7 @@ class ProjectReviewTests(unittest.TestCase):
         self.assertEqual([earlier], [item["issue"] for item in judged["resolved"]])
         # The Issue stays open until a task closes it, but a run that skips the code review
         # still counts it resolved.
+        self.change_b()
         status, envelope = self.review()
         self.assertEqual((0, "ok"), (status, envelope["status"]), envelope)
         a = self.module(envelope)
@@ -541,6 +584,7 @@ class ProjectReviewTests(unittest.TestCase):
             {"issues": 1, "blocking": 1},
             {key: output["standing"][key] for key in ("issues", "blocking")},
         )
+        self.change_b()
         status, envelope = self.review(None, "--modules", "module.b,module.a")
         self.assertEqual(
             ["module.a", "module.b"],

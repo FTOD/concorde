@@ -5,7 +5,9 @@ changes no Spec or code and reports what it finds as Issues:
 
 1. ``check_worker_models`` (Method's admission of every worker).
 2. ``prepare``: the whole project's structural validation (Spec review's first step), the identity
-   of what each part of the review would judge, the review record and what the run skips.
+   of what each part of the review would judge, the review record and what the run skips. The
+   admission does this work, so that it refuses with ``nothing_to_review`` a run whose every
+   worker part would be skipped; the step returns what it found.
 3. ``deterministic``: every configured check of the covered Modules, the scenarios no test
    verifies and the files bound to no Module, settled with their earlier Issues and reported.
 4. ``review_architecture``: one project-wide architecture review, architects and a chair, run as
@@ -327,6 +329,8 @@ class ProjectReview:
     primary: Path | None = None
     judged: dict = field(default_factory=record.empty)
     record_problem: str | None = None
+    # Step 2's outcome, which the admission computes.
+    prepared: Continue | Stop | None = None
     # Per Module, the parts it reviews: "reviewed", "skipped" or "not_run".
     panel_state: dict[str, str] = field(default_factory=dict)
     code_state: dict[str, str] = field(default_factory=dict)
@@ -366,7 +370,46 @@ def _now() -> str:
 def admit(context: RunContext) -> None:
     """Method's admission of the named Modules, then every Module in the registry's order; without
     ``--modules``, every Module the examined worktree registers, bound or unbound, whatever the
-    binding names."""
+    binding names. Then step 2's work, which decides the skips, so that a run whose every worker
+    part would be skipped is refused with ``nothing_to_review`` before any step."""
+    _admit_modules(context)
+    state = _state(context)
+    state.prepared = _prepare(context)
+    if isinstance(state.prepared, Continue) and _nothing_to_review(context):
+        raise Refused(
+            "nothing_to_review",
+            "every part this run covers was already judged: each covered Module's Spec panel "
+            "and code review"
+            + (
+                " and the architecture review are"
+                if state.architecture_state == "skipped"
+                else " are"
+            )
+            + f" unchanged since the review record {record.PATH} recorded them, so no worker "
+            "would run; their outcomes are the Issues that stand; run with --full to review "
+            "them anyway",
+            actor="Project review (admission)",
+            reason="input",
+            explanation="an Operation launches a worker in every run it does not refuse, and "
+            "reviewing an unchanged part again is the caller's choice",
+            options=[
+                "run project_review --full to review every part anyway",
+                "read the Issues that stand with issue_list",
+            ],
+        )
+
+
+def _nothing_to_review(context: RunContext) -> bool:
+    """Whether the record skips every worker part: each covered Module's Spec panel and code
+    review, and the architecture review unless ``--architects 0`` leaves it out."""
+    state = _state(context)
+    parts = [*state.panel_state.values(), *state.code_state.values()]
+    if state.architecture_state != "left_out":
+        parts.append(state.architecture_state)
+    return bool(parts) and all(value == "skipped" for value in parts)
+
+
+def _admit_modules(context: RunContext) -> None:
     if context.modules_named:
         admission()(context)
     try:
@@ -431,8 +474,12 @@ def _issues_installed(ctx: RunContext) -> bool:
 
 
 def prepare(ctx: RunContext):
-    """Step 2: validate the whole project, compute what each part would judge, read the review
-    record and decide what this run skips."""
+    """Step 2: what the admission found when it validated the whole project, computed what each
+    part would judge, read the review record and decided what this run skips."""
+    return _state(ctx).prepared
+
+
+def _prepare(ctx: RunContext) -> Continue | Stop:
     validated = review.validate_modules(ctx)
     if isinstance(validated, Stop):
         return validated

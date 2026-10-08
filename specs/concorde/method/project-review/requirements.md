@@ -51,20 +51,21 @@ branch.
 
 ### req.project-review.checks-every-run — The checks run on every run
 
-On every run, whether or not a part of a Module's review is skipped, the Operation SHALL run every
+On every run it does not refuse, whether or not a part of a Module's review is skipped, the
+Operation SHALL run every
 [configured check](../../glossary.json#concept.configured-check) of the work stage of every covered
 Module.
 
 ### req.project-review.coverage-every-run — Uncovered scenarios are found on every run
 
-On every run, the Operation SHALL find each covered Module's scenarios that no
+On every run it does not refuse, the Operation SHALL find each covered Module's scenarios that no
 [verification declaration](../../glossary.json#concept.verification-declaration) in a file a Module
 binds names.
 
 ### req.project-review.unowned-every-run — Unowned files are found on every run
 
-On every run in which Git lists the tracked files, the Operation SHALL find the files Git tracks that
-no Module binds.
+On every run it does not refuse and in which Git lists the tracked files, the Operation SHALL find
+the files Git tracks that no Module binds.
 
 ### req.project-review.deterministic-issues — Each deterministic problem is one Issue
 
@@ -98,6 +99,15 @@ it open for a task to close.
 Unless `--full` is given, where the issues part is installed, the Operation SHALL skip a Module's
 Spec panel, a Module's code review or the architecture review when the identity of what it would
 judge equals the identity the [review record](module.md#the-review-record) holds for that part.
+
+### req.project-review.nothing-to-review — A run with every worker part skipped is refused
+
+When every covered Module's Spec panel and code review would be skipped, and so would the
+architecture review unless `--architects` is 0, the Operation SHALL refuse the run with
+`nothing_to_review` before any step.
+
+A refused run runs no check and finds no uncovered scenario and no unowned file. It writes no Issue
+and no review record. Its error names `--full` as the way to review the parts anyway.
 
 ### req.project-review.no-skip-without-issues — Nothing is skipped without Issues
 

@@ -90,8 +90,9 @@ needs no task. It runs these parts:
 It skips each panel, code review or architecture review whose Specs and code are unchanged since a
 review last judged them. The review record `.concorde/reviews/record.json` keeps what was judged.
 The run commits that record on the primary branch itself. Never edit or commit it by hand. A
-skipped part's Module takes its outcome from the Issues that stand. `--full` reviews everything
-again. `--modules` narrows the per-Module parts. `--architects 0` leaves the architecture review
+skipped part's Module takes its outcome from the Issues that stand. When every part would be
+skipped, the run is refused with `nothing_to_review` and runs nothing. The Issues that stand are
+then the project's state. `--full` reviews everything again. `--modules` narrows the per-Module parts. `--architects 0` leaves the architecture review
 out. Without the issues part, nothing is skipped. The result gives each Module's outcome, the
 project's verdict and the Issues that stand counted by severity and tier. Choose what to fix from
 those Issues as "Issues" says. A review of every Module launches several workers per Module.
