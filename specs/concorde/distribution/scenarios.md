@@ -459,6 +459,13 @@ This illustrates [the environment deciding the channel](requirements.md#req.dist
 - THEN the result is `success` and reports `CONCORDE-UPDATE-002`
 - AND `.concorde/update.json` is removed
 
+### scenario.distribution.install-stale-build — A stale build is never installed
+
+- GIVEN a package whose guidance source changed after its last build, one whose rendered guidance was edited after it, and one whose rendered workflow was removed after it
+- WHEN the developer runs the installer from each of them
+- THEN each install is refused with `stale_build`, naming the changed or missing file
+- AND nothing is written into the project
+
 ### scenario.distribution.install-busy — An install is refused while a run holds its run lock
 
 - GIVEN an installed project in which the runner of an [Operation](../glossary.json#concept.operation) or [execution command](../glossary.json#concept.execution-command) run still holds its [run lock](../glossary.json#concept.run-lock)

@@ -92,6 +92,7 @@ from a package when any of these conditions holds:
 
 - Its [build manifest](../glossary.json#concept.build-manifest) records a source that is missing.
 - Its build manifest records a source that is changed.
+- Its build manifest records an output that is missing or changed.
 - Its rendered asset differs from the tracked manifest.
 
 ### req.distribution.protocol-manifest-precondition — protocol-manifest acts only on a fresh build and a readable manifest

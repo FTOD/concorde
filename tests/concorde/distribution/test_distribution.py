@@ -5,6 +5,7 @@ from __future__ import annotations
 import contextlib
 import hashlib
 import io
+import itertools
 import json
 import os
 import re
@@ -545,23 +546,45 @@ class ProtocolTests(unittest.TestCase):
                 lambda: manifest.write_text('{"assets": [{}]}'),
                 "not a Protocol manifest",
             ),
+            "no version": (
+                lambda: manifest.write_text('{"assets": []}'),
+                "not a Protocol manifest",
+            ),
+            "asset outside the Protocol": (
+                lambda: manifest.write_text(
+                    tracked.replace(
+                        "generated/protocol/principles.md", "protocol/views.md"
+                    )
+                ),
+                "not a safe path under generated/protocol/",
+            ),
+            "asset the build lacks": (
+                lambda: (
+                    (root / "generated/protocol/extra.md").write_text("Extra.\n"),
+                    manifest.write_text(
+                        tracked.replace(
+                            "generated/protocol/principles.md",
+                            "generated/protocol/extra.md",
+                        )
+                    ),
+                ),
+                "missing from the current build: generated/protocol/extra.md",
+            ),
         }
-        for case, (damage, message) in cases.items():
-            with self.subTest(case=case):
+        flags = ([], ["--write"], ["--bind-project"], ["--write", "--bind-project"])
+        for (case, (damage, message)), given in itertools.product(cases.items(), flags):
+            with self.subTest(case=case, flags=given):
                 damage()
                 damaged = manifest.read_text()
                 try:
                     result = command(
-                        "--project-root",
-                        str(root),
-                        "protocol-manifest",
-                        "--write",
-                        "--bind-project",
+                        "--project-root", str(root), "protocol-manifest", *given
                     )
                 finally:
                     after = manifest.read_text()
                     chapter.write_text(source)
                     manifest.write_text(tracked)
+                    (root / "generated/protocol/extra.md").unlink(missing_ok=True)
                 self.assertEqual(1, result.returncode, result.stdout + result.stderr)
                 envelope = json.loads(result.stdout)
                 self.assertEqual("invalid", envelope["status"])
@@ -2358,6 +2381,7 @@ class InstallTests(unittest.TestCase):
         )
         self.assertEqual([], list(project.iterdir()))
 
+    @verifies("scenario.distribution.install-stale-build")
     def test_install_refuses_stale_guidance(self):
         package = package_copy(self)
         project = package.parent / "project"
@@ -2368,7 +2392,33 @@ class InstallTests(unittest.TestCase):
         with self.assertRaises(InstallError) as raised:
             install(project, package, pi_runtime=False, dependencies=False)
         self.assertEqual("stale_build", raised.exception.code)
-        self.assertFalse((project / ".claude").exists())
+        self.assertIn("prompts/main-session/skill.md", str(raised.exception))
+        self.assertEqual([], list(project.iterdir()))
+
+    @verifies("scenario.distribution.install-stale-build")
+    def test_install_refuses_a_changed_or_missing_render(self):
+        # The sources are unchanged: only a recorded output differs from its digest.
+        for output, change in (
+            ("generated/main-session/skill.md", "edited"),
+            ("generated/workflows/claude/concorde-brownfield.js", "removed"),
+        ):
+            with self.subTest(output=output):
+                package = package_copy(self)
+                project = package.parent / "project"
+                project.mkdir()
+                if change == "removed":
+                    (package / output).unlink()
+                else:
+                    (package / output).write_text(
+                        (package / output).read_text() + "\nEdited.\n"
+                    )
+                with self.assertRaises(InstallError) as raised:
+                    install(
+                        project, package, pi_runtime=False, d2=False, dependencies=False
+                    )
+                self.assertEqual("stale_build", raised.exception.code)
+                self.assertIn(output, str(raised.exception))
+                self.assertEqual([], list(project.iterdir()))
 
 
 class D2InstallTests(unittest.TestCase):
