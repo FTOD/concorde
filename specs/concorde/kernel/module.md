@@ -55,17 +55,24 @@ The Kernel's precise obligations are its [requirements](requirements.md).
 Its [scenarios](scenarios.md) show them at work.
 
 For example, when its code loads, a part that keeps notes registers the type `example-note` at
-version 1. Its schema requires a nonblank `text`. To record a note, the part makes the typed value
-of the data `{"text": "Retry limit agreed."}`. It receives a checked copy,
+version 1 with `schema.register`. Its schema requires a nonblank `text`. To record a note, the part
+makes the typed value of the data `{"text": "Retry limit agreed."}` with `schema.typed`. It
+receives a checked copy,
 `{"type_id": "example-note", "schema_version": 1, "data": {"text": "Retry limit agreed."}}`
-([Typed values](contracts.md#typed-values)). While it holds the merge lock, the part applies a
-file transaction below the primary worktree. The transaction creates `notes/n-1.json` holding
+([Typed values](contracts.md#typed-values)). The part takes the merge lock in a
+`with locking.merge_lock(...)` block. While it holds the lock, it first reads the
+[unfinished-merge marker](contracts.md#unfinished-merge-marker) with `marker.read_marker`. It goes
+on only when there is none. When a marker is present, the part refuses with the account
+`marker.describe` gives. When the marker cannot be read, the part refuses with that refusal.
+Either way, the part changes no file. Otherwise, the part applies a file transaction below the
+primary worktree with `files.apply_files`. The transaction creates `notes/n-1.json` holding
 that value. Since the file must not exist yet, the transaction uses the `before_digest` `null`.
 The part allows only that path ([File transactions](contracts.md#file-transactions)).
 Once the file is renamed into place, the transaction returns `["notes/n-1.json"]`.
 If another writer creates the file first, the transaction is refused with `stale_proposal` before
-writing anything. The part then commits the file. It then releases the lock. The Kernel leaves
-both actions to the part ([Library](contracts.md#library)).
+writing anything. The part then commits the file. The lock is released when the block ends. The
+Kernel leaves the commit to the part. The [Library](contracts.md#library) names every call and its
+conventions.
 
 ## Core concepts
 
