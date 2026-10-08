@@ -353,6 +353,7 @@ class StepTests(unittest.TestCase):
         self.assertEqual(outcome["run_id"], again["run_id"])
 
     @verifies("scenario.workflows.step-retired")
+    @verifies("scenario.workflows.step-binding-gone")
     def test_a_step_waiting_while_its_task_closes_is_refused(self):
         from concorde.coordination.tasks import store as tasks
 
@@ -430,7 +431,7 @@ class StepTests(unittest.TestCase):
         )
         self.assertEqual(1, len(self.started))
 
-    @verifies("scenario.workflows.step-retired")
+    @verifies("scenario.workflows.step-binding-changed")
     def test_a_step_whose_binding_changed_is_refused(self):
         path = self.space.root / ".concorde/workspace.json"
         changed = json.loads(path.read_text())
@@ -816,7 +817,7 @@ class StepTests(unittest.TestCase):
         [recorded] = store.load(self.space)["steps"]
         self.assertEqual(run_id, recorded["run_id"])
 
-    @verifies("scenario.workflows.step-adopted")
+    @verifies("scenario.workflows.step-unstarted")
     def test_a_starting_step_whose_run_never_started_starts_anew(self):
         folder = store.next_step_folder(self.space, None, "survey")
         folder.mkdir(parents=True)
@@ -1874,6 +1875,15 @@ class ScriptTests(unittest.TestCase):
             {"workflow", "mode", "key", "argv"},
             set(run["calls"][-2]["request"]),
         )
+
+    @verifies("scenario.workflows.relay-exhausted")
+    def test_three_refused_relays_make_the_step_lost_with_the_last_refusal(self):
+        refusal = {
+            "key": "workflow_step_result",
+            "state": "error",
+            "error": {"code": "invalid_request", "detail": "/answers: missing"},
+        }
+        outcomes = self.full()
         outcomes["delivery"] = [refusal]
         run = self.run_script(self.ARGS, outcomes)
         self.assertEqual(3, [c["key"] for c in run["calls"]].count("delivery"))
