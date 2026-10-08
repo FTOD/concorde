@@ -28,6 +28,7 @@ from __future__ import annotations
 import fcntl
 import json
 import os
+import shlex
 import subprocess
 import time
 from contextlib import contextmanager
@@ -109,8 +110,40 @@ def _run_id(directory: Path) -> str | None:
     return state.get("run_id") or directory.name
 
 
-def new_run(records: Path, workspace: str, known: set[str]) -> str | None:
-    """The one run of ``workspace`` in the run store that ``known`` does not name, if any."""
+def parent_of(pid: int) -> int | None:
+    """The parent of the process ``pid`` in this PID namespace, from Linux's ``/proc``; None when
+    the process is gone or cannot be read."""
+    try:
+        stat = Path(f"/proc/{pid}/stat").read_text(encoding="utf-8")
+    except OSError:
+        return None
+    # The command name, in parentheses, may hold spaces: the fields follow its last ``)``.
+    fields = stat[stat.rfind(")") + 2 :].split()
+    try:
+        return int(fields[1])
+    except (IndexError, ValueError):
+        return None
+
+
+def descends(pid: object, ancestor: int) -> bool:
+    """Whether the process ``pid`` is ``ancestor`` or one of its descendants."""
+    if not isinstance(pid, int) or isinstance(pid, bool):
+        return False
+    seen = set()
+    while pid and pid not in seen:
+        if pid == ancestor:
+            return True
+        seen.add(pid)
+        pid = parent_of(pid)
+    return False
+
+
+def new_run(
+    records: Path, workspace: str, known: set[str], launcher: int
+) -> str | None:
+    """The run of ``workspace`` in the run store that ``known`` does not name and whose runner,
+    the progress file's ``host_pid``, descends from the process ``launcher``, if any: the run the
+    case launched, never a competing one."""
     for directory in _run_folders(records):
         try:
             state = json.loads((directory / "status.json").read_text(encoding="utf-8"))
@@ -122,6 +155,7 @@ def new_run(records: Path, workspace: str, known: set[str]) -> str | None:
         if (
             state.get("kind") in ("operation", "command")
             and state.get("workspace") == workspace
+            and descends(state.get("host_pid"), launcher)
         ):
             return run_id
     return None
@@ -179,7 +213,8 @@ def owner_prompt(worktree: Path, limit: float) -> str:
     return (
         "Run this command with the Bash tool in the background (run_in_background true), then "
         "end your turn at once, replying only STARTED:\n"
-        f"cd {worktree} && .concorde/bin/concorde task-validation --wait {wait}\n"
+        f"cd {shlex.quote(str(worktree))} && .concorde/bin/concorde task-validation "
+        f"--wait {wait}\n"
         "When you are later notified that it finished, reply only DONE followed by the status "
         "its output names."
     )
@@ -209,6 +244,16 @@ def listed_status(output: str, run_id: str) -> str | None:
                     return run.get("status")
         start = output.find("{", start + 1)
     return None
+
+
+def turn_end(session: LiveSession, moment: float) -> float:
+    """When the first turn that ended since ``moment`` ended: the time its ``result`` event was
+    read."""
+    return min(
+        at
+        for at, event in list(session.events)
+        if at >= moment and event.get("type") == "result"
+    )
 
 
 def judge(
@@ -264,31 +309,53 @@ def phase(
         # holds the lock at most ``limit`` seconds after the launch.
         hold = time.monotonic() + limit
         if owner is None:
+            command = [
+                str(worktree / ".concorde/bin/concorde"),
+                "task-validation",
+                "--wait",
+                str(queue_wait(limit)),
+            ]
             log = (directory / f"{name}-run.log").open("w")
-            subprocess.Popen(
-                [
-                    str(worktree / ".concorde/bin/concorde"),
-                    "task-validation",
-                    "--wait",
-                    str(queue_wait(limit)),
-                ],
-                cwd=worktree,
-                stdout=log,
-                stderr=subprocess.STDOUT,
-                start_new_session=True,
-            )
+            try:
+                launcher = subprocess.Popen(
+                    command,
+                    cwd=worktree,
+                    stdout=log,
+                    stderr=subprocess.STDOUT,
+                    start_new_session=True,
+                ).pid
+            except OSError as error:
+                raise E2EError(
+                    "command_failed",
+                    f"`{' '.join(command)}` in {worktree} could not be started: {error}",
+                ) from error
+            finally:
+                log.close()
             baseline = started
         else:
             prompted = owner.send(owner_prompt(worktree, limit))
             owner.wait_settled(prompted, max(hold - time.monotonic(), 0.0))
-            baseline = time.time()
+            # The judged time starts when the launching turn ended, as its result event was
+            # read, not when the case noticed it.
+            baseline = turn_end(owner, prompted)
+            launcher = owner.process.pid
+        # An owner that ended leaves its run without the launcher it descends from: that stops
+        # the case as a session that ended, never as a run that did not appear.
         until(
-            lambda: new_run(records, task, known) is not None,
+            lambda: (
+                new_run(records, task, known, launcher) is not None
+                or (
+                    owner is not None
+                    and owner.require_running(f"before its run of the phase {name}")
+                )
+            ),
             max(hold - time.monotonic(), 0.0),
-            f"no run of {task} appeared in the run store of {records} for the phase {name}",
+            f"no run of {task} launched by process {launcher} appeared in the run store of "
+            f"{records} for the phase {name}; a launcher whose commands run in another PID "
+            "namespace, such as a sandbox's, is never found",
             log=str(owner.log) if owner else None,
         )
-        run_id = new_run(records, task, known)
+        run_id = new_run(records, task, known, launcher)
     released = time.time()
     # The result is read once and judged as read: a later read may miss it while the run
     # rewrites its progress file, which names its folder.
@@ -298,9 +365,11 @@ def phase(
         written["result"] = result_of(records, run_id)
         return written["result"] is not None
 
+    # The run may still queue for the lock after the release, for at most its wait: waiting that
+    # long, the case sees a refusal for a busy workspace rather than its own deadline.
     until(
         ended,
-        limit,
+        queue_wait(limit),
         f"run {run_id} wrote no result",
         progress=str(run_folder(records, run_id) / "status.json"),
     )

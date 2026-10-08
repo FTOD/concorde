@@ -12,8 +12,10 @@ import fcntl
 import importlib.util
 import json
 import os
+import subprocess
 import sys
 import tempfile
+import threading
 import time
 import unittest
 from pathlib import Path
@@ -32,13 +34,15 @@ live = sys.modules["live"]
 
 # `concorde task-validation --wait N` records a run that waits in the lobby for the workspace lock,
 # then enters the workspace folder and ends ok, or, with REFUSED, is refused in the lobby with
-# workspace_busy once it holds the lock, as a run whose wait expired is; `concorde task show t1`
+# workspace_busy once it holds the lock, as a run whose wait expired is, DELAY seconds after it
+# took the lock; `concorde task show t1`
 # lists the runs of t1 with their status.
 FAKE_CONCORDE = """#!/usr/bin/env python3
 import fcntl, json, os, sys, time, uuid
 from pathlib import Path
 RECORDS = Path(%(records)r)
 REFUSED = %(refused)r
+DELAY = %(delay)r
 args = sys.argv[1:]
 # Tracing's layout: the task's runs in its workspace folder, a run waiting for the workspace lock
 # in the lobby, every lock under locks/.
@@ -60,6 +64,7 @@ if args[0] == "task-validation":
     (locks / "workspaces").mkdir(parents=True, exist_ok=True)
     lock = (locks / "workspaces" / "t1.lock").open("a+")
     fcntl.flock(lock, fcntl.LOCK_EX)
+    time.sleep(DELAY)
     if REFUSED:
         result = {"run_id": run_id, "status": "failed", "summary": "t1 is busy",
                   "host_evidence": [{"ref": "workspace_busy"}]}
@@ -164,11 +169,12 @@ class OwnersCaseTests(unittest.TestCase):
         )
         self.concorde()
 
-    def concorde(self, refused: bool = False) -> None:
+    def concorde(self, refused: bool = False, delay: float = 0.0) -> None:
         for place in (self.project, self.worktree):
             self.program(
                 place / ".concorde/bin/concorde",
-                FAKE_CONCORDE % {"records": str(self.records), "refused": refused},
+                FAKE_CONCORDE
+                % {"records": str(self.records), "refused": refused, "delay": delay},
             )
 
     def program(self, path: Path, text: str) -> Path:
@@ -182,6 +188,7 @@ class OwnersCaseTests(unittest.TestCase):
         notifies: bool = True,
         wake: float = 60.0,
         exits: bool = False,
+        limit: float = 60.0,
     ) -> dict:
         claude = self.program(
             self.base / "claude",
@@ -198,7 +205,7 @@ class OwnersCaseTests(unittest.TestCase):
             self.base / "case",
             grace=1.0,
             wake=wake,
-            limit=60.0,
+            limit=limit,
             claude_program=str(claude),
         )
 
@@ -299,6 +306,70 @@ class OwnersCaseTests(unittest.TestCase):
         self.assertIn("phase unowned", raised.exception.detail)
         refused = Path(raised.exception.evidence["result"])
         self.assertEqual(self.records / "lobby", refused.parent.parent)
+
+    @verifies("scenario.e2e.owners-run-refused")
+    def test_a_refusal_after_the_cases_limit_is_still_seen(self):
+        # The run is refused later than the case's limit after the release, but within its
+        # queue wait: the case reports the refusal, not its own deadline.
+        self.concorde(refused=True, delay=4.0)
+        with self.assertRaises(e2e.E2EError) as raised:
+            self.run_case(limit=3.0)
+        self.assertEqual("workspace_busy", raised.exception.code)
+
+    @verifies("scenario.e2e.owners-competing-run")
+    def test_a_competing_run_is_never_judged_as_the_cases_run(self):
+        # A run of the same workspace that the case did not launch appears in the lobby after
+        # the case looked at the run store: its runner is no descendant of the launcher.
+        competitor = self.records / "lobby/r-20261008T000000-task_validation-competitor"
+        competitor.mkdir(parents=True)
+        (competitor / "status.json").write_text(
+            json.dumps(
+                {
+                    "kind": "command",
+                    "run_id": competitor.name,
+                    "workspace": "t1",
+                    "host_pid": os.getpid(),
+                }
+            )
+        )
+        with patch.object(owners, "known_runs", return_value=set()):
+            value = self.run_case()
+        self.assertEqual("passed", value["status"], value["problems"])
+        for item in value["phases"]:
+            self.assertNotEqual(competitor.name, item["run"])
+            self.assertEqual("ok", item["status"])
+
+    def test_the_unowned_launch_that_cannot_start_is_a_command_failure(self):
+        (self.worktree / ".concorde/bin/concorde").chmod(0o644)
+        with self.assertRaises(e2e.E2EError) as raised:
+            self.run_case()
+        self.assertEqual("command_failed", raised.exception.code)
+        self.assertIn("could not be started", raised.exception.detail)
+
+    @verifies("scenario.e2e.owners-unwanted-wake")
+    def test_the_judged_time_starts_when_the_launching_turn_ended(self):
+        # A notification read after the launching turn's result but before the case noticed
+        # that turn's end lies in the judged time.
+        session = live.LiveSession.__new__(live.LiveSession)
+        session.events = [
+            (10.0, {"type": "system", "subtype": "init"}),
+            (11.0, {"type": "result"}),
+            (11.2, {"type": "system", "subtype": "task_notification"}),
+        ]
+        session._lock = threading.Lock()
+        baseline = owners.turn_end(session, 9.0)
+        self.assertEqual(11.0, baseline)
+        self.assertTrue(session.woken(baseline, 12.0))
+
+    def test_the_owner_is_told_the_worktree_as_one_shell_word(self):
+        worktree = self.base / "it's a worktree; echo no"
+        worktree.mkdir()
+        line = owners.owner_prompt(worktree, 60.0).split("STARTED:\n", 1)[1]
+        command = line.split(" && ", 1)[0]
+        done = subprocess.run(
+            ["bash", "-c", f"{command} && pwd"], capture_output=True, text=True
+        )
+        self.assertEqual(str(worktree), done.stdout.strip())
 
     @verifies("scenario.e2e.owners-session-ended")
     def test_an_owner_that_ends_before_it_is_woken_stops_the_case(self):

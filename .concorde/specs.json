@@ -458,7 +458,8 @@
       "owns": [
         "specs/concorde/e2e/dogfood/module.md",
         "specs/concorde/e2e/dogfood/requirements.md",
-        "specs/concorde/e2e/dogfood/scenarios.md"
+        "specs/concorde/e2e/dogfood/scenarios.md",
+        "specs/concorde/e2e/dogfood/contracts.md"
       ],
       "contains": [],
       "uses": [
@@ -490,7 +491,13 @@
           ]
         }
       ],
-      "includes": [],
+      "includes": [
+        {
+          "kind": "document",
+          "target": "document.e2e.module",
+          "reason": "End-to-end testing's entry, whose Preparing a test project defines the worker configuration a scenario's project receives and the end-to-end root its directory lies in"
+        }
+      ],
       "participates": []
     },
     {

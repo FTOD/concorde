@@ -87,10 +87,14 @@ adds as it was.
 
 When any of these conditions holds, the owners case SHALL end `failed`, naming each problem:
 
-- During the interval the case judges a phase over, the owner of the run it played began no turn
-  and received no notification.
-- During that interval, any other live session began a turn or received a notification.
+- For a run with an owner: during the interval the case judges a phase over, that owner began no
+  turn and received no notification.
+- During that interval, any live session that does not own the run began a turn or received a
+  notification.
 - Afterwards, a session that does not own the run did not find it with the status of its result.
+
+The run a phase judges is the run that the phase's own launch started, never another run of the
+same workspace.
 
 For a run with an owner, the interval starts at the end of the owner's launching turn.
 For a run nobody owns, the interval starts at the start of the phase.

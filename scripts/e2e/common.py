@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import itertools
 import os
 import subprocess
 import tempfile
+from datetime import UTC, datetime
 from pathlib import Path
 
 CHECKOUT = Path(__file__).resolve().parents[2]
@@ -65,8 +67,37 @@ def e2e_root() -> Path:
 
 
 def test_directory(root: Path, name: str) -> Path:
-    """The directory of the test project ``name`` under the end-to-end root ``root``."""
+    """The directory of the test project ``name`` under the end-to-end root ``root``;
+    ``invalid_name`` unless ``name`` is one directory name, so the project stays directly under
+    the root."""
+    if not name or name in (".", "..") or "/" in name or os.sep in name or "\0" in name:
+        raise E2EError(
+            "invalid_name",
+            f"{name!r} is not one directory name; a test project is test-<name> directly "
+            f"under the end-to-end root {root}",
+        )
     return root / f"{TEST_PREFIX}{name}"
+
+
+def taken(path: Path) -> bool:
+    """Whether ``path`` exists, a symbolic link to anything or to nothing included."""
+    return os.path.lexists(path)
+
+
+def fresh_directory(parent: Path) -> Path:
+    """A new directory under ``parent`` named after the time it is made, to the microsecond,
+    with ``-2``, ``-3``… added when another invocation took that name already: it is created
+    exclusively, so no two invocations ever share one."""
+    parent.mkdir(parents=True, exist_ok=True)
+    moment = datetime.now(UTC).strftime("%Y-%m-%dT%H%M%S.%fZ")
+    for number in itertools.count(1):
+        directory = parent / (moment if number == 1 else f"{moment}-{number}")
+        try:
+            directory.mkdir()
+        except FileExistsError:
+            continue
+        return directory
+    raise AssertionError("unreachable")
 
 
 def repository_url(repo: str) -> str:

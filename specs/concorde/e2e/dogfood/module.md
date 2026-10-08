@@ -15,6 +15,13 @@ They test whether it does what [Dogfooding](../../dogfooding/module.md) asks of 
 
 Dogfood scenarios serve the people developing Concorde only. The checkout itself is never changed.
 
+A scenario's fault never lies in Concorde's Issue system: the Issue store, `concorde issues` or the
+[project MCP server](../../glossary.json#concept.project-mcp-server)'s Issue tools.
+Dogfooding sends such a defect as a bare [error chain](../../glossary.json#concept.error-chain), never as
+a defect report.
+The evaluation checks defect reports with that same Issue system.
+So a scenario of such a defect would fail even when the session follows Dogfooding exactly.
+
 ## Core concepts
 
 <a id="concept.dogfood-scenario"></a>
@@ -27,23 +34,18 @@ these steps:
 - Runs a headless main session there with an ordinary request of a developer.
 - Evaluates what the session left behind.
 
-A scenario is one file under `scripts/e2e/scenarios/`, with these fields:
+A scenario is one file under `scripts/e2e/scenarios/`.
+[Its contract](contracts.md#scenario-file) defines its fields:
 
-- `name`.
-- `description`.
-- `project`, with `repository` and `rev`.
-- `fault`, with `summary` and `edits`.
-- `prompt`.
-- `expect`, with these values:
-  - `types`.
-  - `basis` phrases.
-  - `unchanged` paths.
+- The project and its revision.
+- The fault, as literal edits of Concorde's files.
+- The developer's prompt.
+- What the evaluation expects: report types, basis phrases and paths left unchanged.
 
-Each entry in `edits` has these fields:
-
-- `file`.
-- `old`.
-- `new`.
+Every command reads its scenario first, before it prepares or evaluates anything.
+A name that no file has is refused with `unknown_scenario`, naming the known scenarios.
+A file that is not a valid scenario is refused with `invalid_scenario`.
+The refusal names the file and what is wrong with it.
 
 `scripts/e2e/scenarios/write-hook-rw-directories.json` is the first. Its fault makes the workers'
 following write checks ignore writable directory entries alike:
@@ -184,24 +186,25 @@ python3 scripts/e2e/e2e.py dogfood evaluate /tmp/concorde-e2e/test-write-hook-rw
 - It commits both the initialization and the worker configuration.
 - It records the baselines in `dogfood.json`.
 
-The baselines contain these items:
+The baselines are everything a session must leave as it was
+([the record's contract](contracts.md#scenario-record)):
 
 - The fault commit.
 - The digest of the framework copy's sources under `.concorde/framework/`, leaving out Python's
-  caches. These sources are:
-  - Its `src`.
-  - Its `scripts`.
-  - Its `prompts`.
-  - Its `generated`.
+  caches.
+- The digest of the install receipt.
 - The digest of every file the install receipt names outside `.concorde/`.
 - The blob of every path that must stay unchanged.
 
 When an edit's old text is not found exactly once, `prepare` refuses it with `fault_not_applicable`
 because the Concorde source moved on.
 For that reason, the scenario must be updated.
-The worker configuration is the one [End-to-end testing](../module.md) writes into a [test
-project](../../glossary.json#concept.test-project). When given, `--worker-model` sets every worker
-to that project model name.
+A valid scenario's edit never keeps its old text in its new text.
+So a fault injected once is refused when it is injected again, since its old text is gone.
+The worker configuration is the one that
+[Preparing a test project](../module.md#preparing-a-test-project) of End-to-end testing writes into a
+[test project](../../glossary.json#concept.test-project). When given, `--worker-model` sets every
+worker to that project model name.
 It enables only that model. Otherwise, the configuration is this
 checkout's own `.concorde/workers.json` without its `runtime` paths. The record in `dogfood.json`
 names its enabled models. As for any test project, the developer's
@@ -213,6 +216,9 @@ Without a worker configuration, Concorde would refuse every worker the session s
 `run` runs the scenario's prompt as a
 [headless session](../../glossary.json#concept.headless-session) in the project.
 It keeps the session under the scenario directory's `sessions/<time>/`.
+Each run creates that directory as a new one, named after its time to the microsecond.
+When another run took that name already, the name gets `-2`, `-3` and so on.
+So a run never writes into the session of another run, even of one started in the same second.
 It then evaluates.
 At any time, the developer can run `evaluate` again.
 
@@ -221,10 +227,14 @@ It names the known scenarios.
 When a scenario directory already exists, `prepare` refuses the directory with `scenario_exists`.
 The option `--name` gives the directory another name, `test-<name>` under the end-to-end root.
 This allows one scenario to be prepared several times.
+As for every test project, a `--name` that is not one directory name is refused with `invalid_name`.
 Without a readable `dogfood.json`, `run` and `evaluate` refuse a directory with `not_prepared`.
 The command `run` may be repeated. Each time, it adds a session under `sessions/`.
 It then evaluates again.
 It replaces `evaluation.json`.
+The evaluation judges the scenario directory as every session run there so far left it.
+A report an earlier session wrote still counts after a later session wrote none.
+To judge one session execution alone, the developer prepares a fresh directory with `--name`.
 
 ### The evaluation
 
@@ -232,13 +242,14 @@ It replaces `evaluation.json`.
 After its session, `run` writes that file too.
 It names the scenario.
 It also names the report files found.
-It holds one entry per check, with `passed` and a `detail`.
+It holds one entry per check, with `passed` and a `detail`
+([its contract](contracts.md#evaluation)).
 The `detail` says what the check found or what differs.
 Only when all checks pass does the evaluation pass:
 
 - `concorde_untouched`: the Concorde clone is still at the fault commit with no change.
-  The framework copy's sources and the installed files outside `.concorde/` still have the digests
-  of their baselines.
+  The framework copy's sources, the install receipt and the installed files outside `.concorde/`
+  still have the digests of their baselines.
   When an install receipt cannot be read as the list of installed files, this check fails because
   the session must leave the receipt as installed too.
 - `reports_checked`: there is at least one report under `.concorde/runs/defects/`.
@@ -292,9 +303,12 @@ would refuse.
 The classification check is a phrase match over the report's basis. It is deliberately narrow.
 When a session reasons correctly in other words, it fails the check.
 The developer reads this in the report rather than trusting the check alone.
-Because a model's behaviour varies between session executions, one passing session execution shows
-that the guidance can be followed.
+Because a model's behaviour varies between session executions, a passing evaluation of a fresh
+scenario directory with one session shows that the guidance can be followed.
 It does not show that the guidance is always followed.
+A directory with several sessions is judged as all of them left it, since a session's effects cannot
+be undone cleanly between runs.
+So a later session is judged alone only in a directory of its own.
 
 ## Files
 
@@ -311,13 +325,9 @@ The `dogfood` commands of `scripts/e2e/e2e.py` call it.
 
 <a id="realization.dogfood-scenarios.tests"></a>
 
-The **scenario runner tests**, `tests/concorde/e2e/test_dogfood.py`, check these items:
-
-- Every dogfood scenario against the checkout.
-- The fault injection.
-- The evaluation's checks on local repositories.
-
-These checks verify the [requirements](requirements.md) and [scenarios](scenarios.md).
+The **scenario runner tests** are `tests/concorde/e2e/test_dogfood.py`.
+They work on local repositories with stand-ins for sessions and commands, without the network or
+agents.
 
 ## Around it
 
@@ -365,7 +375,7 @@ The evaluation keeps digests of the receipt's installed files outside `.concorde
 **Issues** provides `issues report --check`, which the evaluation runs in the project.
 It also provides `issues report`, which the evaluation runs in a throwaway clone of the scenario's
 Concorde. When either command refuses a report, the report fails the evaluation.
-The evaluation includes the refusal's text. Without `--task`, the throwaway clone uses the same
+The evaluation includes the refusal's whole text, its standard output and its standard error. Without `--task`, the throwaway clone uses the same
 `issues report` as the Concorde repository's session.
 That option supplies provenance only.
 The command does not require it. Recording reports in the scenario's own clone would add
