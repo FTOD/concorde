@@ -469,6 +469,27 @@ checked out stays empty, as in a fresh clone. The `submodule-absent` evidence na
 ([Unbound checkout](runner.md#unbound-checkout)). However the run ends, the runner removes the
 checkout before it writes the result.
 
+<a id="preparation"></a>
+
+A commit never holds what the project's build produces either. A check that needs the build
+output finds nothing in a fresh checkout. So the project may declare **preparation commands** in
+`.concorde/preparation.json`, Execution's own file
+([preparation file](contracts.md#contract.execution.preparation)). This checkout, for example,
+declares its build:
+
+```json
+{"commands": [{"argv": ["python3", "scripts/concorde.py", "build"], "timeout_seconds": 600}]}
+```
+
+Only the file committed in the checkout counts, like every other input of the run. After the
+admission and before the first step, the runner runs the commands in order in the checkout. Each
+command runs in Check execution's boundary with one more writable place, the checkout itself.
+The command can write the checkout and its own scratch. It cannot write any other file of the host.
+This includes the worktree the run started in, the primary worktree and the runtime paths the
+checkout only links. When a command fails, the run ends `failed` and no step runs
+([Preparing the checkout](runner.md#preparing-the-checkout)). A bound run is never prepared. Whoever
+prepares its workspace, such as a task session, also builds it.
+
 ### Following a long run
 
 While a run lives, its run progress file names these things:
@@ -601,6 +622,10 @@ harness lets a worker run and knows every Git administrative path to hide from i
 What a commit never holds comes from the worktree the run started in. These are the environments
 Git ignores and the checkouts of submodules. Since the run only reads the environments, they are
 linked. Each submodule is checked out from its own repository at the commit the checkout records.
+What the project's build makes cannot come from that worktree. Its build output may be stale or
+missing, and it may belong to another commit. So the project's own preparation commands make it in
+the checkout, at the commit examined. They may write only the checkout. They never write the
+worktree the run started in.
 
 ### The runner and run store
 
@@ -609,7 +634,7 @@ linked. Each submodule is checked out from its own repository at the commit the 
 The **Runner and run store** realization binds these things, with their tests:
 
 - the run store
-- the unbound checkout
+- the unbound checkout and its preparation
 - the run context and definitions that steps work with
 - the runner itself
 
@@ -631,6 +656,7 @@ execution: Execution {
     "src/concorde/execution/__init__.py"
     "src/concorde/execution/checkout.py"
     "src/concorde/execution/context.py"
+    "src/concorde/execution/preparation.py"
     "src/concorde/execution/runner.py"
     "src/concorde/execution/runs.py"
     "tests/concorde/execution/"
@@ -707,6 +733,8 @@ each result with its log. These callers call it in-process:
 - the steps of Operations
 - the steps of execution commands
 - the round validations those steps give the worker harness
+- the runner, which runs an unbound checkout's [preparation commands](#preparation) in the same
+  boundary with the checkout writable
 
 Check execution starts no run and no worker. When checks cannot run, it gives its caller its own
 error link, made by `service_error` of [the check service](checks/service.md). A step keeps that

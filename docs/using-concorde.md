@@ -485,6 +485,18 @@ answer a question or review a Module before you agree on a change, without openi
 concorde run understand --modules module.payments --goal "how are retries limited today?"
 ```
 
+Such a run works in a throwaway checkout of your primary checkout's last commit, which holds no
+build output. When your checks need one, commit the commands that make it in
+`.concorde/preparation.json`. Before the run's first step, Concorde runs them in order in the
+checkout, which is the only place they may write:
+
+```json
+{ "commands": [{ "argv": ["make", "build"], "timeout_seconds": 600 }] }
+```
+
+A command that fails ends the run `failed` with `preparation_failed` before any step, its log in
+`.concorde/unbound/<run-id>/preparation/`.
+
 ## One change from idea to merge
 
 Suppose you and the main agent agreed to limit payment retries in `module.payments`.
@@ -933,6 +945,7 @@ Neither user documents nor custom docs may contain a registered Spec document.
 | `.concorde/config.json`                    | The Protocol binding and your project's interpreter.                                    |
 | `.concorde/checks/`                        | Your checks, one `<module id>.json` file per Module.                                    |
 | `.concorde/workers.json`                   | The models and limits of the workers.                                                   |
+| `.concorde/preparation.json`               | The commands that build an unbound run's checkout (optional).                           |
 | `.concorde/specs.json`                     | The registry of Modules.                                                                |
 | `.concorde/protocol/`                      | The installed Spec Protocol.                                                            |
 | `.concorde/bin/concorde`                   | The `concorde` command.                                                                 |

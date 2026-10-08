@@ -120,8 +120,11 @@ scratch:
 - `CONCORDE_CHECK_REPORT_DIR`
 
 If a check hard-codes a cache or report path inside the project, it fails and must be pointed at
-the scratch. A source-rewriting tool, e.g. a fix-mode formatter, isn't a check. Only Linux with a
-root-owned bubblewrap and the needed namespaces is supported. When the boundary cannot be
+the scratch. A source-rewriting tool, e.g. a fix-mode formatter, isn't a check. The boundary has
+one variant, which no configured check uses: the project writable too. Execution's runner runs an
+[unbound checkout](../../glossary.json#concept.unbound-checkout)'s preparation commands this way,
+so that they build the checkout and nothing else
+([A writable project](boundary.md#a-writable-project)). Only Linux with a root-owned bubblewrap and the needed namespaces is supported. When the boundary cannot be
 established, the command does not start, and the run is refused with a sandbox error. There is no subprocess fallback. [The boundary](boundary.md)
 describes the environment and mounts.
 

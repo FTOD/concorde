@@ -81,6 +81,53 @@ class CheckExecutorTests(unittest.TestCase):
                 )
                 self.assertEqual([], list((self.root / ".concorde/runs").iterdir()))
 
+    @verifies("scenario.checks.writable-project")
+    def test_a_writable_project_is_the_only_writable_place_besides_the_scratch(self):
+        outside = self.parent / "outside"
+        outside.mkdir()
+        (outside / "file.txt").write_text("original")
+        (self.root / "environment").symlink_to(outside)
+        result = execute_check(
+            self.root,
+            [
+                sys.executable,
+                "-c",
+                """
+import errno, os, sys
+from pathlib import Path
+outside = Path(sys.argv[1])
+Path('unlisted.txt').write_text('changed')
+Path('build').mkdir()
+Path('build/out.txt').write_text('built')
+Path(os.environ['TMPDIR'], 'scratch.txt').write_text('scratch')
+attempts = {
+    'outside': lambda: (outside / 'file.txt').write_text('changed'),
+    'through-link': lambda: Path('environment/file.txt').write_text('changed'),
+    'new-through-link': lambda: Path('environment/new.txt').write_text('new'),
+    'hardlink': lambda: os.link(outside / 'file.txt', 'alias'),
+}
+for name, attempt in attempts.items():
+    try:
+        attempt()
+    except OSError as error:
+        assert error.errno in (errno.EROFS, errno.EACCES, errno.EPERM, errno.EXDEV), error
+    else:
+        raise AssertionError(name)
+print('confined')
+""",
+                str(outside),
+            ],
+            timeout=10,
+            environment=child_environment(),
+            writable_project=True,
+        )
+        self.assertEqual((0, b"confined\n"), (result.returncode, result.stdout), result)
+        self.assertEqual("changed", self.file.read_text())
+        self.assertEqual("built", (self.root / "build/out.txt").read_text())
+        self.assertEqual("original", (outside / "file.txt").read_text())
+        self.assertEqual(["file.txt"], [path.name for path in outside.iterdir()])
+        self.assertFalse((self.root / "alias").exists())
+
     @verifies("scenario.checks.read-only")
     def test_children_aliases_and_host_descriptors_do_not_restore_write_access(self):
         alias = self.parent / "alias"

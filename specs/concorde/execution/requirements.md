@@ -225,7 +225,27 @@ Issue on the primary branch as a commit of its own. A `project_review` run may a
 review record, `.concorde/reviews/record.json`, the same way. While it holds the merge lock, it
 commits the record alone on the primary branch as a commit of its own, as
 [Project review](../method/project-review/module.md) says. Nothing else of the run writes there.
-The checkout the run examines stays as it was. Its Specs and its code stay as they were.
+The checkout the run examines stays as its [preparation](module.md#preparation) left it. Its
+Specs and its code stay as they were then.
+
+### req.execution.unbound-prepared — An unbound checkout is prepared before the first step
+
+Before the first step of an admitted unbound run, the runner SHALL run in order every preparation
+command that the checkout's committed `.concorde/preparation.json` declares, and start the first
+step only once each of them exited 0.
+
+A run whose preparation file breaks its contract, or one of whose commands failed, runs no step. It
+ends `failed` with `preparation_failed` or `preparation_invalid`, as
+[Preparing the checkout](runner.md#preparing-the-checkout) says. The runner prepares no bound run.
+
+### req.execution.preparation-confined — A preparation command writes only the checkout
+
+The runner SHALL run each preparation command inside Check execution's boundary, with the
+unbound checkout as the only place the command may write besides its own scratch.
+
+The worktree the run started in, the primary worktree and the runtime paths the checkout links
+stay read-only for the command, at the system call
+([req.checks.writable-project-only](checks/boundary.md#req.checks.writable-project-only)).
 
 ### req.execution.checkout-removed — The checkout does not outlive the run
 

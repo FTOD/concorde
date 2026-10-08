@@ -1808,6 +1808,13 @@ class RunnerTests(unittest.TestCase):
         fence = spec_contract("contract.execution.run-result")
         self.assertEqual(RESULT_SCHEMA, fence["schema"])
 
+    def test_the_preparation_schema_is_the_contract(self):
+        from concorde.execution.preparation import PREPARATION_SCHEMA
+
+        fence = spec_contract("contract.execution.preparation")
+        self.assertEqual(PREPARATION_SCHEMA, fence["schema"])
+        validate(fence["example"], PREPARATION_SCHEMA)
+
     def test_the_binding_schema_is_the_contract(self):
         fence = spec_contract("contract.kernel.workspace-binding")
         self.assertEqual(binding_file.BINDING_SCHEMA, fence["schema"])
@@ -2210,6 +2217,115 @@ class UnboundCheckoutTests(unittest.TestCase):
         self.assertEqual("tool\n", (self.root / ".venv/bin/tool").read_text())
         self.assertNotEqual(examined, head(self.root))
         validate(envelope, RESULT_SCHEMA)
+
+    def declare_preparation(self, *commands) -> str:
+        """Commit a preparation file declaring ``commands``, each a Python program run with a
+        timeout of 30 seconds; the commit."""
+        (self.root / ".concorde/preparation.json").write_text(
+            json.dumps(
+                {
+                    "commands": [
+                        {"argv": [sys.executable, "-c", code], "timeout_seconds": 30}
+                        for code in commands
+                    ]
+                }
+            )
+        )
+        return self.commit("declare the preparation")
+
+    @verifies("scenario.execution.unbound-prepared")
+    def test_an_unbound_checkout_is_prepared_before_the_first_step(self):
+        # The first command writes the checkout; the second tries the worktree the run started
+        # in, and the boundary refuses it.
+        escaped = self.root / "escaped.txt"
+        examined = self.declare_preparation(
+            "from pathlib import Path\n"
+            "Path('src/a/calc.py').write_text('prepared\\n')\n"
+            "print('built the checkout')",
+            "import sys\n"
+            "try:\n"
+            f" open({str(escaped)!r}, 'w')\n"
+            "except OSError as error:\n"
+            " print('refused', error.errno)\n"
+            "else:\n"
+            " sys.exit('the starting worktree was writable')",
+        )
+        status, envelope = self.probe()
+        self.assertEqual((0, "ok"), (status, envelope["status"]), envelope)
+        self.assertEqual(examined, envelope["commit"])
+        # The steps found what the preparation made; the starting worktree kept its file.
+        self.assertEqual("prepared\n", envelope["output"]["calc"])
+        self.assertNotEqual("prepared\n", (self.root / "src/a/calc.py").read_text())
+        self.assertFalse(escaped.exists())
+        prepared = [
+            item for item in envelope["host_evidence"] if item["kind"] == "preparation"
+        ]
+        self.assertEqual(2, len(prepared))
+        self.assertTrue(all("exited 0" in item["detail"] for item in prepared))
+        folder = self.run_folder(envelope)
+        self.assertIn("built the checkout", (folder / "preparation/1.log").read_text())
+        self.assertIn("refused", (folder / "preparation/2.log").read_text())
+        node = json.loads((folder / "trace.json").read_text())
+        self.assertLessEqual(
+            {"preparation-1", "preparation-2"},
+            {item["id"] for item in node["artifacts"]},
+        )
+        self.assertEqual([self.root], worktrees(self.root))
+
+    @verifies("scenario.execution.unbound-preparation-failed")
+    def test_a_failed_preparation_runs_no_step(self):
+        self.declare_preparation(
+            "print('built half')",
+            "import sys\nprint('the build broke')\nsys.exit(3)",
+            "open('never.txt', 'w')",
+        )
+        status, envelope = self.probe()
+        self.assertEqual((1, "failed"), (status, envelope["status"]), envelope)
+        self.assertEqual(
+            ["preparation_failed", "preparation_command_failed"],
+            codes(envelope["error"]),
+        )
+        self.assertEqual("input", envelope["error"]["unhandled"]["reason"])
+        [cause] = envelope["error"]["causes"]
+        self.assertEqual("Execution (unbound preparation)", cause["actor"])
+        self.assertIn("exited 3", cause["detail"])
+        self.assertIn("the build broke", cause["detail"])
+        log = self.run_folder(envelope) / "preparation/2.log"
+        self.assertEqual(log.as_posix(), cause["evidence"][0]["ref"])
+        # No later command and no step ran, and the checkout is gone.
+        self.assertFalse((self.run_folder(envelope) / "preparation/3.log").exists())
+        self.assertEqual([], envelope["worker_runs"])
+        node = json.loads((self.run_folder(envelope) / "trace.json").read_text())
+        self.assertEqual([], node["content"]["data"]["steps"])
+        self.assertEqual([self.root], worktrees(self.root))
+        validate(envelope, RESULT_SCHEMA)
+
+    @verifies("scenario.execution.unbound-preparation-failed")
+    def test_an_invalid_preparation_file_runs_no_step(self):
+        (self.root / ".concorde/preparation.json").write_text(
+            json.dumps({"commands": [{"argv": [], "timeout_seconds": 30}]})
+        )
+        self.commit("declare an empty command")
+        status, envelope = self.probe()
+        self.assertEqual((1, "failed"), (status, envelope["status"]), envelope)
+        self.assertEqual(
+            ["preparation_invalid", "invalid_preparation"], codes(envelope["error"])
+        )
+        self.assertEqual("input", envelope["error"]["unhandled"]["reason"])
+        self.assertIn("/commands/0/argv", envelope["error"]["causes"][0]["detail"])
+        self.assertEqual([], envelope["worker_runs"])
+        self.assertEqual([self.root], worktrees(self.root))
+
+    @verifies("scenario.execution.unbound-prepared")
+    def test_a_bound_run_is_not_prepared(self):
+        self.declare_preparation("import sys\nsys.exit('a bound run was prepared')")
+        self.project.open_task("t1")
+        status, envelope = self.probe(cwd=self.project.worktree("t1"))
+        self.assertEqual((0, "ok"), (status, envelope["status"]), envelope)
+        self.assertEqual("t1", envelope["workspace"])
+        self.assertNotIn(
+            "preparation", {item["kind"] for item in envelope["host_evidence"]}
+        )
 
     @verifies("scenario.execution.unbound-checkout-removed")
     def test_the_checkout_is_removed_however_the_run_ends(self):

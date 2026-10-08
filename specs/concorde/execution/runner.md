@@ -313,13 +313,15 @@ runner: "Execution runner" {
   binding: "binding check"
   lock: "lock: workspace lock, second reading of the binding and entering the workspace (bound), or unbound checkout"
   admission: "admission: Modules, registry, inputs"
+  preparation: "preparation: the unbound checkout's preparation commands"
   execution: "execution: the definition's steps in order"
   composition: "composition: remove the checkout; compose and check the result"
   finish: "finish: publish result.json, mark finished, write trace.json, release the locks, print, exit"
-  parse -> binding -> lock -> admission -> execution -> composition -> finish
+  parse -> binding -> lock -> admission -> preparation -> execution -> composition -> finish
   binding -> composition: refused
   lock -> composition: refused
   admission -> composition: refused
+  preparation -> composition: a command fails
   execution -> composition: a step stops or raises
 }
 runner.parse -> exit2: malformed, unknown or outside Git
@@ -336,9 +338,10 @@ name. The number gives only the order, so that no row is confused with a step of
 | 2 | binding check | Refuse a binding that could not be read, breaks the binding contract or names another root | an unreadable, invalid or misplaced binding (`failed`) |
 | 3 | lock | For a bound run, take the [workspace lock](../glossary.json#concept.workspace-lock), waiting for it up to `--wait` seconds (none by default), refuse the run unless the lock file it holds is still the lock's and the binding read again is the one the parse read, then enter the workspace, moving the run's node from the lobby into the workspace folder; for an unbound run, refuse a definition that needs a binding, then create the [unbound checkout](#unbound-checkout) and work in it from here on | `workspace_busy`, `workspace_retired`, `run_store_unwritable`, `binding_required`, `checkout_unavailable` (`failed`) |
 | 4 | admission | Admit the inputs, then run the definition's own admission of its Modules: a definition that reads the [Specs](../glossary.json#concept.spec) leaves out, with `removed-module` evidence, each binding Module the workspace no longer registers and checks the named Modules against the workspace's registry, unless it diagnoses the Specs itself; a definition that reads no Spec takes the Modules as they are | `input_not_admissible`, and from the definition's admission `modules_removed`, `unknown_module`, `specs_unloadable` (`failed`) |
-| 5 | execution | Execute the definition's steps in order | a step stops the run with a status |
-| 6 | composition | Remove an unbound run's checkout, then compose the run result from the step outcomes, as [Composing the result](#composing-the-result) says, and check it against the run result contract and, for an `ok` result, the definition's output contract | the result or output is invalid (`failed`, `invalid-output` evidence) |
-| 7 | finish | Publish `result.json` atomically, mark the run progress file finished, write the final `trace.json`, publish `result.json` again with its `trace-write` evidence when the operating system refused that write, release the workspace lock, remove and release the run lock, print the result and exit | a result that cannot be published or a final `trace.json` that breaks the node contract ([When records cannot be written](#when-records-cannot-be-written): the result printed, exit 1, the run lost) |
+| 5 | preparation | For an unbound run, run in order the preparation commands the checkout's committed `.concorde/preparation.json` declares, each in the checkout within Check execution's boundary with the checkout writable, as [Preparing the checkout](#preparing-the-checkout) says; a bound run, or a checkout without the file, has nothing to prepare | `preparation_invalid`, `preparation_failed` (`failed`) |
+| 6 | execution | Execute the definition's steps in order | a step stops the run with a status |
+| 7 | composition | Remove an unbound run's checkout, then compose the run result from the step outcomes, as [Composing the result](#composing-the-result) says, and check it against the run result contract and, for an `ok` result, the definition's output contract | the result or output is invalid (`failed`, `invalid-output` evidence) |
+| 8 | finish | Publish `result.json` atomically, mark the run progress file finished, write the final `trace.json`, publish `result.json` again with its `trace-write` evidence when the operating system refused that write, release the workspace lock, remove and release the run lock, print the result and exit | a result that cannot be published or a final `trace.json` that breaks the node contract ([When records cannot be written](#when-records-cannot-be-written): the result printed, exit 1, the run lost) |
 
 Each of the definition's steps returns either "continue" or "stop". A "continue" carries any
 output and evidence the step produced. A "stop" carries these details:
@@ -596,6 +599,52 @@ The refusal occurs in the lock row, where an unbound run creates its checkout. I
 `Execution (unbound checkout)` link with Git's output. Nothing is left behind. The runner never
 falls back to working in the origin.
 
+## Preparing the checkout
+
+In the preparation row, the runner prepares an admitted unbound run's checkout with the project's
+preparation commands ([Running unbound](module.md#preparation)). The runner reads them from
+`.concorde/preparation.json` of the checkout. That is the file the examined commit holds, never
+the origin's uncommitted copy. Without the file, nothing is prepared and the row adds no
+evidence. The file follows the
+[preparation file contract](contracts.md#contract.execution.preparation). The run progress file
+names `preparation` as its step while the commands run. For each command in order, the runner
+follows these steps:
+
+1. The runner runs the command's `argv` with the checkout as its working directory, within its
+  `timeout_seconds`. The command runs in Check execution's boundary with the project writable
+  ([The boundary](checks/boundary.md#a-writable-project)), the checkout being the project. Its
+  environment is the one the check service gives a
+  [configured check](../glossary.json#concept.configured-check) without an `env` of its own:
+  `PATH`, `LANG` and the proxy and TLS trust variables, besides the boundary's scratch variables.
+  No `{python}` or other placeholder is substituted.
+2. The runner saves the command's standard output and standard error as
+  `preparation/<n>.log` of the run's node, `<n>` counting the commands from 1. The run's
+  `trace.json` names it as the artifact `preparation-<n>`.
+3. The runner records `preparation` host evidence. Its `ref` is the command line. Its detail says
+  how the command ended, after how long, and where its log is.
+4. When the command exited 0, the runner goes on with the next command. Otherwise, no later
+  command runs and no step runs. The run ends `failed` with `preparation_failed`.
+
+A command fails in one of these ways:
+
+- It exits with a status other than 0. The cause's code is `preparation_command_failed`.
+- It runs out of its time. The boundary ends its whole process tree. The cause's code is
+  `preparation_timed_out`.
+- Its boundary cannot be established, so it never starts. The cause's code is
+  `preparation_sandbox_unavailable`. Below it, Check execution's own `check_sandbox_unavailable`
+  link says why.
+
+A file that cannot be read, is no JSON, or breaks its contract ends the run `failed` with
+`preparation_invalid`, before any command runs. The cause's code is `invalid_preparation`, with the
+place in the file that breaks the contract.
+
+What a command writes in the checkout lasts until the runner removes the checkout. The steps and
+the workers they launch read it there. The checks treat it like any other file of the checkout.
+The worker harness's [write audit](../glossary.json#concept.write-audit) measures each round
+against a snapshot taken before that round. What the preparation wrote is therefore never counted
+as a worker's write. A cancellation while a command runs ends its whole process tree, keeps its
+output in its log and cancels the run as in any other row.
+
 ## Detached runs
 
 With `--detach`, the command follows these steps:
@@ -723,6 +772,7 @@ A step that stops the run builds that link itself. The runner builds it as follo
 | --- | --- | --- | --- |
 | Refusal before the steps began | `refused` | `decision` for `workspace_busy`; `scope` for `binding_required`; `environment` for `binding_unreadable`, `workspace_retired`, `run_store_unwritable` and `checkout_unavailable`; for a refusal of the definition's admission, the reason it gives, such as `scope` for Method's `specs_unloadable`; `input` otherwise | the `component` link of `Execution (workspace binding)` for a binding refusal and `workspace_retired`, `Execution (unbound checkout)` for `checkout_unavailable`, the admission's own component, such as `Method (Module admission)`, for a refusal of the definition's admission, or `Execution (run store)` otherwise, with the refusal's code and message |
 | A step raised, or the runner raised outside every step | `host_error` | `capability` | the exception's `component` link |
+| An unbound checkout's preparation failed | `preparation_invalid` or `preparation_failed` | the cause's: `input` for an invalid file or a command that failed or ran out of time, `environment` for a boundary that could not be established | the `component` link of `Execution (unbound preparation)`: `invalid_preparation`, `preparation_command_failed`, `preparation_timed_out` with the command, how it ended, its log and the end of the log, or `preparation_sandbox_unavailable` over Check execution's `check_sandbox_unavailable` link |
 | Cancelled | `cancelled` | `environment` | none |
 | Invalid result or output | `invalid_result` | `capability` | the error the run had, if any |
 | A step stopped without an error | `missing_error` | `capability` | none |

@@ -110,6 +110,34 @@ and commands.
   `checkout-not-removed` evidence saying what is left and how to remove it
 - AND the result's status is unchanged
 
+### scenario.execution.unbound-prepared — An unbound checkout is prepared before the first step
+
+- GIVEN a primary worktree at commit `C` whose `.concorde/preparation.json` declares two commands
+- AND the first command writes a file of the checkout
+- AND the second command tries to write a file of the primary worktree
+- WHEN an unbound run is started there
+- THEN both commands run in order in the checkout, before the first step
+- AND the run's steps read the file the first command wrote
+- AND the primary worktree keeps its own file, and the second command's write is refused
+- AND the result is `ok`, with `preparation` evidence of each command
+- AND the run's node keeps each command's log as `preparation/<n>.log`
+- AND once the result is written, the checkout is gone
+- BUT a bound run of a worktree with the same file runs no preparation command
+
+### scenario.execution.unbound-preparation-failed — A failed preparation runs no step
+
+- GIVEN a primary worktree whose committed `.concorde/preparation.json` declares three commands
+- AND the second command exits with status 3
+- WHEN an unbound run is started there
+- THEN the result is `failed` with `preparation_failed`
+- AND its cause is the `preparation_command_failed` link of `Execution (unbound preparation)`
+- AND that link names the command, its exit status, its log and the end of the log
+- AND the third command does not run
+- AND no step runs and no worker is launched
+- AND once the result is written, the checkout is gone
+- BUT a file that breaks the preparation file contract fails the run with `preparation_invalid`
+  before any command runs, its cause naming the place in the file
+
 ### scenario.execution.unbound-no-commit — A worktree without a commit refuses an unbound run
 
 - GIVEN a worktree whose `HEAD` names no commit
