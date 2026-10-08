@@ -67,6 +67,8 @@ from common import (  # noqa: E402
     E2EError,
     clone,
     e2e_root,
+    fresh_directory,
+    taken,
     test_directory,
     repository_url,
     run,
@@ -136,7 +138,8 @@ def worker_configuration(model: str | None = None) -> dict:
     except (OSError, ValueError) as error:
         raise E2EError(
             "worker_configuration_unreadable",
-            f"this checkout's worker configuration {source} cannot be read as JSON ({error}); "
+            f"this checkout's worker configuration {source} cannot be read as a JSON object "
+            f"({error}); "
             "repair it, or pass --worker-model to run every worker of the test project on one "
             "model",
         ) from error
@@ -174,6 +177,7 @@ def prepare(
     install and initialize Concorde, recording ``python`` as the project's interpreter when given,
     write its worker configuration (every worker on ``worker_model``, or this checkout's models)
     and open ``task``."""
+    project = test_directory(root, repo.split("/")[-1] if name is None else name)
     workers = worker_configuration(worker_model)
     if not allow_any and repo not in repositories():
         raise E2EError(
@@ -182,8 +186,7 @@ def prepare(
             known=", ".join(repositories()),
         )
     require_mapped(workers)
-    project = test_directory(root, name or repo.split("/")[-1])
-    if project.exists():
+    if taken(project):
         raise E2EError(
             "project_exists",
             f"{project} already exists; remove it, choose another --name or another "
@@ -407,16 +410,23 @@ def run_workflow(
             )
         completed = subprocess.CompletedProcess([], 0, "", "")
     else:
+        request = json.dumps(driver_input(project, worktree, workflow, args))
         with log.open("w") as stream:
-            completed = subprocess.run(
-                ["node", str(HARNESS)],
-                cwd=worktree,
-                input=json.dumps(driver_input(project, worktree, workflow, args)),
-                stdout=stream,
-                stderr=subprocess.PIPE,
-                text=True,
-                check=False,
-            )
+            try:
+                completed = subprocess.run(
+                    ["node", str(HARNESS)],
+                    cwd=worktree,
+                    input=request,
+                    stdout=stream,
+                    stderr=subprocess.PIPE,
+                    text=True,
+                    check=False,
+                )
+            except OSError as error:
+                raise E2EError(
+                    "command_failed",
+                    f"`node {HARNESS}` in {worktree} could not be started: {error}",
+                ) from error
     if completed.returncode != 0:
         raise E2EError(
             "run_failed",
@@ -478,15 +488,13 @@ def watch(project: Path) -> dict:
 def session_command(arguments) -> dict:
     if arguments.action == "show":
         return sessions.show(arguments.directory.resolve())
-    if bool(arguments.prompt) == bool(arguments.prompt_file):
-        raise E2EError(
-            "usage", "give the session's prompt with --prompt or --prompt-file"
-        )
-    prompt = arguments.prompt or arguments.prompt_file.read_text(encoding="utf-8")
+    if arguments.prompt is not None:
+        prompt = arguments.prompt
+    else:
+        prompt = arguments.prompt_file.read_text(encoding="utf-8")
     project = arguments.project.resolve()
-    directory = (
-        project / ".concorde/runs/e2e/sessions" / sessions.stamp().replace(":", "")
-    )
+    # Each start keeps its own session, even beside one started in the same second.
+    directory = fresh_directory(project / ".concorde/runs/e2e/sessions")
     return sessions.start(
         project,
         prompt,
@@ -499,9 +507,14 @@ def dogfood_command(arguments) -> dict:
     if arguments.action == "list":
         return {"scenarios": dogfood.listing()}
     if arguments.action == "prepare":
+        root = e2e_root()
+        # A name that is no directory name is refused before anything else.
+        test_directory(
+            root, arguments.scenario if arguments.name is None else arguments.name
+        )
         workers = worker_configuration(arguments.worker_model)
         require_mapped(workers)
-        return dogfood.prepare(arguments.scenario, e2e_root(), workers, arguments.name)
+        return dogfood.prepare(arguments.scenario, root, workers, arguments.name)
     if arguments.action == "run":
         return dogfood.run_scenario(arguments.directory.resolve(), arguments.rounds)
     return dogfood.evaluate(arguments.directory.resolve())
@@ -579,8 +592,10 @@ def main(argv) -> int:
     session_actions = session_.add_subparsers(dest="action", required=True)
     start_ = session_actions.add_parser("start")
     start_.add_argument("project", type=Path)
-    start_.add_argument("--prompt")
-    start_.add_argument("--prompt-file", type=Path)
+    # Exactly one prompt: none, or both, is a malformed command line.
+    prompt_ = start_.add_mutually_exclusive_group(required=True)
+    prompt_.add_argument("--prompt")
+    prompt_.add_argument("--prompt-file", type=Path)
     start_.add_argument("--rounds", type=int, default=sessions.ROUNDS)
     show_ = session_actions.add_parser("show")
     show_.add_argument("directory", type=Path)

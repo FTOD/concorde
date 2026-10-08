@@ -6,6 +6,7 @@ import argparse
 import importlib.util
 import json
 import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -60,6 +61,62 @@ class ScenarioTests(unittest.TestCase):
         self.assertEqual("unknown_scenario", raised.exception.code)
         self.assertIn("write-hook-rw-directories", raised.exception.detail)
 
+    @verifies("scenario.dogfood-scenarios.invalid-scenario")
+    def test_a_scenario_file_of_the_wrong_shape_is_refused_naming_its_field(self):
+        valid = dogfood.scenario("write-hook-rw-directories")
+        edit = valid["fault"]["edits"][0]
+        cases = {
+            "not JSON": ("{", "cannot be read as JSON"),
+            "no object": ([], "not an object"),
+            "a field missing": (
+                {k: v for k, v in valid.items() if k != "prompt"},
+                "prompt",
+            ),
+            "another name": ({**valid, "name": "other"}, "name"),
+            "a revision of no text": (
+                {**valid, "project": {"repository": "psf/requests", "rev": 3}},
+                "project",
+            ),
+            "no edits": ({**valid, "fault": {"summary": "x", "edits": []}}, "edits"),
+            "an edit without old text": (
+                {
+                    **valid,
+                    "fault": {"summary": "x", "edits": [{"file": "a", "new": "b"}]},
+                },
+                "edit 0",
+            ),
+            "an edit keeping its old text": (
+                {
+                    **valid,
+                    "fault": {
+                        "summary": "x",
+                        "edits": [{**edit, "new": edit["old"] + "# more"}],
+                    },
+                },
+                "keeps its old text",
+            ),
+            "no expected types": (
+                {**valid, "expect": {**valid["expect"], "types": []}},
+                "types",
+            ),
+            "basis of no list": (
+                {**valid, "expect": {**valid["expect"], "basis": "phrase"}},
+                "basis",
+            ),
+        }
+        for case, (value, field) in cases.items():
+            with self.subTest(case=case), tempfile.TemporaryDirectory() as directory:
+                path = Path(directory) / "write-hook-rw-directories.json"
+                path.write_text(value if isinstance(value, str) else json.dumps(value))
+                with (
+                    patch.object(dogfood, "SCENARIOS", Path(directory)),
+                    self.assertRaises(e2e.E2EError) as raised,
+                ):
+                    dogfood.scenario("write-hook-rw-directories")
+                self.assertEqual("invalid_scenario", raised.exception.code)
+                self.assertIn(str(path), raised.exception.detail)
+                self.assertIn(field, raised.exception.detail)
+
     @verifies("scenario.dogfood-scenarios.worker-configuration")
     def test_the_project_gets_a_worker_configuration_before_its_adopt_commit(self):
         workers = e2e.worker_configuration("fast")
@@ -112,6 +169,91 @@ class ScenarioTests(unittest.TestCase):
             e2e.dogfood_command(arguments)
         self.assertEqual("model_unmapped", raised.exception.code)
         prepare.assert_not_called()
+
+
+class RunTests(unittest.TestCase):
+    """``run``: the session in a directory of its own, then the evaluation."""
+
+    def setUp(self):
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        self.base = Path(directory.name) / "test-write-hook-rw-directories"
+        self.base.mkdir()
+        (self.base / "dogfood.json").write_text(
+            json.dumps(
+                {
+                    "scenario": "write-hook-rw-directories",
+                    "project": str(self.base / "project"),
+                }
+            )
+        )
+        self.started = []
+
+    def start(self, end: str | None):
+        """A stand-in for Headless sessions' start that writes its record and ends ``end``, or
+        fails with ``wait_exceeded`` when ``end`` is None."""
+
+        def start(project, prompt, directory, rounds):
+            self.started.append((project, prompt, directory, rounds))
+            (directory / "session.json").write_text(json.dumps({"end": end}))
+            if end is None:
+                raise e2e.E2EError("wait_exceeded", "a run still runs")
+            return {"end": end}
+
+        return start
+
+    @verifies("scenario.dogfood-scenarios.session-ends")
+    def test_every_way_a_session_ends_is_evaluated_but_an_exceeded_wait(self):
+        prompt = dogfood.scenario("write-hook-rw-directories")["prompt"]
+        for end in ("idle", "exited", "no_session", "rounds_exhausted"):
+            with (
+                self.subTest(end=end),
+                patch.object(dogfood.sessions, "start", self.start(end)),
+                patch.object(
+                    dogfood, "evaluate", return_value={"passed": False}
+                ) as evaluate,
+            ):
+                value = dogfood.run_scenario(self.base, rounds=2)
+                self.assertEqual(
+                    {"session": {"end": end}, "evaluation": {"passed": False}}, value
+                )
+                evaluate.assert_called_once_with(self.base)
+                project, given, directory, rounds = self.started[-1]
+                self.assertEqual(
+                    (self.base / "project", prompt, self.base / "sessions", 2),
+                    (project, given, directory.parent, rounds),
+                )
+        with (
+            patch.object(dogfood.sessions, "start", self.start(None)),
+            patch.object(dogfood, "evaluate") as evaluate,
+            self.assertRaises(e2e.E2EError) as raised,
+        ):
+            dogfood.run_scenario(self.base)
+        self.assertEqual("wait_exceeded", raised.exception.code)
+        evaluate.assert_not_called()
+
+    @verifies("scenario.dogfood-scenarios.sessions-kept")
+    def test_runs_started_in_the_same_second_keep_their_own_sessions(self):
+        common = sys.modules["common"]
+        frozen = common.datetime(2026, 10, 8, 6, 0, 0, tzinfo=common.UTC)
+
+        class Clock:
+            @staticmethod
+            def now(zone):
+                return frozen
+
+        with (
+            patch.object(common, "datetime", Clock),
+            patch.object(dogfood.sessions, "start", self.start("idle")),
+            patch.object(dogfood, "evaluate", return_value={}),
+        ):
+            dogfood.run_scenario(self.base)
+            dogfood.run_scenario(self.base)
+        first, second = (item[2] for item in self.started)
+        self.assertNotEqual(first, second)
+        self.assertEqual([first, second], sorted((self.base / "sessions").iterdir()))
+        for directory in (first, second):
+            self.assertTrue((directory / "session.json").is_file())
 
 
 class FaultTests(unittest.TestCase):
@@ -244,7 +386,13 @@ class EvaluationTests(unittest.TestCase):
         installed = dogfood.installed_digests(project)
         record = self.untouched_record(project, framework, installed)
         receipt = project / ".concorde/install.json"
-        for text in (None, "not JSON", "[]", '{"files": "all"}'):
+        # A files value that is no list is refused before any default, false ones included.
+        malformed = (
+            '{"files": "all"}',
+            "{}",
+            *(json.dumps({"files": value}) for value in (None, False, 0, "", {})),
+        )
+        for text in (None, "not JSON", "[]", *malformed):
             with self.subTest(receipt=text):
                 if text is None:
                     receipt.unlink(missing_ok=True)
@@ -253,6 +401,46 @@ class EvaluationTests(unittest.TestCase):
                 check = dogfood._untouched(record)
                 self.assertFalse(check["passed"])
                 self.assertIn("the install receipt", check["detail"])
+
+    @verifies("scenario.dogfood-scenarios.receipt-changed")
+    def test_a_changed_install_receipt_is_a_touched_concorde(self):
+        project = self.untouched_project()
+        framework = dogfood.framework_digest(project)
+        installed = dogfood.installed_digests(project)
+        record = self.untouched_record(project, framework, installed)
+        receipt = project / ".concorde/install.json"
+        value = json.loads(receipt.read_text())
+        # Still a valid receipt naming the same files, with other metadata.
+        receipt.write_text(json.dumps({**value, "mode": "develop"}))
+        self.assertEqual(installed, dogfood.installed_digests(project))
+        check = dogfood._untouched(record)
+        self.assertFalse(check["passed"])
+        self.assertIn(f"the install receipt {receipt} changed", check["detail"])
+
+    @verifies("scenario.dogfood-scenarios.reports-checked")
+    @verifies("scenario.dogfood-scenarios.reports-accepted")
+    def test_a_refusal_is_kept_whole_with_its_standard_error(self):
+        base = self.scenario_directory()
+        project, concorde = base / "project", base / "concorde"
+        reports = dogfood._reports(project)
+        long = "x" * 2000 + " the end"
+        for check, command in (
+            (
+                lambda: dogfood._checked(project, reports),
+                project / ".concorde/bin/concorde",
+            ),
+            (
+                lambda: dogfood._accepted(concorde, reports),
+                concorde / "scripts/issues.py",
+            ),
+        ):
+            for stdout, stderr in ((long, ""), ("", "only on standard error")):
+                with self.subTest(command=command.name, stderr=bool(stderr)):
+                    self.command(command, refuses=True, stdout=stdout, stderr=stderr)
+                    if command.is_relative_to(concorde):
+                        git(concorde, "commit", "-qam", "refuse")
+                    detail = check()["detail"]
+                    self.assertIn(f"one.json: {stdout or stderr}".strip(), detail)
 
     @verifies("scenario.dogfood-scenarios.reports-checked")
     def test_each_report_must_pass_the_projects_check(self):
@@ -331,14 +519,23 @@ class EvaluationTests(unittest.TestCase):
         )
         self.assertEqual(value, json.loads((base / "evaluation.json").read_text()))
 
-    def command(self, path: Path, refuses: bool = False) -> None:
+    def command(
+        self,
+        path: Path,
+        refuses: bool = False,
+        stdout: str = "refused",
+        stderr: str = "",
+    ) -> None:
         """A stand-in for a command that checks or records a report: it logs where it ran and
-        accepts, or refuses, every report."""
+        accepts, or refuses, every report, printing ``stdout`` and ``stderr``."""
         path.parent.mkdir(parents=True, exist_ok=True)
+        refusal = (
+            f"print({stdout!r}); print({stderr!r}, file=sys.stderr); sys.exit(1)\n"
+        )
         path.write_text(
             "#!/usr/bin/env python3\nimport os, sys\n"
             f"open({str(self.root / 'intake.log')!r}, 'a').write(os.getcwd() + '\\n')\n"
-            + ("print('refused'); sys.exit(1)\n" if refuses else "print('{}')\n")
+            + (refusal if refuses else "print('{}')\n")
         )
         path.chmod(0o755)
 
@@ -376,6 +573,7 @@ class EvaluationTests(unittest.TestCase):
                     "fault_commit": git(concorde, "rev-parse", "HEAD"),
                     "project": str(project),
                     "framework": dogfood.framework_digest(project),
+                    "receipt": dogfood.receipt_digest(project),
                     "installed": dogfood.installed_digests(project),
                     "unchanged": {},
                 }
@@ -414,6 +612,7 @@ class EvaluationTests(unittest.TestCase):
             "fault_commit": git(concorde, "rev-parse", "HEAD"),
             "project": str(project),
             "framework": framework,
+            "receipt": dogfood.receipt_digest(project),
             "installed": installed,
         }
 

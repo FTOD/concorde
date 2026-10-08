@@ -49,8 +49,10 @@ When `CONCORDE_E2E_ROOT` is set, it names the end-to-end root.
 Otherwise, the root is `concorde-e2e` in the system's temporary directory, wherever that directory
 lies.
 On Linux, this is `/tmp/concorde-e2e`.
-Each test project is the directory `test-<name>` there.
+Each test project is the directory `test-<name>` directly there.
 `<name>` is the repository's name or the one `--name` gives.
+A `<name>` must be one directory name: not empty, not `.` or `..`, and without `/`.
+So no test project lies outside the end-to-end root.
 A test project is its own repository, so its workers run in its own `.claude/worktrees/`.
 Wherever its Git metadata lies, the Harness hides it from them.
 Since Claude Code loads every `CLAUDE.md` above a session's working directory, the tool refuses a
@@ -203,7 +205,8 @@ Its exit statuses are:
 
 - 0 when it prints its result.
 - 1 when it prints `{"error": …}`.
-- 2 for a malformed command line, such as a `--restart` that is not `<key>=<label>`.
+- 2 for a malformed command line, such as a `--restart` that is not `<key>=<label>`, or a
+  `session start` without exactly one of `--prompt` and `--prompt-file`.
 
 Exit status 0 also covers these results, since they are the test's findings:
 
@@ -213,7 +216,10 @@ Exit status 0 also covers these results, since they are the test's findings:
 For a malformed command line, the tool prints its usage to standard error.
 For that command line, it does nothing.
 When no step names a code for a failure, the tool prints it as an error too, never as a traceback.
-For a command it cannot start at all, it prints `command_failed`.
+For a command it cannot start at all, it prints `command_failed`, naming the command, its working
+directory and the operating system's refusal.
+This holds for every command it starts, a setup step's, the driver's `node` and the owners case's
+own launch alike.
 For anything else it did not foresee, it prints `unexpected_error` with the traceback beside its
 detail. The commands are:
 
@@ -339,14 +345,18 @@ Before anything is cloned, `prepare` refuses each of these:
   ([Test project](#core-concepts)).
 - Unless `--any` is given, a repository SWE-bench does not name, with `unknown_repository` naming
   the known ones.
-- Without `--worker-model`, this checkout's own worker configuration when it cannot be read as JSON,
-  with `worker_configuration_unreadable`.
+- Without `--worker-model`, this checkout's own worker configuration when it cannot be read as a JSON
+  object, with `worker_configuration_unreadable`.
+  The tool takes fields out of that object to build the configuration it hands Workers.
+  So the object shape is the tool's own condition for reading the file.
 - A worker configuration Workers refuses, with Workers' own code.
+- A `--name` that is not one directory name, with `invalid_name`.
 - A project directory that already exists, with `project_exists`.
+  A symbolic link in its place counts as one, whether or not its target exists.
 
 Workers' own codes are:
 
-- `config_invalid` for a configuration its contract does not admit.
+- `config_invalid` for a JSON object its contract does not admit.
 - `model_map_missing` or `model_map_invalid` for the map.
 - `model_unmapped` naming each entry the map lacks.
 
@@ -483,6 +493,7 @@ It fails instead in these cases:
   That error names its `session.json`.
 - When the driver exits with a non-zero status, it fails with
   `run_failed`, with the driver's standard error and log.
+- When `node` cannot be started for the driver, it fails with `command_failed`.
 - When the session fails, it fails with the session's own error, such as `wait_exceeded`, naming
   its `session.json`.
 - When the run saves no workflow result of its own, it fails with `no_result`.
@@ -552,6 +563,21 @@ The phases are:
 
 The case starts each run while it holds the task's [workspace
 lock](../glossary.json#concept.workspace-lock).
+The **launcher** of a run is the process that starts it:
+
+- For the unowned run, the process the case itself starts.
+- For the owned run, the first session's `claude` process.
+
+The case judges only the run its own launch started.
+It finds that run in the [run store](../glossary.json#concept.run-store) as the new run of the task
+whose runner descends from the launcher.
+The runner is the process the [run progress file](../glossary.json#concept.run-progress-file)'s
+`host_pid` names.
+Another run of the same workspace, launched by any other process, is never taken for it.
+So the case reads the process tree of the operating system, Linux's `/proc`.
+It must share the launcher's PID namespace.
+A launcher whose commands run in a PID namespace of their own, such as a sandbox's, never has its run
+found. The case then stops with `live_timeout`.
 So the run cannot start its work before the case sees its launch completed.
 The case takes that lock as Execution's runs take it.
 The case holds an exclusive file lock on `locks/workspaces/<task>.lock`.
@@ -581,6 +607,10 @@ If this causes a refusal with `workspace_busy`, the run does no work, so there i
 judge.
 In that case, the case stops with `workspace_busy` naming that run's result.
 
+After the release, the case waits for the run's result at most the run's wait, 1200 seconds.
+That wait always outlasts what remains of the run's own wait for the lock.
+So a refusal for a busy workspace always arrives before the case's deadline.
+
 Once the run writes its result, the case observes the sessions for a bounded window.
 For an owned run, the case waits until the owner is woken and ends the turn it was woken into.
 This wait lasts at most `--wake` seconds (180 by default) after the result.
@@ -590,6 +620,8 @@ For the unowned run, the case starts that additional wait at once.
 Whether or not the owner was woken, the window ends then.
 The case judges the phase over the time from the end of the owner's launching turn until the
 window's end.
+That end is the moment the turn's last event, Claude Code's `result`, was read from the session.
+It is not the later moment at which the case noticed it.
 For the unowned run, this time starts at the phase's start.
 During this time, the case prompts no session.
 The owner must begin a turn or receive a notification, Claude Code's `task_notification`.
@@ -638,16 +670,17 @@ Only what keeps the case from observing stops it with an error:
 - Fewer than two sessions (`invalid_input`).
 - A missing task (`no_task`).
 - A session that cannot start or ends (`session_failed`).
+- The unowned run's launch that cannot be started (`command_failed`).
 - Another run holding the task's workspace lock for the case's whole limit.
 - The case's own run refused because another run held the lock.
 - The infrastructure's deadline, `live_timeout`.
 
 Both lock failures use `workspace_busy`.
-Within the case's limit of 600 seconds, `live_timeout` covers these cases:
+`live_timeout` covers these cases:
 
-- A session does not end a turn the case prompted.
-- The launching turn and the run's arrival in the run store together take longer than the limit.
-- The run writes no result.
+- A session does not end a turn the case prompted within the case's limit of 600 seconds.
+- The launching turn and the run's arrival in the run store together take longer than that limit.
+- The run writes no result within the run's wait, 1200 seconds, after the release.
 
 The case spends real model turns.
 Like every end-to-end run, the developer runs it by hand.
@@ -718,15 +751,7 @@ A driver run runs it.
 
 <a id="realization.e2e.tests"></a>
 
-The **End-to-end tool tests**, `tests/concorde/e2e/test_e2e.py`, check the tool's pure parts:
-
-- The repository list.
-- Trust.
-- The headless command.
-- Cloning a revision.
-- Watching.
-- The result `run` takes.
-
+The **End-to-end tool tests**, `tests/concorde/e2e/test_e2e.py`, check the tool's pure parts.
 They use local repositories only, without the network or agents.
 
 <a id="realization.e2e.owners"></a>
@@ -741,13 +766,9 @@ It handles these actions:
 
 Its tests, `tests/concorde/e2e/test_owners.py`, run the whole case with stand-ins for `claude` and
 `concorde`.
-The first speaks the live sessions' protocol.
-The stand-ins include these:
-
-- A `claude` stand-in also woken for every run it does not own.
-- One never woken by its own run.
-- A `concorde` stand-in whose run waits in the lobby for the lock, as Execution's does, or is
-  refused there.
+Real sessions and runs would spend model turns and take minutes, so deterministic stand-ins play
+them.
+The `claude` stand-in speaks the live sessions' protocol.
 
 ## The children
 

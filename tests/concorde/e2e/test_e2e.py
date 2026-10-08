@@ -111,18 +111,11 @@ class E2ETests(unittest.TestCase):
         self.addCleanup(
             lambda: subprocess.run(["rm", "-rf", str(outside)], check=False)
         )
-        for named, refused in (
-            (REPOSITORY_ROOT / ".claude/worktrees", True),
-            (REPOSITORY_ROOT, True),
-            (outside, False),
-        ):
+        for named in (REPOSITORY_ROOT / ".claude/worktrees", REPOSITORY_ROOT):
             with (
                 self.subTest(root=named),
                 patch.dict(os.environ, {"CONCORDE_E2E_ROOT": str(named)}),
             ):
-                if not refused:
-                    self.assertEqual(named, e2e.e2e_root())
-                    continue
                 with self.assertRaises(e2e.E2EError) as raised:
                     e2e.e2e_root()
                 self.assertEqual("root_inside_checkout", raised.exception.code)
@@ -153,6 +146,55 @@ class E2ETests(unittest.TestCase):
             "root_inside_checkout", json.loads(printed.getvalue())["error"]["code"]
         )
         clone.assert_not_called()
+
+    @verifies("scenario.e2e.outside-root")
+    def test_a_root_outside_the_checkout_is_the_root(self):
+        outside = Path(os.path.realpath(tempfile.mkdtemp()))
+        self.addCleanup(
+            lambda: subprocess.run(["rm", "-rf", str(outside)], check=False)
+        )
+        with patch.dict(os.environ, {"CONCORDE_E2E_ROOT": str(outside)}):
+            self.assertEqual(outside, e2e.e2e_root())
+
+    @verifies("scenario.e2e.invalid-name")
+    def test_a_name_that_is_not_one_directory_name_is_refused(self):
+        root = Path(os.path.realpath(tempfile.mkdtemp()))
+        self.addCleanup(lambda: subprocess.run(["rm", "-rf", str(root)], check=False))
+        for name in ("", ".", "..", "x/../../elsewhere", "a/b"):
+            with self.subTest(name=name):
+                with self.assertRaises(e2e.E2EError) as raised:
+                    e2e.test_directory(root, name)
+                self.assertEqual("invalid_name", raised.exception.code)
+                self.assertIn(str(root), raised.exception.detail)
+                # Both preparations refuse it before cloning anything.
+                for argv in (
+                    ["prepare", "psf/requests", "--rev", "v1", "--name", name],
+                    [
+                        "dogfood",
+                        "prepare",
+                        "write-hook-rw-directories",
+                        "--name",
+                        name,
+                        "--worker-model",
+                        "fast",
+                    ],
+                ):
+                    printed = io.StringIO()
+                    with (
+                        patch.dict(os.environ, {"CONCORDE_E2E_ROOT": str(root)}),
+                        patch.object(e2e, "clone") as clone,
+                        patch.object(e2e.dogfood, "run") as ran,
+                        contextlib.redirect_stdout(printed),
+                    ):
+                        status = e2e.main(argv)
+                    self.assertEqual(1, status)
+                    self.assertEqual(
+                        "invalid_name", json.loads(printed.getvalue())["error"]["code"]
+                    )
+                    clone.assert_not_called()
+                    ran.assert_not_called()
+        self.assertEqual([], list(root.iterdir()))
+        self.assertEqual(root / "test-ok", e2e.test_directory(root, "ok"))
 
     @verifies("scenario.e2e.relative-root")
     def test_a_relative_root_is_resolved_before_preparation(self):
@@ -547,35 +589,112 @@ class E2ETests(unittest.TestCase):
         ran.assert_not_called()
         self.assertEqual(("scaffold", "2"), e2e.restart_label("scaffold=2"))
 
-    @verifies("scenario.e2e.runtime-failures")
-    def test_runtime_failures_are_printed_as_json_errors(self):
+    @verifies("scenario.e2e.malformed-prompt")
+    def test_a_session_without_exactly_one_prompt_is_a_usage_error(self):
+        for options in ([], ["--prompt", "a", "--prompt-file", "b.md"]):
+            errors = io.StringIO()
+            with (
+                self.subTest(options=options),
+                patch.object(e2e.sessions, "start") as started,
+                contextlib.redirect_stderr(errors),
+                self.assertRaises(SystemExit) as raised,
+            ):
+                e2e.main(["session", "start", "/nowhere", *options])
+            self.assertEqual(2, raised.exception.code)
+            self.assertIn("usage:", errors.getvalue())
+            started.assert_not_called()
+
+    def test_each_session_start_keeps_its_own_directory(self):
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        project = Path(directory.name)
+        kept = []
+
+        def start(project, prompt, directory, rounds):
+            kept.append(directory)
+            return {}
+
+        with patch.object(e2e.sessions, "start", start):
+            for _ in range(2):
+                with contextlib.redirect_stdout(io.StringIO()):
+                    e2e.main(["session", "start", str(project), "--prompt", "hi"])
+        self.assertEqual(2, len(set(kept)))
+        self.assertTrue(all(item.is_dir() for item in kept))
+
+    @verifies("scenario.e2e.command-not-started")
+    def test_a_command_that_cannot_be_started_is_a_command_failure(self):
         directory = tempfile.TemporaryDirectory()
         self.addCleanup(directory.cleanup)
         base = Path(directory.name)
-        # A command that cannot be started.
         with self.assertRaises(e2e.E2EError) as raised:
             e2e.run([str(base / "missing")], cwd=base)
         self.assertEqual("command_failed", raised.exception.code)
         self.assertIn("could not be started", raised.exception.detail)
-        # A task whose record is missing or names no worktree.
+        self.assertIn(str(base), raised.exception.detail)
+        # The driver's node too.
+        (base / ".concorde/tasks/adopt").mkdir(parents=True)
+        (base / ".concorde/tasks/adopt/task.json").write_text(
+            json.dumps({"worktree": str(base)})
+        )
+        script = base / ".concorde/framework/generated/workflows/claude/concorde-x.js"
+        script.parent.mkdir(parents=True)
+        script.write_text("")
+        printed = io.StringIO()
+        with (
+            patch.dict(os.environ, {"PATH": str(base / "nothing")}),
+            contextlib.redirect_stdout(printed),
+        ):
+            status = e2e.main(["run", str(base), "--via", "driver", "--workflow", "x"])
+        self.assertEqual(1, status)
+        error = json.loads(printed.getvalue())["error"]
+        self.assertEqual("command_failed", error["code"])
+        self.assertIn("node", error["detail"])
+
+    @verifies("scenario.e2e.task-unreadable")
+    def test_a_task_without_a_readable_record_is_refused(self):
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        base = Path(directory.name)
         (base / ".concorde/tasks/adopt").mkdir(parents=True)
         for text in (None, "[]", "{}"):
             if text is not None:
                 (base / ".concorde/tasks/adopt/task.json").write_text(text)
-            with self.subTest(record=text), self.assertRaises(e2e.E2EError) as raised:
-                e2e.task_worktree(base, "adopt")
-            self.assertEqual("no_task", raised.exception.code)
-        # This checkout's worker configuration holding JSON that is no object.
+            printed = io.StringIO()
+            with self.subTest(record=text), contextlib.redirect_stdout(printed):
+                status = e2e.main(["run", str(base)])
+            self.assertEqual(1, status)
+            error = json.loads(printed.getvalue())["error"]
+            self.assertEqual("no_task", error["code"])
+            self.assertIn("task.json", error["detail"])
+
+    @verifies("scenario.e2e.configuration-unreadable")
+    def test_this_checkouts_unreadable_worker_configuration_is_refused(self):
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        base = Path(directory.name)
         workers = base / "workers.json"
-        workers.write_text("[]")
-        with (
-            patch.object(e2e, "CHECKOUT", base),
-            patch.object(e2e, "WORKERS", "workers.json"),
-            self.assertRaises(e2e.E2EError) as raised,
-        ):
-            e2e.worker_configuration()
-        self.assertEqual("worker_configuration_unreadable", raised.exception.code)
-        # Any other failure is printed as a JSON error with its traceback, not raised.
+        for text in ("not JSON", "[]", "null"):
+            workers.write_text(text)
+            printed = io.StringIO()
+            with (
+                self.subTest(text=text),
+                patch.object(e2e, "CHECKOUT", base),
+                patch.object(e2e, "WORKERS", "workers.json"),
+                patch.object(e2e, "clone") as clone,
+                contextlib.redirect_stdout(printed),
+            ):
+                status = e2e.main(["prepare", "psf/requests", "--rev", "v1"])
+            self.assertEqual(1, status)
+            error = json.loads(printed.getvalue())["error"]
+            self.assertEqual("worker_configuration_unreadable", error["code"])
+            self.assertIn(str(workers), error["detail"])
+            clone.assert_not_called()
+
+    @verifies("scenario.e2e.unexpected-failure")
+    def test_a_failure_nobody_foresaw_is_printed_with_its_traceback(self):
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        base = Path(directory.name)
         printed = io.StringIO()
         with (
             patch.object(e2e, "watch", side_effect=RuntimeError("broken")),

@@ -50,7 +50,19 @@ Concrete situations that show the [requirements](requirements.md) of
 - WHEN the tool resolves the end-to-end root, as `prepare` does first
 - THEN it refuses with `root_inside_checkout`, naming the root, the checkout and that Claude Code would load the checkout's `CLAUDE.md` into the test project's sessions
 - AND `prepare` clones nothing
-- BUT a `CONCORDE_E2E_ROOT` outside the checkout is the root
+
+### scenario.e2e.outside-root — A root outside the checkout is the root
+
+- GIVEN `CONCORDE_E2E_ROOT` naming an absolute directory outside this checkout
+- WHEN the tool resolves the end-to-end root
+- THEN the root is that directory
+
+### scenario.e2e.invalid-name — A name that is not one directory name is refused
+
+- GIVEN a `--name` that is empty, `.`, `..` or holds a `/`, such as `x/../../elsewhere`
+- WHEN the developer prepares a test project or a [dogfood scenario](../glossary.json#concept.dogfood-scenario) with it
+- THEN preparation is refused with `invalid_name`, naming the name and the end-to-end root
+- AND nothing is cloned or created
 
 ### scenario.e2e.relative-root — A relative root is resolved before preparation
 
@@ -106,11 +118,40 @@ This illustrates [the driver's real step commands](requirements.md#req.e2e.drive
 - AND it exits 2
 - AND no workflow runs
 
-### scenario.e2e.runtime-failures — A failure at run time is printed as an error
+### scenario.e2e.malformed-prompt — A session without exactly one prompt is a usage error
 
-- GIVEN a command that cannot be started, a task whose record is missing or names no worktree, this checkout's [worker configuration](../glossary.json#concept.worker-configuration) holding JSON that is no object, or a failure the tool did not foresee
+- GIVEN a test project
+- WHEN the developer runs `session start` with neither `--prompt` nor `--prompt-file`, or with both
+- THEN the tool prints its usage to standard error
+- AND it exits 2
+- AND no session starts
+
+### scenario.e2e.command-not-started — A command that cannot be started is a command failure
+
+- GIVEN a command the tool runs that the operating system cannot start, such as a setup step's command or the driver's `node`
+- WHEN a command of the tool runs it
+- THEN the tool prints `{"error": …}` with `command_failed`, naming the command, its working directory and the operating system's refusal
+- AND the tool exits 1
+
+### scenario.e2e.task-unreadable — A task without a readable record is refused
+
+- GIVEN a test project whose task's [task record](../glossary.json#concept.task-record) is missing or names no worktree
+- WHEN the developer runs `run` on that task
+- THEN the tool prints `{"error": …}` with `no_task`, naming the record
+- AND the tool exits 1
+
+### scenario.e2e.configuration-unreadable — This checkout's unreadable worker configuration is refused
+
+- GIVEN this checkout's [worker configuration](../glossary.json#concept.worker-configuration) holding text that is not JSON, or JSON that is no object
+- WHEN the developer prepares a test project without `--worker-model`
+- THEN preparation is refused with `worker_configuration_unreadable`, naming the file
+- AND nothing is cloned
+
+### scenario.e2e.unexpected-failure — A failure nobody foresaw is printed with its traceback
+
+- GIVEN a failure that no step of the tool names a code for
 - WHEN a command of the tool meets it
-- THEN the tool prints `{"error": …}` with `command_failed`, `no_task`, `worker_configuration_unreadable` or `unexpected_error` and its traceback
+- THEN the tool prints `{"error": …}` with `unexpected_error`, the failure in its detail and its traceback beside it
 - AND the tool exits 1
 - BUT it never ends in a traceback of its own
 
@@ -162,8 +203,17 @@ This illustrates [the driver's real step commands](requirements.md#req.e2e.drive
 - AND live sessions of two Claude Code main sessions in its primary worktree
 - WHEN `owners` plays a run that waits in the lobby for the [workspace lock](../glossary.json#concept.workspace-lock) the case holds
 - AND once the case released the lock, the run is refused with `workspace_busy`, as when another run took the lock first and held it past the run's wait
-- THEN the case stops with `workspace_busy`, naming the phase and the refused run's result in the lobby
+- THEN the case stops with `workspace_busy`, naming the phase and the refused run's result in the lobby, even when the refusal comes later than the case's limit after the release
 - AND it judges no phase of that run
+
+### scenario.e2e.owners-competing-run — A run the case did not launch is never judged
+
+- GIVEN a test project with a task `t1` with a worktree
+- AND live sessions of two Claude Code main sessions in its primary worktree
+- AND another run of `t1`, launched by another process, that appears in the [run store](../glossary.json#concept.run-store) after the case looked at it
+- WHEN `owners` plays its two runs
+- THEN each phase judges the run its own launch started
+- AND neither phase names the other run
 
 ### scenario.e2e.owners-session-ended — A session that ends stops the case
 

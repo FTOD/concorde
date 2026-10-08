@@ -28,8 +28,10 @@ from common import (
     CHECKOUT,
     E2EError,
     clone,
+    fresh_directory,
     repository_url,
     run,
+    taken,
     test_directory,
 )
 
@@ -39,25 +41,88 @@ FIELDS = ("name", "description", "project", "fault", "prompt", "expect")
 FRAMEWORK_PARTS = ("src", "scripts", "prompts", "generated")
 GIT = ["git", "-c", "user.name=e2e", "-c", "user.email=e2e@example.com"]
 WORKERS = ".concorde/workers.json"
+RECEIPT = ".concorde/install.json"
 
 
 def scenario(name: str) -> dict:
-    """A scenario by name, with every field it needs."""
+    """A scenario by name, every field of the shape it needs: ``unknown_scenario`` naming the
+    known ones when no file names it, ``invalid_scenario`` naming the file and the field when its
+    file is no valid scenario."""
+    known = sorted(item.stem for item in SCENARIOS.glob("*.json"))
+    if name not in known:
+        raise E2EError(
+            "unknown_scenario",
+            f"no scenario is named {name!r}; known: {', '.join(known) or 'none'}",
+        )
     path = SCENARIOS / f"{name}.json"
     try:
         value = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, ValueError) as error:
-        known = ", ".join(sorted(item.stem for item in SCENARIOS.glob("*.json")))
         raise E2EError(
-            "unknown_scenario",
-            f"{path} cannot be read as a scenario ({error}); known: {known or 'none'}",
+            "invalid_scenario", f"{path} cannot be read as JSON ({error})"
         ) from error
+    problem = scenario_problem(name, value)
+    if problem:
+        raise E2EError("invalid_scenario", f"{path}: {problem}")
+    return value
+
+
+def _text(value) -> bool:
+    return isinstance(value, str) and bool(value.strip())
+
+
+def _texts(value, empty: bool = True) -> bool:
+    return (
+        isinstance(value, list)
+        and (empty or bool(value))
+        and all(_text(item) for item in value)
+    )
+
+
+def scenario_problem(name: str, value) -> str | None:
+    """What makes ``value`` no valid scenario of the file ``name``, or None."""
+    if not isinstance(value, dict):
+        return f"it holds a JSON {type(value).__name__}, not an object"
     missing = [field for field in FIELDS if field not in value]
     if missing:
-        raise E2EError(
-            "invalid_scenario", f"{path} lacks the field(s) {', '.join(missing)}"
-        )
-    return value
+        return f"it lacks the field(s) {', '.join(missing)}"
+    if value["name"] != name:
+        return f"its name {value['name']!r} is not its file's name {name!r}"
+    for field in ("description", "prompt"):
+        if not _text(value[field]):
+            return f"its {field} is no text"
+    project = value["project"]
+    if not isinstance(project, dict) or not all(
+        _text(project.get(key)) for key in ("repository", "rev")
+    ):
+        return "its project is no object with the texts repository and rev"
+    fault = value["fault"]
+    if not isinstance(fault, dict) or not _text(fault.get("summary")):
+        return "its fault is no object with the text summary"
+    edits = fault.get("edits")
+    if not isinstance(edits, list) or not edits:
+        return "its fault's edits are no non-empty list"
+    for index, edit in enumerate(edits):
+        if not isinstance(edit, dict) or not (
+            _text(edit.get("file"))
+            and _text(edit.get("old"))
+            and isinstance(edit.get("new"), str)
+        ):
+            return (
+                f"edit {index} of its fault is no object with file, old and new texts"
+            )
+        if edit["old"] in edit["new"]:
+            # The old text would survive the injection, which could then be repeated.
+            return f"edit {index} of its fault keeps its old text in its new text"
+    expect = value["expect"]
+    if not isinstance(expect, dict):
+        return "its expect is no object"
+    if not _texts(expect.get("types"), empty=False):
+        return "its expect's types are no non-empty list of texts"
+    for key in ("basis", "unchanged"):
+        if not _texts(expect.get(key)):
+            return f"its expect's {key} is no list of texts"
+    return None
 
 
 def listing() -> list[dict]:
@@ -97,15 +162,23 @@ def framework_digest(project: Path) -> str:
     return "sha256:" + digest.hexdigest()
 
 
+def receipt_digest(project: Path) -> str | None:
+    """The digest of the install receipt's bytes, or None when it cannot be read."""
+    try:
+        return "sha256:" + hashlib.sha256((project / RECEIPT).read_bytes()).hexdigest()
+    except OSError:
+        return None
+
+
 def installed_digests(project: Path) -> dict:
     """The digest of each file the install receipt names outside ``.concorde/``;
     ``receipt_unreadable`` when the receipt cannot be read as one naming its files."""
-    path = project / ".concorde/install.json"
+    path = project / RECEIPT
     try:
         receipt = json.loads(path.read_text(encoding="utf-8"))
         if not isinstance(receipt, dict):
             raise ValueError(f"it holds a JSON {type(receipt).__name__}, not an object")
-        files = receipt.get("files") or []
+        files = receipt.get("files")
         if not isinstance(files, list) or not all(isinstance(f, str) for f in files):
             raise ValueError("its files are not a list of paths")
     except (OSError, ValueError) as error:
@@ -141,8 +214,8 @@ def prepare(
     """Set a scenario up under ``root``: the faulty Concorde clone and the project, with
     ``workers`` as the project's worker configuration."""
     chosen = scenario(name)
-    base = test_directory(root, directory or name)
-    if base.exists():
+    base = test_directory(root, name if directory is None else directory)
+    if taken(base):
         raise E2EError(
             "scenario_exists",
             f"{base} already exists; remove it or pass another --name",
@@ -178,6 +251,7 @@ def prepare(
         "project": str(project),
         "project_head": run(["git", "rev-parse", "HEAD"], cwd=project).stdout.strip(),
         "framework": framework_digest(project),
+        "receipt": receipt_digest(project),
         "installed": installed_digests(project),
         "unchanged": {
             path: run(["git", "rev-parse", f"HEAD:{path}"], cwd=project).stdout.strip()
@@ -202,7 +276,8 @@ def run_scenario(base: Path, rounds: int = sessions.ROUNDS) -> dict:
     """Drive the scenario's session to its end, then evaluate it."""
     record = _record(base)
     chosen = scenario(record["scenario"])
-    directory = base / "sessions" / sessions.stamp().replace(":", "")
+    # Each run keeps its own session, even beside one started in the same second.
+    directory = fresh_directory(base / "sessions")
     session = sessions.start(
         Path(record["project"]),
         chosen["prompt"],
@@ -234,6 +309,8 @@ def _untouched(record: dict) -> dict:
         problems.append(f"the Concorde clone has changes: {', '.join(changed[:10])}")
     if framework_digest(project) != record["framework"]:
         problems.append("the installed framework under .concorde/framework changed")
+    if receipt_digest(project) != record["receipt"]:
+        problems.append(f"the install receipt {project / RECEIPT} changed")
     try:
         now = installed_digests(project)
     except E2EError as error:
@@ -249,8 +326,17 @@ def _untouched(record: dict) -> dict:
         "concorde_untouched",
         not problems,
         "; ".join(problems)
-        or "the Concorde clone, the framework copy and every installed file are as installed",
+        or "the Concorde clone, the framework copy, the install receipt and every installed file "
+        "are as installed",
     )
+
+
+def refusal(done: subprocess.CompletedProcess) -> str:
+    """The whole text of a command's refusal: its standard output and its standard error."""
+    text = "\n".join(
+        part for part in (done.stdout.strip(), done.stderr.strip()) if part
+    )
+    return text or f"exit status {done.returncode} without output"
 
 
 def _reports(project: Path) -> list[Path]:
@@ -275,7 +361,7 @@ def _checked(project: Path, reports: list[Path]) -> dict:
                 f"{path.name}: {error}",
             ) from error
         if done.returncode != 0:
-            refused.append(f"{path.name}: {done.stdout.strip()[:600]}")
+            refused.append(f"{path.name}: {refusal(done)}")
     return _check(
         "reports_checked",
         bool(reports) and not refused,
@@ -311,7 +397,7 @@ def _accepted(concorde: Path, reports: list[Path]) -> dict:
                 text=True,
             )
             if done.returncode != 0:
-                refused.append(f"{path.name}: {done.stdout.strip()[:600]}")
+                refused.append(f"{path.name}: {refusal(done)}")
     return _check(
         "reports_accepted",
         bool(reports) and not refused,
