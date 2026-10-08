@@ -138,6 +138,46 @@ class AccountingTests(unittest.TestCase):
         )
 
 
+class ParallelSeatTests(unittest.TestCase):
+    """Panel seats absorb their worker records in parallel on one run context."""
+
+    def test_each_seat_keeps_its_own_output_when_another_absorbs_meanwhile(self):
+        from types import SimpleNamespace
+
+        from concorde.method import workers
+
+        ctx = SimpleNamespace(
+            worker=None,
+            last_record=None,
+            evidence=[],
+            worker_runs=[],
+            worker_started=lambda run_id: None,
+        )
+
+        def record(run_id, title):
+            return {
+                "run_id": run_id,
+                "task_type": "review-spec",
+                "status": "ok",
+                "rounds": [],
+                "worker_result": {"output": {"findings": [finding(title=title)]}},
+            }
+
+        second = {}
+
+        def interleave(results):
+            # The first seat pauses after it set ctx.worker; the second absorbs meanwhile.
+            if not second:
+                second["started"] = True
+                second["outcome"] = workers.absorb(ctx, record("w-2", "second"))
+            return []
+
+        with patch("concorde.method.checks.trace_writes", side_effect=interleave):
+            first = workers.absorb(ctx, record("w-1", "first"))
+        self.assertEqual("first", first.output["findings"][0]["title"])
+        self.assertEqual("second", second["outcome"].output["findings"][0]["title"])
+
+
 class SpecPanelTests(unittest.TestCase):
     def setUp(self):
         self.project = OperationProject(self)
