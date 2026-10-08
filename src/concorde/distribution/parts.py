@@ -331,7 +331,7 @@ def receipt_path(package: Path = PACKAGE) -> Path | None:
 
 def installed_names(package: Path = PACKAGE) -> set[str] | None:
     """The parts the receipt names under ``parts``, or None when every part is installed: in a
-    source checkout, and in a project whose receipt names none."""
+    source checkout, and in a project whose receipt names none (no ``parts`` or an empty one)."""
     path = receipt_path(package)
     if path is None:
         return None
@@ -340,7 +340,7 @@ def installed_names(package: Path = PACKAGE) -> set[str] | None:
     except (OSError, UnicodeError, ValueError):
         return None
     parts = receipt.get("parts") if isinstance(receipt, dict) else None
-    if not isinstance(parts, dict):
+    if not isinstance(parts, dict) or not parts:
         return None
     return set(parts)
 

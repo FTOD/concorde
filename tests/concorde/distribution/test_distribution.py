@@ -27,6 +27,7 @@ from concorde.distribution import guidance, parts
 from concorde.distribution.install import (
     InstallError,
     _amend,
+    _previous_parts,
     install,
     refusal,
     update,
@@ -721,14 +722,25 @@ class PartsTests(unittest.TestCase):
 
     @verifies("scenario.distribution.composed-from-installed-parts")
     def test_a_receipt_naming_no_parts_installs_every_part(self):
-        project = framework(self, None)
-        usage = framework_command(project, "--help")
-        offered = set(usage.stdout.split("\n", 3)[3].split())
         index = json.loads((REPOSITORY_ROOT / "generated/parts.json").read_text())
-        self.assertEqual(
-            {name for entry in index["parts"].values() for name in entry["commands"]},
-            offered,
-        )
+        # A receipt without parts and one whose parts are empty both name none.
+        for named in (None, []):
+            with self.subTest(parts=named):
+                project = framework(self, named)
+                usage = framework_command(project, "--help")
+                offered = set(usage.stdout.split("\n", 3)[3].split())
+                self.assertEqual(
+                    {
+                        name
+                        for entry in index["parts"].values()
+                        for name in entry["commands"]
+                    },
+                    offered,
+                )
+        # An update of such a receipt installs every part as well.
+        everything = parts.package_parts(REPOSITORY_ROOT)
+        for receipt in ({"version": "9.0.0"}, {"version": "9.0.0", "parts": {}}):
+            self.assertEqual(set(everything), _previous_parts(receipt, everything))
 
     @verifies("scenario.distribution.build-refuses-name-conflict")
     def test_two_parts_registering_one_name_fail_the_build(self):
@@ -1029,8 +1041,20 @@ class InstallTests(unittest.TestCase):
 
             return patch.object(parts.Registration, "entry", patched)
 
-        for answer in (RuntimeError("the run store cannot be read"), "busy", [3]):
-            with self.subTest(answer=answer), failing("idle_check", answer):
+        # The installed copy's idle check is asked, since the work runs on that copy.
+        idle = project / ".concorde/framework/src/concorde/execution/idle.py"
+        original = idle.read_text()
+        self.addCleanup(idle.write_text, original)
+        for answer, body in (
+            (
+                RuntimeError("the run store cannot be read"),
+                "raise RuntimeError('the run store cannot be read')",
+            ),
+            ("busy", "return 'busy'"),
+            ([3], "return [3]"),
+        ):
+            idle.write_text(f"def active_runs(project):\n    {body}\n")
+            with self.subTest(answer=answer):
                 with self.assertRaises(InstallError) as raised:
                     install(
                         project, package, pi_runtime=False, d2=False, dependencies=False
@@ -1050,6 +1074,21 @@ class InstallTests(unittest.TestCase):
                 self.assertEqual(
                     receipt, (project / ".concorde/install.json").read_bytes()
                 )
+        idle.write_text(original)
+        # When the installed copy cannot be run, the package's own check is asked instead.
+        interpreter = project / ".concorde/framework/python/bin/python"
+        hidden = interpreter.with_name("python.hidden")
+        interpreter.rename(hidden)
+        try:
+            with failing("idle_check", RuntimeError("the run store cannot be read")):
+                with self.assertRaises(InstallError) as raised:
+                    install(
+                        project, package, pi_runtime=False, d2=False, dependencies=False
+                    )
+        finally:
+            hidden.rename(interpreter)
+        self.assertEqual("part_failed", raised.exception.code)
+        self.assertIn("the execution part's idle_check entry", str(raised.exception))
         with failing("after_update", RuntimeError("no task records")), which():
             with self.assertRaises(InstallError) as raised:
                 update(project, package)
@@ -1168,6 +1207,60 @@ class InstallTests(unittest.TestCase):
         live.kill()
         live.wait()
         install(project, package, pi_runtime=False, d2=False, dependencies=False)
+
+    @verifies("scenario.distribution.install-busy-dropped-part")
+    def test_an_install_asks_the_installed_copy_for_a_part_the_package_dropped(self):
+        package = package_copy(self)
+        project = package.parent / "project"
+        project.mkdir()
+        subprocess.run(["git", "init", "-q", str(project)], check=True)
+        install(project, package, pi_runtime=False, d2=False, dependencies=False)
+        # The installed copy has a part the package no longer builds, whose work still runs.
+        retired = project / ".concorde/framework/src/concorde/retired"
+        retired.mkdir()
+        (retired / "__init__.py").write_text("")
+        (retired / "idle.py").write_text(
+            "def busy(project):\n    return ['retired work w-9']\n"
+        )
+        registration = json.loads(
+            (package / "src/concorde/kernel/registration.json").read_text()
+        )
+        registration.update(
+            part="retired",
+            module="module.retired",
+            commands=[],
+            guidance=None,
+            idle_check="idle:busy",
+        )
+        registration["install"]["gitignore"] = []
+        (retired / "registration.json").write_text(json.dumps(registration))
+        path = project / ".concorde/install.json"
+        receipt = json.loads(path.read_text())
+        receipt["parts"]["retired"] = receipt["version"]
+        path.write_text(json.dumps(receipt))
+        before = path.read_bytes()
+        with self.assertRaises(InstallError) as raised:
+            install(project, package, pi_runtime=False, d2=False, dependencies=False)
+        self.assertEqual("concorde_busy", raised.exception.code)
+        self.assertIn("retired work w-9", str(raised.exception))
+        self.assertEqual(before, path.read_bytes())
+        self.assertTrue(retired.is_dir())
+        # A failing check of the installed copy refuses the install as well.
+        (retired / "idle.py").write_text(
+            "def busy(project):\n    raise OSError('gone')\n"
+        )
+        with self.assertRaises(InstallError) as raised:
+            install(project, package, pi_runtime=False, d2=False, dependencies=False)
+        self.assertEqual("part_failed", raised.exception.code)
+        self.assertIn("retired", str(raised.exception))
+        self.assertIn("OSError: gone", str(raised.exception))
+        # Once its work has ended, the install replaces the copy and drops the part.
+        (retired / "idle.py").write_text("def busy(project):\n    return []\n")
+        receipt = install(
+            project, package, pi_runtime=False, d2=False, dependencies=False
+        )
+        self.assertNotIn("retired", receipt["parts"])
+        self.assertFalse(retired.exists())
 
     @verifies(
         "scenario.distribution.own-python",

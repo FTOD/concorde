@@ -169,7 +169,7 @@ This illustrates [the precondition of `protocol-manifest`](requirements.md#req.d
 
 ### scenario.distribution.composed-from-installed-parts — The command offers the installed parts
 
-- GIVEN a project whose receipt names the parts installed, and one whose receipt names none
+- GIVEN a project whose receipt names the parts installed, and one whose receipt names none, with no `parts` or an empty one
 - WHEN the developer asks `concorde --help` for its commands, or the [project MCP server](../glossary.json#concept.project-mcp-server) lists its tools
 - THEN the first offers exactly the distribution commands and the commands of the parts its receipt names
 - AND the first offers exactly the tools those parts register whose required parts are installed
@@ -468,6 +468,15 @@ This illustrates [the environment deciding the channel](requirements.md#req.dist
 - THEN the install is refused with `concorde_busy`, naming each running run with its run lock, the process holding it and its progress file
 - BUT neither the worker's progress file nor the run whose run lock nobody holds is named, whatever process its recorded identifier names
 - AND nothing in the project changes
+
+### scenario.distribution.install-busy-dropped-part — The installed copy is asked for a part the package dropped
+
+- GIVEN an installed project whose installed copy has a part the new package no longer builds
+- AND that part's idle check, in the installed copy, reports work running
+- WHEN the developer installs Concorde again without that part
+- THEN the install is refused with `concorde_busy`, naming that work
+- AND nothing in the project changes
+- AND once the installed copy's check reports no work, the install replaces the copy and leaves the part out
 
 ### scenario.distribution.install-after-runs-end — Concorde is replaced once no run holds its run lock
 

@@ -234,6 +234,114 @@ def active_work(project: Path, registrations: dict) -> list[str]:
     return found
 
 
+# Run by the interpreter of the installation an install would replace, with that installation's own
+# code: it asks the idle check of every part that installation has, whether or not the incoming
+# package still builds the part, and prints {"asked": [parts], "running": [descriptions]}, or
+# {"failed": {"part", "entry", "answered" or "raised"}} for the first check that fails.
+_INSTALLED_IDLE = r"""
+import json, sys, traceback
+from pathlib import Path
+framework, project = Path(sys.argv[1]), Path(sys.argv[2])
+sys.path.insert(0, str(framework / "src"))
+from concorde.distribution import parts
+answer = {"asked": [], "running": []}
+for registration in parts.ordered(parts.installed(framework)):
+    answer["asked"].append(registration.part)
+    entry = registration.data["idle_check"]
+    if entry is None:
+        continue
+    failed = {"part": registration.part, "entry": entry}
+    try:
+        found = registration.entry(entry)(project)
+    except Exception as error:
+        frames = traceback.extract_tb(error.__traceback__)
+        failed["raised"] = {
+            "type": type(error).__name__,
+            "message": str(error),
+            "code": getattr(error, "code", None),
+            "at": [f"{frames[-1].filename}:{frames[-1].lineno}", frames[-1].name] if frames else None,
+        }
+    else:
+        if isinstance(found, list) and all(isinstance(item, str) for item in found):
+            answer["running"] += found
+            continue
+        failed["answered"] = repr(found)[:1500]
+    print(json.dumps({"failed": failed}, default=str))
+    sys.exit(0)
+print(json.dumps(answer))
+"""
+
+
+def _installed_failure(failed: dict) -> InstallError:
+    """The ``part_failed`` refusal of an idle check of the installed copy that failed, worded as
+    ``_asked`` words one of the package's, the exception it raised as its cause."""
+    named = f"the installed {failed.get('part')} part's idle_check entry {failed.get('entry')}"
+    raised = failed.get("raised")
+    if not isinstance(raised, dict):
+        return InstallError(
+            "part_failed",
+            f"{named} answered {failed.get('answered')}, which is not a list of descriptions",
+        )
+    detail = f"{raised.get('type')}: {raised.get('message')}"
+    code = raised.get("code")
+    at = raised.get("at")
+    cause = formats.link(
+        f"{failed.get('part')} part (idle_check)",
+        code
+        if isinstance(code, str) and formats.CODE_PATTERN.match(code)
+        else "unexpected_error",
+        detail,
+        reason="capability",
+        explanation="the part's entry has no recovery for its own failure",
+        evidence=[formats.evidence("raised-at", *at)] if isinstance(at, list) else [],
+    )
+    return InstallError("part_failed", f"{named} failed: {detail}", causes=[cause])
+
+
+def installed_work(project: Path) -> dict | None:
+    """What the idle checks of the installation in ``project`` report, asked through that
+    installation's own Framework copy and interpreter: ``{"asked", "running"}``, the parts asked
+    and the work they report running. A part that installation has is asked even when the incoming
+    package no longer builds it, since its work runs on the copy an install replaces. A check that
+    fails is refused with ``part_failed``. None when there is no installation, or its copy cannot be
+    run, such as after an install that failed halfway."""
+    framework = project / FRAMEWORK
+    interpreter = project / OWN_PYTHON / "bin/python"
+    if not (framework / SOURCE / "distribution").is_dir() or not interpreter.is_file():
+        return None
+    try:
+        ran = subprocess.run(
+            [
+                str(interpreter),
+                "-I",
+                "-c",
+                _INSTALLED_IDLE,
+                str(framework),
+                str(project),
+            ],
+            capture_output=True,
+            text=True,
+            timeout=300,
+            check=False,
+        )
+        lines = ran.stdout.strip().splitlines()
+        answer = json.loads(lines[-1]) if lines else None
+    except (OSError, subprocess.TimeoutExpired, ValueError):
+        return None
+    if not isinstance(answer, dict):
+        return None
+    if isinstance(answer.get("failed"), dict):
+        raise _installed_failure(answer["failed"])
+    asked, running = answer.get("asked"), answer.get("running")
+    if not (
+        isinstance(asked, list)
+        and isinstance(running, list)
+        and all(isinstance(item, str) for item in asked + running)
+    ):
+        return None
+    return {"asked": asked, "running": running}
+
+
 def _prepared(package: Path, project: Path, registrations: dict) -> dict[str, bytes]:
     """What the parts' ``install.prepare`` services place, decided before the first write, by
     project-relative path; a service's refusal refuses the install."""
@@ -646,12 +754,12 @@ def _ignore(project: Path, lines: tuple[str, ...]) -> None:
 
 
 def _previous_parts(previous: dict, everything: dict) -> set[str]:
-    """The parts an earlier receipt names, every part of the package when it names none, and
-    none without an earlier receipt."""
+    """The parts an earlier receipt names, every part of the package when it names none (no
+    ``parts`` or an empty one), and none without an earlier receipt."""
     if not previous:
         return set()
     named = previous.get("parts")
-    return set(named) if isinstance(named, dict) else set(everything)
+    return set(named) if isinstance(named, dict) and named else set(everything)
 
 
 def needs(registrations: dict, field: str) -> set[str]:
@@ -739,13 +847,26 @@ def install(
     # Replacing the Framework copy under a running Operation or execution command would change
     # the code it runs halfway through. This is checked once and holds no lock: a run started
     # after it is the developer's to avoid, as Distribution's Spec says. The parts installed until
-    # now are asked too, since their work may run under a copy this install replaces.
-    asked = {
-        name: everything[name]
-        for name in _previous_parts(previous, everything) | set(registrations)
-        if name in everything
-    }
-    running = active_work(project, asked)
+    # now are asked through the installation's own copy, since their work runs on that copy, a
+    # part this package no longer builds included; only when that copy cannot be run are they
+    # asked through this package's registrations. The parts this install adds are asked through
+    # this package's.
+    earlier = installed_work(project)
+    if earlier is None:
+        running = []
+        asked = {
+            name: everything[name]
+            for name in _previous_parts(previous, everything) | set(registrations)
+            if name in everything
+        }
+    else:
+        running = list(earlier["running"])
+        asked = {
+            name: registration
+            for name, registration in registrations.items()
+            if name not in earlier["asked"]
+        }
+    running += active_work(project, asked)
     if running:
         raise InstallError(
             "concorde_busy",

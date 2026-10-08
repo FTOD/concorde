@@ -180,9 +180,10 @@ depend on its installed parts:
 - When a part is not installed, its tool is absent.
 
 A fresh process of the Concorde that the primary worktree's `concorde` runs at that moment answers
-each call. The server takes locks without waiting. It hands a lock it was granted to the detached
-process that does the work. When a wait the session registered is over, the server wakes the
-session through a Claude Code channel.
+each call. For long work, that call's process takes the locks the work needs without waiting. It
+then becomes the command that does the work and keeps the locks it took. The server never holds a
+lock. It routes the call and watches the work. When a wait the session registered is over, the
+server wakes the session through a Claude Code channel.
 
 Each tool's part owns these aspects of the tool:
 
@@ -199,7 +200,7 @@ part is an example. [Serving a call](#serving-a-call) describes how the server d
 
 - Serves a call.
 - Keeps it on the current code.
-- Hands locks to long work.
+- Lets the call's process take the locks of long work.
 - Wakes its session.
 
 Its [contract](contracts.md#project-mcp-server) describes its exact session and call protocol.
@@ -857,7 +858,12 @@ package that still declares them. Under `amended`, it lists the project's own fi
 When work of an installed part still runs at the check, the installer refuses the project with
 `concorde_busy`. This is because replacing the framework copy under that work would change its
 code halfway ([requirements](requirements.md#req.distribution.idle-install)). The installer asks
-the idle check each installed part registers. It names everything those checks report
+the idle check each installed part registers. It asks the parts installed until now through the
+installation it would replace, with that installation's own Framework copy and interpreter, since
+their work runs on that copy. So a part the new package no longer builds is asked too. Only when
+that copy cannot be run, such as after an install that failed halfway, does the installer ask the
+new package's registrations of those parts instead. It asks a part the install adds through the new
+package's registration. It names everything those checks report
 ([requirements](requirements.md#req.distribution.busy-named)). In Concorde, the execution part's
 check is the one that reports anything. It reports every [run](../glossary.json#concept.run) of an
 Operation or an [execution command](../glossary.json#concept.execution-command) whose runner holds
@@ -865,8 +871,10 @@ its [run lock](../glossary.json#concept.run-lock) at that moment. The check find
 [run progress file](../glossary.json#concept.run-progress-file) wherever the
 [run store](../glossary.json#concept.run-store) keeps it. This includes the lobby while a bound run
 waits for its workspace's lock. An Operation's worker's
-[progress file](../glossary.json#concept.progress-file) lies beside the Operation's progress file.
-The worker's progress file names the same runner. It is not a run of its own. A project without the
+[progress file](../glossary.json#concept.progress-file) lies in the worker's
+[run directory](../glossary.json#concept.run-directory) `workers/<worker run id>/` inside the
+Operation run's [trace node](../glossary.json#concept.trace-node) ([Workers](../worker-harness/workers/module.md)). The worker's progress
+file names the same runner. It is not a run of its own. A project without the
 execution part has no run to report.
 
 This check is all the protection there is. The installer makes it once, in step 1.
