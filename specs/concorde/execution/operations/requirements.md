@@ -1,15 +1,16 @@
 # Operations requirements
 
 This document states the Module-wide obligations of [Operations](module.md). Whatever a run's
-definition, the [Execution requirements](../requirements.md) state what every run promises. The
-[scenarios](scenarios.md) rely in particular on:
+definition, the [Execution requirements](../requirements.md) state what every run promises.
+Operations relies in particular on these Execution requirements:
 
 - [req.execution.claims-apart](../requirements.md#req.execution.claims-apart).
 - [req.execution.error-when-not-ok](../requirements.md#req.execution.error-when-not-ok).
 - [req.execution.reasons](../requirements.md#req.execution.reasons).
 - [req.execution.error-detail](../requirements.md#req.execution.error-detail).
 
-[How an Operation runs its workers](../../method/workers.md) describes how Method's
+[Registering a definition](registration.md) specifies how a part registers a definition with
+the catalog. [How an Operation runs its workers](../../method/workers.md) describes how Method's
 [Operations](../../glossary.json#concept.operation) run their workers. The scenarios show the
 obligations at work.
 
@@ -46,11 +47,18 @@ Operation states the run's final status by its own contract. For example, when s
 remain, Adoption's `code_to_spec` ends `blocked`
 ([req.adoption.errors-left-block](../../method/adoption/requirements.md#req.adoption.errors-left-block)).
 
+### req.operations.worker-ids-declared — Every Operation declares its workers
+
+Every Operation definition in the catalog SHALL declare at least one
+[worker id](../../glossary.json#concept.worker-id), each a nonempty string.
+
+The catalog checks this when the definition is registered
+([Registering](registration.md#registering)).
+
 ### req.operations.model-work-only — Every Operation has model work
 
-Every Operation in the catalog SHALL declare at least one
-[worker id](../../glossary.json#concept.worker-id) and ask the worker harness to launch at least
-one AI worker on a run whose worker step settles the worker's grant, backend and model.
+Every Operation SHALL ask the worker harness to launch at least one AI worker on a run whose worker
+step settles the worker's grant, backend and model.
 
 When a run is refused before that worker step, it launches no worker. For example, when a run's
 [worker configuration](../../glossary.json#concept.worker-configuration) cannot be read, the run is
@@ -60,10 +68,17 @@ refused before that worker step. Method's
 A job that needs no model is an [execution command](../../glossary.json#concept.execution-command)
 of its own [Module](../../glossary.json#concept.module) instead.
 
-### req.operations.unique-names — An Operation name has one definition
+### req.operations.unique-names — A name has one definition in each catalog
 
-When two installed parts register an Operation of the same name, the catalog SHALL refuse to load,
-naming both.
+When a part registers a definition under a name that its catalog already holds, the catalog SHALL
+refuse the registration with `duplicate_definition`, naming both parts, unless the same part
+registers a definition equal to the registered one.
+
+The same part's equal definition changes nothing. Every other such registration leaves the first
+definition registered. This holds for the
+[Operation catalog](../../glossary.json#concept.operation-catalog) and for the command catalog alike, since
+one `Catalog` realizes both. [A repeated registration](registration.md#a-repeated-registration)
+says when two definitions are equal.
 
 ### req.operations.no-chaining — Operations do not start Operations
 

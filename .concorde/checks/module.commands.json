@@ -1,0 +1,26 @@
+{
+  "checks": [
+    {
+      "id": "check.commands.tests",
+      "argv": [
+        ".venv/bin/python",
+        "-m",
+        "pytest",
+        "-p",
+        "no:cacheprovider",
+        "-n",
+        "4",
+        "tests/concorde/commands"
+      ],
+      "timeout_seconds": 300,
+      "inputs": [
+        "conftest.py",
+        "pyproject.toml",
+        "src",
+        "tests/concorde/harness",
+        "tests/concorde/commands",
+        "tests/concorde/support"
+      ]
+    }
+  ]
+}
