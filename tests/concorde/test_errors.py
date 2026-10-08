@@ -130,6 +130,19 @@ class ErrorChainTests(unittest.TestCase):
             trace = Path(directory) / "trace.txt"
             errors.from_exception("make", error, trace=trace)
             self.assertIn(long, trace.read_text())
+        # Whitespace is output too: kept in the detail and in the traceback, never stripped.
+        padded = "  indented line\n\n"
+        error = subprocess.CalledProcessError(
+            1, ["make"], output=padded, stderr=b" \t\n"
+        )
+        detail = errors.exception_detail(error)
+        self.assertIn(f"stdout: {padded};", detail)
+        self.assertTrue(detail.endswith("stderr:  \t\n"))
+        with tempfile.TemporaryDirectory() as directory:
+            trace = Path(directory) / "trace.txt"
+            errors.from_exception("make", error, trace=trace)
+            self.assertIn(f"--- stdout ---\n{padded}\n", trace.read_text())
+            self.assertIn("--- stderr ---\n \t\n\n", trace.read_text())
 
     def test_the_rendering_shows_every_level_and_reason(self):
         text = errors.render(self.chain())
