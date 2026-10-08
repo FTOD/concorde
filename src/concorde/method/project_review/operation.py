@@ -54,7 +54,7 @@ from . import findings, record
 
 OUTCOMES = ["accepted", "changes_required", "incomplete"]
 STATES = ["reviewed", "skipped", "not_run"]
-DEFAULT_PARALLEL = 4
+DEFAULT_PARALLEL = 2
 MAX_PARALLEL = 8
 CODE_REVIEWER = "code_reviewer"
 ARCHITECTURE_CHAIR = "arch_chair"

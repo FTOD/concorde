@@ -49,7 +49,7 @@ A run is requested with:
 | round validation | Optionally the caller's callback, called after every round whose worker ended `ok` with a clean audit ([Round validation](#round-validation)) |
 | runtime paths | Extra absolute paths, outside the grant, that every tool of the worker may read and none may write, exactly as the caller lists them: the worker configuration's runtime paths that exist, such as `.venv` or `node_modules`, the directories the project interpreter needs, and the host material the caller admits for this run alone, such as the folder of the check logs its own run recorded ([Reading beside the grant](#reading-beside-the-grant)) |
 | project interpreter | Optionally the absolute path of the project's own Python interpreter, which the caller resolved from the project's configuration as its checks run it; its directory comes first on the worker's `PATH` and the brief names it |
-| limits | Timeout per round, the turn limit, the budget limit when the configuration sets one, and the number of [resume rounds](../../glossary.json#concept.resume-round) (default 3) |
+| limits | Timeout per round, the turn limit, the budget limit when the configuration sets one, the number of [resume rounds](../../glossary.json#concept.resume-round) (default 3), and the number of [retry rounds](#retries) (default 5) with the delay before the first (default 15 seconds) |
 | model | The project model name the run worktree's [worker configuration](../../glossary.json#concept.worker-configuration) chooses for the worker's id, which every Operation gives, recorded only |
 | local model, model map | The model's local id on the backend, which the [model map](../../glossary.json#concept.model-map) gives it and which is passed with `--model`, and the path of that map, recorded only |
 | operation, worker, modules | The Operation and the [worker id](../../glossary.json#concept.worker-id) the model was chosen for and the [Modules](../../glossary.json#concept.module) the job is about, labels the caller gives, recorded only |
@@ -222,7 +222,7 @@ for worker activity:
 | --- | --- |
 | `run_id`, `task_type`, `backend`, `worktree` | the run's identity, task type, backend and worktree |
 | `operation_run_id` | the identity of the run that launched it, which its caller gives, by which an observer pairs the two; null when the caller gives none |
-| `phase` | `preparing`, `worker`, `audit`, `validation` or `finished` |
+| `phase` | `preparing`, `worker`, `audit`, `validation`, `waiting` (before a [retry round](#retries)) or `finished` |
 | `round` | the current round, from 1 |
 | `last_action` | the worker's latest tool call as `tool` and `target` (a path, pattern or the first line of a command, at most 200 characters) with its time, or null |
 | `status` | null while running; the final status once `phase` is `finished` |
@@ -231,6 +231,7 @@ for worker activity:
 
 The phases follow the [rounds](#rounds). Every round runs the worker and then audits it. Only a
 round whose worker ended `ok` with a clean audit goes on to the round validation or to a resume
+round. Only a round that a transient model-service error ended goes on to `waiting` and a retry
 round. When something outside ends the run and the host can handle it, any phase moves to
 `finished` with `interrupted`.
 
@@ -239,11 +240,14 @@ preparing
 worker
 audit
 validation
+waiting
 finished
 preparing -> worker: round 1
 preparing -> finished: a refusal before launch
 worker -> finished: the command could not be started
 worker -> audit: the round ended
+audit -> waiting: a transient model-service error, retries left
+waiting -> worker: the delay passed
 audit -> finished: timeout, limit, process failure, violation, invalid result, blocked or failed
 audit -> validation: ok, clean, a round validation given
 audit -> finished: "ok, clean, no round validation: status ok"
@@ -271,7 +275,8 @@ Only when the worker configuration sets `max_budget_usd`, the host passes `--max
 Without `--max-budget-usd`, the run has no budget limit.
 
 A resume round runs the same command with `--resume <latest session id>` and the round validation's
-repair text as the prompt.
+repair text as the prompt. A [retry round](#retries) runs the same command with
+`--resume <latest session id>` and the retry prompt.
 
 The environment is cleared and then set to exactly:
 
@@ -442,6 +447,7 @@ describes the worktree before these deletions.
 
 | Worker result and audit | Round validation | Next |
 | --- | --- | --- |
+| the agent process ended with a transient model-service error, audit clean, no valid result, retries left | not called | [retry round](#retries) |
 | the round timed out, or the agent process failed or reached a limit | not called | end `failed` with `worker_timeout`, `worker_limit_reached` or the backend's process failure code, naming any audit violation in its detail |
 | audit violation, whatever the result | not called | end `failed` with `audit_violation` |
 | invalid result, audit clean | not called | end `failed` with `worker_result_invalid` |
@@ -458,6 +464,53 @@ describes the worktree before these deletions.
 The rows are tried in this order. The resume prompt is the round validation's repair text.
 Whatever ends its round, a valid worker result is kept as the run's `worker_result`. This includes
 a timeout or a failed agent process. The worker's claim is evidence even when the run fails.
+
+## Retries
+
+A model service may refuse a call for a while or lose it on its way. Many workers that share one
+provider meet its concurrency limit. The same call can succeed a little later. A **transient
+model-service error** is an error that the agent program reports for its model call and that names
+one of these causes:
+
+- a concurrency or rate limit, too many requests or the HTTP status 429
+- an overloaded service, a service under high demand, the HTTP status 500, 502, 503, 504 or 529, or
+  a service that is unavailable for now
+- an explicit request to retry or try again later
+- a lost call: an upstream or stream failure, a connection that was reset, refused or lost, or a
+  call that timed out
+
+An error that names an exhausted quota, billing or a usage limit is never transient, since waiting
+does not lift it. On pi, the host reads the error message of the last assistant message whose stop
+reason is `error`, in a round that named its session. On Claude Code, the host reads the final text
+of a failed result envelope when it starts with `API Error`, and the errors the envelope lists.
+The round's own timeout is no such error: `worker_timeout` is never retried.
+
+The host starts a **retry round** when all of these conditions hold:
+
+- The agent process ended the round with a transient model-service error.
+- The round's audit is clean.
+- The worker returned no valid result.
+- The round named a session to continue, or the worktree has no change since the snapshot.
+- The run has started fewer retry rounds than its `retries` limit.
+
+The retry rounds of a run are counted apart from its resume rounds. Before the `k`-th retry round of
+the run, the host waits `retry_delay_seconds × 2^(k−1)` seconds, multiplied by a factor drawn
+uniformly between 0.5 and 1. The random factor spreads the retries of workers that failed together.
+With the defaults, the host waits at most 15, 30, 60, 120 and 240 seconds. While it waits, the
+progress file's phase is `waiting`.
+
+A retry round continues the round's session, as a resume round does. Its prompt names the error and
+asks the worker to go on from where it stopped. The worker's earlier work and its session's history
+are kept. When no round named a session, the worktree has no change since the snapshot, so the host
+starts the retry round with the brief. The audit after a retry round compares the worktree with the run's one snapshot, as after
+every round. Every change of the failed round and of its retries is therefore audited against the
+grant. No round is replayed over changes it made.
+
+Each round's node records the transient error, whether the host retried it and the delay it waited.
+The run's error lists every retry in its `attempts`. Every other ending of a round is handled as
+[Rounds](#rounds) says. In particular, a round whose audit found a violation is never retried. When
+the retries are used up, the run ends `failed` with the backend's process failure code and the
+reason `exhausted`.
 
 ## Run record
 
@@ -571,8 +624,8 @@ round also timed out or failed otherwise.
 | `launch_failed` | the command that could not be started and the operating system's error | `environment` | none |
 | `worker_timeout` | the round and the timeout | `exhausted` | none |
 | `worker_limit_reached` | the round and the limit the agent program reported: on Claude Code its turn or budget subtype, on pi the limit and the value the permission extension names | `exhausted` | the agent process's link: the Claude Code process's link, or the pi process's link with that limit and value |
-| `claude_failed` | the round and the error Claude Code reported, or that it printed no envelope (Claude Code backend) | `environment` | the Claude Code process's link |
-| `pi_runtime_missing`, `pi_failed` | see [the pi run mechanics](pi.md#errors) | `environment` | the pi process's link for `pi_failed` |
+| `claude_failed` | the round and the error Claude Code reported, or that it printed no envelope (Claude Code backend); `attempts` lists every [retry](#retries) | `environment`, or `exhausted` when the retries for a transient model-service error are used up | the Claude Code process's link |
+| `pi_runtime_missing`, `pi_failed` | see [the pi run mechanics](pi.md#errors) | `environment`, or for `pi_failed` `exhausted` when the retries for a transient model-service error are used up | the pi process's link for `pi_failed` |
 | `worker_result_invalid` | the schema violation, or the worker's final text when it gave no structured result | `capability` | none |
 | `audit_violation` | every violating path and the worker's own reported status, or that its result was invalid | `permission` | the worker's link, when its result was valid and carries an `error`; none for a valid `ok` result, whose `error` is null, or an invalid one |
 | `worker_blocked`, `worker_failed` | the worker's code and detail | `capability` | the worker's link |
@@ -843,7 +896,7 @@ A run whose audit finds a violation SHALL end `failed` without another round.
 
 ### req.workers.rounds-for-checks-only — Rounds only repair what the round validation reports
 
-Only when all of these conditions hold, the host SHALL resume a worker:
+Only when all of these conditions hold, the host SHALL start a resume round:
 
 - the worker ended `ok`
 - its audit was clean
@@ -856,6 +909,39 @@ The host SHALL start at most the configured number of resume rounds in one run.
 ### req.workers.latest-session — Resume from the newest session
 
 Each resume round SHALL continue the run's latest session: on the Claude Code backend the session identifier the previous round returned, on the pi backend the session identifier the run fixed at its first round.
+
+### req.workers.transient-retried — A transient model-service error is retried
+
+When the agent process ends a round with a [transient model-service error](#retries), the round's
+audit is clean, the worker returned no valid result and the run has retries left, the host SHALL
+start a retry round after the round's delay.
+
+### req.workers.retry-continues-session — A retry continues the session
+
+Each retry round SHALL continue the run's latest session as a resume round does, or, when no round
+named a session and the worktree has no change since the snapshot, start with the brief.
+
+### req.workers.retries-limited — A run has at most its configured retry rounds
+
+The host SHALL start at most the configured number of retry rounds in one run, counted apart from
+its resume rounds.
+
+### req.workers.retry-backoff — Retries wait longer each time
+
+Before the `k`-th retry round of a run, the host SHALL wait the configured retry delay times
+`2^(k−1)`, multiplied by a random factor between 0.5 and 1.
+
+### req.workers.retry-only-transient — Any other error ends the run at once
+
+The host SHALL NOT retry a round that a timeout, a limit or an error other than a transient
+model-service error ended, a round whose audit found a violation, or a round whose worker returned
+a valid result.
+
+### req.workers.retry-recorded — Every retry is recorded
+
+The host SHALL record in each round's node the transient model-service error that ended the round,
+whether it retried it and the delay it waited, and in the `attempts` of a failed run's error every
+retry.
 
 ### req.workers.claims-apart — Worker claims stay claims
 

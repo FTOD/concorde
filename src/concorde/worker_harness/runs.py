@@ -101,6 +101,9 @@ def read_record(root: Path, run_id: str) -> dict:
                 for found in content["evidence"]
             ]
             entry["validation"] = content["validation"]
+        # A round node written before retries were recorded has no such field.
+        if content.get("transient") is not None:
+            entry["transient"] = content["transient"]
         rounds.append(entry)
     return {
         "run_id": node["id"],

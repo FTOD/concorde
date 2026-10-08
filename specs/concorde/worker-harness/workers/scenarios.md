@@ -527,6 +527,64 @@ the run. [The run mechanics](launch.md) give these exact details:
 - AND the cause gives the final text
 - AND the cause gives the tail of standard error
 
+## Retries
+
+### scenario.workers.transient-retry — A transient model-service error is retried in the same session
+
+- GIVEN a pi worker that writes a file of its `rw` list
+- AND then pi ends the round with the stop reason `error` and the message
+  `gateway_concurrency_limit: Concurrency limit exceeded for user, please retry later`
+- WHEN the host reads the round
+- THEN the host waits and starts a retry round
+- AND the retry round continues the round's session
+- AND the retry round's prompt names the error
+- AND when the worker then ends with a valid `ok` result, the run ends `ok`
+- AND the audit after the retry round lists the file the failed round wrote
+- AND the failed round's node records the error, that it was retried and the delay waited
+- AND the retry round's node has the prompt kind `retry`
+
+### scenario.workers.transient-retry-claude — A transient error of Claude Code's model call resumes its session
+
+- GIVEN a worker on the Claude Code backend
+- AND its session ends with an error envelope whose final text is an `API Error` naming an
+  overloaded service
+- WHEN the host reads the round
+- THEN the host starts a retry round with `--resume` and the round's session
+- AND when the worker then ends with a valid `ok` result, the run ends `ok`
+
+### scenario.workers.retries-limited — Retries stop at the configured limit
+
+- GIVEN a worker configuration whose `limits.retries` is 2
+- AND a pi worker whose every round ends with a transient model-service error
+- WHEN the host runs the worker
+- THEN the run has three rounds
+- AND the run ends `failed` with `pi_failed` and the reason `exhausted`
+- AND the error's `attempts` lists both retries
+- AND the last round's node records its error as not retried
+
+### scenario.workers.retry-backoff — Each retry waits longer
+
+- GIVEN a retry delay of 10 seconds
+- WHEN the host computes the delay before the third retry of a run
+- THEN the delay is between 20 and 40 seconds
+
+### scenario.workers.lasting-error-not-retried — Any other error fails the run at once
+
+- GIVEN a pi worker whose round ends with the stop reason `error`
+- AND its message names an exhausted quota, or names no transient cause
+- WHEN the host reads the round
+- THEN the run ends `failed` with `pi_failed` after that one round
+- AND the round's node records no transient error
+
+### scenario.workers.transient-violation-not-retried — A round that wrote outside the grant is not retried
+
+- GIVEN a pi worker that writes a file outside its `rw` list
+- AND then pi ends the round with a transient model-service error
+- WHEN the host reads the round
+- THEN the run ends `failed` after that one round
+- AND the error's detail names the write outside the grant
+- AND the round's node records the error as not retried
+
 ## The pi backend
 
 ### scenario.workers.pi-fenced-run — A pi worker is fenced by the same grant
@@ -837,10 +895,12 @@ the run. [The run mechanics](launch.md) give these exact details:
 
 - GIVEN a worktree whose `.concorde/workers.json` sets `limits.max_turns`
 - AND the configuration sets `limits.rounds`
+- AND the configuration sets `limits.retries`
 - AND the configuration sets a `runtime` list
 - WHEN Workers reads the limits and runtime paths of a launch
 - THEN it gets its own `max_turns`
 - AND it gets its own `rounds`
+- AND it gets its own `retries`
 - AND it gets its own runtime paths
 - AND it gets the default for every limit it does not set
 

@@ -15,7 +15,7 @@ from pathlib import Path
 
 from .runs import now
 
-PHASES = ("preparing", "worker", "audit", "validation", "finished")
+PHASES = ("preparing", "worker", "audit", "validation", "waiting", "finished")
 TARGET_KEYS = ("file_path", "path", "notebook_path", "pattern", "command", "url")
 TARGET_LIMIT = 200
 

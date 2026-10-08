@@ -41,6 +41,8 @@ LIMITS = {
     "max_turns": 200,
     "max_budget_usd": None,
     "rounds": 3,
+    "retries": 5,
+    "retry_delay_seconds": 15,
 }
 # The paths Bash may read besides the grant when the configuration names none.
 DEFAULT_RUNTIME = (".venv", "node_modules")
@@ -109,6 +111,8 @@ SCHEMA = {
                 "max_turns": {"type": "integer", "minimum": 1},
                 "max_budget_usd": {"type": "number", "minimum": 0.01},
                 "rounds": {"type": "integer", "minimum": 0},
+                "retries": {"type": "integer", "minimum": 0},
+                "retry_delay_seconds": {"type": "number", "minimum": 0},
             },
         },
         "runtime": {"type": "array", "items": TEXT, "uniqueItems": True},

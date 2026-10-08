@@ -138,7 +138,7 @@ The pi backend uses the codes of [the run mechanics](launch.md#errors) except `c
 | Code | Detail | Reason | Causes |
 | --- | --- | --- | --- |
 | `pi_runtime_missing` | every missing program or package and how to provide it | `environment` | none |
-| `pi_failed` | the round and the error pi reported: it ended without a [worker result](../../glossary.json#concept.worker-result) and with a non-zero exit status, without a session record, or with the stop reason `error` or `aborted` | `environment` | the pi process's link |
+| `pi_failed` | the round and the error pi reported: it ended without a [worker result](../../glossary.json#concept.worker-result) and with a non-zero exit status, without a session record, or with the stop reason `error` or `aborted`; `attempts` lists every [retry](launch.md#retries) | `environment`, or `exhausted` when the retries for a transient model-service error are used up | the pi process's link |
 
 When a pi worker ends normally without a worker result, it ends `failed` with
 `worker_result_invalid`, as on Claude Code. When the JSON event stream carries an `entry_appended`
@@ -162,6 +162,12 @@ and the reason `exhausted`. For such a run, the link names these details:
 - the maximum allowed
 
 Otherwise, the link has the code `pi_error` and the reason `environment`.
+
+pi retries some failed model calls itself, within one process, by its own built-in classification.
+Concorde leaves that retry at pi's defaults. pi may still end the round with the stop reason
+`error`. Workers then reads the error message. Workers retries a
+[transient model-service error](launch.md#retries) with a round of its own. pi's classification
+misses some such errors, such as a gateway's concurrency limit that asks to retry later.
 
 ## Requirements
 

@@ -28,11 +28,14 @@ from concorde.worker_harness.settings import (
     worker_settings,
     write_hook_source,
 )
+from concorde.worker_harness import workers as workers_module
+from concorde.worker_harness.transient import transient
 from concorde.worker_harness.workers import (
     WORKER_RESULT_SCHEMA,
     Refusal,
     RoundValidation,
     WorkerRequest,
+    retry_delay,
     run_worker,
 )
 from concorde.method.workers import compose, grant_input, round_validation, spec_rule
@@ -232,6 +235,8 @@ class WorkerProject:
             "claude": str(self.fake),
             "credentials": None,
             "timeout": 30,
+            # A retry round starts at once: the tests compute the delay apart.
+            "retry_delay": 0,
             "trace_parent": self.trace,
         }
         values.update(options)
@@ -1739,6 +1744,36 @@ class WorkerRunTests(unittest.TestCase):
                 self.assertIn("stderr_tail", record)
                 validate(record["error"], ERROR_SCHEMA)
 
+    @verifies("scenario.workers.transient-retry-claude")
+    def test_a_transient_error_of_claude_code_resumes_its_session(self):
+        record = self.project.run(
+            [
+                {
+                    "no_structured": True,
+                    "envelope": {
+                        "is_error": True,
+                        "result": 'API Error: 529 {"type":"overloaded_error"}',
+                    },
+                },
+                {},
+            ],
+            check_modules=None,
+        )
+        self.assertEqual("ok", record["status"], record["error"])
+        first, second = record["rounds"]
+        self.assertEqual(
+            {
+                "error": 'API Error: 529 {"type":"overloaded_error"}',
+                "retried": True,
+                "delay_seconds": 0,
+            },
+            first["transient"],
+        )
+        self.assertEqual("retry", second["prompt"])
+        self.assertNotIn("transient", second)
+        argv = self.project.rounds(record)[1]["argv"]
+        self.assertEqual("fake-session-1", argv[argv.index("--resume") + 1])
+
     @verifies("scenario.workers.claude-error")
     def test_an_error_of_claude_code_itself_is_reported_with_its_limit(self):
         record = self.project.run(
@@ -1770,6 +1805,64 @@ class WorkerRunTests(unittest.TestCase):
         ).read_text()
         fence = text.split("```concorde-contract\n", 1)[1].split("```", 1)[0]
         self.assertEqual(json.loads(fence)["schema"], WORKER_RESULT_SCHEMA)
+
+    def test_the_round_trace_matches_its_contract(self):
+        text = (
+            REPOSITORY_ROOT / "specs/concorde/worker-harness/workers/contracts.md"
+        ).read_text()
+        [contract] = [
+            json.loads(fence.split("```", 1)[0])
+            for fence in text.split("```concorde-contract\n")[1:]
+            if '"contract.workers.worker-round-trace"' in fence.split("```", 1)[0]
+        ]
+        self.assertEqual(5, contract["version"])
+        validate(contract["example"], contract["schema"])
+        self.assertEqual(
+            sorted(contract["schema"]["required"]),
+            sorted(workers_module.WORKER_ROUND_TRACE_SCHEMA["required"]),
+        )
+        self.assertEqual(
+            contract["schema"]["properties"]["transient"],
+            workers_module.WORKER_ROUND_TRACE_SCHEMA["properties"]["transient"],
+        )
+
+
+class RetryRuleTests(unittest.TestCase):
+    """Which errors are transient and how long a retry waits, apart from any run."""
+
+    def test_transient_model_service_errors_are_told_from_lasting_ones(self):
+        for message in (
+            "gateway_concurrency_limit: Concurrency limit exceeded for user, please retry later",
+            "Upstream HTTP/2 stream failed",
+            "Request timed out.",
+            "429 Too Many Requests",
+            'API Error: 529 {"type":"error","error":{"type":"overloaded_error"}}',
+            "503 Service Unavailable",
+            "rate_limit_error: Number of request tokens has exceeded your rate limit",
+            "read ECONNRESET",
+        ):
+            with self.subTest(message=message):
+                self.assertTrue(transient(message))
+        for message in (
+            None,
+            "",
+            "insufficient_quota: You exceeded your current quota",
+            "Monthly usage limit reached, please retry later",
+            "invalid model id gpt-x",
+            "400 Bad Request: messages: text content blocks must be non-empty",
+        ):
+            with self.subTest(message=message):
+                self.assertFalse(transient(message))
+
+    @verifies("scenario.workers.retry-backoff")
+    def test_each_retry_waits_longer(self):
+        request = WorkerRequest(
+            worktree=Path("/w"), task_type="implement", grant={}, instructions=""
+        )
+        request.retry_delay = 10
+        for _ in range(50):
+            self.assertTrue(5 <= retry_delay(request, 1) <= 10)
+            self.assertTrue(20 <= retry_delay(request, 3) <= 40)
 
 
 if __name__ == "__main__":

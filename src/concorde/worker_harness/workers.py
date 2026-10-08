@@ -4,8 +4,9 @@
 the grant it was given as data, let the backend generate its configuration from the grant, launch
 the worker in its own process group while keeping the progress file current, audit the task
 worktree after every round, call the caller's round validation after every clean ``ok`` round,
-resume the same session with what it reports to repair, perform the deletions the worker proposed,
-and write the run record. The returned record keeps the worker's answer verbatim and apart from what
+resume the same session with what it reports to repair, retry after a growing delay a round that a
+transient model-service error ended, perform the deletions the worker proposed, and write the run
+record. The returned record keeps the worker's answer verbatim and apart from what
 the host observed itself. Whether a round needs repair is the caller's judgement: the worker
 harness runs no check, reads no Spec and knows no glossary.
 
@@ -22,6 +23,7 @@ import copy
 import hashlib
 import json
 import os
+import random
 import shutil
 import signal
 import subprocess
@@ -104,50 +106,68 @@ register(
         },
     },
 )
-# contract.workers.worker-round-trace, version 4
+# contract.workers.worker-round-trace, version 5
 WORKER_ROUND_TRACE = "concorde-worker-round-trace"
-register(
-    WORKER_ROUND_TRACE,
-    4,
-    {
-        "type": "object",
-        "additionalProperties": False,
-        "required": [
-            "round",
-            "prompt",
-            "session",
-            "exit",
-            "audit",
-            "evidence",
-            "validation",
-            "agent",
-        ],
-        "properties": {
-            "round": {"type": "integer", "minimum": 1},
-            "prompt": {"enum": ["initial", "repair"]},
-            "session": _NULLABLE_TEXT,
-            "exit": {"anyOf": [{"type": "null"}, {"type": "integer"}]},
-            "audit": {
-                "anyOf": [
-                    {"type": "null"},
-                    {
-                        "type": "object",
-                        "additionalProperties": False,
-                        "required": ["verdict", "changed", "violations"],
-                        "properties": {
-                            "verdict": {"enum": ["clean", "violation"]},
-                            "changed": _PATHS,
-                            "violations": _PATHS,
+WORKER_ROUND_TRACE_SCHEMA = {
+    "type": "object",
+    "additionalProperties": False,
+    "required": [
+        "round",
+        "prompt",
+        "session",
+        "exit",
+        "audit",
+        "evidence",
+        "validation",
+        "transient",
+        "agent",
+    ],
+    "properties": {
+        "round": {"type": "integer", "minimum": 1},
+        "prompt": {"enum": ["initial", "repair", "retry"]},
+        "session": _NULLABLE_TEXT,
+        "exit": {"anyOf": [{"type": "null"}, {"type": "integer"}]},
+        "audit": {
+            "anyOf": [
+                {"type": "null"},
+                {
+                    "type": "object",
+                    "additionalProperties": False,
+                    "required": ["verdict", "changed", "violations"],
+                    "properties": {
+                        "verdict": {"enum": ["clean", "violation"]},
+                        "changed": _PATHS,
+                        "violations": _PATHS,
+                    },
+                },
+            ]
+        },
+        "evidence": {"type": "array", "items": _OBJECT},
+        "validation": {"anyOf": [{"type": "null"}, {"type": "string"}]},
+        "transient": {
+            "anyOf": [
+                {"type": "null"},
+                {
+                    "type": "object",
+                    "additionalProperties": False,
+                    "required": ["error", "retried", "delay_seconds"],
+                    "properties": {
+                        "error": {"type": "string", "minLength": 1},
+                        "retried": {"type": "boolean"},
+                        "delay_seconds": {
+                            "anyOf": [
+                                {"type": "null"},
+                                {"type": "number", "minimum": 0},
+                            ]
                         },
                     },
-                ]
-            },
-            "evidence": {"type": "array", "items": _OBJECT},
-            "validation": {"anyOf": [{"type": "null"}, {"type": "string"}]},
-            "agent": _OBJECT,
+                },
+            ]
         },
+        "agent": _OBJECT,
     },
-)
+}
+register(WORKER_ROUND_TRACE, 5, WORKER_ROUND_TRACE_SCHEMA)
 register_kinds(
     NodeKind(
         "worker-run",
@@ -233,6 +253,10 @@ class WorkerRequest:
     runtime: tuple[Path, ...] = ()
     output_schema: dict | None = None
     rounds: int = 3
+    # The retry rounds a run may start after transient model-service errors, and the delay before
+    # the first, doubled before each further one (launch.md#retries).
+    retries: int = 5
+    retry_delay: float = 15.0
     timeout: float = 1800.0
     max_turns: int = 200
     max_budget_usd: float | None = None
@@ -337,6 +361,65 @@ def brief(request: WorkerRequest, worktree: Path) -> str:
         "evidence, everything you tried, why you could not handle it yourself (`unhandled`: "
         "`permission`, `decision`, `scope`, `capability`, `exhausted`, `environment` or `input`, "
         "with a specific explanation), the options you see and your recommendation.\n"
+    )
+
+
+def retry_prompt(message: str) -> str:
+    """The prompt of a retry round that continues the session a transient error ended."""
+    return (
+        "Your previous turn ended with a transient error of the model service: "
+        f"{message.strip()}\n\n"
+        "The host waited and resumed your session. Everything you did before the error is kept. "
+        "Continue your task from where you stopped, and end as your brief says.\n"
+    )
+
+
+def retry_delay(request: WorkerRequest, retry: int) -> float:
+    """The delay before the ``retry``-th retry round, from 1: the configured delay doubled for
+    each earlier retry, jittered to between half and all of it."""
+    return round(request.retry_delay * 2 ** (retry - 1) * random.uniform(0.5, 1.0), 3)
+
+
+def _unretried(
+    request: WorkerRequest,
+    backend,
+    *,
+    exhausted: bool,
+    transient: bool,
+    clean: bool,
+    valid: bool,
+    resumable: bool,
+) -> tuple[str, str]:
+    """The reason and explanation of Workers' link for a round whose agent process failed and
+    that the host does not retry."""
+    if exhausted:
+        return "exhausted", (
+            f"Workers does not raise the limits it was given (max_turns "
+            f"{request.max_turns}, max_budget_usd {request.max_budget_usd})"
+        )
+    if not transient:
+        return "environment", (
+            f"Workers retries a {backend.process} process only after a transient "
+            "model-service error, and this error is not one"
+        )
+    if not clean:
+        return (
+            "environment",
+            "Workers never retries a round that wrote outside the grant",
+        )
+    if valid:
+        return "environment", (
+            "Workers never retries a round whose worker returned a valid result"
+        )
+    if not resumable:
+        return "environment", (
+            "the round named no session to continue and changed the worktree, so Workers "
+            "can neither resume it nor replay the brief over its changes"
+        )
+    return "exhausted", (
+        f"Workers retries rounds that transient model-service errors ended at most "
+        f"{request.retries} time(s) in a run (limits.retries of .concorde/workers.json) and "
+        "does not extend that"
     )
 
 
@@ -812,7 +895,9 @@ def _run(
         session: str | None = None
         environment = backend.environment(request, paths)
         prompt, kind = brief_file.read_text(), "initial"
-        for number in range(1, request.rounds + 2):
+        number = repairs = retries = 0
+        while True:
+            number += 1
             pending["result"] = None
             round_record: dict = {"round": number, "prompt": kind}
             record["rounds"].append(round_record)
@@ -899,23 +984,68 @@ def _run(
             failure = concluded.failure
             if failure is not None:
                 exhausted = concluded.exhausted
+                message = concluded.transient
+                # A transient model-service error is retried when the round left nothing that a
+                # retry could hide or replay: no write outside the grant, no valid result, and a
+                # session to continue or no change at all (launch.md#retries).
+                resumable = session is not None or not verdict.changed
+                if (
+                    message
+                    and not exhausted
+                    and verdict.clean
+                    and invalid is not None
+                    and resumable
+                    and retries < request.retries
+                ):
+                    retries += 1
+                    delay = retry_delay(request, retries)
+                    round_record["transient"] = {
+                        "error": message,
+                        "retried": True,
+                        "delay_seconds": delay,
+                    }
+                    attempts.append(
+                        f"round {number}: the {backend.process} process ended with a transient "
+                        f"model-service error ({message}); retry {retries} of "
+                        f"{request.retries} after {delay}s"
+                    )
+                    _finish_round(round_node, round_record, "failed", "retry")
+                    progress.phase("waiting", round=number)
+                    time.sleep(delay)
+                    prompt = (
+                        retry_prompt(message)
+                        if session is not None
+                        else brief_file.read_text()
+                    )
+                    kind = "retry"
+                    continue
+                if message:
+                    round_record["transient"] = {
+                        "error": message,
+                        "retried": False,
+                        "delay_seconds": None,
+                    }
                 _finish_round(
                     round_node,
                     round_record,
                     "failed",
                     "limit_reached" if exhausted else "process_failed",
                 )
+                reason, explanation = _unretried(
+                    request,
+                    backend,
+                    exhausted=exhausted,
+                    transient=bool(message),
+                    clean=verdict.clean,
+                    valid=invalid is None,
+                    resumable=resumable,
+                )
                 return fail(
                     "worker_limit_reached" if exhausted else backend.failure_code,
                     f"round {number}: the {backend.process} process ended with an error "
                     f"({failure['code']}) before a structured result{outside}",
-                    "exhausted" if exhausted else "environment",
-                    (
-                        f"Workers does not raise the limits it was given (max_turns "
-                        f"{request.max_turns}, max_budget_usd {request.max_budget_usd})"
-                        if exhausted
-                        else f"Workers does not retry a failed {backend.process} process"
-                    ),
+                    reason,
+                    explanation,
                     attempts=attempts,
                     causes=[failure],
                 )
@@ -1055,7 +1185,7 @@ def _run(
                     else "the round validation reported something to repair"
                 )
             )
-            if number > request.rounds:
+            if repairs >= request.rounds:
                 if answer.failure is None:
                     _finish_round(round_node, round_record, "ok", "ok")
                     return finish("ok")
@@ -1072,8 +1202,8 @@ def _run(
                     causes=list(refusal.causes),
                 )
             _finish_round(round_node, round_record, "failed", "repair")
+            repairs += 1
             prompt, kind = answer.repair, "repair"
-        raise AssertionError("every round ends the run or resumes it")
 
     try:
         if request.started is not None:
@@ -1152,6 +1282,7 @@ def _round_content(round_record: dict, folder: Path) -> dict:
         "audit": round_record.get("audit"),
         "evidence": evidence_kept,
         "validation": validation if isinstance(validation, str) else None,
+        "transient": round_record.get("transient"),
         "agent": agent,
     }
 

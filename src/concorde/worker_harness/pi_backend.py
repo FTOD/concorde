@@ -23,6 +23,7 @@ from pathlib import Path
 from ..kernel.errors import link
 from .claude_backend import BackendRefusal, RoundOutcome, proxy_environment
 from .settings import SettingsError, grant_view, sandbox_filesystem, tool_set
+from .transient import transient
 
 ACTOR = "pi process (pi -p)"
 HERE = Path(__file__).resolve().parent
@@ -316,6 +317,12 @@ class PiStream:
                 reason="environment",
                 explanation="pi reported an error of the model service or its own execution",
             )
+            if (
+                self.session
+                and self.stop_reason == "error"
+                and transient(self.error_message)
+            ):
+                concluded.transient = self.error_message[-2000:]
         return concluded
 
 

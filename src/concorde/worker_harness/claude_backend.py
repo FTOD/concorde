@@ -25,6 +25,7 @@ from .settings import (
     worker_settings,
     write_hook_source,
 )
+from .transient import transient
 
 ACTOR = "Claude Code process (claude -p)"
 # The proxy a worker's own model calls go through: an enclosing loopback proxy, such as a
@@ -68,6 +69,9 @@ class RoundOutcome:
     final_text: str = ""
     failure: dict | None = None
     exhausted: bool = False
+    # The error message of a transient model-service error that ended the round, which Workers
+    # may retry (launch.md#retries); None for every other ending.
+    transient: str | None = None
     info: dict = field(default_factory=dict)
     # What the round consumed as the agent program reported it: the usage fields of a trace node
     # (tokens_in, tokens_out, tokens_cache_read, tokens_cache_write, cost_usd, turns).
@@ -134,6 +138,21 @@ def claude_failure(outcome: dict, envelope: dict | None) -> dict | None:
             else "Claude Code reported an error of the model service or its own execution"
         ),
     )
+
+
+def service_error(envelope: dict) -> str | None:
+    """The model service's error a failed envelope reports: Claude Code's final text when it is an
+    `API Error`, and the errors it lists."""
+    parts = []
+    text = envelope.get("result")
+    if isinstance(text, str) and text.strip().startswith("API Error"):
+        parts.append(text.strip())
+    errors = envelope.get("errors")
+    if isinstance(errors, list):
+        parts += [
+            item if isinstance(item, str) else json.dumps(item) for item in errors
+        ]
+    return "; ".join(parts)[-2000:] or None
 
 
 def envelope_of(stdout: bytes) -> dict | None:
@@ -251,6 +270,10 @@ class ClaudeStream:
             concluded.failure
             and concluded.failure["unhandled"]["reason"] == "exhausted"
         )
+        if envelope and concluded.failure and not concluded.exhausted:
+            message = service_error(envelope)
+            if transient(message):
+                concluded.transient = message
         return concluded
 
 

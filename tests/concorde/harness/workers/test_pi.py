@@ -18,6 +18,7 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 from concorde.worker_harness import pi_backend
+from concorde.worker_harness import runs as worker_runs
 from concorde.worker_harness.settings import RunPaths, sandbox_filesystem
 from concorde.worker_harness.workers import result_schema
 from concorde.spec.verification import verifies
@@ -289,12 +290,103 @@ class PiRunTests(unittest.TestCase):
         )
 
     def test_an_error_of_pi_is_reported_with_its_cause(self):
-        record = self.project.run([{"error": "429 rate limited", "exit": 1}])
+        record = self.project.run([{"error": "429 rate limited", "exit": 1}], retries=0)
         self.assertEqual("pi_failed", record["error"]["code"])
+        self.assertEqual("exhausted", record["error"]["unhandled"]["reason"])
         [cause] = record["error"]["causes"]
         self.assertEqual(("component", "pi_error"), (cause["level"], cause["code"]))
         self.assertIn("429 rate limited", cause["detail"])
         self.assertIn("exit code 1", cause["detail"])
+
+    @verifies("scenario.workers.transient-retry")
+    def test_a_transient_error_is_retried_in_the_same_session(self):
+        error = (
+            "gateway_concurrency_limit: Concurrency limit exceeded for user, please "
+            "retry later"
+        )
+        written = self.root / "src/a/calc.py"
+        record = self.project.run(
+            [
+                {
+                    "writes": {str(written): "def add(a, b):\n    return a + b\n"},
+                    "actions": [["write", {"path": str(written)}]],
+                    "error": error,
+                },
+                {},
+            ],
+            check_modules=None,
+        )
+        self.assertEqual("ok", record["status"], record["error"])
+        first, second = record["rounds"]
+        self.assertEqual(
+            {"error": error, "retried": True, "delay_seconds": 0}, first["transient"]
+        )
+        self.assertEqual(("initial", "retry"), (first["prompt"], second["prompt"]))
+        self.assertEqual(["src/a/calc.py"], second["audit"]["changed"])
+        calls = self.project.rounds(record)
+        session = [
+            call["argv"][call["argv"].index("--session-id") + 1] for call in calls
+        ]
+        self.assertEqual(session[0], session[1])
+        self.assertIn(error, calls[1]["prompt"])
+        self.assertIn("Continue your task", calls[1]["prompt"])
+        node = json.loads(
+            (Path(record["run_directory"]) / "rounds/1/trace.json").read_text()
+        )
+        self.assertEqual("retry", node["outcome"])
+        self.assertTrue(node["content"]["data"]["transient"]["retried"])
+        kept = worker_runs.read_record(self.project.trace, record["run_id"])
+        self.assertEqual(first["transient"], kept["rounds"][0]["transient"])
+
+    @verifies("scenario.workers.retries-limited")
+    def test_retries_stop_at_their_limit(self):
+        record = self.project.run(
+            [{"error": "503 Service Unavailable"}], check_modules=None, retries=2
+        )
+        self.assertEqual(3, len(record["rounds"]))
+        error = record["error"]
+        self.assertEqual(
+            ("pi_failed", "exhausted"), (error["code"], error["unhandled"]["reason"])
+        )
+        self.assertIn("at most 2 time(s)", error["unhandled"]["explanation"])
+        self.assertEqual(2, len(error["attempts"]))
+        self.assertIn("retry 2 of 2", error["attempts"][1])
+        self.assertEqual(
+            {
+                "error": "503 Service Unavailable",
+                "retried": False,
+                "delay_seconds": None,
+            },
+            record["rounds"][-1]["transient"],
+        )
+
+    @verifies("scenario.workers.lasting-error-not-retried")
+    def test_any_other_error_fails_at_once(self):
+        for message in (
+            "insufficient_quota: You exceeded your current quota, please retry later",
+            "invalid model id",
+        ):
+            with self.subTest(message=message):
+                record = self.project.run([{"error": message}], check_modules=None)
+                self.assertEqual(1, len(record["rounds"]))
+                self.assertEqual("pi_failed", record["error"]["code"])
+                self.assertEqual("environment", record["error"]["unhandled"]["reason"])
+                self.assertNotIn("transient", record["rounds"][0])
+
+    @verifies("scenario.workers.transient-violation-not-retried")
+    def test_a_round_that_wrote_outside_the_grant_is_not_retried(self):
+        outside = self.root / "src/bmod/other.py"
+        record = self.project.run(
+            [{"writes": {str(outside): "x = 1\n"}, "error": "Request timed out."}],
+            check_modules=None,
+        )
+        self.assertEqual(1, len(record["rounds"]))
+        error = record["error"]
+        self.assertEqual("pi_failed", error["code"])
+        self.assertIn("outside the grant", error["detail"])
+        self.assertIn("src/bmod/other.py", error["detail"])
+        self.assertIn("never retries", error["unhandled"]["explanation"])
+        self.assertFalse(record["rounds"][0]["transient"]["retried"])
 
     def test_a_pi_worker_without_a_result_is_invalid(self):
         record = self.project.run([{"no_result": True, "text": "I forgot the tool."}])
