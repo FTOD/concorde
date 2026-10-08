@@ -93,16 +93,16 @@ the run. [The run mechanics](launch.md) give these exact details:
 - WHEN the host launches a worker
 - THEN the worker's environment holds no proxy variable and no `NO_PROXY`
 
-### scenario.workers.brief-terms — The brief carries the definitions of the worker's terms
+### scenario.workers.brief-terms — The brief carries the caller's definitions of the worker's terms
 
 - GIVEN a `specify` grant that makes the project glossary writable
-- AND the grant's terms hold the glossary entries the bound Modules' documents link
+- AND caller instructions that list each glossary term the bound Modules' documents link, with its
+  identity, its owner and its definition
+- AND the instructions say that only the bound Modules' entries of the glossary may change
 - WHEN the host launches the worker
-- THEN the brief lists each term with its identity
-- AND the brief lists each term with its owner
-- AND the brief lists each term with its definition
-- AND the brief says that only the bound Modules' entries of the glossary may change
-- BUT the brief lists no entry outside the grant's terms
+- THEN the brief's task holds those instructions unchanged
+- AND the brief's boundary follows them, listing only the grant's `rw`, `ro` and `names` paths
+- BUT the brief lists no term the instructions do not give
 
 ### scenario.workers.brief-result-paths — The brief asks for relative paths in the result
 
@@ -114,16 +114,17 @@ the run. [The run mechanics](launch.md) give these exact details:
   the worktree
 - AND the brief tells the worker never to write those paths as absolute paths
 
-### scenario.workers.brief-review-gaps — A Spec reviewer reports a gap and goes on
+### scenario.workers.brief-review-gaps — A Spec reviewer's gap rule reaches its brief unchanged
 
 - GIVEN a worker of task type `review-spec` or `review-architecture`
+- AND caller instructions that tell it to report a promise the Spec does not state, or a document
+  it lacks, as a finding
+- AND the instructions tell it to go on reviewing and to return `blocked` only when it cannot review
+  at all
 - WHEN the host writes its brief
-- THEN the brief tells the worker to report a promise the Spec does not state, or a document it
-  lacks, as a finding
-- AND the brief tells the worker to go on reviewing
-- AND the brief tells the worker to return `blocked` only when it cannot review at all
-- BUT a `specify`, `implement` or `test` worker is told to return `blocked` for a promise the Spec
-  does not state
+- THEN the brief's task holds those instructions unchanged
+- AND the brief's boundary follows them, listing only the grant's `rw`, `ro` and `names` paths
+- BUT the host adds no rule of its own about a promise the Spec does not state
 
 ### scenario.workers.project-interpreter — The project's interpreter comes first and is named
 
