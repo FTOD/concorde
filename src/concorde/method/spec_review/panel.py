@@ -24,6 +24,7 @@ from __future__ import annotations
 import copy
 import json
 import operator
+from collections.abc import Callable
 from typing import Annotated, TypedDict
 
 from ...execution.context import (
@@ -608,7 +609,10 @@ def _panels(ctx: RunContext) -> dict[str, PanelState]:
 
 
 def _report(
-    ctx: RunContext, subject: review.ModuleReview, state: PanelState, phase: str
+    ctx: RunContext,
+    subject: review.ModuleReview,
+    state: PanelState,
+    phase: str | Callable[[dict], str],
 ):
     """Step 4: settle the earlier Issues the chair's report names and report its findings."""
     report = state["report"]
@@ -647,12 +651,13 @@ def run_panel(
     panel: Panel,
     *,
     sources=None,
-    phase: str = "report",
+    phase: str | Callable[[dict], str] = reporting.finding_phase,
     earlier: bool = True,
 ) -> tuple[list[dict], PanelState | None]:
     """Steps 2 to 4 for one subject: read its earlier Issues of ``sources`` unless the caller
     already set them (``earlier`` False), run the panel graph and report the chair's findings
-    with the provenance ``phase``; returns the host evidence and the graph's final state, None
+    with the provenance ``phase``, by default each finding's own (``reporting.finding_phase``);
+    returns the host evidence and the graph's final state, None
     when the panel never ran. The subject's stop is set when it is incomplete."""
     subject = panel.subject
     found: list[dict] = []

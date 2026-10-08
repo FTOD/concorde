@@ -37,6 +37,13 @@ record's shapes are in the [contracts](contracts.md).
 - AND an earlier Issue the code reviewer finds resolved no longer stands, but stays open for a task to close
 - AND the record's entry of that code review names the new run, and its Spec panel's entry still names the first
 
+### scenario.project-review.spec-change — A Spec change of any Module reviews the architecture again
+
+- GIVEN a project with the issues part, whose every part a `project_review` completed and recorded, then a commit that changes only a document of the second Module
+- WHEN the main agent runs `project_review` again
+- THEN the second Module's Spec panel and the architecture review run
+- AND the architecture review judges another [context identity](../../glossary.json#concept.context-identity) than the first run, and the record's architecture entry names the new run
+
 ### scenario.project-review.full — --full reviews everything
 
 - GIVEN a project with configured workers whose every part a `project_review` completed and recorded, and that has not changed since
@@ -99,6 +106,14 @@ record's shapes are in the [contracts](contracts.md).
 - GIVEN an open Issue that a `project_review` Spec panel reported for a Module
 - WHEN a task runs `spec_panel` for that Module
 - THEN its workers receive that Issue as an earlier Issue, and the panel carries it when no finding names or resolves it
+
+### scenario.project-review.architecture-earlier — The architecture review builds on spec_panel's architects
+
+- GIVEN an open Issue that `spec_panel`'s architects reported for Module A, with the provenance phase `architecture`
+- WHEN `project_review` runs its architecture review
+- THEN its architects receive that Issue as an earlier Issue, and the review carries it when no finding names or resolves it
+- AND no new Issue states the same problem again
+- BUT A's Spec panel in that run is not offered the Issue, which still stands for A
 
 ### scenario.project-review.without-issues — Without the issues part nothing is skipped
 

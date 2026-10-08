@@ -83,10 +83,9 @@ class ProjectReviewTests(unittest.TestCase):
         self.project = OperationProject(self)
         self.root = self.project.root
 
-    def review(self, plans=None, *arguments, cwd=None):
-        """Run ``project_review``, unbound in the primary worktree unless ``cwd`` names another,
-        with the fake workers' ``plans``; an unbound run has no goal to carry them, so the
-        wrapper gives them."""
+    def fakes(self, plans=None) -> None:
+        """Give the fake workers of the next runs their ``plans``; an unbound run has no goal to
+        carry them, so the wrapper gives them."""
         wrapper = self.project.base / "claude-project"
         quoted = json.dumps(plans or {}).replace("'", "'\"'\"'")
         wrapper.write_text(
@@ -95,6 +94,11 @@ class ProjectReviewTests(unittest.TestCase):
         )
         wrapper.chmod(0o755)
         self.project.fake = wrapper
+
+    def review(self, plans=None, *arguments, cwd=None):
+        """Run ``project_review``, unbound in the primary worktree unless ``cwd`` names another,
+        with the fake workers' ``plans``."""
+        self.fakes(plans)
         status, envelope = self.project.run(
             "project_review",
             "--reviewers",
@@ -374,6 +378,28 @@ class ProjectReviewTests(unittest.TestCase):
         self.assertEqual(envelope["run_id"], judged["code_review"]["run"])
         self.assertEqual(first["run_id"], judged["panel"]["run"])
 
+    @verifies("scenario.project-review.spec-change")
+    def test_a_spec_change_of_any_module_reviews_the_architecture_again(self):
+        first = self.first()
+        path = self.root / "specs/b/module.md"
+        path.write_text(path.read_text() + "\nB answers every request.\n")
+        commit(self.root, "change module.b's Spec")
+        status, envelope = self.review()
+        self.assertEqual((0, "ok"), (status, envelope["status"]), envelope)
+        output = envelope["output"]
+        self.assertEqual("reviewed", output["architecture"]["state"])
+        self.assertNotEqual(
+            first["output"]["architecture"]["context_identity"],
+            output["architecture"]["context_identity"],
+        )
+        self.assertEqual(
+            "reviewed", self.module(envelope, "module.b")["panel"]["state"]
+        )
+        self.assertIn("arch_chair project", self.workers())
+        self.assertEqual(
+            envelope["run_id"], record.read(self.root)["architecture"]["run"]
+        )
+
     @verifies("scenario.project-review.full")
     def test_full_reviews_everything_again(self):
         self.first()
@@ -610,6 +636,71 @@ class ProjectReviewTests(unittest.TestCase):
             issue, [item["issue"] for item in module["earlier_issues"]["carried"]]
         )
         self.assertEqual("changes_required", module["outcome"])
+
+    def briefs(self, envelope, worker_id: str) -> list[str]:
+        """The briefs of the run's workers of ``worker_id``."""
+        found = []
+        for run_id in envelope["worker_runs"]:
+            value = read_record(self.root / ".concorde", run_id)
+            if value["worker"] == worker_id:
+                found.append((Path(value["run_directory"]) / "brief.md").read_text())
+        return found
+
+    @verifies("scenario.project-review.architecture-earlier")
+    def test_the_architecture_review_offers_spec_panels_architecture_issues(self):
+        self.fakes(
+            {
+                "architect module.a 1": worker(findings=[architectural()]),
+                "chair module.a 1": worker(
+                    findings=[
+                        {**architectural(), "sources": ["a1.1"], "note": "Verified."}
+                    ],
+                    rejected=[],
+                ),
+            }
+        )
+        status, envelope = self.project.run(
+            "spec_panel",
+            "--modules",
+            "module.a",
+            "--reviewers",
+            "2",
+            "--architects",
+            "1",
+        )
+        self.assertEqual((0, "ok"), (status, envelope["status"]), envelope)
+        (item,) = envelope["output"]["modules"][0]["findings"]
+        issue = item["issue"]
+        source = self.issues()[issue]["reports"][0]["source"]
+        self.assertEqual(
+            ("spec_panel", "architecture"), (source["operation"], source["phase"])
+        )
+        status, envelope = self.review()
+        self.assertEqual((0, "ok"), (status, envelope["status"]), envelope)
+        output = envelope["output"]
+        # The architects receive it and, finding nothing new, carry it.
+        (architect,) = self.briefs(envelope, "architect1")
+        self.assertIn(issue, architect)
+        carried = output["architecture"]["review"]["earlier_issues"]["carried"]
+        self.assertIn(issue, [entry["issue"] for entry in carried])
+        # Module A's panel, which has no architects, is not offered it.
+        for brief in self.briefs(envelope, "reviewer1"):
+            self.assertNotIn(issue, brief)
+        a = self.module(envelope)
+        self.assertNotIn(
+            issue,
+            [
+                entry["issue"]
+                for entry in a["panel"]["review"]["earlier_issues"]["carried"]
+            ],
+        )
+        self.assertIn(issue, [entry["issue"] for entry in a["standing"]])
+        # Nothing reported it again.
+        self.assertEqual(1, len(self.issues()[issue]["reports"]))
+        titles = [
+            value["reports"][0]["report"]["title"] for value in self.issues().values()
+        ]
+        self.assertEqual(1, titles.count("A relies on B's internals"))
 
     @verifies("scenario.project-review.structural-error")
     def test_a_structurally_invalid_module_is_incomplete_alone(self):

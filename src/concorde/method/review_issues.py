@@ -415,7 +415,7 @@ def report(
     review: str,
     earlier: list[dict] | None = None,
     settled: dict | None = None,
-    phase: str = "report",
+    phase: str | Callable[[dict], str] = "report",
 ) -> tuple[list[dict], Stop | None]:
     """Report every finding of one Module; returns the host evidence and, when the issues command
     refused a report, the Module's stop. Each finding gets its ``issue``, which stays None where
@@ -426,7 +426,8 @@ def report(
     ``code review``. A finding left unreported keeps no ``earlier``, since nothing was appended to
     that Issue, which still stands and so joins the ``carried`` of ``settled``, the review's
     settlement of ``earlier``, the Issues it offered. ``phase`` is the provenance phase of every
-    report, which tells apart the kinds of review one Operation makes."""
+    report, which tells apart the kinds of review one Operation makes, or a function giving each
+    finding's phase where one review reports findings of several kinds."""
     for finding in findings:
         finding["issue"] = None
     found: list[dict] = []
@@ -434,7 +435,6 @@ def report(
         "invocation_id": ctx.run_id,
         "agent": "operation",
         "operation": ctx.name,
-        "phase": phase,
         "target_id": module,
         "context_id": identity,
         "change_id": ctx.workspace_name,
@@ -443,15 +443,16 @@ def report(
     try:
         for position, finding in enumerate(findings, 1):
             value = issue_report(position, finding)
-            if phase != "report":
+            kind = phase(finding) if callable(phase) else phase
+            if kind != "report":
                 # One run of an Operation making several kinds of review keys each kind's
                 # reports apart, since one report key of a run identifies one Issue.
-                value["report_key"] = f"{phase}/{value['report_key']}"
+                value["report_key"] = f"{kind}/{value['report_key']}"
             named = finding.get("earlier")
             if named:
                 revision = call(ctx, "show", named)["revision"]
                 value.update(issue_id=named, expected_revision=revision)
-            receipt = _report(ctx, value, provenance)
+            receipt = _report(ctx, value, {**provenance, "phase": kind})
             finding["issue"] = receipt["issue_id"]
             found.append(
                 evidence(

@@ -96,9 +96,15 @@ it open for a task to close.
 
 ### req.project-review.skip-unchanged — A part whose input is unchanged is skipped
 
-Unless `--full` is given, where the issues part is installed, the Operation SHALL skip a Module's
-Spec panel, a Module's code review or the architecture review when the identity of what it would
-judge equals the identity the [review record](module.md#the-review-record) holds for that part.
+Where the issues part is installed and `--full` is not given, the Operation SHALL skip each part
+whose identity of what it would judge equals the identity the
+[review record](module.md#the-review-record) holds for it.
+
+A part is a Module's Spec panel, a Module's code review or the architecture review.
+The architecture review's identity is the
+[context identity](../../glossary.json#concept.context-identity) of the `review-architecture` grant
+for every Module. That identity covers every Module's documents and the whole glossary. A change to any
+of them therefore makes the architecture review run again.
 
 ### req.project-review.nothing-to-review — A run with every worker part skipped is refused
 
@@ -119,8 +125,8 @@ Where the issues part is not installed, the Operation SHALL write no review reco
 
 ### req.project-review.record-completed — Only completed parts are recorded
 
-The Operation SHALL record a part in the review record only when the part's workers finished and all
-of its Issues were written.
+Only when a part's workers finished and all of its Issues were written SHALL the Operation record
+the part in the review record.
 
 ### req.project-review.record-commit — The record is committed alone under the merge lock
 

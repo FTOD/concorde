@@ -193,8 +193,10 @@ subject's panel for Project review. The caller then gives these:
 - The Modules of the grants.
 - The section that names the subject.
 - The earlier Issues offered.
-- The provenance phase of the reports. It keeps the parts
-any review of Specs shares apart from the panel's own:
+- The provenance phase of every report, in place of the phase of each finding that `spec_panel`
+  gives.
+
+It keeps the parts any review of Specs shares apart from the panel's own:
 
 - The first step.
 - The earlier Issues.

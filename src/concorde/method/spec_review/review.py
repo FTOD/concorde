@@ -20,6 +20,7 @@ to) are host evidence.
 from __future__ import annotations
 
 import os
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -511,7 +512,7 @@ def report_findings(
     review: ModuleReview,
     resolved: list[dict],
     identity: str | None,
-    phase: str = "report",
+    phase: str | Callable[[dict], str] = reporting.finding_phase,
 ) -> list[dict]:
     """Settle the earlier Issues and report the findings as Issues with the provenance ``phase``;
     returns the host evidence."""

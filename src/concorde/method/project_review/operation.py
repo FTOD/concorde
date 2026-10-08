@@ -69,9 +69,14 @@ WORKERS = (
 )
 # The subject name of the architecture review, which reports for the whole project.
 PROJECT = "project"
-# The reports whose Issues each part offers as earlier Issues, by Operation and phase.
-PANEL_SOURCES = {"spec_panel": None, "project_review": ("spec-panel",)}
-ARCHITECTURE_SOURCES = {"project_review": ("architecture",)}
+# The reports whose Issues each part offers as earlier Issues, by Operation and phase: the
+# architects' findings of spec_panel, of its phase architecture, go to the architecture review,
+# which has architects, rather than to the Module panels, which have none.
+PANEL_SOURCES = {"spec_panel": ("report",), "project_review": ("spec-panel",)}
+ARCHITECTURE_SOURCES = {
+    "spec_panel": ("architecture",),
+    "project_review": ("architecture",),
+}
 # The reviews whose open Issues decide what stands for a Module.
 STANDING_SOURCES = ("spec_panel", "code_review", "project_review")
 SEVERITY_KEYS = [*review_issues.SEVERITIES, "unrated"]

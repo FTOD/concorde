@@ -10,6 +10,7 @@ the workers' view of the earlier Issues and the Issue report of a Spec finding.
 from __future__ import annotations
 
 import json
+from collections.abc import Callable
 
 from ...execution.context import RunContext
 from .. import review_issues
@@ -76,6 +77,16 @@ def _where(finding: dict) -> str:
     return place
 
 
+def finding_phase(finding: dict) -> str:
+    """The provenance phase of one chair finding of ``spec_panel``: ``architecture`` when every
+    label it merges is an architect's, so that ``project_review``'s architecture review offers its
+    Issue, and ``report`` when it merges a reviewer's."""
+    sources = finding.get("sources") or []
+    if sources and all(label.startswith("a") for label in sources):
+        return "architecture"
+    return "report"
+
+
 def issue_report(operation: str, run_id: str, key: str, finding: dict) -> dict:
     """The Issue report of one finding, without ``issue_id`` and ``expected_revision``."""
     kind, subtype = _kind(finding["dimension"])
@@ -122,9 +133,10 @@ def report(
     identity: str | None,
     earlier: list[dict] | None = None,
     settled: dict | None = None,
-    phase: str = "report",
+    phase: str | Callable[[dict], str] = finding_phase,
 ) -> tuple[list[dict], object | None]:
-    """Report every finding with the provenance ``phase``; returns the host evidence and, when the
+    """Report every finding with the provenance ``phase``, by default each finding's
+    ``finding_phase``; returns the host evidence and, when the
     Issue store refused a report, the Module's stop. Each finding gets its ``issue``; an
     unreported finding's earlier Issue joins ``settled``'s carried, in ``earlier``'s order."""
     return review_issues.report(
@@ -148,6 +160,7 @@ __all__ = [
     "SEVERITIES",
     "TIERS",
     "earlier_issues",
+    "finding_phase",
     "Refusal",
     "is_blocking",
     "issue_report",
