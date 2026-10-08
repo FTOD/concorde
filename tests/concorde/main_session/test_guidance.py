@@ -153,6 +153,30 @@ class GuidanceTests(unittest.TestCase):
             self.session,
         )
 
+    @verifies("scenario.main-session.session-start-compare")
+    def test_the_main_agent_compares_its_name_when_the_hook_lists_tasks(self):
+        section = " ".join(
+            self.skill.split("### When your session name changed", 1)[1].split()
+        )
+        self.assertIn("Concorde's session-start hook reminds you.", section)
+        self.assertIn(
+            "When it lists tasks, call ListAgents before anything else and compare the name it "
+            "reports for your session with each task's `main`",
+            section,
+        )
+        self.assertIn(
+            "A task whose `main` is another session that ListAgents lists belongs to that "
+            "main agent. Leave it.",
+            section,
+        )
+        self.assertIn(
+            "A task whose `main` is neither of these names your former name.", section
+        )
+        self.assertIn(
+            "When Concorde's session-start hook lists tasks not ended, call ListAgents first",
+            self.block,
+        )
+
     @verifies("scenario.main-session.reconcile-after-restart")
     def test_the_main_agent_rebinds_its_tasks_after_its_name_changed(self):
         self.assertIn("### When your session name changed", self.skill)

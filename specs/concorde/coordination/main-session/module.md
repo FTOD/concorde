@@ -421,7 +421,14 @@ The installed guidance gives the main agent this working method:
   name, the task session waits in background Bash with `concorde task wait <task> --rebound <name>`.
   The task session sends the same report again to the name that command returns
   ([requirements](requirements.md#req.main-session.task-session-report-recorded)). The main agent
-  records its answer with `concorde task answer` before it sends the answer. When ListAgents reports
+  records its answer with `concorde task answer` before it sends the answer. Nothing in a renamed
+  session tells the main agent of the new name. So Tasks' session-start hook
+  ([Tasks](../tasks/module.md#listing-and-showing-tasks)) runs when the main agent's session
+  starts, resumes or is compacted in the primary worktree. It adds the tasks not ended to the main
+  agent's context, with the `main` each names and their unanswered reports. The guidance tells the main agent then to call
+  ListAgents before anything else and compare its name with each task's `main`
+  ([requirements](requirements.md#req.main-session.session-start-compare)). A task that names
+  another session ListAgents lists belongs to that main agent. When ListAgents reports
   for its own session a name other than the one it gave its tasks, the main agent reconciles before
   anything else. This can happen after a resume. The main agent reconciles as follows
   ([requirements](requirements.md#req.main-session.reconcile-after-restart)):

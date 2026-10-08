@@ -27,8 +27,9 @@ In short:
 - Since a task never asks the developer in place, answer the decisions a task session escalates
   together. Decide what your authority covers and ask the developer the rest at once, recording each
   answer with `concorde task answer`.
-- When ListAgents names your session otherwise than the `--main` you gave your tasks, as after a
-  resume, first rebind those not ended. Use
+- When Concorde's session-start hook lists tasks not ended, call ListAgents first and compare your
+  session's name with each task's `main`. When ListAgents names your session otherwise than the
+  `--main` you gave your tasks, as after a resume, first rebind those not ended. Use
   `concorde task list --main <former> --state open,active,delivered,merging` and
   `concorde task rebind`. Then read their unanswered reports and send again each latest recorded
   answer (the skill's "When your session name changed").
