@@ -53,14 +53,15 @@ def _create(path: Path, data: bytes) -> tuple[int, int]:
 
 
 def _remove_own(path: Path, identity: tuple[int, int]) -> bool:
-    """Remove ``path`` only while it is still the file this application created."""
+    """Remove ``path`` only while it is still the file this application created; False when
+    another file has taken its place. A path that is already gone needs nothing."""
     try:
         status = os.lstat(path)
     except FileNotFoundError:
-        return False
+        return True
     if (status.st_dev, status.st_ino) != identity:
         return False
-    path.unlink()
+    path.unlink(missing_ok=True)
     return True
 
 

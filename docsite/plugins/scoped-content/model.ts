@@ -768,8 +768,9 @@ export function roots(registry: ScopedRegistry): ModuleRecord[] {
   );
   return registry.modules.filter((m) => !contained.has(m.id));
 }
-/** The `[start, end)` ranges of a line's inline code spans: a run of backticks opens a span
- * that the next run of exactly the same length closes; a run without such a partner is text. */
+/** The `[start, end)` ranges of the inline code spans of one block of text: a run of backticks
+ * opens a span that the next run of exactly the same length closes; a run without such a partner
+ * is text. */
 function inlineCodeRanges(text: string): Array<[number, number]> {
   const runs = [...text.matchAll(/`+/g)];
   const ranges: Array<[number, number]> = [];
