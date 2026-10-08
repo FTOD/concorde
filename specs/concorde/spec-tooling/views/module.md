@@ -294,13 +294,15 @@ or Protocol chapters.
 
 ## Around it
 
-Views sits between the Spec core it reads and the Distribution that packages and calls it:
+Views sits between the Spec core it reads and the Distribution that packages and calls it.
+Views also relies on Distribution's package layout:
 
 ```d2
 views: Views
 core: Spec core
 distribution: Distribution
 views -> core
+views -> distribution
 distribution -> views
 ```
 
@@ -325,6 +327,19 @@ the Spec validator. The scaffold relies on Spec core for:
 It creates its files itself, as the scaffold's design above says. Both proposing and applying
 first read the project's Spec configuration. When it isn't readable, the scaffold returns
 `invalid` and asks for initialization, before it reads the proposal or touches a destination.
+
+The scaffold returns Spec core's [command-line envelope](../spec/contracts.md#validation-result)
+and its [error record](../spec/errors.md). Views includes both documents for these definitions.
+
+<a id="uses-distribution"></a>
+
+**Distribution** packages Views and installs its template. Views relies on two of its promises, as
+data and an installation layout, never by importing Distribution's code:
+
+- The package descriptor `concorde.json`, which must name `docsite` as a package root.
+- The installer, which
+  [places the template](../../distribution/requirements.md#req.distribution.installer-docsite-template)
+  under `.concorde/framework/docsite/`, where an installed scaffold reads it.
 
 Distribution calls the scaffold and packages it. The `distribution -> views` above is its own
 `uses`, declared there as an [optional integration](../../glossary.json#concept.optional-integration)

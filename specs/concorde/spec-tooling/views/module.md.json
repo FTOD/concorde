@@ -23,9 +23,27 @@
           "concept.registry",
           "concept.impact-index"
         ]
+      },
+      {
+        "target": "module.distribution",
+        "meaning": "#uses-distribution",
+        "relies_on": [
+          "req.distribution.installer-docsite-template"
+        ]
       }
     ],
-    "includes": [],
+    "includes": [
+      {
+        "kind": "document",
+        "target": "document.spec.contracts",
+        "reason": "Spec core's command-line envelope (validation result), safe project-relative paths and project configuration, which the scaffold returns, checks and reads"
+      },
+      {
+        "kind": "document",
+        "target": "document.spec.errors",
+        "reason": "Spec core's error record, which the scaffold returns as its envelope's error"
+      }
+    ],
     "participates": [
       {
         "contract": "contract.views.scaffold-proposal",
