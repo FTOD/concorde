@@ -204,12 +204,12 @@ def check_worker_models(context: RunContext):
 
 def operation(*arguments, **fields) -> Provider:
     """A Method Operation's definition: the admission of its Modules against the workspace's
-    Specs, its steps preceded by the admission of its workers and, when it may run unbound, the
-    runtime-path resolver of its checkout."""
+    Specs, unless it brings its own, its steps preceded by the admission of its workers and, when
+    it may run unbound, the runtime-path resolver of its checkout."""
     chosen = Provider(*arguments, **fields)
     return replace(
         chosen,
-        admit=admission(),
+        admit=chosen.admit or admission(),
         steps=(check_worker_models, *chosen.steps),
         runtime_paths=runtime_paths if chosen.binding == "optional" else None,
     )
@@ -563,6 +563,7 @@ def run_worker(
     read_only: bool = False,
     readable: tuple[Path, ...] = (),
     validate: Callable[[dict], str | None] | None = None,
+    records: list[dict] | None = None,
 ):
     """The standard worker sequence of one worker-backed step; returns ``Continue`` or ``Stop``.
 
@@ -575,7 +576,9 @@ def run_worker(
     ``read_only`` withholds every writable level of the task type's grant, turning it into read
     access, as the Protocol lets a harness give less than a type assigns. ``readable`` names host
     material outside the grant the worker may read as well, such as the logs of the checks the
-    host ran for this run.
+    host ran for this run. ``records``, when given, receives the worker run record once Workers
+    wrote it: a step that launches workers at the same time as others reads its own worker's
+    result there, never from the run context's latest one.
     """
     from ..spec.errors import SpecError
     from .checks import checked_modules
@@ -676,6 +679,8 @@ def run_worker(
             started=ctx.worker_started,
         )
     )
+    if records is not None:
+        records.append(record)
     outcome = absorb(ctx, record)
     if glossary is None:
         return outcome

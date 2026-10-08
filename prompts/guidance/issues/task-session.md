@@ -65,6 +65,7 @@ Say in your report which Issues the task resolves.
 
 - `spec_panel`
 - `code_review`
+- `project_review`
 
 Where the method part is installed, each finding is an Issue of the Module it concerns.
 Where the method part is installed, the tools' result names:

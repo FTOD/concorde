@@ -96,7 +96,8 @@ the problem matters to the callers and the later tasks relying on the code. It r
 ### Earlier Issues
 
 A reviewed Module's **earlier Issues** are its open Issues one of whose reports a `code_review` run
-made. The reviewer receives them before it judges. A problem already recorded is reported again only
+made, or a [Project review](../project-review/module.md) run made with the provenance phase
+`code-review`. The reviewer receives them before it judges. A problem already recorded is reported again only
 when it changed, as a finding naming that Issue and never as a new one. It lists each earlier Issue
 the code no longer has, with its reason, as **resolved**. An earlier Issue it neither names nor
 resolves still stands, **carried**. The Operation, never the reviewer, writes the Issues. It appends
@@ -302,6 +303,10 @@ store leaves a finding unreported, that finding keeps no `earlier` and the earli
 carried. A failure of the Issue system is never reported as an Issue. It stays an [error
 chain](../../glossary.json#concept.error-chain) in the result. See the
 [requirements](requirements.md) and [scenarios](scenarios.md) for the precise obligations.
+
+Project review runs one Module review of a Module for each Module it covers, through the same
+reviewer step, with its own [worker id](../../glossary.json#concept.worker-id) and the provenance
+phase `code-review` for its reports.
 
 <a id="realization.code-review.operation"></a>
 

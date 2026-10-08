@@ -383,12 +383,13 @@ It has no workspace.
 So that the run examines committed material rather than uncommitted changes, its steps and workers
 work in a throwaway detached checkout of that worktree's `HEAD`.
 It changes no Spec or code in that checkout or in the worktree it started in.
-Besides its own record, its only possible lasting change is publishing
-[Issues](glossary.json#concept.issue).
+Besides its own record, its only possible lasting changes are publishing
+[Issues](glossary.json#concept.issue) and the review record of a `project_review` run.
 Where the issues part is installed, a review reports its findings only through the
 [Issues](issues/module.md) store.
 The store commits each on the primary branch as its own commit under the
 [merge lock](glossary.json#concept.merge-lock).
+`project_review` commits its review record the same way, alone in a commit of its own.
 [Execution](execution/module.md#unbound-runs) explains it.
 
 ### The life of a task

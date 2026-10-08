@@ -85,6 +85,7 @@ Where the method part is installed, these reviews report each finding as an Issu
 
 - `spec_panel`
 - `code_review`
+- `project_review`
 
 Where the method part is installed, each Issue carries the severity and tier its reviewer or chair gave it.
 Where the method part is installed, the review lists these earlier Issues in its result:

@@ -1,0 +1,11 @@
+{
+  "schema_version": 3,
+  "document": {
+    "id": "document.project-review.scenarios",
+    "owner": "module.project-review",
+    "role": "implementation"
+  },
+  "defines": [],
+  "relations": [],
+  "extensions": {}
+}

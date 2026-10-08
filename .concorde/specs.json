@@ -1148,6 +1148,10 @@
           "meaning": "#contains-spec-review"
         },
         {
+          "target": "module.project-review",
+          "meaning": "#contains-project-review"
+        },
+        {
           "target": "module.adoption",
           "meaning": "#contains-adoption"
         },
@@ -1460,6 +1464,136 @@
           "kind": "external",
           "target": "references/langgraph-docs/",
           "reason": "LangGraph's documentation for the Graph API, streaming, persistence and its errors, which the spec_panel graph follows"
+        }
+      ],
+      "participates": []
+    },
+    {
+      "id": "module.project-review",
+      "title": "Project review",
+      "entry": "specs/concorde/method/project-review/module.md",
+      "owns": [
+        "specs/concorde/method/project-review/module.md",
+        "specs/concorde/method/project-review/requirements.md",
+        "specs/concorde/method/project-review/scenarios.md",
+        "specs/concorde/method/project-review/contracts.md"
+      ],
+      "contains": [],
+      "uses": [
+        {
+          "target": "module.spec-review",
+          "meaning": "#uses-spec-review",
+          "relies_on": [
+            "contract.spec-review.panel-payload",
+            "concept.review-finding"
+          ]
+        },
+        {
+          "target": "module.code-review",
+          "meaning": "#uses-code-review",
+          "relies_on": [
+            "contract.code-review.review"
+          ]
+        },
+        {
+          "target": "module.spec",
+          "meaning": "#uses-spec",
+          "relies_on": [
+            "concept.structural-check",
+            "concept.grant",
+            "concept.context-identity",
+            "concept.verification-declaration"
+          ]
+        },
+        {
+          "target": "module.workers",
+          "meaning": "#uses-workers",
+          "relies_on": [
+            "concept.worker-id",
+            "concept.run-record"
+          ]
+        },
+        {
+          "target": "module.checks",
+          "meaning": "#uses-checks",
+          "relies_on": [
+            "concept.configured-check",
+            "concept.check-result",
+            "concept.read-only-check-boundary"
+          ]
+        },
+        {
+          "target": "module.operations",
+          "meaning": "#uses-operations",
+          "relies_on": [
+            "concept.operation"
+          ]
+        },
+        {
+          "target": "module.execution",
+          "meaning": "#uses-execution",
+          "relies_on": [
+            "concept.execution-runner",
+            "concept.run-result",
+            "concept.unbound-run"
+          ]
+        },
+        {
+          "target": "module.kernel",
+          "meaning": "#uses-kernel",
+          "relies_on": [
+            "concept.merge-lock",
+            "concept.file-transaction"
+          ]
+        },
+        {
+          "target": "module.issues",
+          "meaning": "#uses-issues",
+          "relies_on": [
+            "concept.issue",
+            "concept.issue-report",
+            "concept.issue-revision",
+            "concept.issue-tier",
+            "concept.issue-severity",
+            "contract.issues.report",
+            "contract.issues.receipt"
+          ]
+        },
+        {
+          "target": "module.validation",
+          "meaning": "#uses-validation",
+          "relies_on": [
+            "concept.readiness"
+          ]
+        },
+        {
+          "target": "module.workflows",
+          "meaning": "#uses-workflows",
+          "relies_on": [
+            "contract.workflows.step-output"
+          ]
+        }
+      ],
+      "includes": [
+        {
+          "kind": "document",
+          "target": "document.tracing.contracts",
+          "reason": "the Framework's error contract, which this Module's errors follow"
+        },
+        {
+          "kind": "document",
+          "target": "document.spec.contracts",
+          "reason": "Spec core's library of grants, context identities, validation and verification declarations the host steps call"
+        },
+        {
+          "kind": "document",
+          "target": "document.checks.service",
+          "reason": "Check execution's service, whose work stage decides which configured checks the review runs"
+        },
+        {
+          "kind": "document",
+          "target": "document.kernel.contracts",
+          "reason": "the merge lock and the file transaction the review record is committed through"
         }
       ],
       "participates": []

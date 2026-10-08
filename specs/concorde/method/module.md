@@ -78,6 +78,7 @@ Method registers these definitions with Execution, whose
 | `test` | [Implementation](implementation/module.md) | `test` | `worker` | no | no | a test report ([contract](implementation/contracts.md#contract.implementation.test-report)) |
 | `spec_panel` | [Spec review](spec-review/module.md) | `review-spec`; `review-architecture` for its architects, and for its chair when it has an architect | `reviewer1` … `reviewer5`, `architect1`, `architect2`, `chair` | yes | no | [review findings](../glossary.json#concept.review-finding) in a panel report merged from independent reviews, and a verdict ([contract](spec-review/panel.md#contract.spec-review.panel-payload)) |
 | `code_review` | [Code review](code-review/module.md) | `review-code` | `worker` | yes (`--base` for a change review) | no | a code review report of a change or of whole Modules, and a verdict ([contract](code-review/contracts.md#contract.code-review.review)) |
+| `project_review` | [Project review](project-review/module.md) | `review-spec` for its Spec panels; `review-architecture` of every Module for its architecture review; `review-code` for its code reviews | `reviewer1` … `reviewer5`, `chair`, `architect1`, `architect2`, `arch_chair`, `code_reviewer` | yes | no | each Module's outcome and the project's verdict from deterministic findings, one architecture review, a Spec panel and a code review per Module, skipping what is unchanged ([contract](project-review/contracts.md#contract.project-review.report)) |
 | `survey` | [Adoption](adoption/module.md) | `code-to-spec`, writes withheld | `worker` | yes | no | a [decomposition proposal](adoption/contracts.md#contract.adoption.decomposition) |
 | `code_to_spec` | [Adoption](adoption/module.md) | `code-to-spec` | `worker` | no | Specs of the bound Modules, the registry mirror and the `verifies` links of the existing tests it describes | a [Spec description](adoption/contracts.md#contract.adoption.spec-description) |
 | `general` | [General work](general-work/module.md) | the one `--type` names, for both workers; writes withheld for the reviewer, and for the worker with `--read-only` | `worker`, `reviewer` | yes, read-only | what the named type's grant makes writable | the worker's answer, the observed change and an independent review with a verdict ([contract](general-work/contracts.md#contract.general-work.result)) |
@@ -92,9 +93,9 @@ execution commands besides:
   again and makes the workspace's [delivery commit](../glossary.json#concept.delivery-commit).
 - [Scaffold](scaffold/module.md)'s `scaffold`, which creates the child Modules a survey proposed.
 
-Where the issues part is installed, the findings of `spec_panel` and `code_review` become
-[Issues](../glossary.json#concept.issue) of the project. Elsewhere each finding stays in the run
-result. The verdict is derived from the findings' tiers the same way. `plan_review`'s findings
+Where the issues part is installed, the findings of `spec_panel`, `code_review` and
+`project_review` become [Issues](../glossary.json#concept.issue) of the project. Elsewhere each
+finding stays in the run result. The verdict is derived from the findings' tiers the same way. `plan_review`'s findings
 judge a plan within one run. They always stay in its report
 ([requirements](requirements.md#optional-integrations)).
 
@@ -345,11 +346,14 @@ The **Definitions** realization holds what Method's definitions share around the
 **Review Issues**, `src/concorde/method/review_issues.py`, is the review providers' shared handling
 of their Issues. Through the issues command, as [Issues](#uses-issues) says, it handles:
 
-- Reading a reviewed Module's earlier Issues.
+- Reading a reviewed Module's earlier Issues, or every open Issue of the project.
 - Settling which a review carries or resolves.
 - Reporting its findings.
 
-Where the issues part is not installed, it states in the result that the findings were not recorded.
+A review names the reports whose Issues it reads by their Operation, and, where one Operation makes
+several kinds of review, by their provenance `phase`. Every report carries the phase its review
+gives. Its report key begins with that phase unless the phase is `report`. Where the issues part is
+not installed, it states in the result that the findings were not recorded.
 
 <a id="realization.method.guidance"></a>
 
@@ -426,6 +430,17 @@ the verdict from them. Where the issues part is installed, the provider reports 
 those Issues, so the workspace does not change. `spec_panel` is the one provider whose steps run a
 LangGraph graph inside the run. The runner neither knows nor needs that graph. The provider still
 returns one run result through the ordinary steps.
+
+<a id="contains-project-review"></a>
+
+**Project review** provides `project_review`, one review of the whole project. It runs the
+project's structural validation, every configured check, a search for the scenarios no test
+verifies and for the files no Module binds. It runs one architecture review of the project. For
+each Module, it runs a Spec panel without architects and a Module-scope code review, built from
+Spec review's and Code review's host code. It skips each part whose Specs and code are unchanged
+since a review last judged them, which a review record on the primary branch keeps. It runs
+unbound in the primary worktree or in a bound workspace. It changes no Spec or code. It calls no
+other Operation.
 
 <a id="contains-adoption"></a>
 
@@ -597,7 +612,7 @@ checks and a review's verdict reach the [workflow result](../glossary.json#conce
 <a id="uses-issues"></a>
 
 **Issues** is an [optional integration](../glossary.json#concept.optional-integration). Where the
-issues part is installed, `spec_panel` and `code_review` do these:
+issues part is installed, `spec_panel`, `code_review` and `project_review` do these:
 
 - Report each finding as an Issue of the Module it concerns.
 - Read the earlier Issues of a reviewed Module.

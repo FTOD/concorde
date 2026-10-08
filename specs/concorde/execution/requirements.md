@@ -208,9 +208,9 @@ worktree the run started in.
 
 ### req.execution.unbound-origin-untouched — An unbound run leaves its worktree as it was
 
-Except for the [Issues](../glossary.json#concept.issue) it publishes through the Issues store,
-an unbound run SHALL NOT change its starting worktree's index or any file of that worktree outside
-these locations:
+Except for the [Issues](../glossary.json#concept.issue) it publishes through the Issues store and
+the review record a `project_review` run publishes, an unbound run SHALL NOT change its starting
+worktree's index or any file of that worktree outside these locations:
 
 - that worktree's `.concorde/unbound/`
 - that worktree's `.concorde/locks/`
@@ -221,8 +221,11 @@ runner creates and removes the checkout as a linked worktree, Git's administrati
 as [Unbound checkout](runner.md#unbound-checkout) says. They belong to the repository, not to the
 worktree's content. A review may publish Issues, only through the [Issues](../issues/module.md)
 store. While the store holds the [merge lock](../glossary.json#concept.merge-lock), it commits each
-Issue on the primary branch as a commit of its own. Nothing else of the run writes there. The
-checkout the run examines stays as it was. Its Specs and its code stay as they were.
+Issue on the primary branch as a commit of its own. A `project_review` run may also publish its
+review record, `.concorde/reviews/record.json`, the same way. While it holds the merge lock, it
+commits the record alone on the primary branch as a commit of its own, as
+[Project review](../method/project-review/module.md) says. Nothing else of the run writes there.
+The checkout the run examines stays as it was. Its Specs and its code stay as they were.
 
 ### req.execution.checkout-removed — The checkout does not outlive the run
 

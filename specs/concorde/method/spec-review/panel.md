@@ -83,7 +83,8 @@ A Module's **earlier Issues** are the open [Issues](../../glossary.json#concept.
 project that meet both conditions:
 
 - Their owner is the Module.
-- A `spec_panel` run made one of their reports.
+- One of their reports was made by a `spec_panel` run, or by a `project_review` run with the
+  provenance phase `spec-panel` or `architecture`.
 
 The Operation reads them from the primary worktree of the worktree the run started in. It reads
 them in the order of their identities. A worker receives each as its latest report states it, with

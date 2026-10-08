@@ -769,11 +769,11 @@ class GuidanceTests(unittest.TestCase):
                 "When your task fixed it, add it to your task with `concorde task resolve`",
             ),
             (session, "close it with `issue_close` as `resolved`"),
-            (session, "`spec_panel` and `code_review` report every"),
+            (session, "`spec_panel`, `code_review` and `project_review` report every"),
             (session, "of kind `spec-challenge` says the Spec, not the code, is wrong"),
             (session, "so escalate it rather than change the promise"),
             (skill, "these reviews report each finding as an Issue"),
-            (skill, "(`spec_panel`, `code_review`)"),
+            (skill, "(`spec_panel`, `code_review`, `project_review`)"),
             (skill, "the task session closes the resolved Issues"),
             (
                 skill,
@@ -998,6 +998,39 @@ class GuidanceTests(unittest.TestCase):
         self.assertIn("a question or a review that does not justify a task", self.skill)
         self.assertIn("An `--input` of such a run must be unbound too", self.skill)
         self.assertIn("run an unbound Operation in the primary worktree", self.block)
+        self.assertIn(
+            "- `project_review` (every registered Module without `--modules`)",
+            self.skill,
+        )
+
+    @verifies("scenario.main-session.project-review")
+    def test_the_whole_project_is_reviewed_without_a_task(self):
+        self.assertIn(
+            "`project_review` reviews the whole project in one run. Run it unbound in the "
+            "primary worktree, in background Bash, when the developer wants to know how the "
+            "project stands. It needs no task.",
+            self.skill,
+        )
+        for part in (
+            "One architecture review of the whole project, by `architect1`, `architect2` and "
+            "`arch_chair`.",
+            "A Spec panel per Module, by `reviewer1` to `reviewer5` and `chair`, without "
+            "architects.",
+            "A Module review of each Module's code, by `code_reviewer`.",
+            "Every configured check of every Module.",
+        ):
+            self.assertIn(part, self.skill)
+        self.assertIn(
+            "It skips each panel, code review or architecture review whose Specs and code are "
+            "unchanged since a review last judged them. The review record "
+            "`.concorde/reviews/record.json` keeps what was judged.",
+            self.skill,
+        )
+        self.assertIn("Never edit or commit it by hand.", self.skill)
+        self.assertIn("`--full` reviews everything again.", self.skill)
+        self.assertIn(
+            'Choose what to fix from those Issues as "Issues" says.', self.skill
+        )
 
 
 class ProjectMcpGuidanceTests(unittest.TestCase):

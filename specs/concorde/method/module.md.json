@@ -36,6 +36,10 @@
         "meaning": "#contains-spec-review"
       },
       {
+        "target": "module.project-review",
+        "meaning": "#contains-project-review"
+      },
+      {
         "target": "module.adoption",
         "meaning": "#contains-adoption"
       },

@@ -556,7 +556,7 @@ def instructions(
 ) -> str:
     """The reviewer's brief: the Reviewer instructions and this review's material."""
     root = ctx.worktree.as_posix()
-    focus = ctx.arguments.focus
+    focus = getattr(ctx.arguments, "focus", None)
     goal = ctx.goal.strip()
     names = ", ".join(f"`{review.module}`" for review in reviews)
     text = (
@@ -767,11 +767,19 @@ def _read_earlier(
     return found, None
 
 
-def _judge(
-    ctx: RunContext, state: CodeReview, reviews: list[ModuleReview]
+def judge(
+    ctx: RunContext,
+    state: CodeReview,
+    reviews: list[ModuleReview],
+    *,
+    worker: str | None = None,
+    phase: str = "report",
 ) -> list[dict]:
     """One reviewer of ``reviews``: steps 3 to 7. Returns the host evidence and sets each
-    review's state; a stop of the reviewer makes every one of its Modules incomplete."""
+    review's state; a stop of the reviewer makes every one of its Modules incomplete. ``worker``
+    is the reviewer's worker id, the Operation's default when None, and ``phase`` the provenance
+    phase of its Issue reports. It reads nothing the other reviewers of the run change, so that
+    reviewers of different Modules may judge at the same time."""
     modules = [review.module for review in reviews]
     label = f"{', '.join(modules)} reviewer"
 
@@ -808,7 +816,7 @@ def _judge(
             ]
         )
 
-    launched = len(ctx.worker_runs)
+    records: list[dict] = []
     outcome = run_worker(
         ctx,
         instructions(ctx, state, reviews, results),
@@ -816,13 +824,15 @@ def _judge(
         output_schema=REVIEWER_OUTPUT,
         rounds=review_issues.CITATION_ROUNDS,
         modules=modules,
+        worker=worker,
         readable=(ctx.run_dir / "checks",),
         validate=citations,
+        records=records,
     )
     found.extend(_labelled(outcome.evidence, label))
-    if len(ctx.worker_runs) > launched:
+    if records:
         identity = _identity(outcome.evidence)
-        summary = (ctx.worker or {}).get("summary") or None
+        summary = (records[0].get("worker_result") or {}).get("summary") or None
         for review in reviews:
             review.context_identity = identity
             review.summary = summary
@@ -878,6 +888,7 @@ def _judge(
             defined,
             review.earlier,
             review.settled,
+            phase=phase,
         )
         found.extend(reported)
         if stop is not None:
@@ -892,9 +903,9 @@ def review(ctx: RunContext):
     found: list[dict] = []
     if state.scope == "module":
         for item in reviews:
-            found.extend(_judge(ctx, state, [item]))
+            found.extend(judge(ctx, state, [item]))
     else:
-        found.extend(_judge(ctx, state, reviews))
+        found.extend(judge(ctx, state, reviews))
     return Continue(evidence=found)
 
 
@@ -1002,4 +1013,5 @@ __all__ = [
     "REVIEWER_OUTPUT",
     "REVIEW_SCHEMA",
     "check_evidence",
+    "judge",
 ]

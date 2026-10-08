@@ -56,8 +56,9 @@ Otherwise, the blocking tier says who may fix it: `obvious-fix`, `preferred-fix`
 the Spec. It ranges from `critical` down to `low`. A worker reports every blocking finding it can
 establish in one pass. Thus, one round of changes can address them all.
 
-**Earlier Issues** are the open Issues of a reviewed Module that an earlier Spec panel reported.
-Every worker receives them before it judges. A problem already recorded is therefore reported again
+**Earlier Issues** are the open Issues of a reviewed Module that an earlier Spec panel reported:
+a `spec_panel` run, or a [Project review](../project-review/module.md) run with one of its Spec
+panels or its architecture review. Every worker receives them before it judges. A problem already recorded is therefore reported again
 only when it changed, as a finding naming that Issue and never as a new one. As **resolved**, a
 worker lists every earlier Issue the Specs no longer have. It gives its reason for each. The chair
 settles what its report names and resolves. An earlier Issue the report neither names nor resolves
@@ -185,7 +186,14 @@ review: Spec review {
 <a id="realization.spec-review.operation"></a>
 
 **Review Operation** runs that sequence through Workers. It reports through the Issue store. It
-returns the run's output. In this version, it panels Modules one after another. It keeps the parts
+returns the run's output. In this version, it panels Modules one after another. It also runs one
+subject's panel for Project review. The caller then gives these:
+
+- The chair's worker id.
+- The Modules of the grants.
+- The section that names the subject.
+- The earlier Issues offered.
+- The provenance phase of the reports. It keeps the parts
 any review of Specs shares apart from the panel's own:
 
 - The first step.
