@@ -260,13 +260,19 @@ def entry_exists(root: Path, entry: str) -> bool:
 def expand_entry(
     root: Path, entry: str, *, skipped_suffixes: tuple[str, ...] = SKIPPED_SUFFIXES
 ) -> list[str]:
-    """Existing regular files bound by one entry, skipping excluded directories and files."""
+    """Existing regular files bound by one entry, skipping excluded directories and files. An
+    entry through a symbolic link binds nothing, so validation reports it as ``CHK.binds.exists``
+    at the entry rather than failing as a whole."""
     if unbindable(entry):
         return []
+    try:
+        base = checked_path(root, entry_base(entry))
+    except ValueError:
+        return []
     if not is_directory_entry(entry):
-        return [entry] if checked_path(root, entry).is_file() else []
-    directory = checked_path(root, entry_base(entry))
-    if directory.is_symlink() or not directory.is_dir():
+        return [entry] if base.is_file() else []
+    directory = base
+    if not directory.is_dir():
         return []
     result = []
     for current, names, files in os.walk(directory):

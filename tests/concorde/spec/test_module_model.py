@@ -302,6 +302,28 @@ class ModuleImplementationTests(SharedFileProject, unittest.TestCase):
             self.assertIn("Create the file before binding it", finding.remediation)
             self.assertIn("remove the entry", finding.remediation)
 
+    @verifies("scenario.spec.missing-entry")
+    def test_an_entry_through_a_symbolic_link_is_a_missing_entry(self):
+        (self.root / "source/link.py").symlink_to("a.py")
+        (self.root / "source/linked").symlink_to(".", target_is_directory=True)
+        self.relist(
+            {
+                "realization.a.adapter": [
+                    "source/a.py",
+                    "source/link.py",
+                    "source/linked/",
+                    "source/linked/a.py",
+                ],
+                "realization.a.shared": ["source/shared.py"],
+            }
+        )
+        report = validate_repository(self.root, package_root=PACKAGE)
+        self.assertEqual({"CHK.binds.exists"}, rule_ids(report), errors(report))
+        missing = [f for f in report.findings if f.rule_id == "CHK.binds.exists"]
+        self.assertEqual(3, len(missing))
+        for finding in missing:
+            self.assertIn("realization.a.adapter", finding.message)
+
     @verifies("scenario.spec.pending-rejected")
     def test_a_realization_carrying_pending_is_a_schema_error(self):
         value = self.metadata("module.a")

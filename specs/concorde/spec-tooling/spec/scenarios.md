@@ -485,8 +485,10 @@ to it.
 ### scenario.spec.missing-entry — A declared entry that does not exist
 
 - GIVEN a realization with an entry whose file or directory does not exist
+- AND another entry that names a symbolic link or passes through one
 - WHEN the validator runs
-- THEN it reports `CHK.binds.exists` as an error for that entry
+- THEN it reports `CHK.binds.exists` as an error for each of those entries, naming its realization
+- AND the run reports its other findings rather than failing as a whole
 - AND the finding's remediation says to create the file before binding it or to remove the entry
 
 ### scenario.spec.pending-rejected — A realization that still declares pending entries
