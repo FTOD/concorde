@@ -46,6 +46,29 @@
         "model": "gpt-6.1-sol",
         "reasoning": "medium"
       }
+    },
+    "project_review": {
+      "workers": {
+        "reviewer1": {
+          "model": "claude-opus-5-5"
+        },
+        "reviewer2": {
+          "model": "gpt-6-astra",
+          "reasoning": "high"
+        },
+        "reviewer3": {
+          "model": "gpt-6.1-sol",
+          "reasoning": "medium"
+        },
+        "architect1": {
+          "model": "gpt-6-astra",
+          "reasoning": "high"
+        },
+        "architect2": {
+          "model": "gpt-6.1-sol",
+          "reasoning": "high"
+        }
+      }
     }
   },
   "runtime": [
