@@ -71,7 +71,7 @@ def located(item: dict) -> dict:
     }
 
 
-# contract.workflows.result, version 9
+# contract.workflows.result, version 10
 RESULT_SCHEMA: dict = {
     "$defs": copy.deepcopy(errors.DEFS),
     **obj(
@@ -180,6 +180,15 @@ class Row:
         }
 
 
+def stops(row: Row) -> bool:
+    """Whether an interactive script stops at this current step."""
+    return (
+        row.status != "ok"
+        or row.declared["blocking"] is not None
+        or bool(pending(row.declared, row.settled))
+    )
+
+
 def lost_row(workflow: str, workspace: str, key: str) -> dict:
     return {
         "key": key,
@@ -216,7 +225,8 @@ def build(
 
     ``workflow`` and ``mode`` name the script's workflow and mode: a workspace whose first step was
     lost before anything was recorded has no record, and its result is built from them and the
-    lost keys alone."""
+    lost keys alone. The result is judged by ``mode``, the mode the script ran in, or without it
+    by the latest recorded step's."""
     record = store.load(space)
     if record is None:
         if not (lost and workflow):
@@ -238,7 +248,7 @@ def build(
         )
     workflow = record["workflow"]
     steps = record["steps"]
-    mode = steps[-1]["mode"] if steps else mode or "no-ask"
+    mode = mode or (steps[-1]["mode"] if steps else "no-ask")
     rows = [Row(space, step, workflow) for step in steps if not step["superseded"]]
     superseded = [
         Row(space, step, workflow, superseded=True).value()
@@ -283,6 +293,11 @@ def build(
     except catalog.WorkflowError:
         last_step = None
     last = rows[-1] if rows else None
+    if mode == "interactive":
+        # An interactive script stops at the first step, run now or found finished, that did not
+        # end ok or left decision points its answers did not settle; the current steps are in the
+        # procedure's order, since an answered or retried step supersedes every later one.
+        last = next((row for row in rows if stops(row)), last)
     pending_points: list[dict] = []
     stop = None
     evidence = []

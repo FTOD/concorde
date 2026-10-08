@@ -1323,6 +1323,37 @@ class ReportTests(unittest.TestCase):
             ),
         )
 
+    @verifies("scenario.workflows.mode-changed-replay")
+    def test_an_interactive_replay_is_judged_where_its_script_stops(self):
+        self.complete()
+        # Without --mode the latest recorded step's mode judges: the no-ask run ended ok.
+        self.assertEqual("ok", report(self.space)["status"])
+        # Replayed interactively, the script stops at the finished survey's unsettled point.
+        result = report(self.space, mode="interactive")
+        validate(result, RESULT_SCHEMA)
+        self.assertEqual(
+            ("awaiting_decision", "interactive"), (result["status"], result["mode"])
+        )
+        self.assertEqual(
+            [("survey", "d.db-helper")],
+            [(p["step"], p["id"]) for p in result["pending"]],
+        )
+        self.assertEqual("awaiting_decision", result["error"]["code"])
+
+    @verifies("scenario.workflows.mode-changed-replay")
+    def test_an_interactive_replay_of_a_failed_run_awaits_the_earlier_decision(self):
+        self.record("survey", "survey", output=SURVEY_OUTPUT)
+        self.record("scaffold", "scaffold", output=created_output())
+        self.record("describe:module.inventory", "code_to_spec", "failed")
+        self.assertEqual("step_failed", report(self.space)["error"]["code"])
+        result = report(self.space, mode="interactive")
+        self.assertEqual("awaiting_decision", result["status"])
+        self.assertEqual(["survey"], [p["step"] for p in result["pending"]])
+        # The failed step is still listed as a problem.
+        self.assertEqual(
+            ["describe:module.inventory"], [p["step"] for p in result["problems"]]
+        )
+
     @verifies("scenario.workflows.failed-chain")
     def test_a_stopping_step_keeps_its_chain_under_the_workflow_link(self):
         self.record("survey", "survey", output=SURVEY_OUTPUT)

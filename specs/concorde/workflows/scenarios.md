@@ -138,6 +138,14 @@ shapes are in the [contracts](contracts.md).
 - AND the workflow result lists `d.db-helper` as pending with its options
 - AND the workflow result's `workflow` link gives `decision` as the reason
 
+### scenario.workflows.mode-changed-replay — An interactive replay is reported where it stops
+
+- GIVEN a workspace whose brownfield workflow ran in no-ask mode to its `delivery`, its finished survey having declared the decision point `d.db-helper`
+- WHEN the workflow is started again in interactive mode without answers
+- THEN the script stops at the finished survey and starts no run
+- AND `concorde workflow report --mode interactive` has status `awaiting_decision`, listing `d.db-helper` of step `survey` as pending
+- BUT the same report without `--mode` is judged by the latest recorded step's mode and has status `ok`
+
 ### scenario.workflows.interactive-resume — The answered workflow goes on
 
 - GIVEN that paused interactive workflow and an answer to `d.db-helper`, given by the [main agent](../glossary.json#concept.main-agent) or by the developer

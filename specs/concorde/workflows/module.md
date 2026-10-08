@@ -187,8 +187,7 @@ For each step, it lists these details:
 - Whether it was superseded.
 
 Each step records its own mode, so a relaunch may change the mode.
-The script stops by its own mode.
-The report judges pending points by the latest recorded step's mode.
+The script stops by its own mode, and passes that mode to the report, which judges by it.
 Each step's node records when the step started.
 Once a step or report command saw the step's run end, the step's node records when the step ended
 and how.
@@ -209,8 +208,18 @@ That command builds the **[workflow result](../glossary.json#concept.workflow-re
 ([contract](contracts.md#contract.workflows.result)) from the workflow record and the saved
 [run results](../glossary.json#concept.run-result).
 It never builds the result from what a step agent relayed.
-The report cannot see where the procedure stopped, only what was recorded.
-For that reason, the step it judges is the **latest current step** in recorded order.
+The report cannot see where the procedure stopped, only what was recorded and the mode the script
+ran in. It judges by the mode given with `--mode`. Without one, such as for a report run by hand,
+it judges by the latest recorded step's mode.
+The current steps are in the procedure's order, since an answered or retried step supersedes every
+later step. From them, the report finds the **judged step**:
+
+- In interactive mode, it is the first current step that did not end `ok`, declared itself
+  blocking or has decision points its answers did not settle. The interactive script stops there,
+  whether it ran that step now or found it finished by an earlier launch in another mode.
+- Otherwise, and when no current step is such a step, it is the latest current step in recorded
+  order.
+
 The result's status follows this order of precedence:
 
 - For a report taken before the end, the status is `running` when either condition holds:
@@ -218,21 +227,21 @@ The result's status follows this order of precedence:
   - A step still starting may yet get its run.
 - When the script reported a key lost whose base key has no current step, the status is `failed`,
   with the code `step_lost`.
-- When any of these cases applies to the latest current step, the status is `failed`:
+- When any of these cases applies to the judged step, the status is `failed`:
   - It ended `failed`.
   - It was refused.
   - It was lost.
-- When the latest current step ended `blocked` or its output declared it blocking, the status is
+- When the judged step ended `blocked` or its output declared it blocking, the status is
   `blocked`.
   One example is a task validation that found the workspace not ready.
 - When both conditions hold, the status is `awaiting_decision`:
-  - The latest recorded step ran in interactive mode.
-  - The latest current step's output has decision points its answers did not settle.
+  - The report judges in interactive mode.
+  - The judged step's output has decision points its answers did not settle.
 - Even if earlier steps reported problems the procedure could go past, the status is `ok`
   when both conditions hold:
-  - The latest current step is the procedure's last step, which the workflow names, such as
+  - The judged step is the procedure's last step, which the workflow names, such as
     `delivery` in the brownfield workflow.
-  - The latest current step ended `ok`.
+  - The judged step ended `ok`.
 - Otherwise, the status is `failed` with the code `incomplete`.
   This includes either case:
   - The recorded steps end before the procedure's last step, such as a report taken after a
