@@ -76,7 +76,10 @@ Its kind says which side the reviewer judges wrong:
 
 Every finding names its **basis** from the reviewed Module's
 [Spec context](../../glossary.json#concept.spec-context). This is a stable identity (requirement,
-scenario, contract or concept) or a Spec passage. The basis serves one of these roles:
+scenario, contract or concept) or a Spec passage. In a change review of several Modules, it is the
+context of the Module the finding concerns, never another reviewed Module's. A concept is in that
+context when its glossary entry is, wherever its explanation lies. The basis serves one of these
+roles:
 
 - The promise it is judged against.
 - The passage that would have to settle a Spec gap.

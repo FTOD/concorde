@@ -193,7 +193,7 @@ EARLIER_ISSUES: dict = {
     ]
 }
 
-# contract.code-review.review, version 6 (contracts.md); a test keeps the two equal.
+# contract.code-review.review, version 7 (contracts.md); a test keeps the two equal.
 REVIEW_SCHEMA: dict = {
     "type": "object",
     "additionalProperties": False,

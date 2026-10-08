@@ -142,7 +142,9 @@ class CodeReviewTests(unittest.TestCase):
             for row in list_issues(self.root)
         }
 
-    def earlier(self, title, tier="obvious-fix", operation="code_review"):
+    def earlier(
+        self, title, tier="obvious-fix", operation="code_review", phase="report"
+    ):
         """An open Issue of module.a an earlier review, or another reporter, made."""
         return report_issue(
             self.root,
@@ -163,7 +165,7 @@ class CodeReviewTests(unittest.TestCase):
                 "invocation_id": f"r-earlier-{title}",
                 "agent": "operation",
                 "operation": operation,
-                "phase": "report",
+                "phase": phase,
                 "target_id": "module.a",
                 "context_id": "sha256:" + "a" * 64,
                 "change_id": None,
@@ -758,6 +760,30 @@ class CodeReviewTests(unittest.TestCase):
             {"I-" + "f" * 32, other}, {item["issue"] for item in summary["ignored"]}
         )
         self.assertEqual("open", self.issues()[gone]["status"])
+        self.assertEqual("changes_required", entry["outcome"])
+
+    @verifies("scenario.code-review.project-review-issues")
+    def test_project_reviews_code_review_issues_are_earlier_issues(self):
+        coded = self.earlier("coded", operation="project_review", phase="code-review")
+        standing = self.earlier(
+            "standing", operation="project_review", phase="code-review"
+        )
+        panel = self.earlier("panel", operation="project_review", phase="spec-panel")
+        _, envelope = self.change(finding(earlier=coded))
+        self.assertEqual("ok", envelope["status"], envelope)
+        _, prompt = self.worker(envelope)
+        offered = prompt.split("Earlier code reviews recorded these", 1)[1].split(
+            "## Your boundary"
+        )[0]
+        self.assertIn(coded, offered)
+        self.assertNotIn(panel, offered)
+        entry = self.module_entry(envelope)
+        [reported] = entry["findings"]
+        self.assertEqual((coded, coded), (reported["earlier"], reported["issue"]))
+        self.assertEqual(2, len(self.issues()[coded]["reports"]))
+        self.assertEqual(
+            [standing], [item["issue"] for item in entry["earlier_issues"]["carried"]]
+        )
         self.assertEqual("changes_required", entry["outcome"])
 
     @verifies("scenario.code-review.blank-earlier")
