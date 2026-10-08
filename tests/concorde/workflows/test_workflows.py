@@ -1410,6 +1410,47 @@ class ReportTests(unittest.TestCase):
             tools.workflow_report(self.primary, {"folder": folder, "number": 9})
         self.assertEqual("no_report", refused.exception.link["code"])
 
+    def test_a_step_tool_timeout_keeps_the_commands_output(self):
+        from concorde.workflows import tools
+
+        real = subprocess.run
+
+        def timing_out(stderr):
+            # As on POSIX: the output captured until the timeout comes as bytes.
+            def run(command, **kwargs):
+                if "workflow" not in command:
+                    return real(command, **kwargs)
+                raise subprocess.TimeoutExpired(
+                    command, kwargs["timeout"], output=None, stderr=stderr
+                )
+
+            return run
+
+        request = {
+            "workflow": "brownfield",
+            "mode": "no-ask",
+            "key": "survey",
+            "argv": ["survey"],
+        }
+        for stderr, shown in (
+            (b"launcher still waiting\n", "launcher still waiting"),
+            (None, "(no output)"),
+        ):
+            with (
+                self.subTest(stderr=stderr),
+                patch.object(tools.subprocess, "run", side_effect=timing_out(stderr)),
+                self.assertRaises(tools.ToolRefusal) as refused,
+            ):
+                tools.workflow_step(
+                    self.project.worktree(), {"request": request, "wait": 1}
+                )
+            link = refused.exception.link
+            self.assertEqual(
+                ("step_failed", "environment"),
+                (link["code"], link["unhandled"]["reason"]),
+            )
+            self.assertIn(shown, link["detail"])
+
     def test_a_report_during_a_running_step(self):
         self.record("survey", "survey", None, running=True)
         result = report(self.space)
