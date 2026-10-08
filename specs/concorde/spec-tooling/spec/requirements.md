@@ -314,7 +314,9 @@ cases:
 - A byte of a selecting declaration changes.
 - A byte of a document's owner changes.
 - A byte of pinned external material changes.
-- For a `review-architecture` grant, a byte of any file of ProjectSpecification changes.
+- For a `review-architecture` grant, a byte of any file of ProjectSpecification changes. Such a
+  file is a member of any registered Module's document or the glossary, whichever Modules the
+  grant binds.
 
 The context identity covers no implementation file contents.
 A worker's writes to implementation files therefore never change it.

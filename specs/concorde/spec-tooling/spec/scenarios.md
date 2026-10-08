@@ -643,7 +643,9 @@ A `review-spec` grant for the same Module is equal to it apart from its task typ
   listed as `names`
 - AND `references/lib/` is listed as `ro`
 - AND when a byte of a document of D changes, its context identity changes
-- AND that change does not change an `understand` grant's context identity
+- AND when the definition of a glossary entry outside A's terms changes, its context identity changes
+- AND neither change alters an `understand` grant's context identity for A or the ordinary
+  `context_identity` of A
 - BUT no path is `rw`
 - BUT no implementation file is `ro`
 
