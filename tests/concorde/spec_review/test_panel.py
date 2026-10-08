@@ -15,6 +15,7 @@ from concorde.issues.store import list_issues, read_issue, report_issue
 from concorde.spec.grants import grant
 from concorde.spec.repository import SpecRepository
 from concorde.spec.schema import validate
+from concorde.kernel.marker import write_marker
 from concorde.spec.verification import verifies
 from concorde.method.review_issues import NOT_RECORDED
 from concorde.method.spec_review.panel import PAYLOAD_SCHEMA, account
@@ -1170,8 +1171,6 @@ class SpecPanelTests(unittest.TestCase):
         goal = "Review the Specs.\nFAKE-PLANS: " + json.dumps(plans)
         self.project.open_task("t1", modules=("module.a",), goal=goal)
         self.worktree = self.project.worktree("t1")
-        interrupted = self.root / ".concorde/tasks/interrupted"
-        interrupted.mkdir(parents=True)
         head = subprocess.run(
             ["git", "rev-parse", "HEAD"],
             cwd=self.root,
@@ -1179,23 +1178,21 @@ class SpecPanelTests(unittest.TestCase):
             text=True,
             check=True,
         ).stdout.strip()
-        (interrupted / "task.json").write_text(
-            json.dumps(
-                {
-                    "schema_version": 4,
-                    "id": "interrupted",
-                    "state": "merging",
-                    "merging": {
-                        "before": head,
-                        "checked": head,
-                        "branch": "main",
-                        "after": None,
-                        "pid": 1,
-                        "since": "2026-10-01T00:00:00Z",
-                    },
-                    "reports": [],
-                }
-            )
+        # The Kernel's unfinished-merge marker a task merge whose process ended leaves.
+        write_marker(
+            self.root / ".concorde",
+            {
+                "schema_version": 1,
+                "part": "coordination",
+                "by": "`concorde task merge` of task interrupted",
+                "pid": 1,
+                "since": "2026-10-01T00:00:00Z",
+                "branch": "main",
+                "before": head,
+                "merging": head,
+                "after": None,
+                "finish": ["concorde task merge interrupted --abort"],
+            },
         )
         status, envelope = self.project.run(
             "spec_panel",
