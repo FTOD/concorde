@@ -668,6 +668,96 @@ class ValidateTests(unittest.TestCase):
         self.assertIn("no namespaces here", cause["detail"])
 
 
+class IgnoredLeftoverTests(unittest.TestCase):
+    """A path the branch untracked while an ignore rule keeps its file on disk."""
+
+    def setUp(self):
+        self.project = ValidationProject(self)
+        root = self.project.root
+        (root / "tools").mkdir()
+        (root / "tools/link").symlink_to("../src/a")
+        # A file the index holds stays measured by its content under an ignore rule.
+        (root / "src/a/local.cfg").write_text("one\n")
+        git(root, "add", "-A")
+        git(root, "commit", "-q", "-m", "track a link and a configuration")
+        self.worktree = self.project.task()
+        self.base = git(self.worktree, "rev-parse", "HEAD")
+
+    def untrack(self):
+        (self.worktree / ".gitignore").write_text("/tools/link\n*.cfg\n")
+        git(self.worktree, "rm", "-q", "--cached", "tools/link")
+
+    def test_a_staged_untracking_is_measured_as_deleted(self):
+        from concorde.method.validation.measurement import (
+            changed_paths,
+            ignored_paths,
+        )
+
+        self.untrack()
+        (self.worktree / "src/a/local.cfg").write_text("two\n")
+        self.assertTrue((self.worktree / "tools/link").is_symlink())
+        self.assertEqual(
+            [".concorde/workspace.json", ".gitignore", "src/a/local.cfg", "tools/link"],
+            changed_paths(self.worktree, self.base),
+        )
+        self.assertEqual({"tools/link"}, ignored_paths(self.worktree, self.base))
+        changed = {
+            item["path"]: (item["mode"], item["digest"])
+            for item in measure(self.worktree, self.base)["changed"]
+        }
+        self.assertEqual((None, None), changed["tools/link"])
+        self.assertEqual(("100644", sha256(b"two\n")), changed["src/a/local.cfg"])
+        # Without the ignore rule, git add -A would track the link again.
+        (self.worktree / ".gitignore").write_text("*.cfg\n")
+        self.assertEqual(set(), ignored_paths(self.worktree, self.base))
+        self.assertEqual(
+            "120000",
+            {
+                item["path"]: item["mode"]
+                for item in measure(self.worktree, self.base)["changed"]
+            }["tools/link"],
+        )
+
+    @verifies("scenario.validation.ignored-leftover")
+    def test_an_ignored_leftover_is_measured_as_deleted(self):
+        self.untrack()
+        git(self.worktree, "commit", "-q", "-m", "untrack the link")
+        (self.worktree / "src/a/local.cfg").write_text("two\n")
+        status, envelope = self.project.validate()
+        self.assertEqual((status, envelope["status"]), (0, "ok"), envelope)
+        readiness = envelope["output"]
+        self.assertEqual(readiness["blocking"], [])
+        changed = {
+            item["path"]: (item["mode"], item["digest"])
+            for item in readiness["inputs"]["changed"]
+        }
+        self.assertEqual((None, None), changed["tools/link"])
+        self.assertEqual(("100644", sha256(b"two\n")), changed["src/a/local.cfg"])
+
+        status, delivered = self.project.run("delivery", "--task", "t1")
+        self.assertEqual((status, delivered["status"]), (0, "ok"), delivered)
+        commit = delivered["output"]["commit"]
+        self.assertEqual(
+            [
+                "A\t.concorde/workspace.json",
+                "D\ttools/link",
+                "M\t.gitignore",
+                "M\tsrc/a/local.cfg",
+            ],
+            sorted(
+                git(
+                    self.worktree, "diff", "--name-status", self.base, commit
+                ).splitlines()
+            ),
+        )
+        self.assertTrue((self.worktree / "tools/link").is_symlink())
+        saved = json.loads(
+            (workspace_run(self.project.root, delivered) / "readiness.json").read_text()
+        )
+        self.assertEqual(saved["inputs"]["digest"], readiness["inputs"]["digest"])
+        self.assertEqual(status_lines(self.worktree), "")
+
+
 class BindingTests(unittest.TestCase):
     @verifies("scenario.validation.unbound")
     def test_task_validation_needs_a_bound_workspace(self):

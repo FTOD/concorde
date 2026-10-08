@@ -19,6 +19,12 @@ stopping at the first.
 A readiness SHALL record the input measurement of exactly the workspace state its structural
 validation and checks examined.
 
+### req.validation.committed-content — Readiness describes what Delivery commits
+
+The input measurement SHALL measure as deleted a changed path that still exists but that Git would
+not commit, such as a file the branch untracked and an ignore rule covers, since Delivery commits
+the deletion of such a path.
+
 ### req.validation.stable-inputs — No readiness for moving inputs
 
 When the input digest measured at the end of the run differs from the one measured at its start,
@@ -50,7 +56,7 @@ When a `task-validation` run reaches its checks, it SHALL run the
 
 Validation SHALL report as blocking every changed path that meets all these conditions:
 
-- It still exists.
+- It still exists, and the input measurement does not measure it as deleted.
 - It is not a Spec document member.
 - It is not the project glossary.
 - It is not a control record under `.concorde/`.

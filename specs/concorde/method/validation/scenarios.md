@@ -71,6 +71,15 @@ readiness is defined in the [contracts](contracts.md).
 - THEN `.bashrc` is no changed path and no blocking finding, and it alone is no uncommitted change
 - BUT `notes/empty.txt` and `notes/frozen.txt` are changed paths, each reported as `unbound`
 
+### scenario.validation.ignored-leftover — An untracked file kept under an ignore rule is measured as deleted
+
+- GIVEN a base that tracks the symbolic link `tools/link`, which no Module binds
+- AND a task branch that untracks it with `git rm --cached` and ignores it in `.gitignore`, and leaves the link on disk
+- WHEN `task-validation` runs and then `delivery`
+- THEN `tools/link` is a changed path with mode and digest `null` and no blocking finding, and the workspace is ready
+- AND the [delivery commit](../../glossary.json#concept.delivery-commit) deletes `tools/link`, the link stays on disk, and the readiness Delivery saves records the same input digest
+- BUT a file that the index holds is measured by its content even when an ignore rule covers it
+
 ### scenario.validation.mode-change — A changed file mode changes the input digest
 
 - GIVEN a workspace with a changed regular file

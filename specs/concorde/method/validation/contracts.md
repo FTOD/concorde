@@ -23,6 +23,15 @@ input measurement the readiness is bound to.
   When its checked-out commit differs, a submodule is a changed path. Since the workspace commits
   only the submodule's commit, changes inside the submodule's own worktree are not measured.
   Those changes are no uncommitted change for Delivery.
+- A changed path is **measured as deleted** when it still exists but Git would not commit it.
+  Such a path meets all these conditions:
+  - The base holds it.
+  - The index does not hold it.
+  - Git lists neither it nor a path inside it as an untracked path that Git does not ignore.
+
+  This happens when the branch untracks a path, such as with `git rm --cached`, and an ignore rule
+  covers the file left on disk. `git add -A` adds nothing at such a path, so Delivery commits its
+  deletion. The measurement therefore records what Delivery commits.
 - A changed path is **recorded** as text. When its bytes are valid UTF-8 and it does not begin with
   `"`, it is recorded as it is. Otherwise, it is recorded in double quotes, as Git quotes a path. In
   that record, each `"` and `\` is preceded by `\`, and every byte that is no part of a valid UTF-8
@@ -47,7 +56,7 @@ input measurement the readiness is bound to.
     a commit for the path, that commit follows. This is what Delivery would commit.
   - When the index records none in that latter case, nothing follows.
 
-  When the path no longer exists, its digest is `null`. A changed path that exists but cannot be
+  When the path no longer exists or is measured as deleted, its digest is `null`. A changed path that exists but cannot be
   read, or whose Git file mode cannot be determined, fails the measurement (`path_unreadable`).
 - A changed path's **mode** is its Git file mode in the worktree, as six octal digits:
   - `100755` for a regular file whose owner may execute it.
@@ -55,7 +64,7 @@ input measurement the readiness is bound to.
   - `120000` for a symbolic link.
   - `160000` for a directory, which is a submodule.
 
-  When the path no longer exists, its mode is `null`. Setting or clearing a file's execute bit
+  When the path no longer exists or is measured as deleted, its mode is `null`. Setting or clearing a file's execute bit
   therefore changes the input digest even when its bytes stay the same.
 - The **configuration digest** is the digest of a canonical JSON object. The object maps
   `.concorde/config.json` and every entry of `.concorde/checks/` in the workspace to the digest of
@@ -90,7 +99,7 @@ not this contract, defines the object.
 ```concorde-contract
 {
   "id": "contract.validation.readiness",
-  "version": 8,
+  "version": 9,
   "schema": {
     "type": "object",
     "additionalProperties": false,
@@ -288,7 +297,7 @@ not this contract, defines the object.
       }
     }
   },
-  "semantics": "The output of one task-validation run of the bound workspace named by workspace, and the readiness a delivery run decides with the same steps and saves in its trace node. inputs is the input measurement taken at the start of the run and confirmed unchanged at its end: every changed path, as the input measurement records it, with its mode and digest; digest is the input digest. modules lists, sorted, the changed Modules (binding a changed path or owning a changed Spec document) together with the run's Modules. blocking lists every blocking finding: load when the Specs could not be loaded, structural for a structural-check error (ref is the rule identity and path) or one of the run's Modules that the workspace's registry does not register (ref is the Module identity), unbound for an existing changed path that is no document member, not the project glossary, no control record under .concorde/, no generated or build output, no external material and bound by no Module (ref is the path as recorded), check for a configured check that failed or timed out (ref is the check identity), for a checks file or declared input of the project that is invalid (ref is configured checks) or for Modules whose checks could not be run (ref is the Module identity, or the comma-separated identities of the whole selection when its selective checks could not run). warnings lists structural-check warnings in the same shape and never affects ready. checks lists one result per configured check run, in run order, including the checks a call of Check execution finished before it failed, with measured_digest the measured digest Check execution took before the check ran, exit_code null on timeout and log the path of its saved log relative to the run's trace node, checks/<check>/output.log. ready is true exactly when blocking is empty; every check then has status passed. The run's status is ok when ready is true and blocked otherwise, and a blocked run still carries this readiness as its output. A readiness is valid only while a fresh input measurement of the same workspace yields the same digest. workflow is the object of Workflows' step output convention, which defines its fields: its data holds ready, and blocking is null when the workspace is ready and otherwise names the blocking findings (req.validation.step-output); the readiness saved as readiness.json does not carry it. A behaviour or field change increments the version.",
+  "semantics": "The output of one task-validation run of the bound workspace named by workspace, and the readiness a delivery run decides with the same steps and saves in its trace node. inputs is the input measurement taken at the start of the run and confirmed unchanged at its end: every changed path, as the input measurement records it, with its mode and digest, both null for a path that no longer exists or that the measurement measures as deleted since Git would not commit it; digest is the input digest. modules lists, sorted, the changed Modules (binding a changed path or owning a changed Spec document) together with the run's Modules. blocking lists every blocking finding: load when the Specs could not be loaded, structural for a structural-check error (ref is the rule identity and path) or one of the run's Modules that the workspace's registry does not register (ref is the Module identity), unbound for a changed path whose digest is not null that is no document member, not the project glossary, no control record under .concorde/, no generated or build output, no external material and bound by no Module (ref is the path as recorded), check for a configured check that failed or timed out (ref is the check identity), for a checks file or declared input of the project that is invalid (ref is configured checks) or for Modules whose checks could not be run (ref is the Module identity, or the comma-separated identities of the whole selection when its selective checks could not run). warnings lists structural-check warnings in the same shape and never affects ready. checks lists one result per configured check run, in run order, including the checks a call of Check execution finished before it failed, with measured_digest the measured digest Check execution took before the check ran, exit_code null on timeout and log the path of its saved log relative to the run's trace node, checks/<check>/output.log. ready is true exactly when blocking is empty; every check then has status passed. The run's status is ok when ready is true and blocked otherwise, and a blocked run still carries this readiness as its output. A readiness is valid only while a fresh input measurement of the same workspace yields the same digest. workflow is the object of Workflows' step output convention, which defines its fields: its data holds ready, and blocking is null when the workspace is ready and otherwise names the blocking findings (req.validation.step-output); the readiness saved as readiness.json does not carry it. A behaviour or field change increments the version.",
   "example": {
     "workspace": "severity",
     "ready": true,
