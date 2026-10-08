@@ -109,7 +109,14 @@ The latest report supplies the current values of:
 - The owning Module.
 
 When that report's owner is `null`, ownership falls to its reporting Module.
-For a command-recorded report, the reporting Module is the root Module.
+A report's reporting Module is the Module its caller vouches for as reporting it
+([Provenance](interface.md#provenance)):
+
+- When the caller gives its own provenance with `report --provenance`, it is the Module that
+  provenance names.
+- Otherwise, the report command sets it to the report's owner.
+- For a report whose owner is `null`, the report command sets it to the root Module, where the spec
+  part is installed.
 Appending a new observation can therefore correct these values without rewriting an earlier
 report:
 
