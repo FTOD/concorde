@@ -107,7 +107,10 @@ items:
 The worker lists an answered decision without choosing. The host records the answer as its choice.
 It records whoever gave the answer as the one who decided it. This means the record never credits
 the developer with a choice the main agent made. `--input` admits the run that asked, so the worker
-sees the earlier proposal or description. An answers file lists every answer given so far for that
+sees the earlier proposal or description. Every answer must name a decision or open question that
+an admitted earlier survey or code_to_spec run lists. Otherwise the run fails with `invalid_answers`
+before it writes anything or launches a worker. So an answer from an unrelated run, or one with an
+invented identity, never passes for settled intent. An answers file lists every answer given so far for that
 step, not only the latest.
 A survey rerun follows every answered decision. It no longer lists an answered open question. A
 code_to_spec rerun writes an answered question as the promise the answer states. When that intent
@@ -253,7 +256,11 @@ proposal or description, a survey or code_to_spec run is `ok`, whatever decision
 questions it lists. Under either of these conditions, it is `blocked`:
 
 - The worker could not do the work at all.
-- A code_to_spec change adds a structural error.
+- After the last repair round, a code_to_spec run still has structural errors it counts as its
+  own. These are the errors new since the baseline and every error in a described Module's own
+  documents, even one the baseline already had
+  ([req.adoption.own-errors-count](requirements.md#req.adoption.own-errors-count),
+  [req.adoption.errors-left-block](requirements.md#req.adoption.errors-left-block)).
 
 The [error chain](../../glossary.json#concept.error-chain) then names each finding as a cause.
 Under any of these conditions, it is `failed`:
@@ -382,7 +389,8 @@ The host finds a test where the coverage check finds it:
 
 It never finds a test inside a function. When a name is defined more than once in those places, the
 host reports it, since it cannot tell which definition is the test. The host adds nothing else. It adds
-nothing twice. It leaves every byte already in the file as it was, including its line endings and
+nothing twice. A test that already declares the scenario is linked as it is, but only once its name
+is found exactly once. It leaves every byte already in the file as it was, including its line endings and
 blank lines. What it inserts takes the file's own line ending and indentation. The blank lines it
 adds around the helper only make up the two that set it apart.
 
@@ -398,15 +406,24 @@ bindings by any of these forms:
 - An assignment expression.
 - A match pattern.
 
-When that existing binding is one of these, the host adds only decorators:
+When that existing binding stands at the file's top level before the test and is one of these, the
+host adds only decorators:
 
 - Its own no-op helper, however formatted.
-- An import of Concorde's decorator from `concorde.spec.verification`, standing at the file's top
-  level before the test.
+- An import of Concorde's decorator from `concorde.spec.verification`.
 
-When that existing binding is neither, the host leaves the file untouched. It reports each of the
-file's links in `unlinked_tests`. A decorator would call the project's own `verifies`, whatever it does, or find no
-`verifies` at all when the module is imported. Only Python tests are linked.
+[req.adoption.tests-linked-by-host](requirements.md#req.adoption.tests-linked-by-host) gives the
+precise exceptions. When the existing binding is neither, or follows the test, or stands only in a
+branch, the host leaves the file untouched. It reports each of the file's links in
+`unlinked_tests`. A decorator would call the project's own `verifies`, whatever it does, or find no
+`verifies` at all when the module is imported. A `del verifies` at module level counts as such a
+binding, since a decorator after it would find no `verifies`. So does a `global verifies` anywhere
+in the file, since the function declaring it may rebind the module's name.
+
+A decorator of a method is evaluated in its class body, where a binding of `verifies` in that body
+comes before the module's. So when the body of the class that defines a test binds `verifies`, the
+host leaves that test without a decorator and reports its link with the class and the binding's
+line. It links the file's other tests all the same. Only Python tests are linked.
 
 Unlike `specify`, every structural error in a described Module's own documents counts as the
 run's, even one the baseline already had. The worker rewrites those documents. A retry must not
@@ -486,8 +503,10 @@ Any change beyond the grant fails the run.
 
 **Check execution** defines the configured check entries of the checks files, one
 `.concorde/checks/<module id>.json` per Module. A survey proposes checks in that shape, each with the
-`module` it is for. The developer can put each check they accept into that Module's checks file
-without its `module` and otherwise unchanged. Adoption itself never runs or configures a check.
+`module` it is for and the `reason` it was found. The developer can put each check they accept
+under `checks` in that Module's checks file. The developer removes both `module` and `reason`,
+which the checks file does not admit, and leaves every other field unchanged. The reason stays in
+the survey's proposal. Adoption itself never runs or configures a check.
 
 <a id="uses-spec"></a>
 

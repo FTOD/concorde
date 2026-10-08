@@ -349,6 +349,67 @@ class LinkFileTests(unittest.TestCase):
                 )
                 self.assertEqual(source, self.path.read_text())
 
+    @verifies("scenario.adoption.foreign-verifies")
+    def test_a_deleted_or_global_verifies_leaves_the_file_as_it_is(self):
+        link = [("scenario.calc.other", "test_other")]
+        helper = "import pytest\ndef verifies(*ids):\n    return lambda f: f\n"
+        for binding, reason in (
+            ("del verifies\n", "removes verifies at line 8 with del"),
+            (
+                "def rebind():\n    global verifies\n    verifies = None\n",
+                "declares verifies global at line 9",
+            ),
+        ):
+            with self.subTest(binding=binding):
+                source = SOURCE.replace("import pytest\n", helper + binding)
+                self.path.write_text(source)
+                linked, undone = link_file(self.path, "tests/test_calc.py", link)
+                self.assertEqual([], linked)
+                self.assertIn(reason, undone[0][1])
+                self.assertEqual(source, self.path.read_text())
+
+    @verifies("scenario.adoption.class-verifies")
+    def test_a_class_binding_of_verifies_leaves_its_methods_unlinked(self):
+        for binding in ("    verifies = None\n", "    from mytools import verifies\n"):
+            with self.subTest(binding=binding):
+                source = SOURCE.replace(
+                    "class TestAdd:\n", "class TestAdd:\n" + binding
+                )
+                self.path.write_text(source)
+                linked, undone = link_file(
+                    self.path,
+                    "tests/test_calc.py",
+                    [
+                        ("scenario.calc.add", "TestAdd.test_small"),
+                        ("scenario.calc.other", "test_other"),
+                    ],
+                )
+                self.assertEqual([("scenario.calc.other", "test_other")], linked)
+                [(pair, reason)] = undone
+                self.assertEqual(("scenario.calc.add", "TestAdd.test_small"), pair)
+                self.assertIn("in the body of class TestAdd", reason)
+                changed = self.path.read_text()
+                self.assertIn(
+                    '@verifies("scenario.calc.other")\ndef test_other', changed
+                )
+                self.assertNotIn('@verifies("scenario.calc.add")', changed)
+
+    @verifies("scenario.adoption.tests-linked")
+    def test_a_declared_test_defined_twice_is_still_reported(self):
+        source = SOURCE.replace(
+            "def test_other():\n    pass\n",
+            "def verifies(*ids):\n    return lambda f: f\n\n\n"
+            '@verifies("scenario.calc.other")\ndef test_other():\n    pass\n\n\n'
+            "def test_other():\n    pass\n",
+        )
+        self.path.write_text(source)
+        linked, undone = link_file(
+            self.path, "tests/test_calc.py", [("scenario.calc.other", "test_other")]
+        )
+        self.assertEqual([], linked)
+        self.assertIn("defines test_other 2 times", undone[0][1])
+        self.assertEqual(source, self.path.read_text())
+
     @verifies("scenario.adoption.test-file-unwritable")
     def test_a_file_that_cannot_be_written_is_reported_and_the_next_is_linked(self):
         other = self.root / "tests/test_more.py"

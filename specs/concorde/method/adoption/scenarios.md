@@ -83,10 +83,16 @@ shapes are in the [contracts](contracts.md).
 
 ### scenario.adoption.survey-absolute-paths — Absolute paths in a proposal become project-relative
 
-- GIVEN a survey worker that writes a child entry, a check input and an open question's evidence as absolute paths inside the task worktree, one of them through the worktree's real path
+- GIVEN the task worktree's absolute path `<worktree>`
+- AND a survey worker that writes a child entry `<worktree>/src/checkout/`, a check input `<worktree>/src/checkout/` and an open question's evidence `<worktree>/src/checkout/api.py:3`
+- AND another child entry through the worktree's real path
 - WHEN the host checks the proposal
-- THEN the result is `ok` and each of them is the project-relative path, a directory keeping its trailing `/`
-- BUT an absolute path outside the worktree, a child entry or an open question's evidence with a line suffix, is left as written and fails the survey with `inconsistent_proposal` naming it
+- THEN the result is `ok`, and each path is project-relative in its own field's form
+- AND the child entries are `src/checkout/` and `src/inventory/`, keeping a directory's trailing `/`
+- AND the check input is `src/checkout`, without the trailing `/`, as [configured check](../../glossary.json#concept.configured-check) inputs are written
+- AND the evidence is `src/checkout/api.py:3`, keeping its line suffix
+- BUT a child entry that is an absolute path outside the worktree is left as written and fails the survey with `inconsistent_proposal` naming it
+- AND an open question's evidence outside the worktree, such as `<parent>/elsewhere.py:12`, fails the survey the same way, with or without a line suffix
 
 ## Code to spec
 
@@ -135,7 +141,7 @@ shapes are in the [contracts](contracts.md).
 - AND `linked_tests` names that test, and `unlinked_tests` names the other two with their reasons
 - AND the decorated file imports nothing of Concorde, and linking the same test again, or naming it twice, adds nothing
 - AND in a file with CRLF line endings and more blank lines than usual, every byte that was there stays, and the added lines end with CRLF
-- AND a test defined under a top-level `if` is linked, while a test defined twice is reported in `unlinked_tests` as ambiguous
+- AND a test defined under a top-level `if` is linked, while a test defined twice is reported in `unlinked_tests` as ambiguous, even when one definition already declares the scenario
 
 ### scenario.adoption.describe-absolute-paths — Absolute test paths in a description still link
 
@@ -153,8 +159,17 @@ shapes are in the [contracts](contracts.md).
 - THEN `tests/test_checkout.py` is unchanged
 - AND `unlinked_tests` names that test with a reason naming the file's own `verifies` binding and its line
 - AND a file that binds `verifies` by a loop, a `with`, an `except` clause, an assignment expression or a match pattern stays as it is in the same way
+- AND so does a file that defines the host's helper and then deletes it with `del verifies`, or declares `global verifies` in a function
 - BUT a file whose `verifies` is the host's no-op helper or Concorde's decorator imported from `concorde.spec.verification` gets the decorator and no second definition
 - AND when that helper or import comes only after the test or inside a branch, the file stays as it is and the link is reported, since a decorator there could not use it
+
+### scenario.adoption.class-verifies — A class that binds `verifies` keeps its tests unlinked
+
+- GIVEN a code_to_spec run whose worker names `tests/test_calc.py::TestAdd::test_small` and `tests/test_calc.py::test_other` as tests of two scenarios
+- AND the body of class `TestAdd` binds `verifies`, by an assignment or an import of its own
+- WHEN the run ends
+- THEN `test_small` gets no decorator and `unlinked_tests` names it with the class and the binding's line
+- AND `test_other` is linked as usual
 
 ### scenario.adoption.test-file-unwritable — A test file that cannot be written is reported
 
@@ -184,6 +199,8 @@ shapes are in the [contracts](contracts.md).
 - WHEN a survey or code_to_spec run is given it with `--answers`
 - THEN the result is `failed` with `invalid_answers` naming the file and what is wrong
 - AND no worker ran and no file changed
+- AND a valid answers file fails the same way when no admitted earlier run lists an answered decision
+- AND that happens when no run is admitted with `--input`, or when the admitted survey never asked `d.invented`
 
 ### scenario.adoption.retry-counts-own-errors — A retry does not inherit a failed attempt's errors
 
