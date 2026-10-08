@@ -934,12 +934,18 @@ def _ignored_inside(primary: Path, worktree: Path) -> None:
 SESSION_TRACE = "concorde-session-trace"
 _NULLABLE = {"anyOf": [{"type": "null"}, _TEXT]}
 _TOKENS = {"type": "integer", "minimum": 0}
-# The fields a session node's content gained with version 2, null until they are learnt.
-SESSION_LEARNT = ("session_id", "claude_state", "models", "model_usage")
-# contract.task-session.session-trace, version 2
+# The fields a session node's content gained with versions 2 and 3, null until they are learnt.
+SESSION_LEARNT = (
+    "session_id",
+    "claude_state",
+    "models",
+    "model_usage",
+    "unreadable_lines",
+)
+# contract.task-session.session-trace, version 3
 register(
     SESSION_TRACE,
-    2,
+    3,
     {
         "type": "object",
         "additionalProperties": False,
@@ -978,6 +984,7 @@ register(
                 ]
             },
             "model_usage": {"anyOf": [{"type": "null"}, {"type": "object"}]},
+            "unreadable_lines": {"anyOf": [{"type": "null"}, _TOKENS]},
         },
     },
 )
@@ -1000,7 +1007,7 @@ register_kinds(
 
 def session_content(data: dict) -> dict:
     """A session node's content data in the current version, from ``data`` of any version: a
-    node written before version 2 has none of the learnt fields, which stay null."""
+    node written before version 3 lacks some of the learnt fields, which stay null."""
     return {
         "name": data["name"],
         "main": data.get("main"),

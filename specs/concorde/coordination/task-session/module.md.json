@@ -89,6 +89,11 @@
         "kind": "document",
         "target": "document.tracing.contracts",
         "reason": "the Framework's error contract, which this Module's errors follow"
+      },
+      {
+        "kind": "document",
+        "target": "document.tasks.contracts",
+        "reason": "the Tasks commands' refusal shape, actor and exit statuses, which concorde task session refuses in, and Tasks' record updates, through which it records a started session"
       }
     ],
     "participates": []

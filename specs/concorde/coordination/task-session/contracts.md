@@ -13,7 +13,7 @@ content is this value.
 ```concorde-contract
 {
   "id": "contract.task-session.session-trace",
-  "version": 2,
+  "version": 3,
   "schema": {
     "type": "object",
     "additionalProperties": false,
@@ -25,7 +25,8 @@ content is this value.
       "session_id",
       "claude_state",
       "models",
-      "model_usage"
+      "model_usage",
+      "unreadable_lines"
     ],
     "properties": {
       "name": {
@@ -139,10 +140,21 @@ content is this value.
             "type": "object"
           }
         ]
+      },
+      "unreadable_lines": {
+        "anyOf": [
+          {
+            "type": "null"
+          },
+          {
+            "type": "integer",
+            "minimum": 0
+          }
+        ]
       }
     }
   },
-  "semantics": "The data of the typed value concorde-session-trace, the content of a task session's trace node sessions/<session id>/ of the task. name is the session's name task-<task-id>, main the main agent's session named with --main, which the task session reported to when it started; the task record's main names the session it reports to now, which concorde task rebind may have changed since, model the model named with --model or null, and reported_id the short identity Claude Code reported for the started background session, by which Concorde names it to Claude Code. session_id is the session's full session id, the name of its transcript, as the sessionId of the session's entry in claude agents --json --all, recorded when the session starts or, failing that, when its task ends; null while Claude Code has not told it. The node's identity is the reported identity, its start when the session started, its status unknown and its end and usage null until its task ends, since Concorde does not see a session end. When the task ends, before the task's folder moves to the history, the node is finished from Claude Code's records: the session's transcript is copied into the node as transcript.jsonl, listed among the node's artifacts as transcript with its digest, and the folder Claude Code keeps beside it, when there is one, as transcript/; a session whose transcript could not be kept has neither. The node's usage then counts the tokens of the assistant records of that transcript and of the subagent transcripts in transcript/subagents/, each API message (message.id) once, its turns those messages and its duration the time from the earliest to the latest time the transcript's records carry; its cost_usd is the totalCostUSD of the transcript's last cost-state record when no assistant record follows it, otherwise null; its ended_at is that latest time. claude_state is the session's state in claude agents --json --all at that moment, or null when Claude Code no longer lists it; the node's status is ok for done, failed for failed and unknown otherwise, and its outcome is that state, null when there is none. models maps each model of those assistant records to its tokens and its messages, null when no transcript was kept; model_usage is the modelUsage of that cost-state record as Claude Code wrote it, with each model's cost, null when there is none. A session whose transcript was not kept keeps usage null and ended_at null. Its metadata are the task and the model. A behaviour or field change increments the version.",
+  "semantics": "The data of the typed value concorde-session-trace, the content of a task session's trace node sessions/<session id>/ of the task. name is the session's name task-<task-id>, main the main agent's session named with --main, which the task session reported to when it started; the task record's main names the session it reports to now, which concorde task rebind may have changed since, model the model named with --model or null, and reported_id the short identity Claude Code reported for the started background session, by which Concorde names it to Claude Code. session_id is the session's full session id, the name of its transcript, as the sessionId of the session's entry in claude agents --json --all, recorded when the session starts or, failing that, when its task ends; null while Claude Code has not told it. The node's identity is the reported identity, its start when the session started, its status unknown, its end null and every measurement of its usage null until its task ends, since Concorde does not see a session end. When the task ends, before the task's folder moves to the history, the node is finished from Claude Code's records: the session's transcript is copied into the node as transcript.jsonl, listed among the node's artifacts as transcript with its digest, and the folder Claude Code keeps beside it, when there is one, as transcript/; a session whose transcript could not be kept has neither. A record is a line of a transcript that is a JSON object; a line that is neither blank nor such an object is unreadable, such as a last line a killed session left half written, and is skipped. The node's usage then counts the tokens of the assistant records of that transcript and of the subagent transcripts in transcript/subagents/, each API message (message.id) once, its turns those messages and its duration the time from the earliest to the latest time the transcript's records carry; its cost_usd is the totalCostUSD of the transcript's last cost-state record when no assistant record follows it, otherwise null; its ended_at is that latest time. claude_state is the session's state in claude agents --json --all at that moment, or null when Claude Code no longer lists it; the node's status is ok for done, failed for failed and unknown otherwise, and its outcome is that state, null when there is none. models maps each model of those assistant records to its tokens and its messages, null when no transcript was kept; model_usage is the modelUsage of that cost-state record as Claude Code wrote it, with each model's cost, null when there is none. unreadable_lines counts the unreadable lines of the transcript and of its subagent transcripts, null when no transcript was kept; the figures are those of the records alone, and the kept transcript holds every line. A transcript or subagent transcript that cannot be read once copied counts as not kept. A session whose transcript was not kept keeps every measurement of its usage null and ended_at null. Its metadata are the task and the model. A behaviour or field change increments the version.",
   "example": {
     "name": "task-severity",
     "main": "concorde-7d",
@@ -159,7 +171,8 @@ content is this value.
         "messages": 391
       }
     },
-    "model_usage": null
+    "model_usage": null,
+    "unreadable_lines": 0
   }
 }
 ```
@@ -181,12 +194,13 @@ Besides those shared codes, its refusals use these:
 | Error code | Raised when |
 | --- | --- |
 | `missing_worktree` | `session` names a task whose worktree no longer exists. |
-| `session_failed` | `session` could not start Claude Code, Claude Code exited without reporting a started background session (its output is in the message), or the composed task-session guidance `generated/guidance/task-session.md` is missing from the package. |
+| `session_running` | `session` names a task one of whose recorded task sessions `claude agents --json --all` lists in a state other than `done` or `failed`, such as `working`; the message names the session, its state and `claude stop <id>`. Reason `decision`. |
+| `session_failed` | `session` could not start Claude Code, Claude Code exited without reporting a started background session (its output is in the message), the composed task-session guidance `generated/guidance/task-session.md` is missing from the package, or the task has a recorded task session and `claude agents --json --all` could not be read to tell whether it still works. |
 | `session_stop_failed` | `concorde task close` without a merge could not confirm a Claude Code task session of the task stopped: `claude stop <id>` could not run, or exited non-zero without answering `No job matching`; the message names the session, Claude Code's answer, the worktree the close would have removed and `claude stop <id>`, and the task is unchanged. |
 
 | Command | Effect | Output |
 | --- | --- | --- |
-| `concorde task session <task-id> --main <session> [--model <model>] [--dry-run]` | Starts a background Claude Code task session (`invalid_input` without `--main`): writes `.concorde/tasks/<task-id>/runtime/settings.json` and its hook ([settings](#task-session-settings)), the settings also holding `disabledMcpjsonServers`, `concorde` followed by every other server of the `.mcp.json` files the session loads that the primary worktree never approved, and `enabledMcpjsonServers`, every one it approved ([module](module.md#project-mcp-approvals)), and `runtime/mcp.json`, which configures the [project MCP server](../../glossary.json#concept.project-mcp-server) `concorde` as the running Python with the running package's `scripts/concorde.py project-mcp` and `CONCORDE_CHANNEL=0`, since a background session is never woken by channel events, starts `claude --bg --name task-<task-id> --settings <file> --mcp-config <runtime/mcp.json> --permission-mode auto [--model <model>]` in the task worktree with the composed task-session guidance and the task's identity, goal, [Modules](../../glossary.json#concept.module), [decision log](../../glossary.json#concept.decision-log) and `--main` as first prompt, and records the started session as the node `sessions/<session id>/` of the task's trace, with the full session id `claude agents --json --all` gives for it when it gives one, naming `--main` as the [task record](../../glossary.json#concept.task-record)'s `main` ([record updates](../tasks/contracts.md#record-updates)). `--dry-run` writes the boundary and starts nothing | The recorded session, or with `--dry-run` `{"command": "<shell command without the prompt>", "cwd": "<task worktree>", "settings": "<path>", "mcp_config": "<path>"}` |
+| `concorde task session <task-id> --main <session> [--model <model>] [--dry-run]` | Starts a background Claude Code task session (`invalid_input` without `--main`): when the task has recorded task sessions, first asks `claude agents --json --all` once and refuses with `session_running` before writing anything when it lists one of them in a state other than `done` or `failed`; a session done, failed or no longer listed does not refuse, and every start starts and records a session of its own, never reusing an earlier one; then writes `.concorde/tasks/<task-id>/runtime/settings.json` and its hook ([settings](#task-session-settings)), the settings also holding `disabledMcpjsonServers`, `concorde` followed by every other server of the `.mcp.json` files the session loads that neither the primary worktree nor the task worktree approved, and `enabledMcpjsonServers`, every one either approved ([project MCP approvals](#project-mcp-approvals)), and `runtime/mcp.json`, which configures the [project MCP server](../../glossary.json#concept.project-mcp-server) `concorde` as the running Python with the running package's `scripts/concorde.py project-mcp` and `CONCORDE_CHANNEL=0`, since a background session is never woken by channel events, starts `claude --bg --name task-<task-id> --settings <file> --mcp-config <runtime/mcp.json> --permission-mode auto [--model <model>]` in the task worktree with the composed task-session guidance and the task's identity, goal, [Modules](../../glossary.json#concept.module), [decision log](../../glossary.json#concept.decision-log) and `--main` as first prompt, and records the started session as the node `sessions/<session id>/` of the task's trace, with the full session id `claude agents --json --all` gives for it when it gives one, naming `--main` as the [task record](../../glossary.json#concept.task-record)'s `main` ([record updates](../tasks/contracts.md#record-updates)). `--dry-run` writes the boundary and starts nothing | The recorded session, or with `--dry-run` `{"command": "<shell command without the prompt>", "cwd": "<task worktree>", "settings": "<path>", "mcp_config": "<path>"}` |
 
 ### Task-session settings
 
@@ -219,8 +233,33 @@ session besides:
 - No `permissions.deny` entries: reads stay open.
 
 What the settings carry besides is no part of the boundary: the
-[approvals](module.md#project-mcp-approvals) that keep Claude Code from asking a background session
-about a [project MCP server](../../glossary.json#concept.project-mcp-server).
+[approvals](#project-mcp-approvals) that keep Claude Code from asking a background session about a
+[project MCP server](../../glossary.json#concept.project-mcp-server).
+
+### Project MCP approvals
+
+The servers judged are those of every `.mcp.json` Claude Code loads for a session in the task
+worktree: that of each folder from the task worktree up to, but not including, the filesystem root.
+When the task worktree lies inside the primary worktree, this includes the primary worktree's file.
+A file that is missing, unreadable, not JSON or without an `mcpServers` object names no server. The
+servers of the other files are judged all the same.
+
+The entry `concorde` is always disabled. Every other server is judged over these sources, each a
+settings object that records approvals for the primary worktree or the task worktree:
+
+- The user's settings, `settings.json` of `$CLAUDE_CONFIG_DIR` (default `~/.claude`).
+- `.claude/settings.json` and `.claude/settings.local.json` of the primary worktree.
+- `.claude/settings.json` and `.claude/settings.local.json` of the task worktree.
+- The managed settings `/etc/claude-code/managed-settings.json` and the `*.json` drop-ins of
+  `/etc/claude-code/managed-settings.d/`.
+- The primary worktree's entry under `projects` of Claude Code's global configuration,
+  `.claude.json` of `$CLAUDE_CONFIG_DIR` or of the home folder.
+
+A source that is missing, unreadable or no JSON object approves nothing. A server is rejected when
+any source lists it in `disabledMcpjsonServers`. Otherwise, it is approved when any source lists it
+in `enabledMcpjsonServers` or sets `enableAllProjectMcpServers` to `true`. Two names are compared
+with every character other than a letter, a digit, `_` or `-` read as `_`. An approved server is
+enabled. Every other server is disabled.
 
 ### At the end of a task
 
@@ -231,14 +270,14 @@ hand the task's task sessions, every node `sessions/<id>/`, to
 | When | What runs | When it fails |
 | --- | --- | --- |
 | A close without a merge, before anything else of the close | `claude stop <id>` for each session; exit 0, or `No job matching`, counts as stopped | The close is refused with `session_stop_failed` |
-| Every close, just before the task's folder moves to the history | `claude agents --json --all`, once for the close; the entry whose `id` is the session's `reported_id` gives its `sessionId`, `cwd` and `state`. The transcript `projects/<cwd, each character that is no letter or digit as ->/<session id>.jsonl` of `$CLAUDE_CONFIG_DIR` (default `~/.claude`), else `<session id>.jsonl` of any folder of `projects/`, is copied to the session's node as `transcript.jsonl`, and the folder of the same name without `.jsonl`, when present, as `transcript/`; the node is then finished as the [session trace](#contract.task-session.session-trace) says | A warning naming what Claude Code answered or where the transcript was looked for; the session is not removed. The node still receives the session id and status Claude Code told |
+| Every close, just before the task's folder moves to the history | `claude agents --json --all`, once for the close; the entry whose `id` is the session's `reported_id` gives its `sessionId`, `cwd` and `state`. The transcript `projects/<cwd, each character that is no letter or digit as ->/<session id>.jsonl` of `$CLAUDE_CONFIG_DIR` (default `~/.claude`), else `<session id>.jsonl` of any folder of `projects/`, is copied to the session's node as `transcript.jsonl`, and the folder of the same name without `.jsonl`, when present, as `transcript/`; the node is then finished as the [session trace](#contract.task-session.session-trace) says | A warning naming what Claude Code answered, where the transcript was looked for, or why the copy could not be made or read, with what of a partial copy could not be removed; the session is not removed. The node still receives the session id and status Claude Code told. A kept transcript with unreadable lines only warns, naming their count and where the transcript is kept; that session is still removed |
 | Every close, once the task is closed | `claude rm <id>` for each session whose transcript was kept; exit 0, or `No job matching`, counts as removed | A warning |
 
 Each warning is one string in the command's `warnings`. Each warning names:
 
 - The session's id and name
 - The task
-- The whole reason (where the transcript was looked for, or the command with its exit code and
-  Claude Code's answer)
+- The whole reason (where the transcript was looked for, the count of unreadable lines, or the
+  command with its exit code and Claude Code's answer)
 - Where the transcript is kept when it was kept
-- `claude rm <id>` to remove the session by hand
+- `claude rm <id>` to remove the session by hand, when the session was not removed

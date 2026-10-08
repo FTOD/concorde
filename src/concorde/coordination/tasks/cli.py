@@ -83,6 +83,11 @@ HANDLING = {
         "Claude Code did not start the task session Tasks asked for, or the machine lacks a "
         "program it needs; Tasks installs nothing",
     ),
+    "session_running": (
+        "decision",
+        "a task session of the task still works in its worktree, and whether to stop it or "
+        "message it is the main agent's decision",
+    ),
     "missing_worktree": (
         "environment",
         "the task's worktree is gone from disk, and recreating it is not Tasks' decision",
@@ -237,6 +242,10 @@ OPTIONS = {
     ],
     "worktree_not_ignored": [
         "add .claude/worktrees/ to .gitignore",
+    ],
+    "session_running": [
+        "message the working task session the refusal names",
+        "stop it with claude stop <id>, then start the task session again",
     ],
     "session_failed": [
         "have the developer run claude once in the task worktree and accept the trust prompt",

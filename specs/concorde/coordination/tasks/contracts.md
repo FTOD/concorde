@@ -1024,6 +1024,7 @@ The reason is `decision` for these codes:
 - `merge_incomplete`
 - `not_resumable`
 - `merge_diverged`
+- The session code `session_running`.
 
 Otherwise, the reason is `input`. A refusal exits with status 1. Apart from the refusals that
 [req.tasks.refusal-inert](requirements.md#req.tasks.refusal-inert) names, a refusal changes nothing.

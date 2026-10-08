@@ -1,10 +1,11 @@
 """The task-session write hook: a Claude Code PreToolUse hook confining file edits to one task.
 
 ``concorde task session`` copies this file next to the session's settings with the task's paths
-embedded in ``ALLOWED`` and registers it for Edit and Write. It reads the hook input on standard
-input and prints nothing for a path inside the task worktree or the task's decision log while the
-task's folder exists, so the permission mode decides as usual; for any other path, a symbolic link
-judged by the file it points to, it prints a ``deny`` decision whose reason tells the session why.
+embedded in ``ALLOWED`` and registers it for the file-writing tools Edit, Write, MultiEdit and
+NotebookEdit. It reads the hook input on standard input and prints nothing for a path inside the
+task worktree or the task's decision log while the task's folder exists, so the permission mode
+decides as usual; for any other path, a symbolic link judged by the file it points to, it prints a
+``deny`` decision whose reason tells the session why.
 Any failure denies.
 """
 
