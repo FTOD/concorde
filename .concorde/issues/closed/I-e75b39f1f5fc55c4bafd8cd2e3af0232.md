@@ -4,7 +4,7 @@
 {
   "schema_version": 4,
   "id": "I-e75b39f1f5fc55c4bafd8cd2e3af0232",
-  "status": "open",
+  "status": "closed",
   "reports": [
     {
       "id": "sha256:6345a31673833fa320d73b1295ac303f660227b116ddf173cd074c56ed04e225",
@@ -47,6 +47,18 @@
       }
     }
   ],
-  "dispositions": []
+  "dispositions": [
+    {
+      "reason": "resolved",
+      "note": "Fixed by task fix-dogfood-e2e, merged into the primary branch at 882ecd621f60cdc87ad00b72d0d0ed6a9737537c.",
+      "evidence": [
+        "merge commit 882ecd621f60cdc87ad00b72d0d0ed6a9737537c",
+        "task fix-dogfood-e2e"
+      ],
+      "duplicate_of": null,
+      "actor": "main-agent",
+      "created_at": "2026-10-08T06:39:37.847918+00:00"
+    }
+  ]
 }
 ```
