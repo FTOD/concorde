@@ -1755,7 +1755,8 @@
           "target": "module.specification",
           "meaning": "#uses-specification",
           "relies_on": [
-            "req.specification.audit"
+            "req.specification.audit",
+            "req.specification.no-code"
           ]
         },
         {
@@ -1763,6 +1764,32 @@
           "meaning": "#uses-spec-review",
           "relies_on": [
             "concept.review-verdict"
+          ]
+        },
+        {
+          "target": "module.tasks",
+          "meaning": "#uses-tasks",
+          "relies_on": [
+            "concept.task",
+            "req.tasks.binding",
+            "req.tasks.merge-verified"
+          ]
+        },
+        {
+          "target": "module.validation",
+          "meaning": "#uses-validation",
+          "relies_on": [
+            "concept.readiness",
+            "req.validation.ready-definition",
+            "contract.validation.readiness"
+          ]
+        },
+        {
+          "target": "module.delivery",
+          "meaning": "#uses-delivery",
+          "relies_on": [
+            "req.delivery.own-readiness",
+            "contract.delivery.output"
           ]
         }
       ],

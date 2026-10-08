@@ -98,8 +98,10 @@ named `repair-specs`. The command follows these steps
 
 - Review the Modules.
 - Run `specify` once with that review as input and an intent to change only what the Specs say.
-  The run keeps every promise true to the code. It turns a repair that needs a decision about
-  intent into an [open question](../../glossary.json#concept.open-question).
+  The intent asks the run to change only what the review's findings and the existing Specs
+  justify. A repair that needs a fact about the code that they do not state becomes an
+  [open question](../../glossary.json#concept.open-question). So does a repair that needs a
+  decision about intent.
 - Review the Modules once more.
 - Run `task-validation`.
 - Run `delivery`.
@@ -228,7 +230,12 @@ That is why the exception lives here and not in the workflow users run.
 That is also why it is bounded to one round that changes Specs and never code
 ([requirements](requirements.md#req.swe-bench-cases.specs-not-code)).
 The `specify` [task type](../../glossary.json#concept.task-type), not the intent, keeps the code
-unchanged. It may write the bound Modules' documents and none of their code.
+unchanged. It may write the bound Modules' documents and none of their code. It cannot read the
+code either ([requirement](../../method/specification/requirements.md#req.specification.no-code)),
+and its validation is structural. The repair therefore cannot establish a fact about the code that
+the findings and the Specs do not state. It never claims to: such a gap stays an open question,
+which the round reports with the run and which does not stop it. A repair is faithful to the code
+only as far as the review's evidence is.
 When a specify run's [write
 audit](../../glossary.json#concept.write-audit) finds a changed code file, the run ends `failed`.
 This stops the repair before `delivery`.
@@ -284,6 +291,34 @@ The case steps never write the following themselves:
 - The project's Specs.
 - The project's [task records](../../glossary.json#concept.task-record).
 - The project's [workspace binding](../../glossary.json#concept.workspace-binding).
+
+<a id="uses-tasks"></a>
+
+**Tasks** opens the repair's [task](../../glossary.json#concept.task) with the Modules the command
+names. Opening writes the task worktree's workspace binding before its record
+([requirement](../../coordination/tasks/requirements.md#req.tasks.binding)), so every run of the
+round finds its workspace there. `task open` refuses a task name already taken, and the command
+fails with that refusal. Tasks also merges the delivered task. A merge closes the task only when
+its branch holds a [delivery commit](../../glossary.json#concept.delivery-commit) that verifies
+([requirement](../../coordination/tasks/requirements.md#req.tasks.merge-verified)). A step that
+does not end `ok` therefore leaves the task open and unmerged.
+
+<a id="uses-validation"></a>
+
+**Validation** decides the task's [readiness](../../glossary.json#concept.readiness) in
+`task-validation`. A readiness is ready exactly when it lists no blocking finding
+([requirement](../../method/validation/requirements.md#req.validation.ready-definition)). Its
+blocking findings come from the Specs' structure and the
+[configured checks](../../glossary.json#concept.configured-check). A
+[review finding](../../glossary.json#concept.review-finding) is none of them, so the findings the
+second review still reports never block the round's validation, delivery or merge.
+
+<a id="uses-delivery"></a>
+
+**Delivery** validates the whole workspace again in `delivery` and makes the delivery commit only
+when its own readiness is ready
+([requirement](../../method/delivery/requirements.md#req.delivery.own-readiness)). A blocked
+delivery stops the round before the merge.
 
 <a id="uses-specification"></a>
 

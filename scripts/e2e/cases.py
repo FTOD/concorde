@@ -24,10 +24,10 @@ from common import E2EError, run
 # wait for a person" holds for end-to-end cases only, which is why it lives here.
 REPAIR_INTENT = (
     "Repair every blocking finding of the Spec panel given as input, in the documents of the "
-    "Modules it names. These Specs describe the project's existing code: change what the Specs "
-    "say, never the code, keep every promise true to what the code does, and where a repair "
-    "would need a decision about intended behaviour, write an open question instead of a "
-    "promise."
+    "Modules it names. These Specs describe the project's existing code, which you cannot read: "
+    "change what the Specs say, never the code, and change only what the findings and the "
+    "existing Specs justify. Where a repair would need a fact about the code that they do not "
+    "state, or a decision about intended behaviour, write an open question instead of a promise."
 )
 
 
