@@ -70,6 +70,14 @@ code. For a question or a review that does not justify a task, use these Operati
 a Module before you agree a change with the developer is one example. An `--input` of such a run
 must be unbound too.
 
+A checkout holds no build output. When the project's checks need it, commit the commands that
+make it in `.concorde/preparation.json`, such as
+`{"commands": [{"argv": ["make", "build"], "timeout_seconds": 600}]}`. Before the first step of an
+unbound run, the runner runs them in order in the checkout. They may write only the checkout. When
+one fails, the run ends `failed` with `preparation_failed` and runs no step. Its log is at
+`.concorde/unbound/<run-id>/preparation/<n>.log`. A bound run is never prepared. Whoever prepares
+a workspace also builds it.
+
 An unbound run belongs to no task. When an unbound run is not `ok`, show the developer its whole
 error chain as rendered, from the command's standard error, never a summary of it. When the failure
 leads to work and the coordination part is installed, open a task for that work. Under the same

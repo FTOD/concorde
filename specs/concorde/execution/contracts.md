@@ -1,15 +1,17 @@
 # Execution contracts
 
 This document defines the canonical values of [Execution](module.md). These are the
-[run result](../glossary.json#concept.run-result) every run returns and the content of the trace node
-every run leaves. [How a run is executed](runner.md) describes how the runner reads and fills them.
+[run result](../glossary.json#concept.run-result) every run returns, the content of the trace node
+every run leaves and the preparation file a project may commit for its
+[unbound runs](../glossary.json#concept.unbound-run). [How a run is executed](runner.md) describes
+how the runner reads and fills them.
 
 ## Run result
 
 ```concorde-contract
 {
   "id": "contract.execution.run-result",
-  "version": 4,
+  "version": 5,
   "schema": {
     "type": "object",
     "additionalProperties": false,
@@ -261,7 +263,7 @@ every run leaves. [How a run is executed](runner.md) describes how the runner re
       }
     }
   },
-  "semantics": "The result of one run, printed on standard output and saved as result.json in the run's trace node folder. kind is operation for an Operation and command for an execution command; name is the Operation's or command's name. workspace is the bound workspace's name, or null for an unbound run or a run whose binding was refused. commit is the commit an unbound run examined, the HEAD of the worktree it started in, which its throwaway checkout held; it is null for a bound run, which works on its workspace as it stands, uncommitted changes included, and for a run refused before its checkout existed. modules are the Modules the run worked on, empty when the run was refused before they were settled. status is ok when the run did what it promises, blocked when it needs a decision above it and failed otherwise. output is the definition's output, checked against the output contract its own Spec gives when the status is ok; Execution gives it no shape of its own (the example shows task-validation's, Validation's readiness, contract.validation.readiness, only as an illustration). worker is the last worker result unchanged, a claim, and worker_runs the identities of the worker runs the run's steps started through the worker harness; both are empty for an execution command. host_evidence holds only what the runner and its steps observed themselves; ref names the path, command or identity concerned and detail explains it. The runner's own kinds are trace (the run's own trace node, by its run identity, with its folder in the detail), trace-write (a write of the run's own trace.json the operating system refused, by the run identity, with the node's file, the moment, start, update or end, and the error in the detail; it never changes the status, and one of the final write is added to the result published before it, runner.md#when-records-cannot-be-written), refused, cancelled, host-error, invalid-output, checkout (the throwaway checkout an unbound run worked in), submodule or submodule-absent (a submodule the checkout did or did not check out), environment or environment-not-linked (a runtime path the checkout did or did not link from the worktree the run started in) and checkout-not-removed (a part of the checkout Git would not remove, with what its direct removal left). Every other kind is one the definition's own Spec defines and is the definition's promise, not the runner's, such as Method's grant, context-identity, worker-model, audit, check, rounds, transcript, stderr, git, readiness, commit, trace-write of a worker run or check (a refused write of that node's trace.json, by the worker run's or check's identity) and removed-module (a Module the binding names that the workspace no longer registers, which the run left out). Timestamps are RFC 3339 in UTC. error is null exactly when the status is ok; otherwise it is the run's own error link, level operation or command, whose causes are the errors it received, unchanged. A behaviour or field change increments the version.",
+  "semantics": "The result of one run, printed on standard output and saved as result.json in the run's trace node folder. kind is operation for an Operation and command for an execution command; name is the Operation's or command's name. workspace is the bound workspace's name, or null for an unbound run or a run whose binding was refused. commit is the commit an unbound run examined, the HEAD of the worktree it started in, which its throwaway checkout held; it is null for a bound run, which works on its workspace as it stands, uncommitted changes included, and for a run refused before its checkout existed. modules are the Modules the run worked on, empty when the run was refused before they were settled. status is ok when the run did what it promises, blocked when it needs a decision above it and failed otherwise. output is the definition's output, checked against the output contract its own Spec gives when the status is ok; Execution gives it no shape of its own (the example shows task-validation's, Validation's readiness, contract.validation.readiness, only as an illustration). worker is the last worker result unchanged, a claim, and worker_runs the identities of the worker runs the run's steps started through the worker harness; both are empty for an execution command. host_evidence holds only what the runner and its steps observed themselves; ref names the path, command or identity concerned and detail explains it. The runner's own kinds are trace (the run's own trace node, by its run identity, with its folder in the detail), trace-write (a write of the run's own trace.json the operating system refused, by the run identity, with the node's file, the moment, start, update or end, and the error in the detail; it never changes the status, and one of the final write is added to the result published before it, runner.md#when-records-cannot-be-written), refused, cancelled, host-error, invalid-output, checkout (the throwaway checkout an unbound run worked in), submodule or submodule-absent (a submodule the checkout did or did not check out), environment or environment-not-linked (a runtime path the checkout did or did not link from the worktree the run started in), preparation (a preparation command the checkout ran, by its command line, with how it ended, after how long and its log in the detail) and checkout-not-removed (a part of the checkout Git would not remove, with what its direct removal left). Every other kind is one the definition's own Spec defines and is the definition's promise, not the runner's, such as Method's grant, context-identity, worker-model, audit, check, rounds, transcript, stderr, git, readiness, commit, trace-write of a worker run or check (a refused write of that node's trace.json, by the worker run's or check's identity) and removed-module (a Module the binding names that the workspace no longer registers, which the run left out). Timestamps are RFC 3339 in UTC. error is null exactly when the status is ok; otherwise it is the run's own error link, level operation or command, whose causes are the errors it received, unchanged. A behaviour or field change increments the version.",
   "example": {
     "kind": "command",
     "name": "task-validation",
@@ -386,6 +388,71 @@ every run leaves. [How a run is executed](runner.md) describes how the runner re
     },
     "started_at": "2026-09-27T10:15:00Z",
     "finished_at": "2026-09-27T10:15:41Z"
+  }
+}
+```
+
+## Preparation file
+
+A project may commit `.concorde/preparation.json`, the preparation commands of its unbound runs'
+checkouts, as [Running unbound](module.md#preparation) explains.
+[Preparing the checkout](runner.md#preparing-the-checkout) says how the runner runs them.
+
+```concorde-contract
+{
+  "id": "contract.execution.preparation",
+  "version": 1,
+  "schema": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "commands"
+    ],
+    "properties": {
+      "commands": {
+        "type": "array",
+        "items": {
+          "$ref": "#/$defs/command"
+        }
+      }
+    },
+    "$defs": {
+      "command": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "argv",
+          "timeout_seconds"
+        ],
+        "properties": {
+          "argv": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "timeout_seconds": {
+            "type": "number",
+            "minimum": 1
+          }
+        }
+      }
+    }
+  },
+  "semantics": "The preparation file .concorde/preparation.json, which a project commits so that an unbound run's checkout holds what the project's build produces. Execution owns it and reads only the copy the checkout holds, the one the examined commit records; without the file nothing is prepared. commands are run in their order, after the admission and before the run's first step, each with the checkout as its working directory, in Check execution's boundary with the checkout writable. argv is the command line, taken literally: no placeholder is substituted. timeout_seconds is the command's time limit in seconds, after which its whole process tree is ended. A command that exits with a status other than 0, runs out of its time or cannot get its boundary fails the run with preparation_failed, and no later command or step runs; a file that breaks this schema fails it with preparation_invalid. A bound run is never prepared. A behaviour or field change increments the version.",
+  "example": {
+    "commands": [
+      {
+        "argv": [
+          "python3",
+          "scripts/concorde.py",
+          "build"
+        ],
+        "timeout_seconds": 600
+      }
+    ]
   }
 }
 ```

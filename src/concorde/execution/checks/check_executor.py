@@ -3,7 +3,9 @@
 The backend is a trusted host interface, never a registry/task-selected command. Linux exposes
 the host tree recursively read-only, with one fresh writable scratch mount. PID namespaces,
 closed descriptors and a host-held pidfd keep filesystem and process authority inside that tree.
-This is not a read, network or credential policy.
+This is not a read, network or credential policy. A preparation command of an unbound checkout
+runs in the same boundary with the project as one more writable mount: what lies outside it, the
+places its symbolic links lead to included, stays read-only.
 """
 
 from __future__ import annotations
@@ -183,10 +185,15 @@ def _drain(stream) -> bytes:
 
 
 class BubblewrapBackend:
-    """Linux backend. The gate prevents command execution until its PID namespace is pinned."""
+    """Linux backend. The gate prevents command execution until its PID namespace is pinned.
 
-    def __init__(self, *, cancel_event: Event | None = None):
+    ``writable_project`` also binds the project itself writable, for a preparation command."""
+
+    def __init__(
+        self, *, cancel_event: Event | None = None, writable_project: bool = False
+    ):
         self.cancel_event = cancel_event
+        self.writable_project = writable_project
 
     def run(
         self,
@@ -236,6 +243,8 @@ class BubblewrapBackend:
                 "--dev",
                 "/dev",
             ]
+            if self.writable_project:
+                command += ["--bind", str(project), str(project)]
             command += [
                 "--bind",
                 str(scratch),
@@ -397,8 +406,10 @@ def execute_check(
     timeout: float,
     environment: Mapping[str, str],
     cancel_event: Event | None = None,
+    writable_project: bool = False,
 ) -> CheckResult:
-    """Run a check with the project read-only and a private, removed-afterwards scratch."""
+    """Run a check with the project read-only and a private, removed-afterwards scratch;
+    ``writable_project`` makes the project writable too, for a preparation command."""
     try:
         project = Path(project_root).resolve(strict=True)
     except (OSError, RuntimeError) as error:
@@ -420,7 +431,9 @@ def execute_check(
         raise CheckSandboxError(
             "project location cannot be isolated by the Linux check backend"
         )
-    backend: CheckBackend = BubblewrapBackend(cancel_event=cancel_event)
+    backend: CheckBackend = BubblewrapBackend(
+        cancel_event=cancel_event, writable_project=writable_project
+    )
     # An ambient TMPDIR inside the project must never create a writable project mount. Nested
     # checks may use their parent's scratch, provided it is outside their own project.
     candidates = dict.fromkeys(

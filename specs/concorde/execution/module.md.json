@@ -77,6 +77,7 @@
         "src/concorde/execution/__init__.py",
         "src/concorde/execution/checkout.py",
         "src/concorde/execution/context.py",
+        "src/concorde/execution/preparation.py",
         "src/concorde/execution/runner.py",
         "src/concorde/execution/runs.py",
         "tests/concorde/execution/",

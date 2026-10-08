@@ -17,7 +17,8 @@ The entry also explains what the boundary deliberately leaves out.
 ```python
 execute_check(project_root: Path, argv: Sequence[str], *, timeout: float,
               environment: Mapping[str, str],
-              cancel_event: threading.Event | None = None) -> CheckResult
+              cancel_event: threading.Event | None = None,
+              writable_project: bool = False) -> CheckResult
 CheckResult(stdout: bytes, stderr: bytes, returncode: int, timed_out: bool = False)
 ```
 
@@ -125,6 +126,22 @@ a process file descriptor for the namespace's first process, the command stays s
 end, before removing the scratch, the host kills the namespace. Before removing the scratch, the
 host also waits for the namespace.
 
+<a id="a-writable-project"></a>
+
+**A writable project.** With `writable_project`, the runner also binds the project itself
+writable at its own path, after the read-only host. Everything else stays as above. A configured
+check never runs this way. Execution's runner uses it alone, for the preparation commands of an
+[unbound run](../../glossary.json#concept.unbound-run)'s checkout
+([Preparing the checkout](../runner.md#preparing-the-checkout)). Inside the project, a command may
+then create, change, rename and delete files. Outside it, these hold:
+
+- Every other host file stays read-only, the project's parent directories included.
+- A symbolic link of the project leads to its target's own mount. Writing through a link to a place
+  outside the project is therefore refused. The runtime paths an
+  [unbound checkout](../../glossary.json#concept.unbound-checkout) links are such links.
+- A hard link from a file outside the project into it is refused (`EXDEV`), since it would cross
+  mounts. The file outside therefore never becomes writable through one.
+
 The network namespace is shared. Because of this, the command reaches the host's network and
 abstract Unix sockets. Filesystem Unix sockets under read-only mounts stay connectable. The IPC
 namespace is private only for System V IPC and POSIX message queues. No task input can add a mount.
@@ -155,6 +172,17 @@ the check runner does not limit these:
 - the network
 - host sockets
 - the environment
+
+### req.checks.writable-project-only — A writable project widens the boundary by the project alone
+
+With `writable_project`, the check runner SHALL let a command and every process it starts write
+only files inside the project and its scratch.
+
+Every other host file stays read-only as
+[req.checks.project-read-only](#req.checks.project-read-only) says.
+
+This covers files reached through a symbolic link of the project and through a hard link made into
+it. Every other requirement of the boundary holds unchanged.
 
 ### req.checks.fail-closed — No run without the boundary
 
@@ -199,6 +227,17 @@ This includes processes with these behaviours:
 - THEN the operating system refuses the operation before any byte or directory entry changes
 - AND another path name, an inherited descriptor or a remount in a nested namespace does not make
   the project writable
+
+### scenario.checks.writable-project — A writable project is the only writable place besides the scratch
+
+- GIVEN a project holding a symbolic link to a directory outside it
+- WHEN a command runs with `writable_project`
+- THEN it creates and changes files inside the project
+- AND it writes its scratch
+- BUT writing a file outside the project is refused at the system call
+- AND writing through the link, to an existing file or a new one, is refused
+- AND a hard link from a file outside into the project is refused
+- AND the directory outside keeps exactly its files
 
 ### scenario.checks.scratch — A run reads its inputs and writes disposable output
 

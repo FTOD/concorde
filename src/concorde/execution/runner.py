@@ -8,8 +8,9 @@ One runner executes both kinds of run definition in the worktree it is started i
    works on the binding's Modules; an unbound run, for a definition that allows it, works in a
    throwaway detached checkout of the worktree's ``HEAD``. Admit ``--input``, take the Modules as
    names and run the definition's own admission of them.
-3. Execute the definition's steps in order.
-4. Remove an unbound run's checkout, compose and check the run result, write ``result.json``
+3. For an unbound run, run the preparation commands its checkout declares.
+4. Execute the definition's steps in order.
+5. Remove an unbound run's checkout, compose and check the run result, write ``result.json``
    and the run's trace node, release the locks, print the result.
 
 Every run is a trace node: ``trace.json`` is written when the run lock is taken and again after the
@@ -46,6 +47,7 @@ from .checkout import Checkout, open_checkout
 from .commands.catalog import COMMANDS
 from .context import Continue, Provider, Refused, RunContext, Stop, component, evidence
 from .operations.catalog import OPERATIONS
+from .preparation import PreparationError, prepare
 from ..kernel.tracing import layout, locks
 from ..kernel.tracing.node import Node, TraceError, concorde_commit, protocol_version
 from .runs import (
@@ -317,6 +319,32 @@ def _resolve(chosen: Provider, context: RunContext, arguments) -> Stop | None:
     return None
 
 
+def _prepare(chosen: Provider, context: RunContext, node: Node) -> Stop | None:
+    """Run the preparation commands the unbound checkout declares; a ``failed`` stop when the
+    declaration is invalid or a command fails, before any step."""
+    _progress(context, step="preparation")
+    try:
+        prepare(context.worktree, context.run_dir, context.evidence, node.keep)
+    except PreparationError as error:
+        reason = error.cause["unhandled"]["reason"]
+        return context.fail(
+            "failed",
+            error.code,
+            f"The unbound checkout could not be prepared ({error.code}).",
+            f"{chosen.name} ran no step, since its checkout {context.worktree} could not be "
+            f"prepared: {error}",
+            reason=reason,
+            explanation="an unbound run's steps work only in a checkout its project's "
+            "preparation commands prepared, and the runner neither repairs the preparation nor "
+            "runs a step without it",
+            causes=[error.cause],
+            options=error.cause["options"]
+            or ["repair what the cause names and run it again"],
+        )
+    _progress(context, step=None)
+    return None
+
+
 def _refused(chosen: Provider, context: RunContext, refusal) -> Stop:
     if isinstance(refusal, Refused):
         reason, explanation, options = (
@@ -583,6 +611,8 @@ def execute(
                         held.callback(checkout.close)
                         _progress(context, step=None)
                     stop = _resolve(chosen, context, arguments)
+                    if stop is None and checkout is not None:
+                        stop = _prepare(chosen, context, node)
                     if stop is None:
                         stop = _steps(chosen, context, node, words)
                 except (RunError, KernelError, Refused) as refusal:
