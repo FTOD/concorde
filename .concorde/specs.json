@@ -554,7 +554,8 @@
             "concept.issue",
             "concept.issue-report",
             "concept.issue-tier",
-            "concept.issue-severity"
+            "concept.issue-severity",
+            "contract.issues.report"
           ]
         },
         {
@@ -570,6 +571,14 @@
           "meaning": "#uses-spec",
           "relies_on": [
             "concept.grant"
+          ]
+        },
+        {
+          "target": "module.tracing",
+          "meaning": "#uses-tracing",
+          "relies_on": [
+            "concept.error-chain",
+            "contract.tracing.error"
           ]
         }
       ],

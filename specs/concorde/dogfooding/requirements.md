@@ -22,6 +22,7 @@ from these cases:
   repository's Git directory.
 - A detached `HEAD`.
 - The uncommitted paths.
+- Git cannot answer the checks' questions about the checkout, with Git's own message.
 
 A refusal lists at most ten uncommitted paths. It counts the rest.
 
@@ -93,24 +94,42 @@ Such a run reported no error, so there is no chain to extend.
 
 ### req.dogfooding.defect-outside-task — A defect outside a task opens no task
 
+The develop guidance SHALL require the main agent to open no task for a defect seen outside a task.
+
+### req.dogfooding.defect-outside-task-kept — A defect report outside a task is kept apart
+
 The develop guidance SHALL require the defect report of a defect seen outside a task to be kept
-only under `.concorde/runs/defects/` and named to the developer, without opening a task for it.
+only under `.concorde/runs/defects/`.
 
 Its error chain is the main agent's link written by hand. Its only cause is the failure's own
 error, if any.
+
+### req.dogfooding.defect-outside-task-named — A defect report outside a task is named
+
+The develop guidance SHALL require the defect report of a defect seen outside a task to be named to
+the developer.
 
 ### req.dogfooding.issue-system-defect — A defect of the Issue system travels as its error chain
 
 The develop guidance SHALL require a [Concorde defect](../glossary.json#concept.concorde-defect) of
 Concorde's Issue system itself to be handed over as the failure's whole
-[error chain](../glossary.json#concept.error-chain) with the main agent's own link on top, written
-to `.concorde/runs/defects/` and named to the developer, and never as a
-[defect report](../glossary.json#concept.defect-report).
+[error chain](../glossary.json#concept.error-chain) with the main agent's own link on top, and never
+as a [defect report](../glossary.json#concept.defect-report).
 
 A defect report is an [Issue report](../glossary.json#concept.issue-report).
 An Issue system failure is never recorded as an Issue
 ([Issues](../issues/requirements.md#req.issues.own-failures)) because the Concorde repository would
 record it with the very system that failed.
+
+### req.dogfooding.issue-system-defect-kept — The chain of an Issue system defect is kept
+
+The develop guidance SHALL require the error chain of a defect of Concorde's Issue system to be
+written to `.concorde/runs/defects/`.
+
+### req.dogfooding.issue-system-defect-named — The chain of an Issue system defect is named
+
+The develop guidance SHALL require the error chain of a defect of Concorde's Issue system to be
+named to the developer.
 
 ### req.dogfooding.report-checked — A defect report is checked before the hand-off
 
