@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -23,7 +24,7 @@ from concorde.method.validation.measurement import measure
 from concorde.spec.repository import SpecRepository
 from concorde.spec.verification import verifies
 from tests.concorde.support.paths import REPOSITORY_ROOT
-from tests.concorde.support.spec_project import write_checks
+from tests.concorde.support.spec_project import read_json, write_checks, write_json
 from tests.concorde.validation.project import (
     ValidationProject,
     evidence_of,
@@ -586,6 +587,125 @@ class DeliveryTests(unittest.TestCase):
         self.assertIn(
             "scenario.a.sum (specs/a/obligations.md)", envelope["error"]["detail"]
         )
+
+    def test_the_scenario_gate_decodes_paths_the_measurement_quotes(self):
+        # A code path that is not valid UTF-8 is recorded quoted, and still counts as changed
+        # code once decoded.
+        obligations = self.worktree / "specs/a/obligations.md"
+        obligations.write_text(
+            obligations.read_text()
+            + "\n### scenario.a.sum — A sums\n\n- GIVEN two numbers\n- WHEN A adds them\n"
+            "- THEN it returns their sum\n"
+        )
+        with open(os.fsencode(self.worktree / "src/a") + b"/\xe9.py", "wb") as file:
+            file.write(b"SUM = 1\n")
+        _, envelope = self.project.deliver()
+        self.assert_inert(envelope, "unverified_scenarios")
+        self.assertIn('"src/a/\\351.py"', envelope["error"]["detail"])
+        self.assertIn(
+            "scenario.a.sum (specs/a/obligations.md)", envelope["error"]["detail"]
+        )
+
+    @verifies("scenario.delivery.unverified-scenarios")
+    def test_scenarios_at_every_heading_level_need_a_test(self):
+        # Spec core accepts scenario headings at levels 2 to 5, so the gate reads them all, and
+        # not a scenario heading shown inside a fence.
+        obligations = self.worktree / "specs/a/obligations.md"
+        obligations.write_text(
+            obligations.read_text()
+            + "\n### More cases\n\n#### scenario.a.diff — A subtracts\n\n"
+            "- GIVEN two numbers\n- WHEN A subtracts them\n- THEN it returns the difference\n"
+            "\n## scenario.a.sum — A sums\n\n- GIVEN two numbers\n- WHEN A adds them\n"
+            "- THEN it returns their sum\n"
+        )
+        (self.worktree / "src/a/calc.py").write_text(FIXED)
+        _, envelope = self.project.deliver()
+        self.assert_inert(envelope, "unverified_scenarios")
+        detail = envelope["error"]["detail"]
+        self.assertIn("scenario.a.diff (specs/a/obligations.md)", detail)
+        self.assertIn("scenario.a.sum (specs/a/obligations.md)", detail)
+        self.assertNotIn("scenario.a.answer", detail)
+
+    def test_a_changed_scenario_step_needs_a_test(self):
+        obligations = self.worktree / "specs/a/obligations.md"
+        obligations.write_text(
+            obligations.read_text().replace(
+                "THEN it answers", "THEN it answers at once"
+            )
+        )
+        (self.worktree / "src/a/calc.py").write_text(FIXED)
+        _, envelope = self.project.deliver()
+        self.assert_inert(envelope, "unverified_scenarios")
+        self.assertIn(
+            "scenario.a.answer (specs/a/obligations.md)", envelope["error"]["detail"]
+        )
+
+    @verifies("scenario.delivery.unrealized-scenarios")
+    def test_a_scenario_of_a_module_without_files_needs_a_test(self):
+        # Module B binds no file, so structural validation warns about none of its
+        # scenarios; Delivery still requires a test for the one the workspace added.
+        metadata = read_json(self.worktree, "specs/b/module.md.json")
+        metadata["defines"] = []
+        write_json(self.worktree, "specs/b/module.md.json", metadata)
+        shutil.rmtree(self.worktree / "src/bmod")
+        obligations = self.worktree / "specs/b/obligations.md"
+        obligations.write_text(
+            obligations.read_text()
+            + "\n### scenario.b.more — B does more\n\n- GIVEN a request\n"
+            "- WHEN B is asked for more\n- THEN it gives more\n"
+        )
+        (self.worktree / "src/a/calc.py").write_text(FIXED)
+        _, envelope = self.project.deliver()
+        self.assert_inert(envelope, "unverified_scenarios")
+        detail = envelope["error"]["detail"]
+        self.assertIn("scenario.b.more (specs/b/obligations.md)", detail)
+        self.assertNotIn("scenario.b.answer", detail)
+        # A test of Module A may verify it.
+        (self.worktree / "src/a/test_more.py").write_text(
+            "def verifies(*scenarios):\n    return lambda test: test\n\n\n"
+            '@verifies("scenario.b.more")\ndef test_more():\n    pass\n'
+        )
+        status, envelope = self.project.deliver()
+        self.assertEqual((status, envelope["status"]), (0, "ok"), envelope)
+
+    @verifies("scenario.delivery.staged-unvalidated")
+    def test_staging_that_changes_validated_content_is_refused(self):
+        # A clean filter that rewrites a changed file succeeds, so git add stages content the
+        # readiness never examined, while Git still sees the worktree as clean.
+        (self.project.root / ".git/info").mkdir(exist_ok=True)
+        (self.project.root / ".git/info/attributes").write_text(
+            "src/a/extra.py filter=rewrite\n"
+        )
+        git(self.project.root, "config", "filter.rewrite.clean", "sed s/1/2/")
+        index = self.stage_before_delivery()
+        (self.worktree / "src/a/extra.py").write_text("EXTRA = 1\n")
+        index = (status_lines(self.worktree), *index[1:])
+        status, envelope = self.project.deliver()
+        self.assertEqual((status, envelope["status"]), (1, "failed"), envelope)
+        error = envelope["error"]
+        self.assertEqual(["staged_unvalidated"], codes(error))
+        self.assertEqual(error["unhandled"]["reason"], "decision")
+        self.assertIn(
+            "src/a/extra.py is staged with content a checkout would not give back",
+            error["detail"],
+        )
+        self.assertNotIn("src/a/calc.py", error["detail"])
+        self.assert_undone(envelope, index)
+
+    @verifies("scenario.delivery.staged-filtered")
+    def test_staging_through_a_filter_a_checkout_reverses_is_delivered(self):
+        # Git LFS and line-ending conversion stage other bytes than the worktree holds, which a
+        # checkout turns back into the validated content.
+        (self.project.root / ".git/info").mkdir(exist_ok=True)
+        (self.project.root / ".git/info/attributes").write_text(
+            "src/a/extra.py filter=reverse\n"
+        )
+        git(self.project.root, "config", "filter.reverse.clean", "rev")
+        git(self.project.root, "config", "filter.reverse.smudge", "rev")
+        (self.worktree / "src/a/extra.py").write_text("EXTRA = 1\n")
+        status, envelope = self.project.deliver()
+        self.assertEqual((status, envelope["status"]), (0, "ok"), envelope)
+        self.assertEqual(self.committed("src/a/extra.py"), "1 = ARTXE")
 
     @verifies("scenario.delivery.stage-refused")
     def test_git_refuses_to_stage_a_change(self):
