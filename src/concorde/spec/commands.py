@@ -176,7 +176,7 @@ def _init(words: list[str], root: Path) -> ToolResult:
             "action": "propose",
             "name": arguments.name,
             "target_id": arguments.target,
-            **({"python": arguments.python} if arguments.python else {}),
+            **({"python": arguments.python} if arguments.python is not None else {}),
         }
     return ToolResult("init", ".", "success", result=initialize(root, PACKAGE, data))
 

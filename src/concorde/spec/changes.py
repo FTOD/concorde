@@ -124,15 +124,28 @@ def apply_files(
     except Exception as error:
         unrestored = []
         for relative in reversed(changed):
-            path = checked_path(root, relative)
             original = backups[relative]
+            # Each restore resolves its own destination, so one that became unsafe, such as a
+            # symlink, is left alone and named while the other files are still restored.
             try:
+                path = checked_path(root, relative)
                 if original is None:
                     path.unlink()
                 else:
                     write(path, original)
             except OSError as problem:
                 unrestored.append(system_cause(problem, path=relative))
+            except SpecError as problem:
+                unrestored.append(
+                    SpecError(
+                        f"{relative} is no longer a safe destination: {problem}",
+                        problem.code,
+                        problem.field,
+                        path=relative,
+                        reason="a file transaction never restores a file through a symlink",
+                        causes=[problem],
+                    )
+                )
         if unrestored:
             cause = (
                 error
@@ -144,11 +157,12 @@ def apply_files(
             raise SpecError(
                 "a file transaction failed and could not restore "
                 + ", ".join(problem.path for problem in unrestored)
-                + "; each of those files still holds the transaction's new content, while "
-                "every other written file was restored",
+                + "; each of those files still holds the transaction's new content, or what "
+                "replaced its destination, while every other written file was restored",
                 "system_error",
                 reason="a file transaction restores every file it wrote when it fails, and "
-                "the operating system refused a restore",
+                "the operating system refused a restore or a destination was no longer safe "
+                "to write",
                 remediation="restore the named files by hand from version control or the "
                 "transaction's inputs, fix the cause of the first failure, and apply again",
                 causes=[cause, *unrestored],

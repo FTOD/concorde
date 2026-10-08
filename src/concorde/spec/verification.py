@@ -24,10 +24,9 @@ DECORATOR = "verifies"
 ATTRIBUTE = "concorde_scenarios"
 TYPESCRIPT_SUFFIXES = (".ts", ".tsx", ".mts", ".cts")
 # One own-line comment declares the scenarios of the test call that follows it.
-TYPESCRIPT_DECLARATION = re.compile(r"^\s*//\s*verifies:(?P<ids>.*)$")
+TYPESCRIPT_DECLARATION = re.compile(r"^\s*(?P<marker>//)\s*verifies:(?P<ids>.*)$")
 TYPESCRIPT_CALL = re.compile(r"\b(?:it|test|describe)(?:\.[A-Za-z_$][\w$]*)*\s*\(")
 TYPESCRIPT_TABLE_END = re.compile(r"\)\s*\(")
-TYPESCRIPT_STRING = re.compile(r"""(['"`])((?:\\.|(?!\1).)*)\1""")
 F = TypeVar("F", bound=Callable)
 
 
@@ -135,50 +134,111 @@ def _declarations(path: str, tree: ast.AST) -> list[Verification]:
     return result
 
 
-def _typescript_title(lines: list[str], start: int) -> str | None:
-    """The title of the first ``it``, ``test`` or ``describe`` call at or after ``lines[start]``.
+def _typescript_code(text: str) -> tuple[str, list[tuple[int, str]], set[int]]:
+    """Separate a TypeScript file's code from its comments and string literals.
 
-    The title is the first string literal of the call, which a table-driven ``.each`` form writes
-    after its table instead, and which either form may put on a later line than the opening
-    parenthesis. The search stops at the next declaration, which belongs to another test.
+    Returns the text with every comment and string literal blanked to spaces, line breaks kept so
+    that offsets stay those of ``text``; the start offset and content of every closed string
+    literal; and the offsets at which a ``//`` comment begins. The scan is lexical only: a
+    template literal ends at its next unescaped backtick, substitutions included, and a regular
+    expression literal is read as code.
     """
-    for index in range(start, len(lines)):
-        if TYPESCRIPT_DECLARATION.match(lines[index]):
-            return None
-        call = TYPESCRIPT_CALL.search(lines[index])
-        if call is None:
+    masked = list(text)
+    literals: list[tuple[int, str]] = []
+    line_comments: set[int] = set()
+    index, length = 0, len(text)
+    while index < length:
+        char = text[index]
+        if text.startswith("//", index):
+            line_comments.add(index)
+            end = index
+            while end < length and text[end] not in "\r\n":
+                end += 1
+        elif text.startswith("/*", index):
+            end = text.find("*/", index + 2)
+            end = length if end < 0 else end + 2
+        elif char in "'\"`":
+            end, closed = index + 1, False
+            while end < length:
+                if text[end] == "\\":
+                    end += 2
+                    continue
+                if text[end] == char:
+                    end, closed = end + 1, True
+                    break
+                # A quoted string cannot span lines; a template literal can.
+                if char != "`" and text[end] in "\r\n":
+                    break
+                end += 1
+            end = min(end, length)
+            if closed:
+                literals.append((index, text[index + 1 : end - 1]))
+        else:
+            index += 1
             continue
-        position, line = call.end(), index
-        if ".each(" in call.group():
-            while TYPESCRIPT_TABLE_END.search(lines[line], position) is None:
-                line, position = line + 1, 0
-                if line >= len(lines) or TYPESCRIPT_DECLARATION.match(lines[line]):
-                    return lines[index].strip()
-            position = TYPESCRIPT_TABLE_END.search(lines[line], position).end()
-        literal = TYPESCRIPT_STRING.search(lines[line], position)
-        while literal is None:
-            line += 1
-            if line >= len(lines) or TYPESCRIPT_DECLARATION.match(lines[line]):
-                return lines[index].strip()
-            literal = TYPESCRIPT_STRING.search(lines[line])
-        return literal.group(2)
-    return None
+        for position in range(index, end):
+            if masked[position] not in "\r\n":
+                masked[position] = " "
+        index = end
+    return "".join(masked), literals, line_comments
+
+
+def _typescript_title(
+    text: str, code: str, literals: list[tuple[int, str]], start: int, stop: int
+) -> str | None:
+    """The title of the first ``it``, ``test`` or ``describe`` call in ``code[start:stop]``.
+
+    ``code`` is ``text`` with its comments and string literals blanked, so a call that is written
+    only in a comment or a string is never found. The title is the first string literal of the
+    call, which a table-driven ``.each`` form writes after its table instead, and which either
+    form may put on a later line than the opening parenthesis. ``stop`` is the start of the next
+    declaration, which belongs to another test; a call found without a title before it is named
+    by its line.
+    """
+    call = TYPESCRIPT_CALL.search(code, start, stop)
+    if call is None:
+        return None
+    line_start = text.rfind("\n", 0, call.start()) + 1
+    line_end = text.find("\n", call.start())
+    fallback = text[line_start : len(text) if line_end < 0 else line_end].strip()
+    position = call.end()
+    if ".each(" in call.group():
+        table_end = TYPESCRIPT_TABLE_END.search(code, position, stop)
+        if table_end is None:
+            return fallback
+        position = table_end.end()
+    for offset, content in literals:
+        if offset >= stop:
+            break
+        if offset >= position:
+            return content
+    return fallback
 
 
 def _typescript_declarations(path: str, text: str) -> list[Verification]:
     """Read ``// verifies: <ids>`` comments, each naming the scenarios of the following test.
 
-    TypeScript is read line by line rather than compiled: an own-line comment declares one or
+    TypeScript is scanned lexically rather than compiled: an own-line comment declares one or
     more scenario IDs, separated by commas or spaces, for the next ``it``, ``test`` or ``describe``
-    call, whose title names the declaring test. A declaration that no test follows, and an
-    argument that is not a scenario ID, are malformed.
+    call in code, never one in a comment or a string literal, whose title names the declaring
+    test. A declaration that no test follows, and an argument that is not a scenario ID, are
+    malformed.
     """
     result: list[Verification] = []
-    lines = text.splitlines()
+    lines = text.splitlines(keepends=True)
+    offsets = [0]
+    for line in lines:
+        offsets.append(offsets[-1] + len(line))
+    code, literals, line_comments = _typescript_code(text)
+    declarations = []
     for number, line in enumerate(lines, 1):
-        declaration = TYPESCRIPT_DECLARATION.match(line)
-        if declaration is None:
-            continue
+        declaration = TYPESCRIPT_DECLARATION.match(line.rstrip("\r\n"))
+        # A line inside a block comment or a template literal only looks like a declaration.
+        if declaration is not None and (
+            offsets[number - 1] + declaration.start("marker") in line_comments
+        ):
+            declarations.append((number, declaration))
+    for index, (number, declaration) in enumerate(declarations):
         identities = [
             item
             for item in re.split(r"[,\s]+", declaration.group("ids").strip())
@@ -191,7 +251,12 @@ def _typescript_declarations(path: str, text: str) -> list[Verification]:
         for identity in identities:
             if not identity.startswith("scenario."):
                 raise DeclarationError(path, number, f"not a scenario ID: {identity!r}")
-        name = _typescript_title(lines, number)
+        stop = (
+            offsets[declarations[index + 1][0] - 1]
+            if index + 1 < len(declarations)
+            else len(text)
+        )
+        name = _typescript_title(text, code, literals, offsets[number], stop)
         if name is None:
             raise DeclarationError(path, number, "verifies: comment declares no test")
         result.extend(

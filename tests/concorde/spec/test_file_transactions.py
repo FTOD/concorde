@@ -103,6 +103,40 @@ class FileTransactionTests(unittest.TestCase):
         self.assertEqual("N\n", (self.root / "locked/new.txt").read_text())
         self.assertEqual("a\n", (self.root / "a.txt").read_text())
 
+    @verifies("scenario.spec.transaction-restore-refused")
+    def test_an_unsafe_destination_is_named_while_the_other_files_are_restored(self):
+        for name in ("a.txt", "b.txt", "c.txt"):
+            (self.root / name).write_text(f"{name[0]}\n")
+        outside = Path(self.directory.name + "-outside.txt")
+        outside.write_text("outside\n")
+        self.addCleanup(outside.unlink)
+        changes = [
+            file_change(self.root, name, f"{name[0].upper()}\n")
+            for name in ("a.txt", "b.txt", "c.txt")
+        ]
+
+        def verify():
+            # The final check fails, and a written destination has become a symlink.
+            (self.root / "b.txt").unlink()
+            (self.root / "b.txt").symlink_to(outside)
+            raise SpecError("the written project does not validate", "invalid_proposal")
+
+        with self.assertRaises(SpecError) as raised:
+            apply_files(self.root, changes, {"a.txt", "b.txt", "c.txt"}, verify=verify)
+        error = raised.exception
+        self.assertEqual("system_error", error.code)
+        self.assertIn("could not restore b.txt;", str(error))
+        self.assertEqual(
+            ["invalid_proposal", "invalid_field"],
+            [cause.code for cause in error.causes],
+        )
+        self.assertEqual("b.txt", error.causes[1].path)
+        self.assertEqual("a\n", (self.root / "a.txt").read_text())
+        self.assertEqual("c\n", (self.root / "c.txt").read_text())
+        # The restore never wrote through the symlink.
+        self.assertTrue((self.root / "b.txt").is_symlink())
+        self.assertEqual("outside\n", outside.read_text())
+
     @verifies("scenario.spec.transaction-check-error")
     def test_the_final_checks_own_exception_propagates_unchanged(self):
         (self.root / "a.txt").write_text("a\n")
