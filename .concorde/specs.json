@@ -147,7 +147,8 @@
       "title": "Commands",
       "entry": "specs/concorde/execution/commands/module.md",
       "owns": [
-        "specs/concorde/execution/commands/module.md"
+        "specs/concorde/execution/commands/module.md",
+        "specs/concorde/execution/commands/scenarios.md"
       ],
       "contains": [],
       "uses": [
@@ -156,11 +157,35 @@
           "meaning": "#uses-execution",
           "relies_on": [
             "concept.execution-runner",
-            "concept.run-result"
+            "concept.run-result",
+            "req.execution.unbound-read-only",
+            "req.execution.error-when-not-ok",
+            "req.execution.reasons",
+            "req.execution.error-detail",
+            "contract.execution.run-result"
+          ]
+        },
+        {
+          "target": "module.operations",
+          "meaning": "#uses-operations",
+          "relies_on": [
+            "concept.operation-catalog",
+            "req.operations.unique-names"
           ]
         }
       ],
-      "includes": [],
+      "includes": [
+        {
+          "kind": "document",
+          "target": "document.execution.runner",
+          "reason": "the runner's exact behaviour, whose section What a definition gives the runner is the runner's half of the definition contract every execution command's definition and steps rely on"
+        },
+        {
+          "kind": "document",
+          "target": "document.operations.registration",
+          "reason": "the registration interface the command catalog shares with the Operation catalog, which every provider of an execution command registers through"
+        }
+      ],
       "participates": []
     },
     {
@@ -1234,7 +1259,8 @@
       "owns": [
         "specs/concorde/execution/operations/module.md",
         "specs/concorde/execution/operations/requirements.md",
-        "specs/concorde/execution/operations/scenarios.md"
+        "specs/concorde/execution/operations/scenarios.md",
+        "specs/concorde/execution/operations/registration.md"
       ],
       "contains": [],
       "uses": [
@@ -1243,7 +1269,12 @@
           "meaning": "#uses-execution",
           "relies_on": [
             "concept.execution-runner",
-            "concept.run-result"
+            "concept.run-result",
+            "req.execution.claims-apart",
+            "req.execution.error-when-not-ok",
+            "req.execution.reasons",
+            "req.execution.error-detail",
+            "contract.execution.run-result"
           ]
         }
       ],
@@ -1252,6 +1283,11 @@
           "kind": "document",
           "target": "document.tracing.contracts",
           "reason": "the Framework's error contract, which this Module's errors follow"
+        },
+        {
+          "kind": "document",
+          "target": "document.execution.runner",
+          "reason": "the runner's exact behaviour, whose section What a definition gives the runner is the runner's half of the definition contract every Operation's definition and steps rely on"
         }
       ],
       "participates": []

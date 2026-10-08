@@ -15,9 +15,10 @@ MODULE_ID = re.compile(r"^module\.[a-z0-9][a-z0-9.-]*$")
 
 
 class CatalogError(Exception):
-    """A definition the catalog refuses to register: ``duplicate_definition`` when another part
-    registered the name already, ``invalid_definition`` for anything that is no definition of
-    the catalog's kind."""
+    """A definition the catalog refuses to register: ``duplicate_definition`` when the name is
+    registered already, ``invalid_definition`` for anything that is no complete definition of the
+    catalog's kind (no providing Module, an Operation without nonempty worker ids, a command that
+    does not require a binding)."""
 
     def __init__(self, code: str, message: str):
         super().__init__(message)
@@ -34,8 +35,8 @@ class Catalog:
         self.parts: dict[str, str] = {}
 
     def register(self, part: str, definition: Provider) -> None:
-        """Register ``definition`` for ``part``; registering the same one again changes nothing,
-        another under a registered name is refused naming both parts."""
+        """Register ``definition`` for ``part``; the same part registering an equal definition
+        again changes nothing, any other under a registered name is refused naming both parts."""
         if not isinstance(definition, Provider) or definition.kind != self.kind:
             raise CatalogError(
                 "invalid_definition",
@@ -49,12 +50,25 @@ class Catalog:
                 f"{part} registers the {self.kind} {definition.name} without the identity of "
                 f"its providing Module (module {definition.module!r})",
             )
-        if self.kind == "operation" and not definition.workers:
+        if self.kind == "operation" and (
+            not definition.workers
+            or not all(
+                isinstance(worker, str) and worker for worker in definition.workers
+            )
+        ):
             raise CatalogError(
                 "invalid_definition",
-                f"{part} registers the operation {definition.name} without a worker id; an "
-                "Operation launches at least one worker, and a job that launches none is an "
+                f"{part} registers the operation {definition.name} without a worker id for "
+                f"every worker (workers {definition.workers!r}); an Operation launches at least "
+                "one worker, each named by a nonempty id, and a job that launches none is an "
                 "execution command",
+            )
+        if self.kind == "command" and definition.binding != "required":
+            raise CatalogError(
+                "invalid_definition",
+                f"{part} registers the command {definition.name} with binding "
+                f"{definition.binding!r}; every execution command needs a bound workspace, so "
+                "its binding is 'required'",
             )
         name = definition.name
         existing = self.definitions.get(name)

@@ -67,12 +67,13 @@ The **command catalog** lists the execution commands the installed parts registe
 details for each command:
 
 - its providing Module
-- what it writes
+- what it writes, as its definition's `writes` says
 - its output
 
-A part adds a command by registering its definition. Two parts registering the same name is an
-installation error. The catalog refuses it when it loads, naming both parts. The
-commands of Concorde's own way of working, with their providers, are
+A part adds a command by registering its definition, as
+[Registering a definition](../operations/registration.md) specifies for both catalogs. Two parts
+registering the same name is an installation error. The catalog refuses it when it loads, naming
+both parts. The commands of Concorde's own way of working, with their providers, are
 [Method's](../../method/module.md#the-operations-and-commands-it-provides).
 
 ## Overview
@@ -130,6 +131,20 @@ Method's registration names these commands:
 - `delivery`
 - `scaffold`
 
+For example, whoever works a task's workspace runs `concorde task-validation` in its worktree. The
+command runs in these steps:
+
+1. Distribution routes the command line to the entry that Method's part registration names for
+   `task-validation`. That entry hands it to the runner.
+2. The runner reads the worktree's [workspace binding](../../glossary.json#concept.workspace-binding).
+   It looks `task-validation` up in the command catalog. The catalog gives Validation's definition.
+3. The runner takes the workspace lock. It runs the definition's admission and steps.
+4. The runner writes the run result in the run store. It prints the result. When the result is
+   `ok`, the command exits with 0.
+
+What `task-validation` checks is Validation's own. The command line of every execution command has
+this form:
+
 ```text
 concorde <command> [--modules <id>[,<id>…]] [--input <run-id>]… [--detach] [--wait <seconds>] [command arguments]
 ```
@@ -170,27 +185,44 @@ with Method's `task-validation` and `delivery` is Method's
 <a id="realization.commands.catalog"></a>
 
 The **Command table** realization, `src/concorde/execution/commands/catalog.py`, holds the
-command catalog. This catalog has the same shape as the [Operation catalog](../operations/module.md).
+command catalog. This catalog is an instance of the `Catalog` that realizes the
+[Operation catalog](../operations/module.md) too.
 The part that provides a command registers the command's definition when the part's code loads.
 The catalog holds each definition with the providing Module the definition names and with that
 part. The catalog handles these errors:
 
 - A definition naming no providing Module is refused with `invalid_definition`.
-- A second definition under a registered name is refused, naming both parts.
+- A definition whose binding is not `required` is refused with `invalid_definition`. So no
+  execution command can run unbound.
+- A second definition under a registered name is refused with `duplicate_definition`, naming both
+  parts. Only the same part's equal definition changes nothing.
 - A command no installed part registers is a command-line error that names it. No run begins.
 
 The providers' own code lives with their Modules.
 
+<a id="realization.commands.tests"></a>
+
+The **Commands tests**, under `tests/concorde/commands/`, exercise the command catalog at its seam
+with the runner. They register stand-in commands and run them in a real task worktree.
+
 ### What a provider declares
 
-Each execution command's steps live with the Module that provides it. A provider's definition
-declares these things:
+Each execution command's steps live with the Module that provides it. A provider builds its
+definition with `command` of `concorde.execution.context`. That function gives the definition no
+[worker id](../../glossary.json#concept.worker-id) and no
+[task type](../../glossary.json#concept.task-type)
+([The definition](../operations/registration.md#the-definition)). A provider's definition declares
+these things:
 
 - the command's name
 - its steps
 - the contract of its output
 - the arguments of its own
 - its own admission of the run's Modules
+- whether it may change the workspace
+
+Its binding is always `required`. The [scenarios](scenarios.md) show the catalog accepting and
+refusing definitions.
 
 In Method's commands, that admission checks the run's Modules against the workspace's
 [Specs](../../glossary.json#concept.spec), except where the command diagnoses those Specs itself.
@@ -209,7 +241,8 @@ The provider's own steps check what an admitted input must be, such as Scaffold'
 
 <a id="uses-execution"></a>
 
-**Execution**'s runner runs every execution command. The runner performs these actions:
+**Execution**'s runner runs every execution command. The runner performs these actions
+([Runner](../runner.md#runner)):
 
 - reads the [workspace binding](../../glossary.json#concept.workspace-binding)
 - holds the workspace lock
@@ -217,6 +250,25 @@ The provider's own steps check what an admitted input must be, such as Scaffold'
 - runs the definition's admission and steps in order
 - writes the run result
 
+What the runner takes from a definition is
+[What a definition gives the runner](../runner.md#what-a-definition-gives-the-runner). The runner
+wraps every command's output in the
+[run result contract](../contracts.md#contract.execution.run-result). Every command's result
+follows these Execution requirements in particular:
+
+- [req.execution.error-when-not-ok](../requirements.md#req.execution.error-when-not-ok)
+- [req.execution.reasons](../requirements.md#req.execution.reasons)
+- [req.execution.error-detail](../requirements.md#req.execution.error-detail)
+
 Commands relies on the runner looking a command up in this catalog by name. Commands also relies
-on the runner refusing every command unbound. A command reads what it needs of its workspace from
+on the runner refusing unbound every definition that requires a binding
+([req.execution.unbound-read-only](../requirements.md#req.execution.unbound-read-only)). Every
+command's definition requires one. A command reads what it needs of its workspace from
 the run context the runner fills.
+
+<a id="uses-operations"></a>
+
+**Operations** provides the `Catalog` that holds the command catalog. Commands relies on its
+registration interface, [Registering a definition](../operations/registration.md), and on its rule
+that one name has one definition
+([req.operations.unique-names](../operations/requirements.md#req.operations.unique-names)).
