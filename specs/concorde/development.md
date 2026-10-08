@@ -346,16 +346,34 @@ Skills load on demand, so `CLAUDE.md` keeps a short text that is always in conte
 - The import of the glossary.
 
 The main agent and its task sessions are Claude Code sessions. They find the skills through
-`.claude/skills/<name>`, links into `generated/skills/`. In a worktree not built yet, the
-instructions say to build first. They then say to read the rendered files directly.
+`.claude/skills/<name>`, links into `generated/skills/`. Git does not track the links, and
+`.gitignore` ignores them. The reference initializer `scripts/development/init-references.py`, the
+first step of a worktree's preparation, makes them:
+
+- It creates each missing link.
+- It replaces a link that points elsewhere.
+- It leaves a real file or directory in the place of a link as it is, and says so.
+
+With `--check`, it reports the links and changes nothing. In a worktree not prepared yet, the
+instructions say to run the initializer and the build first. They then say to read the rendered
+files directly.
 
 ### scenario.concorde.development-skills — Sessions in this checkout load both skills
 
-- GIVEN this checkout, its primary worktree or a task worktree, after a build
+- GIVEN this checkout, its primary worktree or a task worktree, after its preparation
 - WHEN a Claude Code session starts there
 - THEN `CLAUDE.md` tells it to load the `concorde` and `concorde-development` skills before any work
 - AND `.claude/skills/concorde` and `.claude/skills/concorde-development` link to the folders of `generated/skills/` that hold the rendered skills
+- AND Git tracks neither link
 - AND `concorde-development` states Dogfooding's rule for observing runs word for word ([req.dogfooding.one-observation-rule](dogfooding/requirements.md#req.dogfooding.one-observation-rule))
+
+### scenario.concorde.skill-links-prepared — The reference initializer links the skills and never replaces a real directory
+
+- GIVEN a worktree of this repository without the link `.claude/skills/concorde`, with `.claude/skills/concorde-development` a link to another place
+- WHEN `scripts/development/init-references.py --check` runs there
+- THEN it reports both links as not linked, changes nothing and exits 1
+- AND when `scripts/development/init-references.py` runs there, each is a link to its folder of `generated/skills/`, and a second run changes nothing
+- AND when a real directory stands at `.claude/skills/concorde` instead, the initializer leaves it and its contents as they are and says so
 
 ## Style of the prompts
 

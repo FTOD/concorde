@@ -3,9 +3,10 @@
 This is Concorde's own source checkout. Before any work, load two skills with the Skill tool and
 follow both in full: `concorde`, how the main agent and task sessions work in every Concorde
 project, and `concorde-development`, what is particular to developing Concorde here. The build
-renders them as `generated/skills/<name>/SKILL.md`, which `.claude/skills/<name>` links to; in a
-worktree not built yet, run `python3 scripts/concorde.py build` first, and read those files
-directly when the Skill tool does not offer them. In this checkout `concorde` means
+renders them as `generated/skills/<name>/SKILL.md`, which the untracked links
+`.claude/skills/<name>`, made by `python3 scripts/development/init-references.py`, point to; in a
+worktree not prepared yet, run that script and `python3 scripts/concorde.py build` first, and read
+those files directly when the Skill tool does not offer them. In this checkout `concorde` means
 `python3 scripts/concorde.py` of the worktree you are in.
 
 The rules that hold before the skills are loaded:

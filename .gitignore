@@ -38,6 +38,9 @@ Thumbs.db
 
 # Claude Code: agent worktrees (machine-local)
 .claude/worktrees/
+# Links to the rendered skills, created by scripts/development/init-references.py
+.claude/skills/concorde
+.claude/skills/concorde-development
 
 
 .venv

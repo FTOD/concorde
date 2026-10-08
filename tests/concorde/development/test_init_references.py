@@ -5,6 +5,7 @@ from __future__ import annotations
 import contextlib
 import importlib.util
 import io
+import os
 import subprocess
 import tempfile
 import unittest
@@ -56,6 +57,14 @@ class InitReferencesTests(unittest.TestCase):
                 upstream.as_posix(),
                 path,
             )
+        # As in this checkout, Git ignores the skill links the script makes.
+        (self.primary / ".gitignore").write_text(
+            "".join(
+                f".claude/skills/{name}\n"
+                for name in ("concorde", "concorde-development")
+            )
+        )
+        git(self.primary, "add", ".gitignore")
         git(self.primary, *identity, "commit", "--quiet", "-m", "vendor")
         self.worktree = root / "task"
         git(self.primary, "worktree", "add", "--quiet", self.worktree.as_posix())
@@ -165,6 +174,62 @@ class InitReferencesTests(unittest.TestCase):
         self.assertEqual("reference\n", (reference / "README.md").read_text())
         self.assertEqual("", git(self.worktree, "status", "--porcelain"))
         self.assertIn(f"references/r: checked out @ {recorded}", self.run_script())
+
+    @verifies("scenario.concorde.skill-links-prepared")
+    def test_skill_links_are_made_and_a_real_directory_is_left(self):
+        skills = self.worktree / ".claude/skills"
+        skills.mkdir(parents=True)
+        (skills / "concorde-development").symlink_to("../../elsewhere")
+        output = io.StringIO()
+        with (
+            patch.object(self.script, "ROOT", self.worktree),
+            contextlib.redirect_stdout(output),
+        ):
+            self.assertEqual(1, self.script.main(["--check"]))
+        self.assertIn(
+            ".claude/skills/concorde: missing, not linked to ../../generated/skills/concorde",
+            output.getvalue(),
+        )
+        self.assertIn(
+            ".claude/skills/concorde-development: links to ../../elsewhere, not "
+            "../../generated/skills/concorde-development",
+            output.getvalue(),
+        )
+        self.assertFalse((skills / "concorde").is_symlink())
+        self.assertEqual(
+            "../../elsewhere", os.readlink(skills / "concorde-development")
+        )
+        output = self.run_script()
+        self.assertIn(
+            ".claude/skills/concorde-development: relinked to "
+            "../../generated/skills/concorde-development (was ../../elsewhere)",
+            output,
+        )
+        for name in ("concorde", "concorde-development"):
+            self.assertEqual(
+                f"../../generated/skills/{name}", os.readlink(skills / name)
+            )
+        again = self.run_script()
+        for name in ("concorde", "concorde-development"):
+            self.assertIn(
+                f".claude/skills/{name}: linked to ../../generated/skills/{name}", again
+            )
+        self.assertNotIn("relinked", again)
+        self.assertEqual("", git(self.worktree, "status", "--porcelain"))
+        # A real directory in the place of a link is never replaced.
+        (skills / "concorde").unlink()
+        (skills / "concorde").mkdir()
+        (skills / "concorde" / "SKILL.md").write_text("own\n")
+        errors = io.StringIO()
+        with contextlib.redirect_stderr(errors):
+            self.run_script()
+        self.assertIn(
+            ".claude/skills/concorde: a directory stands where the link to "
+            "../../generated/skills/concorde goes and is left as it is",
+            errors.getvalue(),
+        )
+        self.assertFalse((skills / "concorde").is_symlink())
+        self.assertEqual("own\n", (skills / "concorde" / "SKILL.md").read_text())
 
 
 if __name__ == "__main__":

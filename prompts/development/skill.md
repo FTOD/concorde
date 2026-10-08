@@ -73,7 +73,10 @@ Developing this checkout itself is direct developer-authorized maintenance, done
    - `npm --prefix docsite ci`
    - `python3 scripts/concorde.py build`
 
-   The first script registers in the shared `.git/config` each reference submodule not registered
+   The first script links `.claude/skills/concorde` and `.claude/skills/concorde-development` to
+   the rendered skills. Git does not track these links.
+   The script never replaces a real file or directory in their place.
+   It registers in the shared `.git/config` each reference submodule not registered
    yet. It then checks them all out.
    When another worktree's preparation writes `.git/config` meanwhile, the script refuses before
    checking out anything. The refusal names the submodule and `config.lock`.

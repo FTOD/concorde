@@ -1,6 +1,10 @@
 """Sessions in this checkout load both of Concorde's skills from the build's output."""
 
+import importlib.util
+import os
+import subprocess
 import unittest
+from pathlib import Path
 
 from concorde.distribution.build import build, skill_path
 from concorde.distribution.prompt_resolver import resolve_role_prompt
@@ -8,16 +12,42 @@ from concorde.spec.verification import verifies
 from tests.concorde.support.paths import REPOSITORY_ROOT
 
 
+def load_initializer():
+    spec = importlib.util.spec_from_file_location(
+        "init_references", REPOSITORY_ROOT / "scripts/development/init-references.py"
+    )
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def git(*arguments: str) -> str:
+    return subprocess.run(
+        ("git", *arguments),
+        cwd=REPOSITORY_ROOT,
+        text=True,
+        capture_output=True,
+        check=False,
+    ).stdout.strip()
+
+
 class DevelopmentSkillTests(unittest.TestCase):
     @verifies("scenario.concorde.development-skills")
     def test_sessions_in_this_checkout_load_both_skills(self):
-        for name in ("concorde", "concorde-development"):
-            link = REPOSITORY_ROOT / ".claude" / "skills" / name
+        # The preparation's reference initializer makes the links, which Git ignores and does not
+        # track; what it makes is checked here without relying on this worktree's preparation.
+        script = load_initializer()
+        self.assertEqual(script.SKILLS, ("concorde", "concorde-development"))
+        for name in script.SKILLS:
+            link = Path(".claude/skills") / name
             with self.subTest(skill=name):
-                self.assertTrue(link.is_symlink())
                 self.assertEqual(
-                    (REPOSITORY_ROOT / skill_path(name)).parent.resolve(),
-                    link.resolve(),
+                    Path(skill_path(name)).parent.as_posix(),
+                    os.path.normpath(link.parent / script.skill_target(name)),
+                )
+                self.assertEqual(git("ls-files", "--", link.as_posix()), "")
+                self.assertEqual(
+                    git("check-ignore", "--", link.as_posix()), link.as_posix()
                 )
         # The build renders exactly those skills, the development skill with the observation
         # rule Dogfooding shares with the develop guidance.
