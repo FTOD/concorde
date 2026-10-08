@@ -356,12 +356,15 @@ to it. A link to a page or anchor that does not exist stops promotion, as
 
 ### scenario.views.user-docs-refused — User documents that cannot be published fail the build
 
-- GIVEN `userDocs.path` names a missing directory, one without a root page, one containing a
-  registered Spec document, or one whose top-level document or folder would publish under `/specs`,
-  `/search` or a custom docs route
+- GIVEN `userDocs.path` names a directory that user documents admission, in the
+  [build hooks](pipeline.md#build-hooks), refuses
 - WHEN the site is configured
 - THEN the build fails naming `userDocs` and the offending path
 - AND nothing is promoted
+
+Such a directory is missing, or has no root page or more than one. It may contain a registered
+Spec document, even one reached through links inside linked directories. A top-level document or
+folder may publish under `/specs`, `/search` or a custom docs route.
 
 ### scenario.views.custom-docs — Custom docs in their own tabs
 
@@ -373,7 +376,7 @@ to it. A link to a page or anchor that does not exist stops promotion, as
 
 ### scenario.views.custom-docs-refused — Invalid custom docs fail the build
 
-- GIVEN a custom docs collection containing a registered Spec document, a route that conflicts with a Spec page, missing content or a broken internal link
+- GIVEN a custom docs collection or an extension's docs plugin containing a registered Spec document, a route under `/specs`, missing content or a broken internal link
 - WHEN the site is built
 - THEN the build fails naming the collection or link
 - AND nothing is promoted

@@ -407,6 +407,24 @@ it("keeps the root redirect page when no user documents are configured", () => {
 });
 
 // verifies: scenario.views.user-docs-refused
+it("user documents with more than one root page fail the build naming every one", async () => {
+  const previous = await publishedSite();
+  put("docs/README.md", "# Bank\n");
+  put("docs/index.mdx", "# Bank\n");
+  put(
+    "docsite/site.json",
+    JSON.stringify({
+      ...readJson(project, "docsite/site.json"),
+      userDocs: { path: "../docs" },
+    }),
+  );
+  await expect(buildScript()()).rejects.toThrow(
+    /userDocs\.path \.\.\/docs has more than one root page: README\.md, index\.mdx/,
+  );
+  expect(snapshot(published())).toEqual(previous);
+});
+
+// verifies: scenario.views.user-docs-refused
 it("user documents without a root page fail the build and promote nothing", async () => {
   const previous = await publishedSite();
   put("docs/guide.md", "# Guide\n");
@@ -488,6 +506,23 @@ it.each([
     /customDocs guides includes registered Spec/,
   ],
   [
+    "a link to a directory holding a link to a registered Spec document",
+    () => {
+      put("docsite/guides/index.md", "# Guides\n");
+      mkdirSync(resolve(root, "elsewhere"));
+      symlinkSync(
+        resolve(root, load().pages[0].sourcePath),
+        resolve(root, "elsewhere/spec.md"),
+      );
+      symlinkSync(
+        resolve(root, "elsewhere"),
+        resolve(root, "docsite/guides/shared"),
+      );
+      return { path: "guides", routeBasePath: "guides" };
+    },
+    /customDocs guides includes registered Spec/,
+  ],
+  [
     "a route that conflicts with a Spec page",
     () => {
       put("docsite/guides/index.md", "# Guides\n");
@@ -518,6 +553,42 @@ it.each([
     expect(snapshot(published())).toEqual(previous);
   },
 );
+
+// verifies: scenario.views.user-docs-refused
+it("user documents reaching a registered Spec through two links fail the build and promote nothing", async () => {
+  const previous = await publishedSite();
+  put("docs/README.md", "# Bank\n");
+  mkdirSync(resolve(root, "elsewhere"));
+  symlinkSync(
+    resolve(root, load().pages[0].sourcePath),
+    resolve(root, "elsewhere/spec.md"),
+  );
+  symlinkSync(resolve(root, "elsewhere"), resolve(root, "docs/shared"));
+  put(
+    "docsite/site.json",
+    JSON.stringify({
+      ...readJson(project, "docsite/site.json"),
+      userDocs: { path: "../docs" },
+    }),
+  );
+  await expect(buildScript()()).rejects.toThrow(
+    /userDocs includes registered Spec/,
+  );
+  expect(snapshot(published())).toEqual(previous);
+});
+
+// verifies: scenario.views.custom-docs-refused
+it("an extension's docs plugin over registered Specs fails the build and promotes nothing", async () => {
+  const previous = await publishedSite();
+  put(
+    "docsite/custom-docs/index.ts",
+    'module.exports.default = {plugins: [["@docusaurus/plugin-content-docs", {id: "extra", path: "../specs", routeBasePath: "extra"}]]};',
+  );
+  await expect(buildScript()()).rejects.toThrow(
+    /custom-docs\/index\.ts docs plugin extra includes registered Spec/,
+  );
+  expect(snapshot(published())).toEqual(previous);
+});
 
 // verifies: scenario.views.custom-docs-refused
 it("a custom docs page with a broken internal link fails the build naming the link", async () => {

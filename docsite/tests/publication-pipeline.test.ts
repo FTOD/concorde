@@ -215,6 +215,32 @@ it("rejects missing or stale staging identities before writing the manifest", as
   }
 });
 
+// verifies: scenario.views.custom-docs-refused
+it("refuses a rendered route under /specs that no registered document owns", async () => {
+  const registry = load();
+  await materializeScoped(registry);
+  const hooks = plugin();
+  await hooks.loadContent!();
+  const outDir = resolve(root, "candidate");
+  mkdirSync(outDir);
+  const owned = [
+    ...registry.pages.map((page) => page.route),
+    ...(registry.glossary ? [registry.glossary.route] : []),
+  ];
+  await expect(
+    hooks.postBuild!({
+      outDir,
+      routesPaths: [...owned, "/specs/extra", "/guides/extra"],
+    } as any),
+  ).rejects.toThrow(/Routes under \/specs .*: \/specs\/extra;/);
+  expect(existsSync(resolve(outDir, "build-manifest.json"))).toBe(false);
+  await hooks.postBuild!({
+    outDir,
+    routesPaths: [...owned, "/guides/extra"],
+  } as any);
+  expect(existsSync(resolve(outDir, "build-manifest.json"))).toBe(true);
+});
+
 // verifies: scenario.views.materialize
 it("rejects sources changed between staging and plugin loading", async () => {
   const original = load();

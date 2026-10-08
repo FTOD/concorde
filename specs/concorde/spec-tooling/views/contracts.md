@@ -258,8 +258,11 @@ The removed field `homepage` is rejected with a message pointing to `userDocs`.
 The label defaults to "User documents".
 `path` names a directory relative to `docsite/` under the same rules
 as a collection's `path` below.
-The directory must contain a root page, `README.md`, `README.mdx`, `index.md` or `index.mdx`.
-The directory must contain no registered Spec document.
+The directory must contain exactly one root page: `README.md`, `README.mdx`, `index.md` or
+`index.mdx`. With none, or with more than one, admission fails naming `userDocs` and every root
+page found.
+The directory must contain no registered Spec document, neither below it nor reached through
+symbolic links, however many lie on the way.
 None of its top-level documents or folders may be named `specs`, `search` or the first segment of
 a collection's `routeBasePath`.
 The directory is published as one Docusaurus docs instance at route base `/`.
@@ -283,7 +286,8 @@ Both may use `../`. Neither may:
 - Use a drive prefix.
 - Contain a backslash.
 
-A collection must not contain a registered Spec document.
+A collection must not contain a registered Spec document, neither below its directory nor
+reached through symbolic links, however many lie on the way.
 Each collection is published as its own Docusaurus docs instance with:
 
 - A sidebar of its own.
@@ -295,6 +299,10 @@ Its landing document uses `slug: /`.
 A project may also provide `docsite/custom-docs/index.ts`, exporting an object with optional
 `plugins` and `navbarItems` arrays.
 They are added to the site as they are. Their routes must stay outside `/specs`.
+A docs plugin among `plugins` is admitted like a collection: its `path`, `docs` by default, must
+name an existing directory that contains no registered Spec document.
+After the build, a rendered route under `/specs` that is neither a registered document's route nor
+the glossary's fails the build, naming every such route.
 Duplicate routes fail the build.
 
 ## Build commands {#build-commands}

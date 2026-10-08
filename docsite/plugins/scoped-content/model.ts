@@ -113,6 +113,10 @@ export interface ScopedRegistry {
 }
 export const hash = (value: string | Buffer) =>
   "sha256:" + createHash("sha256").update(value).digest("hex");
+/** The source digest of ordered `[path, hash(bytes)]` pairs: `hash` of their compact JSON
+ * serialization, UTF-8 encoded, without a final newline. */
+export const sourceDigestOf = (inputs: [string, string][]) =>
+  hash(JSON.stringify(inputs));
 function safePath(path: string): void {
   requireThat(
     typeof path === "string" &&
@@ -741,7 +745,7 @@ export function loadScopedRegistry(root: string): ScopedRegistry {
     projectRoot: root,
     registryPath: REGISTRY_PATH,
     rootModule: rootModules[0].id,
-    sourceDigest: hash(JSON.stringify(inputs)),
+    sourceDigest: sourceDigestOf(inputs),
     modules,
     nodes,
     pages,
@@ -766,8 +770,8 @@ export function roots(registry: ScopedRegistry): ModuleRecord[] {
 }
 /** The `[start, end)` ranges of a line's inline code spans: a run of backticks opens a span
  * that the next run of exactly the same length closes; a run without such a partner is text. */
-function inlineCodeRanges(line: string): Array<[number, number]> {
-  const runs = [...line.matchAll(/`+/g)];
+function inlineCodeRanges(text: string): Array<[number, number]> {
+  const runs = [...text.matchAll(/`+/g)];
   const ranges: Array<[number, number]> = [];
   for (let open = 0; open < runs.length; open++) {
     const length = runs[open][0].length;
@@ -781,19 +785,35 @@ function inlineCodeRanges(line: string): Array<[number, number]> {
   return ranges;
 }
 /** The `[start, end)` ranges of `content` that a link rewrite must leave untouched: fenced code
- * blocks (multi-line, from the authoritative `fenceRanges`) and inline code spans (computed per
- * line, then placed at their absolute offset in `content`). Kept separate from line splitting so
- * a link label that is soft-wrapped across lines is still one match. */
+ * blocks (multi-line, from the authoritative `fenceRanges`) and inline code spans. A code span
+ * may wrap across lines within one block of text, never across a blank line or a fence, so spans
+ * are matched per block, then placed at their absolute offset in `content`. Kept separate from
+ * line splitting so a link label that is soft-wrapped across lines is still one match. */
 function opaqueRanges(content: string): Array<[number, number]> {
   const ranges: Array<[number, number]> = fenceRanges(content).map(
     (f): [number, number] => [f.start, f.end],
   );
+  // Fenced lines are blanked to spaces of the same length, so they end a block like a blank line.
+  const text = prose(content);
   let offset = 0;
-  for (const line of content.split("\n")) {
-    for (const [start, end] of inlineCodeRanges(line))
-      ranges.push([offset + start, offset + end]);
+  let block = { start: 0, end: 0 };
+  const close = () => {
+    for (const [start, end] of inlineCodeRanges(
+      text.slice(block.start, block.end),
+    ))
+      ranges.push([block.start + start, block.start + end]);
+  };
+  for (const line of text.split("\n")) {
+    if (line.trim()) {
+      if (block.end <= block.start) block = { start: offset, end: offset };
+      block.end = offset + line.length;
+    } else {
+      close();
+      block = { start: offset, end: offset };
+    }
     offset += line.length + 1;
   }
+  close();
   return ranges;
 }
 /** Rewrite registered relative links of Markdown written at `sourcePath` to canonical routes.

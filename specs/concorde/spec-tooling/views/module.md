@@ -105,7 +105,8 @@ Publication only reads Specs and writes derived output under `docsite/`.
 ### Publishing
 
 Rendering can fail halfway. Sources can change while a build runs. A build therefore publishes only
-a candidate whose inputs did not move and whose links all resolve:
+a candidate whose [source digest](pipeline.md#source-digest) did not move and whose links all
+resolve:
 
 ```d2 illustrative
 direction: right
@@ -119,6 +120,10 @@ a -> b -> c -> d
 d -> e: yes
 d -> f: no
 ```
+
+The source digest covers the configuration, the registry, every registered document with its
+metadata, the glossary and the site identity. It does not cover the contents of user documents or
+custom docs. A change to one of those during a build is therefore not detected.
 
 ### Scaffolding
 
@@ -207,8 +212,13 @@ owns. The publisher's other inputs are declared separately, each with its own ad
 The navigation follows `contains`, the Protocol's top-down reading path. Directory layout plays
 no part. Each document is published once, at a route derived from its source path. Its address
 therefore does not depend on which Modules read it. Consumers link to the owner's page instead
-of receiving a copy that could drift. There are no alias routes. Moving a document changes its
-route. When a link still points to the old route, the build refuses it.
+of receiving a copy that could drift. There are no alias routes.
+
+The [route rule](pipeline.md#routes) also depends on all registered documents together. While
+every one lies under `specs/`, a route leaves that leading `specs/` out. Registering one document
+outside `specs/` therefore changes the route of every other document. A move changes a document's
+route only when the route rule gives it another one. When a link still points to an old route,
+the build refuses it.
 
 Every enrichment is made on a staged copy under `docsite/.generated/`. Examples include:
 

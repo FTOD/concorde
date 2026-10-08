@@ -135,10 +135,8 @@ def main() -> int:
                     "no:cacheprovider",
                     "-n",
                     "4",
-                    "tests/concorde/views/test_docsite_scaffold.py",
-                    "tests/concorde/views/test_docsite_template.py",
-                    "tests/concorde/views/test_scaffold_creation.py",
-                    "tests/concorde/views/test_repository_checks.py",
+                    # The whole directory, so that a new test file cannot be left out.
+                    "tests/concorde/views",
                 ],
                 project,
             ),

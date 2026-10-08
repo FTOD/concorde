@@ -140,8 +140,25 @@ Reasons are sorted by `relation`, then `kind`, then `id`.
 ## Source digest {#source-digest}
 
 `hash(value)` is `sha256:` followed by the lowercase hex SHA-256 of the bytes.
-The source digest is `hash` of the JSON serialization of the ordered list of `[path, hash(bytes)]`
-pairs. The pairs cover these sources in order:
+The source digest is `hash` of the serialization of the ordered list of `[path, hash(bytes)]`
+pairs. The serialization is the compact JSON that ECMAScript's `JSON.stringify` writes:
+
+- A `[`, then the pairs separated by `,`, then a `]`.
+- Each pair is `["<path>","<hash>"]`, with no whitespace anywhere.
+- Inside a string, `"` and `\` are escaped with a backslash. Control characters cannot occur, since
+  source paths exclude them. Every other character, non-ASCII included, is written as it is.
+- The text is encoded as UTF-8 and has no final newline.
+
+For example, a configuration `{}` and a registry `{"schema_version": 3}`, each followed by a
+newline, serialize as:
+
+```json
+[[".concorde/config.json","sha256:ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356"],[".concorde/specs.json","sha256:feaa30087d2ef50cda938089d9ea5d4dd7f0803b82ec53f10561078a9e9259db"]]
+```
+
+The digest of that text is
+`sha256:4cf77a4e7432e482a2255f3b172934c97232c6e6c5de74f6b9659719e48287d1`.
+A real project has more pairs. The pairs cover these sources in order:
 
 - The configuration.
 - The registry.
@@ -192,13 +209,17 @@ for `build`. The steps below name paths inside that directory.
      A link's text may wrap onto the next line. These links are left unchanged:
      - URLs with a scheme or starting with `/`.
      - Bare `#fragment` links.
-     - Links inside inline code spans.
+     - Links inside inline code spans, including a span that wraps onto later lines of the same
+       paragraph. A span opens and closes with backtick runs of the same length. It never
+       crosses a blank line or a fence.
    - **realization anchors**: when the reading does not carry a node's identity, the node gets an
      anchor at its `meaning` anchor.
    - **owned terms**: the entry page of a Module that owns concepts ends with a Terms list linking
      each to the glossary page.
-   - **definition headings**: a level-2 to level-5 heading `req.<id> — Title` or
+   - **definition headings**: a heading of any level `req.<id> — Title` or
      `scenario.<id> — Title` (em dash, en dash or hyphen) becomes `Title {#<id>}`.
+     These are exactly the headings loading takes as definitions, so every identity it admits is
+     anchored.
    - **contract anchors**: an HTML anchor whose id is the contract identity is inserted before
      each `concorde-contract` fence.
    - **diagrams**: each `d2` block is rendered by the `d2` program to an SVG staged beside the page.
@@ -312,7 +333,7 @@ list. In `owns` order, the list links to each of the owner's implementation page
 When the Module owns none, the footer wrapper shows nothing.
 Without user documents, the site root uses `rootModule` to redirect to the root Module's entry.
 
-## Build hooks
+## Build hooks {#build-hooks}
 
 The Docusaurus configuration loads the site identity and the model at start-up.
 The Spec docs instance reads `content/specs` of the mode's staging directory at route base
@@ -340,13 +361,14 @@ The content plugin:
   - The source digest changed.
   - The staging record no longer matches.
   - Any registered page route is missing from the rendered routes.
+  - A rendered route under `/specs` is neither a registered page's route nor the glossary's.
 
   It then writes `build-manifest.json`.
 
 When any of these conditions holds during site configuration, user documents admission fails:
 
 - The directory is missing.
-- The directory has no root page.
+- The directory has no root page, or more than one.
 - The directory contains a registered document.
 - A top-level document or folder would publish under `/specs`, `/search` or a custom docs route.
 
@@ -356,6 +378,12 @@ When any of these conditions holds, custom docs admission fails:
 - A collection directory contains a registered document.
 - `custom-docs/index.ts` does not export an object.
 - `custom-docs/index.ts` exports `plugins` or `navbarItems` that is not an array.
+- A docs plugin among those `plugins` names a missing directory, or one that contains a registered
+  document.
+
+A directory contains a registered document when the document lies below it or when a symbolic
+link inside it reaches the document or a directory holding it. The check follows every link to a
+directory and walks each directory it reaches once, so links inside linked directories count too.
 
 An omitted property adds nothing.
 

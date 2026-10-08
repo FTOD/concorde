@@ -14,6 +14,7 @@ from pathlib import Path
 from unittest import mock
 
 from tests.concorde.support.paths import REPOSITORY_ROOT, RUNTIME_ROOT
+from tests.concorde.views.built_package import built_package
 
 sys.path.insert(0, str(RUNTIME_ROOT))
 
@@ -44,13 +45,14 @@ def _init_project(
 ) -> None:
     from concorde.distribution.project_defaults import install_project_defaults
 
+    package = built_package()
     install_project_defaults(
-        root, REPOSITORY_ROOT
+        root, package
     )  # what the installer places before initialization
     apply_project_proposal(
         root,
-        REPOSITORY_ROOT,
-        project_proposal(root, REPOSITORY_ROOT, name, module_id),
+        package,
+        project_proposal(root, package, name, module_id),
     )
 
 

@@ -16,7 +16,7 @@ from concorde.spec.initialize import apply_project_proposal, project_proposal
 from concorde.spec.verification import verifies
 from concorde.spec.views import creation, docsite_scaffold
 from concorde.spec.views.docsite_scaffold import propose_docsite
-from tests.concorde.support.paths import REPOSITORY_ROOT
+from tests.concorde.views.built_package import built_package
 
 PROPOSAL = ".concorde/docsite-proposal.json"
 
@@ -39,11 +39,12 @@ class ScaffoldApplyOutcomeTests(unittest.TestCase):
         directory = tempfile.TemporaryDirectory()
         self.addCleanup(directory.cleanup)
         self.root = Path(directory.name)
-        install_project_defaults(self.root, REPOSITORY_ROOT)
+        package = built_package()
+        install_project_defaults(self.root, package)
         apply_project_proposal(
             self.root,
-            REPOSITORY_ROOT,
-            project_proposal(self.root, REPOSITORY_ROOT, "Atlas", "module.atlas"),
+            package,
+            project_proposal(self.root, package, "Atlas", "module.atlas"),
         )
         proposed = propose_docsite(self.root)
         self.assertEqual("proposal", proposed.status, proposed.findings)

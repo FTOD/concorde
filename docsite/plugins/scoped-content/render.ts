@@ -57,7 +57,8 @@ export function injectAnchors(content: string): string {
       out.push(line);
       continue;
     }
-    const heading = /^(#{2,5})([ \t]+)(.*)$/.exec(line);
+    // Every level loading admits a definition at (`definitionHeadings`) gets its identity anchor.
+    const heading = /^(#{1,6})([ \t]+)(.*)$/.exec(line);
     const definition = heading
       ? DEFINITION_HEADING.exec(
           heading[3]

@@ -119,6 +119,23 @@ export default function scopedContent(
       );
       if (loaded.pages.some((p) => !routes.has(normalizeRoute(p.route))))
         throw new Error("Registered Spec page was not rendered");
+      // `/specs` belongs to the registered documents and the glossary alone, so a page an extension
+      // adds there could pass for a Spec page.
+      const owned = new Set(
+        [
+          ...loaded.pages.map((p) => p.route),
+          ...(loaded.glossary ? [loaded.glossary.route] : []),
+        ].map(normalizeRoute),
+      );
+      const intruders = [...routes].filter(
+        (route) =>
+          (route === "/specs" || route.startsWith("/specs/")) &&
+          !owned.has(route),
+      );
+      if (intruders.length)
+        throw new Error(
+          `Routes under /specs that no registered document or the glossary owns: ${intruders.sort().join(", ")}; custom docs and extension routes must stay outside /specs.`,
+        );
       await writeFile(
         resolve(outDir, "build-manifest.json"),
         JSON.stringify(

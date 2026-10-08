@@ -75,11 +75,16 @@ Publication SHALL NOT write rendered, enriched or rewritten content into any reg
 
 ### req.views.diagram-source-identity — A fence is its diagram's only source
 
-Publication SHALL render each D2 diagram from its fence in the containing document and from no other source.
+Publication SHALL take each D2 diagram's shapes, nesting, labels and edges from its fence in the containing document and from no other source.
 
 The rendered image is staged beside its page.
-The image is derived only from the fence and the publisher's house style.
-A diagram therefore changes only when the document containing it or the house style changes.
+Its look comes from the publisher's house style, applied to what each label resolves to in the
+loaded registry, metadata and glossary ([diagram-look](#req.views.diagram-look)).
+A diagram therefore changes only when one of these changes:
+
+- Its fence.
+- The house style.
+- What one of its labels resolves to, such as when another Module's composition changes.
 
 ### req.views.diagram-look — The publisher decides how a diagram looks
 
@@ -210,7 +215,8 @@ output directory reaches through a symbolic link, before it clears anything.
 
 ### req.views.preview-follows-specs — The preview follows the Specs
 
-While `npm run start` runs, a change to any of the following SHALL stage the Specs again:
+While `npm run start` runs, its preview supervisor SHALL stage the Specs again after a change to
+any of the following:
 
 - The site identity.
 - The configuration.
@@ -226,7 +232,7 @@ If a staging fails during the preview:
 
 ### req.views.preview-restart — A successful staging restarts the preview
 
-While `npm run start` runs, a staging that follows a change and succeeds SHALL restart the preview from the new staging.
+While `npm run start` runs, when a staging that follows a change succeeds, the preview supervisor SHALL restart the preview from the new staging.
 
 ### req.views.hash-format — Digest format
 
