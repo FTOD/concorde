@@ -43,6 +43,9 @@ proposal** ([contract](contracts.md#contract.adoption.decomposition)) with these
 The host adds the realization entries, the bound paths, that stay with the surveyed Module. A
 proposal with no children is valid: the Module is small enough to describe as it is.
 
+Vendored code becomes bound by no Module, and the scaffold changes only the surveyed Module and its
+new children. So the host refuses a vendored path that another registered Module also binds.
+
 ### Spec description
 
 A `code_to_spec` worker rewrites the bound Modules' own documents from their code. The result's

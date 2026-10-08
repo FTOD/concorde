@@ -233,6 +233,7 @@ names any of these:
 - An external that takes Concorde installation files.
 - An external that is proposed twice.
 - An external that is used by neither the surveyed Module nor a child.
+- An external a file of which a registered Module other than the surveyed Module binds.
 - A decision or open question identity used twice.
 - An open question's evidence that is an absolute path.
 

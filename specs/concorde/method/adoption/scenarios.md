@@ -48,6 +48,13 @@ shapes are in the [contracts](contracts.md).
 - AND the worker's proposal stays in the result's `worker` field only
 - AND a child entry in a directory the exclusion rule skips below `src/`, such as `src/build/`, or one reached through a symbolic link fails the same way, since `module.shop` never bound its files
 
+### scenario.adoption.vendored-bound-elsewhere — Vendored code another Module binds does not fit
+
+- GIVEN the root Module `module.shop`, which contains `module.db`, both binding `src/db.py`
+- WHEN a survey worker of `module.shop` proposes `src/db.py` as vendored third-party code
+- THEN the result is `failed` with `inconsistent_proposal`, naming `module.db` and `src/db.py`
+- AND no file of the worktree changed
+
 ### scenario.adoption.survey-after-scaffold — A survey revised after its scaffold needs a fresh workspace
 
 - GIVEN the task worktree `adopt` in which a survey of `module.shop` ran and its scaffold created `module.checkout` and `module.inventory`

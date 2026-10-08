@@ -8,6 +8,12 @@ import re
 import unittest
 from pathlib import Path
 
+from concorde.method.scaffold.command import (
+    child_metadata,
+    child_reading,
+    parent_reading,
+)
+from concorde.spec.registry import RECORD_FIELDS, registry_command, serialize
 from concorde.worker_harness.runs import read_record
 from tests.concorde.support.brownfield_project import BrownfieldProject
 from tests.concorde.support.paths import REPOSITORY_ROOT
@@ -90,6 +96,45 @@ def contract(path: str, identity: str) -> dict:
         if body["id"] == identity:
             return body["schema"]
     raise AssertionError(f"{identity} not in {path}")
+
+
+def register_db(root: Path) -> None:
+    """Register ``module.db``, a child of the root binding ``src/db.py``, in the worktree
+    ``root``, as a developer would by hand."""
+    child = {
+        "id": "module.db",
+        "title": "Database",
+        "purpose": "Database connects to the shop's store.",
+        "entries": ["src/db.py"],
+        "uses": [],
+    }
+    entry = "specs/project/db/module.md"
+    (root / entry).parent.mkdir()
+    (root / entry).write_text(child_reading(child, {}))
+    (root / (entry + ".json")).write_text(
+        json.dumps(child_metadata(child, entry), indent=2) + "\n"
+    )
+    parent = root / "specs/project/module.md"
+    parent.write_text(parent_reading(parent.read_text(), [child]))
+    value = json.loads((root / "specs/project/module.md.json").read_text())
+    value["module"]["contains"].append(
+        {"target": "module.db", "meaning": "#contains-db"}
+    )
+    (root / "specs/project/module.md.json").write_text(
+        json.dumps(value, indent=2) + "\n"
+    )
+    registry = json.loads((root / ".concorde/specs.json").read_text())
+    block = child_metadata(child, entry)["module"]
+    registry["modules"].append(
+        {
+            "id": "module.db",
+            "title": "Database",
+            "entry": entry,
+            **{name: block[name] for name in RECORD_FIELDS[3:]},
+        }
+    )
+    (root / ".concorde/specs.json").write_text(serialize(registry))
+    assert registry_command(root, write=True).status == "success"
 
 
 class AdoptionCase(unittest.TestCase):

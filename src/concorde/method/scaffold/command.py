@@ -6,7 +6,8 @@ Scaffold Module Spec):
 1. ``admit``: exactly one ``ok`` survey of the same workspace, admitted with ``--input``.
 2. ``recheck``: validate the worktree as a baseline and check the proposal against it again.
 3. ``plan``: compute every file change: child entries, the parent's entry and realizations and
-   the registry. The proposal's checks are never configured.
+   the registry, each from the bytes the recheck loaded and bound to their digest, so that a file
+   changed since then fails the transaction. The proposal's checks are never configured.
 4. ``apply``: write them as one file transaction, kept only if validation finds no new error.
 
 No worker runs. Adding Modules is the project-level step the Protocol reserves for the registry
@@ -37,7 +38,7 @@ from ..adoption.records import (
     obj,
     proposal_problems,
 )
-from ..specs import admission, spec_cause, spec_finding
+from ..specs import spec_cause, spec_finding
 
 # contract.scaffold.record, version 3
 SCAFFOLD_RECORD_SCHEMA = obj(
@@ -82,7 +83,9 @@ def local(identity: str) -> str:
 
 
 def anchor(identity: str) -> str:
-    return local(identity).replace(".", "-")
+    """The part of a relation anchor naming a Module: its local identity, dots kept, so that
+    distinct identities such as ``module.a-b`` and ``module.a.b`` never share an anchor."""
+    return local(identity)
 
 
 def mismatch(detail: str, actor: str = "Adoption proposal check") -> dict:
@@ -159,18 +162,7 @@ def recheck(ctx: RunContext):
     try:
         repository = SpecRepository(ctx.worktree)
     except (SpecError, OSError, ValueError) as error:
-        return ctx.fail(
-            "failed",
-            "specs_unloadable",
-            "The workspace's Specs could not be loaded for the scaffold.",
-            f"the Specs of {ctx.worktree} could not be loaded before scaffolding: "
-            f"{getattr(error, 'code', type(error).__name__)}: {error}",
-            reason="scope",
-            explanation="the scaffold changes Specs only from a loadable, validated state",
-            evidence=[evidence("spec-load", ctx.worktree.as_posix(), str(error))],
-            causes=[spec_cause(error)],
-            options=["run concorde spec-validation to see why the Specs do not load"],
-        )
+        return unloadable(ctx, error)
     problems = []
     if module not in repository.modules:
         problems.append(f"the surveyed Module {module} is no longer registered")
@@ -212,6 +204,52 @@ def recheck(ctx: RunContext):
             )
         ]
     )
+
+
+def unloadable(ctx: RunContext, error: Exception):
+    """Stop ``failed`` with ``specs_unloadable``, Spec core's error the cause."""
+    return ctx.fail(
+        "failed",
+        "specs_unloadable",
+        "The workspace's Specs could not be loaded for the scaffold.",
+        f"the Specs of {ctx.worktree} could not be loaded before scaffolding: "
+        f"{getattr(error, 'code', type(error).__name__)}: {error}",
+        reason="scope",
+        explanation="the scaffold changes Specs only from a loadable, validated state",
+        evidence=[evidence("spec-load", ctx.worktree.as_posix(), str(error))],
+        causes=[spec_cause(error)],
+        options=["run concorde spec-validation to see why the Specs do not load"],
+    )
+
+
+def loaded(repository, path: str) -> bytes:
+    """The bytes of ``path`` as the recheck loaded and validated them: the one snapshot a change
+    of that file is computed from and bound to."""
+    from ...spec.repository_base import SpecError
+
+    if path == repository.registry_path:
+        return repository.registry_bytes
+    data = repository.loaded_bytes(path)
+    if data is None:
+        raise SpecError(
+            f"{path} could not be read when the Specs were loaded",
+            "invalid_spec",
+            path=path,
+        )
+    return data
+
+
+def replacing(path: str, data: bytes, content: str) -> dict:
+    """The change of an existing file, bound to the digest of the bytes ``content`` was derived
+    from."""
+    from ...spec.repository_base import digest
+
+    return {"path": path, "before_digest": digest(data), "content": content}
+
+
+def creating(path: str, content: str) -> dict:
+    """The change creating a file, whose precondition is that the file is absent."""
+    return {"path": path, "before_digest": None, "content": content}
 
 
 def child_reading(child: dict, titles: dict[str, str]) -> str:
@@ -371,8 +409,20 @@ def realization_entries(values: list[dict]) -> list[str]:
 
 
 def plan(ctx: RunContext):
-    """Step 3: every file change, computed from the proposal and the worktree alone."""
-    from ...spec.changes import file_change
+    """Step 3: every file change, computed from the proposal and the worktree alone.
+
+    Each changed Spec file's new content is derived from the bytes the recheck loaded, and its
+    change is bound to their digest, never to a later read: a file changed since the recheck
+    fails the transaction ``stale_proposal`` and keeps the change made to it."""
+    from ...spec.repository_base import SpecError
+
+    try:
+        return planned(ctx)
+    except SpecError as error:
+        return unloadable(ctx, error)
+
+
+def planned(ctx: RunContext):
     from ...spec.registry import RECORD_FIELDS, serialize
 
     proposal = ctx.state["proposal"]
@@ -428,10 +478,9 @@ def plan(ctx: RunContext):
                     causes=[mismatch(f"{path} exists in {root}", "Scaffold plan")],
                     options=["remove the file or survey again with another identity"],
                 )
-        changes.append(file_change(root, entry, child_reading(child, titles)))
+        changes.append(creating(entry, child_reading(child, titles)))
         changes.append(
-            file_change(
-                root,
+            creating(
                 entry + ".json",
                 json.dumps(
                     child_metadata(child, entry, externals),
@@ -451,22 +500,26 @@ def plan(ctx: RunContext):
         )
     parent_includes = external_includes(externals, module)
     if children:
-        parent_text = (root / parent.entry).read_text(encoding="utf-8")
+        data = loaded(repository, parent.entry)
         changes.append(
-            file_change(root, parent.entry, parent_reading(parent_text, children))
+            replacing(
+                parent.entry,
+                data,
+                parent_reading(data.decode("utf-8"), children),
+            )
         )
     after_entries = before_entries
     if children or externals:
-        parent_value = json.loads(
-            (root / (parent.entry + ".json")).read_text(encoding="utf-8")
-        )
+        data = loaded(repository, parent.entry + ".json")
         after_values = [
-            parent_metadata(parent_value, children, replaced, parent_includes)
+            parent_metadata(
+                json.loads(data.decode("utf-8")), children, replaced, parent_includes
+            )
         ]
         changes.append(
-            file_change(
-                root,
+            replacing(
                 parent.entry + ".json",
+                data,
                 json.dumps(after_values[0], indent=2, ensure_ascii=False) + "\n",
             )
         )
@@ -475,22 +528,22 @@ def plan(ctx: RunContext):
         for document in sorted(
             {item.document for item in repository.realizations(module)} - {parent.entry}
         ):
-            value = json.loads(
-                (root / (document + ".json")).read_text(encoding="utf-8")
-            )
+            data = loaded(repository, document + ".json")
+            value = json.loads(data.decode("utf-8"))
             narrowed = narrowed_metadata(value, replaced)
             after_values.append(narrowed)
             if narrowed != value:
                 changes.append(
-                    file_change(
-                        root,
+                    replacing(
                         document + ".json",
+                        data,
                         json.dumps(narrowed, indent=2, ensure_ascii=False) + "\n",
                     )
                 )
         after_entries = realization_entries(after_values)
         registry_path = repository.registry_path
-        registry = json.loads((root / registry_path).read_text(encoding="utf-8"))
+        data = loaded(repository, registry_path)
+        registry = json.loads(data.decode("utf-8"))
         for record in registry["modules"]:
             if record["id"] == module:
                 record["contains"] = list(record["contains"]) + [
@@ -513,7 +566,7 @@ def plan(ctx: RunContext):
                     **{name: block[name] for name in RECORD_FIELDS[3:]},
                 }
             )
-        changes.append(file_change(root, registry_path, serialize(registry)))
+        changes.append(replacing(registry_path, data, serialize(registry)))
     # The proposal's checks are never configured here: a command a model chose after reading
     # code runs only once the developer accepted it.
     ctx.state["changes"] = changes
@@ -749,7 +802,9 @@ SCAFFOLD = command(
     (admit, recheck, plan, apply),
     writes=True,
     output_schema=SCAFFOLD_RECORD_SCHEMA,
-    admit=admission(),
+    # No admission of Modules: the runner still admits the workspace and the input, and the
+    # scaffold's own steps classify a removed surveyed Module (``stale_proposal``) and Specs that
+    # do not load (``specs_unloadable``) (req.scaffold.rechecked).
 )
 
 __all__ = ["SCAFFOLD"]

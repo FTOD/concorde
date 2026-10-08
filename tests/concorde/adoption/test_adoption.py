@@ -24,8 +24,9 @@ from tests.concorde.support.adoption_case import (
     RETRY_QUESTION,
     AdoptionCase,
     contract,
+    register_db,
 )
-from tests.concorde.support.brownfield_project import git
+from tests.concorde.support.brownfield_project import commit, git
 
 
 class AdoptionTests(AdoptionCase):
@@ -173,6 +174,24 @@ class AdoptionTests(AdoptionCase):
         self.assertIn("'Shop'", error["detail"])
         self.assertIsNone(envelope["output"])
         self.assertEqual(bad["children"], envelope["worker"]["output"]["children"])
+
+    @verifies("scenario.adoption.vendored-bound-elsewhere")
+    def test_vendored_code_another_module_binds_does_not_fit(self):
+        register_db(self.project.root)
+        commit(self.project.root, "a Module of the database helper")
+        worktree = self.open()
+        vendored = json.loads(json.dumps(PROPOSAL))
+        vendored["externals"] = [
+            {"path": "src/db.py", "used_by": "module.checkout", "reason": "vendored"}
+        ]
+        status, envelope = self.survey(vendored)
+        self.assertEqual((1, "failed"), (status, envelope["status"]))
+        error = envelope["error"]
+        self.assertEqual("inconsistent_proposal", error["code"])
+        self.assertIn("external src/db.py is also bound by module.db", error["detail"])
+        self.assertEqual(
+            "", git(worktree, "status", "--porcelain", "--untracked-files=all")
+        )
 
     @verifies("scenario.adoption.survey-answers")
     def test_a_survey_follows_the_answers(self):

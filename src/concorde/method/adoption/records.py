@@ -473,6 +473,27 @@ def covered_by_parent(root: Path, parent_entries: list[str], entry: str) -> bool
     return any(bound_by(parent, entry) for parent in parent_entries)
 
 
+def vendored_files(root: Path, path: str) -> list[str]:
+    """The files a vendored path takes: the file itself, or every regular file below the
+    directory, dot files included, reached through no symbolic link."""
+    if not is_directory_entry(path):
+        return [path]
+    try:
+        base = checked_path(root, entry_base(path))
+    except SpecError:
+        return []
+    files = []
+    for current, names, found in os.walk(base):
+        names[:] = sorted(
+            name for name in names if not (Path(current) / name).is_symlink()
+        )
+        for name in sorted(found):
+            item = Path(current) / name
+            if item.is_file() and not item.is_symlink():
+                files.append(path + item.relative_to(base).as_posix())
+    return files
+
+
 def evidence_problems(questions: list[dict]) -> list[str]:
     """Every open question's evidence that names an absolute path, which after
     ``worktree_relative`` lies outside the worktree; a line suffix such as ``:12`` is allowed."""
@@ -595,6 +616,23 @@ def proposal_problems(
             )
         if external_paths.count(path) > 1:
             problems.append(f"external {path} is proposed more than once")
+        # Vendored code is bound by no Module, and the scaffold changes only the surveyed Module
+        # and its children: another Module binding it is a problem the scaffold cannot settle.
+        files = vendored_files(root, path)
+        for identity in sorted(registered - {module}):
+            try:
+                entries = sorted(repository.realization_entries(identity))
+            except SpecError:
+                continue  # its documents do not load; validation reports them
+            binding = [
+                entry for entry in entries if any(bound_by(entry, f) for f in files)
+            ]
+            if binding:
+                problems.append(
+                    f"external {path} is also bound by {identity} (its entries "
+                    f"{', '.join(binding)}); vendored code is bound by no Module, and only "
+                    f"{module} and its new children leave it"
+                )
     check_ids = [check["id"] for check in proposal["checks"]]
     for check in proposal["checks"]:
         for path in check["inputs"]:
