@@ -124,7 +124,7 @@ finding creates a new Issue. The report is:
 
 | Field | Value |
 | --- | --- |
-| `report_key` | `<module>/<n>`: the reviewed Module and the finding's position in the chair's report |
+| `report_key` | `<module>/<n>`: the reviewed Module and the finding's position in the chair's report, prefixed with `architecture/` for an architects' finding |
 | `tier` | the finding's tier |
 | `severity` | the finding's severity |
 | `type`, `subtype` | `gap` and `missing-contract` for the dimension `context`, `gap` and `spec-conflict` for `consistency`, `bug` and `null` for every other dimension |
@@ -141,7 +141,10 @@ The Operation supplies the report's provenance:
 - `invocation_id` is the run identity.
 - `agent` is `operation`.
 - `operation` is `spec_panel`.
-- `phase` is `report`.
+- `phase` is `architecture` for an **architects' finding**, a finding every label of whose `sources`
+  is an architect's. It is `report` for every other finding, which merges at least one reviewer's
+  label. Thus [Project review](../project-review/module.md)'s architecture review can offer an
+  architects' finding as an earlier Issue, and its Module panels the others.
 - `target_id` is the reviewed Module.
 - `context_id` is the context identity of the chair's grant.
 - For an unbound run, `change_id` is `null`. Otherwise, it is the workspace.

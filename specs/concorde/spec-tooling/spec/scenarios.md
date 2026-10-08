@@ -485,8 +485,10 @@ to it.
 ### scenario.spec.missing-entry — A declared entry that does not exist
 
 - GIVEN a realization with an entry whose file or directory does not exist
+- AND another entry that names a symbolic link or passes through one
 - WHEN the validator runs
-- THEN it reports `CHK.binds.exists` as an error for that entry
+- THEN it reports `CHK.binds.exists` as an error for each of those entries, naming its realization
+- AND the run reports its other findings rather than failing as a whole
 - AND the finding's remediation says to create the file before binding it or to remove the entry
 
 ### scenario.spec.pending-rejected — A realization that still declares pending entries
@@ -643,7 +645,9 @@ A `review-spec` grant for the same Module is equal to it apart from its task typ
   listed as `names`
 - AND `references/lib/` is listed as `ro`
 - AND when a byte of a document of D changes, its context identity changes
-- AND that change does not change an `understand` grant's context identity
+- AND when the definition of a glossary entry outside A's terms changes, its context identity changes
+- AND neither change alters an `understand` grant's context identity for A or the ordinary
+  `context_identity` of A
 - BUT no path is `rw`
 - BUT no implementation file is `ro`
 

@@ -590,10 +590,12 @@ class SpecPanelTests(unittest.TestCase):
     def test_architects_judge_the_module_among_all_the_modules(self):
         exit_status, envelope = self.panel(
             {
-                "reviewer module.a 1": worker(findings=[]),
+                "reviewer module.a 1": worker(findings=[finding()]),
                 "reviewer module.a 2": worker(findings=[]),
                 "architect module.a 1": worker(findings=[architectural()]),
-                "architect module.a 2": worker(findings=[]),
+                "architect module.a 2": worker(
+                    findings=[finding(dimension="responsibilities")]
+                ),
                 "chair module.a 1": worker(
                     findings=[
                         merged(
@@ -603,7 +605,8 @@ class SpecPanelTests(unittest.TestCase):
                             problem="A relies on a promise B does not make.",
                             related=["module.b"],
                             note="B's entry promises nothing of the kind.",
-                        )
+                        ),
+                        merged("r1.1", "a2.1"),
                     ],
                     rejected=[],
                 ),
@@ -646,7 +649,7 @@ class SpecPanelTests(unittest.TestCase):
         self.assertIn('"label": "a1.1"', chair)
         (architect, _) = self.briefs(envelope, "architect")
         self.assertIn("Your role: architect.", architect)
-        (report,) = module["findings"]
+        report, mixed = module["findings"]
         self.assertEqual(
             (["a1.1"], ["module.b"]), (report["sources"], report["related"])
         )
@@ -654,6 +657,17 @@ class SpecPanelTests(unittest.TestCase):
         self.assertEqual("module.a", entry["report"]["owner_target_id"])
         self.assertIn("module.b", entry["report"]["description"])
         self.assertEqual(module["architecture_identity"], entry["source"]["context_id"])
+        # Only the architects' finding is of the architecture phase, which project_review's
+        # architecture review offers; a finding a reviewer also made stays a report.
+        self.assertEqual(
+            ("architecture", "architecture/module.a/1"),
+            (entry["source"]["phase"], entry["report"]["report_key"]),
+        )
+        other = self.issues()[mixed["issue"]]["reports"][0]
+        self.assertEqual(
+            ("report", "module.a/2"),
+            (other["source"]["phase"], other["report"]["report_key"]),
+        )
 
     @verifies("scenario.spec-review.panel-no-architects")
     def test_a_panel_without_architects_reads_only_the_modules_context(self):

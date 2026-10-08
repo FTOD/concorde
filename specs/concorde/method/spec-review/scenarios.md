@@ -139,10 +139,13 @@ and no architect.
 
 - GIVEN Modules A and B, where A uses B, and a panel of two reviewers and two architects for Module A
 - AND architect 1 reports that A relies on a promise B does not make, naming B as related
-- WHEN the panel runs
+- AND reviewer 1 and architect 2 report one other problem
+- WHEN the panel runs and the chair merges `a1.1` alone and `r1.1` with `a2.1`
 - THEN each architect runs under A's `review-architecture` grant, which reads B's Specs, and each reviewer under A's `review-spec` grant
 - AND the chair, under A's `review-architecture` grant, receives the architect's finding labelled `a1.1` besides the reviewers' findings
 - AND the report's finding merged from `a1.1` is recorded as an Issue owned by A whose report names B
+- AND that report has the provenance phase `architecture` and the report key `architecture/module.a/1`
+- AND the finding merged from `r1.1` and `a2.1` is reported with the phase `report` and the key `module.a/2`
 - AND A's outcome carries both context identities
 
 ### scenario.spec-review.panel-no-architects — A panel without architects

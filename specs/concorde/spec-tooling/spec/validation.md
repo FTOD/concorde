@@ -114,7 +114,8 @@ A link whose fragment begins with `concept.` is a term link. The Protocol's `CHK
 it against the glossary, so it never draws `CONCORDE-LINK-001`.
 
 **Realization entries.** Every entry must exist (`CHK.binds.exists`): a realization records what
-exists, never an intent. A realization record that still carries Protocol 15's `pending` field
+exists, never an intent. An entry any of whose path components is a symbolic link does not exist
+in this sense. It binds nothing, and validation reports it at the entry like a missing one. A realization record that still carries Protocol 15's `pending` field
 fails `CHK.document.schema`, with no migration of its own. The Protocol's migration notes say how
 to remove it.
 

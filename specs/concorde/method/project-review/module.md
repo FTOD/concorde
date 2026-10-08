@@ -187,15 +187,18 @@ The reports of one `project_review` run are of six kinds. Each kind is its repor
 
 The phase decides which reviews offer an Issue as an earlier Issue:
 
-- A Module's Spec panel offers the Module's Issues of `spec_panel` and of the `spec-panel` phase.
-- `spec_panel` also offers those of the `architecture` phase, since its architects judge them
+- A Module's Spec panel offers the Module's Issues of `spec_panel`'s `report` phase and of the
+  `spec-panel` phase.
+- `spec_panel` offers the Module's Issues of `spec_panel`, whatever their phase, and those of the
+  `spec-panel` and `architecture` phases, since it has architects
   ([Spec review](../spec-review/panel.md#earlier-issues)).
 - A Module's code review offers its Issues of `code_review` and of the `code-review` phase, as
   `code_review` does ([Code review](../code-review/module.md#earlier-issues)).
-- The architecture review offers every open Issue of the `architecture` phase. It does not offer an
-  architecture finding of `spec_panel`, since nothing in a `spec_panel` report tells its
-  architects' findings from its reviewers'. Such an Issue is offered to the next `spec_panel` of
-  its Module.
+- The architecture review offers every open Issue of the `architecture` phase, of
+  `project_review` and of `spec_panel`. `spec_panel` reports with that phase its architects'
+  findings, whose every merged label is an architect's
+  ([Spec review](../spec-review/panel.md#reporting-findings)). A Module's Spec panel in this
+  Operation has no architects, so it does not offer them.
 
 Thus `project_review`, `spec_panel` and `code_review` build on each other's Issues rather than
 reporting a problem again. Within one run, the report key of a phase other than `report` begins with

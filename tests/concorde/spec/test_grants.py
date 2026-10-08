@@ -210,16 +210,46 @@ class GrantTests(unittest.TestCase):
         }
         self.assertEqual({"names"}, set(code.values()))
 
-        before = value["context_identity"]
+        def ordinary():
+            return context_identity(self.project.repository(), ["module.a"])
+
+        upsert_concepts(
+            self.root,
+            "specs/d/module.md",
+            [
+                {
+                    "id": "concept.d.answer",
+                    "title": "D answer",
+                    "owner": "module.d",
+                    "definition": "What D returns.",
+                    "anchor": "realization.d.code",
+                }
+            ],
+        )
+        before = self.grant(["module.a"], "review-architecture")["context_identity"]
         understand = self.grant(["module.a"], "understand")["context_identity"]
+        own = ordinary()
+        self.assertEqual(understand, own)
         path = self.root / "specs/d/module.md"
         path.write_text(path.read_text() + " ")
+        after_document = self.grant(["module.a"], "review-architecture")[
+            "context_identity"
+        ]
+        self.assertNotEqual(before, after_document)
+        self.assertEqual(
+            understand, self.grant(["module.a"], "understand")["context_identity"]
+        )
+        self.assertEqual(own, ordinary())
+        # A glossary entry no term of A selects is still part of the whole glossary.
+        update_glossary_entry(self.root, "concept.d.answer", definition="What D gives.")
         self.assertNotEqual(
-            before, self.grant(["module.a"], "review-architecture")["context_identity"]
+            after_document,
+            self.grant(["module.a"], "review-architecture")["context_identity"],
         )
         self.assertEqual(
             understand, self.grant(["module.a"], "understand")["context_identity"]
         )
+        self.assertEqual(own, ordinary())
 
     @verifies("scenario.spec.grant-multi-module")
     def test_several_modules_receive_the_union_at_the_highest_level(self):

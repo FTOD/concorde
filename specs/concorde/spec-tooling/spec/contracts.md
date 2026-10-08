@@ -339,7 +339,7 @@ When a path lies under `.concorde/` or `generated/`, it is never bound.
 ```python
 grant(repository, modules: Sequence[str], task_type: str) -> Grant
 Grant.value -> dict
-context_identity(repository, modules: Sequence[str]) -> str
+context_identity(repository, modules: Sequence[str], project_specification: bool = False) -> str
 ```
 
 `grant` takes:
@@ -446,9 +446,10 @@ cases:
 - An exact entry below a directory entry.
 - Nested directory entries.
 
-`context_identity(repository, modules)` returns `sha256:` and 64 lowercase hexadecimal digits over
-the canonical JSON of `{"modules": [...]}`.
-It has one item per bound Module in sorted order: `{"module": M, "sources": S, "terms": T, "external": E}`.
+`context_identity(repository, modules, project_specification)` returns `sha256:` and 64 lowercase
+hexadecimal digits over the canonical JSON of one object.
+Its `modules` member has one item per bound Module in sorted order:
+`{"module": M, "sources": S, "terms": T, "external": E}`.
 The fields are:
 
 - `S`: the `sources` list of `spec_context(M).value`
@@ -456,7 +457,26 @@ The fields are:
 - `T`: the `terms` list of `spec_context(M).value`.
 - `E`: `{path, digest}` for each of M's external inclusions, sorted by path.
 
+When `project_specification` is false, the object is `{"modules": [...]}`. This ordinary identity
+covers the bound Modules' selected sources alone. A document or glossary entry that no bound Module
+selects is outside it.
+
+When `project_specification` is true, the object also has the member `project_specification`.
+This member lists `{path, digest}` for each path of ProjectSpecification, sorted by path. Each digest
+is over the bytes of that path. The list holds both members of every document of every registered
+Module. It also holds the project glossary file whole, so every glossary entry is covered.
+
 `grant` sets the grant's `context_identity` to this value for its Modules.
+It gives `project_specification` as true exactly when the task type's ProjectSpecification column in
+the table above is not a dash. Of the eight task types, only `review-architecture` has that column.
+
+For example, take Module A that uses Module B, and Module D that nothing A declares selects:
+
+- A byte of a document of D changes. The `review-architecture` grant for A then has another context
+  identity. The `understand` grant for A and `context_identity(repository, ["module.a"])` keep theirs.
+- The definition of a glossary entry that only D's documents link changes. The same three identities
+  behave the same way.
+- A byte of a document of B that A's Spec context selects changes. All three identities change.
 
 `concorde grant --root <worktree> --modules <id>[,<id>...] --type <task type>` performs these steps:
 
