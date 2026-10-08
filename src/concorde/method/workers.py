@@ -655,6 +655,8 @@ def run_worker(
             runtime=readable_paths,
             output_schema=output_schema,
             rounds=rounds if rounds is not None else bounds["rounds"],
+            retries=bounds["retries"],
+            retry_delay=float(bounds["retry_delay_seconds"]),
             timeout=float(bounds["timeout_seconds"]),
             max_turns=bounds["max_turns"],
             max_budget_usd=bounds["max_budget_usd"],

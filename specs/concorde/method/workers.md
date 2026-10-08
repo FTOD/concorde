@@ -24,6 +24,10 @@ every worker launch:
 - `max_turns` (default 200).
 - `max_budget_usd` (default none).
 - `rounds` of resume (default 3).
+- `retries`, the retry rounds a worker run may start after transient model-service errors
+  (default 5).
+- `retry_delay_seconds`, the delay before the first retry, doubled before each further one
+  (default 15).
 
 Under `runtime`, it sets the paths Bash may read besides the grant, relative to the workspace or
 absolute. The defaults are `.venv` and `node_modules`, each only when it exists. The worker harness
