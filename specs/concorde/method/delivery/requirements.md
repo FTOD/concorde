@@ -92,7 +92,14 @@ as its only parent.
 ### req.delivery.marked — Every delivery commit is marked by its subject
 
 Delivery SHALL give every delivery commit the subject `concorde: deliver <workspace>` and give no
-other commit it creates that subject, making the commit even when it changes nothing.
+other commit it creates that subject.
+
+### req.delivery.empty-commit — An empty delivery is still a commit
+
+Delivery SHALL make its delivery commit even when the commit changes no file.
+
+A workspace whose work is all committed already is delivered by a commit of its own, since the
+subject of [req.delivery.marked](#req.delivery.marked) alone marks a delivery.
 
 ### req.delivery.commit-verified — The commit is proven to hold what was staged
 
@@ -116,16 +123,33 @@ commit a post-commit hook made on top of it.
 ### req.delivery.rejected-removed — A rejected commit does not stay on the branch
 
 When a delivery commit Delivery created in the run does not verify, Delivery SHALL move the bound
-branch back to the validated head, only while that head is the commit's only parent and the branch
-still points at the commit, leave the index and the worktree as they are, and say in the run's error
-that it took the commit off the branch, or otherwise that the commit stays and why: that the branch
-no longer points at it, naming the commit it points at, or that Git refused to move a branch that
-still points at it, with Git's account.
+branch back to the validated head while both of these conditions hold:
+
+- The validated head is the commit's only parent.
+- The branch still points at the commit.
 
 A rejected commit left at the head would carry the subject that alone marks a delivery. Whoever
 reads the branch could therefore take it for one, as
 [scenario.delivery.hook-changed-commit](scenarios.md#scenario.delivery.hook-changed-commit) shows.
+
+### req.delivery.rejected-inspectable — A rejected commit's content stays to be inspected
+
+When a delivery commit Delivery created in the run does not verify, Delivery SHALL leave the index
+and the worktree as the commit left them.
+
 The index and the worktree keep what the commit held, so that what a hook changed can be inspected.
+
+### req.delivery.rejected-reported — The error says where a rejected commit is
+
+When a delivery commit Delivery created in the run does not verify, Delivery SHALL say in the run's
+error that it took the commit off the branch, or otherwise that the commit stays and why, which is
+one of these:
+
+- The branch no longer points at the commit. The error names the commit the branch points at.
+- Git refused to move a branch that still points at the commit. The error gives Git's account.
+
+[req.delivery.rejected-removed](#req.delivery.rejected-removed) says when Delivery takes the commit
+off the branch.
 
 ### req.delivery.history-kept — History is never rewritten
 
@@ -139,15 +163,26 @@ only the commit the same run created.
 
 ### req.delivery.atomic — A failed commit gives the validated index back
 
-When staging, its comparison or the commit fails, Delivery SHALL restore the index to the state the readiness
-examined, leave the worktree as it is, and name in the run's summary and error every worktree path
-whose mode or content is no longer what the readiness examined.
+When staging, its comparison or the commit fails, Delivery SHALL restore the index to the state the
+readiness examined.
+
+### req.delivery.failed-worktree-kept — A failed commit leaves the worktree as it is
+
+When staging, its comparison or the commit fails, Delivery SHALL leave the worktree as it is.
 
 A failing commit hook, such as a formatter that rewrites files and then rejects the commit, may
-leave edits in the worktree that the developer wants. Delivery therefore keeps them and names them
-rather than undoing them, as
-[scenario.delivery.hook-edits-kept](scenarios.md#scenario.delivery.hook-edits-kept) shows. Nothing
-unvalidated is delivered, since the next delivery validates the worktree as it then is.
+leave edits in the worktree that the developer wants. Delivery therefore keeps them rather than
+undoing them, as [scenario.delivery.hook-edits-kept](scenarios.md#scenario.delivery.hook-edits-kept)
+shows. Nothing unvalidated is delivered, since the next delivery validates the worktree as it then
+is.
+
+### req.delivery.failed-paths-named — A failed commit names what changed since the readiness
+
+When staging, its comparison or the commit fails, Delivery SHALL name in the run's summary and
+error every worktree path whose mode or content is no longer what the readiness examined.
+
+With these names, the caller sees which edits
+[req.delivery.failed-worktree-kept](#req.delivery.failed-worktree-kept) kept.
 
 ## Records
 
