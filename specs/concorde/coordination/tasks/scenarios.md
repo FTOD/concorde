@@ -596,6 +596,25 @@ This illustrates [a merge running the Concorde it started with](requirements.md#
 - AND `concorde task list` and `concorde task show` still answer, showing the task as `merging`
 - AND those answers show the commits before and after the merge and the checked commit
 
+### scenario.tasks.merge-marker — A merge is marked until its checks decide
+
+- GIVEN a delivered task `t1` and no [unfinished-merge marker](../../glossary.json#concept.unfinished-merge-marker) in the primary worktree
+- WHEN the main agent merges it with a check that reads the marker
+- THEN the check finds the marker naming the part `coordination`, `concorde task merge` of task `t1`, the primary branch, the commit before the merge, the checked commit, the merge commit and the `--resume` and `--abort` of `t1`
+- AND once the merge closed the task, the marker is gone
+- AND a merge of task `t2` whose check fails is undone and leaves no marker either
+- AND a merge whose process is killed while its checks run leaves the marker with its merge commit, which Git does not list as a change
+- AND `--resume` and `--abort` of that merge each remove the marker once the task is no longer stored `merging`
+
+### scenario.tasks.merge-marker-reconciled — Tasks makes the marker agree with its records
+
+- GIVEN a marker of the part `coordination` and no task stored `merging`
+- WHEN the main agent opens task `t1`, then writes a marker of another part and opens task `t2`, then removes that marker and stores `t1` as `merging` and opens task `t3`
+- THEN the open of `t1` removed the marker of `coordination`
+- AND the open of `t2` left the other part's marker exactly as it was
+- AND the open of `t3` is refused with `merge_incomplete` as before
+- AND the marker of `t1`'s merge now exists
+
 ### scenario.tasks.merge-resume — Resume checks the interrupted merge again
 
 - GIVEN a task left `merging` by an interrupted merge whose merge commit is still the primary

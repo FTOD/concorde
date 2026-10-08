@@ -20,6 +20,7 @@ from unittest.mock import patch
 from concorde.kernel.errors import ERROR_SCHEMA
 from tests.concorde.support.ignored import TRACES
 from concorde.kernel.locking import workspace_lock
+from concorde.kernel.marker import read_marker, write_marker
 from concorde.spec.schema import validate
 from concorde.kernel.refusal import KernelError
 from concorde.kernel.schema import validate_typed
@@ -120,6 +121,10 @@ class MergeTests(unittest.TestCase):
         )
         self.assertEqual(-signal.SIGKILL, merged.returncode, merged.stdout)
         return before, self.head()
+
+    def marker(self):
+        """The Kernel's unfinished-merge marker of the primary worktree, or None."""
+        return read_marker(self.root / ".concorde")
 
     def assert_untouched(self, before, task_id="t1"):
         self.assertEqual(before, self.head())
@@ -938,6 +943,112 @@ class MergeTests(unittest.TestCase):
             "running", trace.read(self.root / ".concorde/tasks/t1/merges/1")["status"]
         )
 
+    @verifies("scenario.tasks.merge-marker")
+    def test_a_merge_marks_the_primary_branch_until_its_checks_decide(self):
+        self.project.open_task("t1")
+        self.deliver()
+        before = self.head()
+        seen = Path(tempfile.mkdtemp()) / "seen.json"
+        self.addCleanup(seen.unlink, missing_ok=True)
+        copy = python(
+            "import pathlib\n"
+            f"pathlib.Path({str(seen)!r}).write_text("
+            "pathlib.Path('.concorde/unfinished-merge.json').read_text())\n"
+        )
+        status, value = self.command("merge", "t1", "--check", copy)
+        self.assertEqual(0, status, value)
+        marked = json.loads(seen.read_text())
+        self.assertEqual(
+            (
+                "coordination",
+                "`concorde task merge` of task t1",
+                git(self.root, "symbolic-ref", "--short", "HEAD"),
+                before,
+                git(self.root, "rev-parse", "concorde/t1"),
+                value["merge"]["after"],
+                [
+                    "concorde task merge t1 --resume",
+                    "concorde task merge t1 --abort",
+                ],
+            ),
+            (
+                marked["part"],
+                marked["by"],
+                marked["branch"],
+                marked["before"],
+                marked["merging"],
+                marked["after"],
+                marked["finish"],
+            ),
+        )
+        self.assertIsNone(self.marker())
+        # A merge whose check fails is decided too: undone, without its marker.
+        self.project.open_task("t2")
+        self.deliver("t2", "src/a/other.py", "x = 1\n")
+        error = self.refusal("merge", "t2", "--check", python("raise SystemExit(3)"))
+        self.assertEqual("check_failed", error["code"])
+        self.assertIsNone(self.marker())
+
+    @verifies("scenario.tasks.merge-marker")
+    def test_an_interrupted_merge_leaves_its_marker(self):
+        before, after = self.interrupted()
+        marked = self.marker()
+        self.assertEqual(
+            ("coordination", before, after),
+            (marked["part"], marked["before"], marked["after"]),
+        )
+        self.assertEqual("", git(self.root, "status", "--porcelain"))
+
+    @verifies("scenario.tasks.merge-marker-reconciled")
+    def test_the_marker_is_made_to_agree_with_the_task_records(self):
+        head = self.head()
+        left = {
+            "schema_version": 1,
+            "part": "coordination",
+            "by": "`concorde task merge` of task gone",
+            "pid": 7,
+            "since": "2026-10-08T00:00:00+00:00",
+            "branch": "main",
+            "before": head,
+            "merging": head,
+            "after": None,
+            "finish": ["concorde task merge gone --abort"],
+        }
+        # A marker Tasks left while no task is merging goes with the next command under the lock.
+        write_marker(self.root / ".concorde", left)
+        self.project.open_task("t1")
+        self.assertIsNone(self.marker())
+        # Another part's marker is that part's to remove.
+        other = {**left, "part": "elsewhere"}
+        write_marker(self.root / ".concorde", other)
+        self.project.open_task("t2")
+        self.assertEqual(other, self.marker())
+        (self.root / ".concorde/unfinished-merge.json").unlink()
+        # A task stored merging without a marker gets one, and is refused as before.
+        self.deliver()
+        merging = {
+            "before": head,
+            "checked": git(self.root, "rev-parse", "concorde/t1"),
+            "branch": "main",
+            "after": None,
+            "history": store.history_key(self.root, "t1"),
+            "checks": [],
+            "since": store.now(),
+            "pid": 1,
+        }
+        store.update(
+            self.root,
+            "t1",
+            lambda record: {**record, "state": "merging", "merging": merging},
+        )
+        self.assertIsNone(self.marker())
+        error = self.refusal("open", "t3", "--goal", "g", "--modules", "module.a")
+        self.assertEqual("merge_incomplete", error["code"])
+        self.assertEqual(
+            ("coordination", merging["checked"]),
+            (self.marker()["part"], self.marker()["merging"]),
+        )
+
     @verifies("scenario.tasks.merge-resume")
     def test_resume_checks_the_merge_again_and_closes(self):
         before, after = self.interrupted()
@@ -984,6 +1095,7 @@ class MergeTests(unittest.TestCase):
         self.assertEqual(
             0, trace.read(merges / "2/checks/1")["content"]["data"]["exit_code"]
         )
+        self.assertIsNone(self.marker())
 
     @verifies("scenario.tasks.merge-log-changed")
     def test_a_log_changed_after_the_merge_commit_is_committed_again(self):
@@ -1172,6 +1284,7 @@ class MergeTests(unittest.TestCase):
             {key: value["abort"][key] for key in ("before", "undone", "left")},
         )
         self.assert_untouched(before)
+        self.assertIsNone(self.marker())
         # Nothing is refused any more: the task merges again.
         status, value = self.command("merge", "t1", "--check", python("pass"))
         self.assertEqual(0, status, value)

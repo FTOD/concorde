@@ -320,10 +320,11 @@ to put back uncommitted records. They fail in these ways:
 - A write fails with an `IssueError` in these cases:
   - When it cannot hold the [merge lock](../glossary.json#concept.merge-lock) within its wait,
     the code is `merge_busy`.
-  - When it is made while a task's merge is unfinished, the code is `merge_incomplete`.
-  - Where the coordination part is installed, when a
-    [task record](../glossary.json#concept.task-record) cannot be read, the code is
-    `unreadable_task_record`.
+  - When it is made while the
+    [unfinished-merge marker](../glossary.json#concept.unfinished-merge-marker) is present, the
+    code is `merge_incomplete`.
+  - When that marker cannot be read or breaks its contract, the code is
+    `unreadable_merge_marker`.
   - When Git refuses its commit, the code is `commit_failed`.
 - When a write cannot put back an uncommitted record, the refusal is an `IssueError` with
   `recovery_failed`. This applies to its own record after a failure or one an earlier write left.
@@ -345,7 +346,7 @@ It reports a `system_error` or an `OSError` as `io_error`.
 | `disposition_record(record, ...)` | Prepares and validates a disposed record without writing. |
 | `dispose_issue(root, id, expected_revision, reason, note, evidence, actor, duplicate_of, duplicate_revision, created_at, wait)` | Refuses a `duplicate` without `duplicate_of`, naming the Issue itself, or another reason with `duplicate_of` (`invalid_issue`). Under the lock, checks the revision (`stale_issue`), refuses closing a closed Issue (`closed_issue`) and reopening an open one (`open_issue`), and for `duplicate` that the other Issue exists (`unknown_issue`), is open (`invalid_issue`) and, when the caller gives `duplicate_revision`, the revision it read of that other Issue, still has it (`stale_issue`); appends the disposition, moves the record into the place of its new status and returns the new revision. `duplicate_of` and `duplicate_revision` default to `null`; `created_at` defaults to the time of acceptance; the bookkeeping command never gives `duplicate_revision`. |
 | `archive_issues(root, wait)` | Under the merge lock, as a write holds it, after recovery: moves every misplaced committed record into its place, its bytes unchanged so its revision stays, refusing with `stale_issue` and moving none when another program changed one of them since it read it, publishing all of them through one file transaction and committing them in one commit as a write commits, and returns `{"moved": [{issue_id, from, to}], "left": [{path, reason}]}`, sorted by identity. It leaves, with the reason, both paths of an Issue committed at both and a misplaced record whose path or place holds a change recovery left. Nothing to move commits nothing. Refuses as a write does. |
-| `recover_issues(root, wait)` | Under the merge lock, as a write holds it, runs the recovery below without writing an Issue and returns `{"recovered": [{path, action}], "left": [{path, reason}]}`: each record put back (`action` `restored` to its committed version, or `removed` when no commit holds it) or temporary file removed (`removed`), and each record change left because no write made it, with the reason. Refuses as a write does, with `not_primary`, `merge_busy`, `merge_incomplete`, `unreadable_task_record` or `recovery_failed`. |
+| `recover_issues(root, wait)` | Under the merge lock, as a write holds it, runs the recovery below without writing an Issue and returns `{"recovered": [{path, action}], "left": [{path, reason}]}`: each record put back (`action` `restored` to its committed version, or `removed` when no commit holds it) or temporary file removed (`removed`), and each record change left because no write made it, with the reason. Refuses as a write does, with `not_primary`, `merge_busy`, `merge_incomplete`, `unreadable_merge_marker` or `recovery_failed`. |
 
 When a `root` is not the primary worktree, every write refuses it with `not_primary`.
 The write then holds the primary worktree's merge lock, `.concorde/locks/merge.lock`.
@@ -361,15 +362,13 @@ When a process is handed the lock, it adopts the lock without waiting.
 For example, a task merge that closed its task hands the lock to the `concorde issues close`
 it starts for each Issue the task resolves.
 
-Where the coordination part is installed, a write performs the following checks while holding
-the lock. This applies whether the write takes the lock or receives it.
-It reads the current tasks'
-[task records](../coordination/tasks/contracts.md#contract.tasks.record)
-`.concorde/tasks/*/task.json` of the primary worktree.
-While a task is stored `merging`, the write refuses with `merge_incomplete`.
-When a task record cannot be read or does not read as a JSON object, the write refuses with
-`unreadable_task_record`. The refusal names the record. This is because that task may be the one
-merging.
+A write performs the following checks while holding the lock. This applies whether the write
+takes the lock or receives it. It reads the Kernel's
+[unfinished-merge marker](../kernel/contracts.md#contract.kernel.unfinished-merge)
+`.concorde/unfinished-merge.json` of the primary worktree. While the marker is present, the write
+refuses with `merge_incomplete`, carrying the Kernel's account of the merge. When the marker cannot
+be read or breaks its contract, the write refuses with `unreadable_merge_marker`. The refusal names
+the file. This is because that marker may describe a merge.
 The write then recovers as below.
 When the record it writes holds a change recovery left, the write refuses with
 `uncommitted_change`. The write reads the committed record. It checks the record's revision.
@@ -598,7 +597,7 @@ For these codes, the link's reason is `environment`:
 - `io_error`.
 - `merge_busy`.
 - `merge_incomplete`.
-- `unreadable_task_record`.
+- `unreadable_merge_marker`.
 - `commit_failed`.
 - `recovery_failed`.
 - `uncommitted_change`.
@@ -699,8 +698,8 @@ Recovery itself is `concorde issues recover`'s alone.
 | `not_a_repository` | `--root` lies in no Git repository, whose primary worktree would keep the Issues |
 | `not_primary` | a store write names a root that is not the primary worktree |
 | `merge_busy` | the merge lock stayed held for the whole wait; the message names its holder |
-| `merge_incomplete` | where the coordination part is installed, a task's merge into the primary branch is unfinished; the message is Tasks' account of it |
-| `unreadable_task_record` | where the coordination part is installed, a current task's record `.concorde/tasks/<task>/task.json` cannot be read or is no JSON object, so the write cannot tell whether that task's merge is unfinished; the message names the record |
+| `merge_incomplete` | the Kernel's [unfinished-merge marker](../glossary.json#concept.unfinished-merge-marker) is present: a merge into the primary branch is unfinished; the message is the Kernel's account of it, with the commands that finish it |
+| `unreadable_merge_marker` | the unfinished-merge marker `.concorde/unfinished-merge.json` cannot be read, is no JSON or breaks its contract, so the write cannot tell whether a merge is unfinished; the message names the file |
 | `commit_failed` | the primary worktree's `HEAD` is detached or Git refused the commit of the record, which was put back |
 | `recovery_failed` | an uncommitted record, the write's own after a failure or one an earlier write left, could not be put back; it stays uncommitted and no read shows it |
 | `uncommitted_change` | the record the write would change differs from its committed version in a way no write leaves; it is left as it is |

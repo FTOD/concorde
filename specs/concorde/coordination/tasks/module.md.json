@@ -25,7 +25,11 @@
           "concept.workspace-lock",
           "concept.merge-lock",
           "concept.delivery-commit",
-          "concept.file-transaction"
+          "concept.file-transaction",
+          "concept.unfinished-merge-marker",
+          "contract.kernel.unfinished-merge",
+          "req.kernel.marker-spans-merge",
+          "req.kernel.marker-refuses-commits"
         ]
       },
       {

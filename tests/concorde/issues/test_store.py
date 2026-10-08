@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import copy
 import errno
-import json
 import fcntl
 import os
 import tempfile
@@ -25,6 +24,7 @@ from concorde.issues.store import (
     report_issue,
     resolve_report,
 )
+from concorde.kernel.marker import write_marker
 from concorde.kernel.refusal import KernelError
 from concorde.kernel.schema import validate_typed
 from concorde.spec.verification import verifies
@@ -312,29 +312,31 @@ class IssueStoreTests(unittest.TestCase):
         self.assertEqual({}, self.issue_files())
         self.assertEqual([], list_issues(self.root))
 
+    def mark(self, **fields) -> dict:
+        """Leave the Kernel's unfinished-merge marker of a merge of task ``interrupted``."""
+        head = git(self.root, "rev-parse", "HEAD").strip()
+        value = {
+            "schema_version": 1,
+            "part": "coordination",
+            "by": "`concorde task merge` of task interrupted",
+            "pid": 41,
+            "since": "2026-10-01T00:00:00Z",
+            "branch": "main",
+            "before": head,
+            "merging": head,
+            "after": None,
+            "finish": [
+                "concorde task merge interrupted --resume",
+                "concorde task merge interrupted --abort",
+            ],
+            **fields,
+        }
+        write_marker(self.root / ".concorde", value)
+        return value
+
     @verifies("scenario.issues.store-merge-incomplete")
     def test_no_write_while_a_merge_is_unfinished(self):
-        task = self.root / ".concorde/tasks/interrupted"
-        task.mkdir(parents=True)
-        head = git(self.root, "rev-parse", "HEAD").strip()
-        (task / "task.json").write_text(
-            json.dumps(
-                {
-                    "schema_version": 4,
-                    "id": "interrupted",
-                    "state": "merging",
-                    "merging": {
-                        "before": head,
-                        "checked": head,
-                        "branch": "main",
-                        "after": None,
-                        "pid": 1,
-                        "since": "2026-10-01T00:00:00Z",
-                    },
-                    "reports": [],
-                }
-            )
-        )
+        self.mark()
         with self.assertRaises(IssueError) as raised:
             report_issue(self.root, report(), source())
         self.assertEqual("merge_incomplete", raised.exception.code)
@@ -360,26 +362,9 @@ class IssueStoreTests(unittest.TestCase):
         self.assertEqual({}, self.issue_files())
 
     @verifies("scenario.issues.store-merge-incomplete")
-    def test_the_refusal_gives_tasks_account_of_the_merge(self):
-        task = self.root / ".concorde/tasks/interrupted"
-        task.mkdir(parents=True)
+    def test_the_refusal_gives_the_markers_account_of_the_merge(self):
         head = git(self.root, "rev-parse", "HEAD").strip()
-        (task / "task.json").write_text(
-            json.dumps(
-                {
-                    "id": "interrupted",
-                    "state": "merging",
-                    "merging": {
-                        "before": "b" * 40,
-                        "checked": "c" * 40,
-                        "branch": "main",
-                        "after": head,
-                        "pid": 41,
-                        "since": "2026-10-01T00:00:00Z",
-                    },
-                }
-            )
-        )
+        self.mark(before="b" * 40, merging="c" * 40, after=head)
         with self.assertRaises(IssueError) as raised:
             report_issue(self.root, report(), source())
         message = str(raised.exception)
@@ -395,21 +380,30 @@ class IssueStoreTests(unittest.TestCase):
     @verifies("scenario.issues.store-without-coordination")
     def test_without_the_coordination_part_no_write_waits_for_a_merge(self):
         self.assertFalse((self.root / ".concorde/tasks").exists())
+        self.assertFalse((self.root / ".concorde/unfinished-merge.json").exists())
         first = report_issue(self.root, report(), source())
         self.assertEqual(
             [first["issue_id"]], [row["id"] for row in list_issues(self.root)]
         )
 
-    def test_a_task_record_that_cannot_be_read_refuses_the_write(self):
+    def test_a_task_record_alone_never_refuses_a_write(self):
+        # Tasks writes the marker before it stores a task merging; the store reads no task record.
         unreadable = self.root / ".concorde/tasks/broken"
         unreadable.mkdir(parents=True)
+        (unreadable / "task.json").write_text("{not json")
+        report_issue(self.root, report(), source())
+        self.assertEqual(1, len(list_issues(self.root)))
+
+    def test_a_marker_that_cannot_be_read_refuses_the_write(self):
+        path = self.root / ".concorde/unfinished-merge.json"
+        path.parent.mkdir(parents=True, exist_ok=True)
         for text in ("{not json", "[]"):
             with self.subTest(text=text):
-                (unreadable / "task.json").write_text(text)
+                path.write_text(text)
                 with self.assertRaises(IssueError) as raised:
                     report_issue(self.root, report(), source())
-                self.assertEqual("unreadable_task_record", raised.exception.code)
-                self.assertIn(str(unreadable / "task.json"), str(raised.exception))
+                self.assertEqual("unreadable_merge_marker", raised.exception.code)
+                self.assertIn(str(path), str(raised.exception))
                 self.assertEqual([], list_issues(self.root))
 
     @verifies("scenario.issues.store-disposition")

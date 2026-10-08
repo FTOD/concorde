@@ -111,11 +111,17 @@ record no commit holds, a write was interrupted after it published the file. The
 back first. It refuses any other change of the file with `uncommitted_change`, changing nothing. When the
 committed record is not valid, nothing is skipped, and the write refuses with `record_invalid`.
 
-The Operation reads no [task record](../../glossary.json#concept.task-record), as no Operation does
-([req.concorde.halves-apart](../../requirements.md#req.concorde.halves-apart)). So it cannot tell an
-unfinished task merge on the primary branch. A record committed on top of such a merge keeps
-`task merge --resume` and `--abort` from finishing it. The run's Issue writes refuse an unfinished
-merge themselves, which makes those parts incomplete and unrecorded.
+While it holds the merge lock, the record's write first reads the Kernel's
+[unfinished-merge marker](../../glossary.json#concept.unfinished-merge-marker). While the marker is
+present, a merge into the primary branch is unfinished, such as a task merge whose process ended
+before its checks decided. The write then refuses with `merge_incomplete`, carrying the Kernel's
+account of the merge, and commits nothing. A marker that cannot be read refuses the write with
+`unreadable_merge_marker`. Thus, no record lands between a merge commit and its checks, where it
+would keep `task merge --resume` and `--abort` from finishing the merge. The marker is Kernel
+state. The Operation reads no [task record](../../glossary.json#concept.task-record), as no
+Operation does ([req.concorde.halves-apart](../../requirements.md#req.concorde.halves-apart)). The
+run's Issue writes refuse an unfinished merge themselves, which makes those parts incomplete and
+unrecorded.
 
 A skipped part changes no Issue. Its Module's outcome comes from the Issues that stand. That is
 why skipping needs the issues part. Where the issues part is not installed, nothing is skipped and
@@ -409,8 +415,10 @@ on it for the worktree the run started in, whose primary worktree keeps the Issu
 <a id="uses-kernel"></a>
 
 **Kernel** provides the [merge lock](../../glossary.json#concept.merge-lock) the record's commit
-holds and the [file transaction](../../glossary.json#concept.file-transaction) that publishes the
-record.
+holds, the [unfinished-merge marker](../../glossary.json#concept.unfinished-merge-marker) it reads
+under that lock and the [file transaction](../../glossary.json#concept.file-transaction) that
+publishes the record. Project review relies on the marker's writer writing it before a merge touches
+the primary branch and removing it only once the merge is decided.
 
 <a id="uses-issues"></a>
 

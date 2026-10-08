@@ -6,9 +6,10 @@ merge whose checks failed, and closing the task. The kernel releases the lock ho
 ends, so no other session has to wait for this one to announce that it is done. It also holds the
 task's workspace lock, so no run of the task changes its branch meanwhile, and merges the exact
 commit it checked, always as a merge commit that also adds the task's decision log as
-``.concorde/decisions/<history key>.md`` and names the task in its ``Concorde-Task`` trailer. Before ``git merge`` it stores the task as ``merging``; a process that ends
-before its checks decided leaves that state behind, which refuses every other mutating task
-command until ``--resume`` reruns the checks or ``--abort`` resets the primary branch.
+``.concorde/decisions/<history key>.md`` and names the task in its ``Concorde-Task`` trailer. Before ``git merge`` it writes the Kernel's unfinished-merge marker and then stores the task as
+``merging``; a process that ends before its checks decided leaves both behind, which refuse every
+other mutating task command and every other part's commit on the primary branch until
+``--resume`` reruns the checks or ``--abort`` resets the primary branch.
 
 Before it merges, it audits what lies outside the task's worktree: the primary worktree, which
 must be clean, and the worktree of every other task that is not working in it, which must hold no

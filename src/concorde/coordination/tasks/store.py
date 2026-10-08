@@ -35,6 +35,7 @@ from pathlib import Path
 
 from ...kernel import binding as workspace_binding
 from ...kernel import delivery, locking
+from ...kernel import marker as merge_marker
 from ...kernel.refusal import KernelError
 from ...kernel.schema import register
 from ...kernel.tracing.kinds import NodeKind, register as register_kinds
@@ -516,6 +517,7 @@ def merge_lock(primary: Path, command: str, task_id: str, wait: float = MERGE_WA
             wait=wait,
             task=task_id,
         ) as waited:
+            reconcile_marker(primary)
             yield waited
     except locking.LockRefused as busy:
         raise TaskError(
@@ -715,6 +717,83 @@ def unfinished_merge(primary: Path) -> dict | None:
     return None
 
 
+# The part Tasks names in the Kernel's unfinished-merge marker, the only one that changes it.
+MARKER_PART = "coordination"
+
+
+def _marker(task_id: str, merging: dict) -> dict:
+    """The Kernel's unfinished-merge marker of the task's merge ``merging`` describes."""
+    return {
+        "schema_version": 1,
+        "part": MARKER_PART,
+        "by": f"`concorde task merge` of task {task_id}",
+        "pid": merging["pid"],
+        "since": merging["since"],
+        "branch": merging["branch"],
+        "before": merging["before"],
+        "merging": merging["checked"],
+        "after": merging.get("after"),
+        "finish": [
+            f"concorde task merge {task_id} --resume",
+            f"concorde task merge {task_id} --abort",
+        ],
+    }
+
+
+def mark_merge(primary: Path, task_id: str, merging: dict) -> None:
+    """Write the Kernel's unfinished-merge marker for the task's merge, holding the merge lock:
+    before the task is stored ``merging``, and again once the merge commit is known. Refused with
+    ``marker_unwritable``."""
+    try:
+        merge_marker.write_marker(concorde(primary), _marker(task_id, merging))
+    except KernelError as error:
+        raise TaskError(
+            "marker_unwritable",
+            f"the unfinished-merge marker of task {task_id}'s merge could not be written: "
+            f"{error}; nothing of the merge was recorded or merged",
+        ) from error
+
+
+def unmark_merge(primary: Path) -> None:
+    """Remove the unfinished-merge marker Tasks wrote, once no task is stored ``merging``.
+
+    A marker another part wrote is left alone. A marker that cannot be read or removed stays too:
+    it only refuses commits on the primary branch, and the next Tasks command that takes the merge
+    lock tries again.
+    """
+    try:
+        found = merge_marker.read_marker(concorde(primary))
+        if found is not None and found["part"] == MARKER_PART:
+            merge_marker.remove_marker(concorde(primary))
+    except KernelError:
+        pass
+
+
+def reconcile_marker(primary: Path) -> None:
+    """Make the unfinished-merge marker agree with the task records, holding the merge lock.
+
+    Without a task stored ``merging``, a marker Tasks wrote is one a process left when it ended
+    between writing it and recording the merge, or between ending the merge and removing it: it is
+    removed. A task stored ``merging`` without a marker, as a merge Concorde left before it wrote
+    markers, gets one. A record that cannot be read leaves the marker as it is; the command's own
+    check refuses on it.
+    """
+    try:
+        record = unfinished_merge(primary)
+    except TaskError:
+        return
+    if record is None:
+        unmark_merge(primary)
+        return
+    try:
+        if merge_marker.read_marker(concorde(primary)) is None:
+            merge_marker.write_marker(
+                concorde(primary), _marker(record["id"], record["merging"])
+            )
+    except KernelError:
+        pass
+
+
 def merge_commit(primary: Path, merging: dict) -> str | None:
     """The primary worktree's ``HEAD`` when it is the merge that ``merging`` began, else None.
 
@@ -792,9 +871,18 @@ def begin_merge(primary: Path, task_id: str, merging: dict) -> dict:
         record["merging"] = merging
         return record
 
-    with task_locked(primary, task_id):
-        written = update(primary, task_id, change, locked=True)
-        _transition(primary, task_id, "merging")
+    # The marker comes first, so that nothing commits on the primary branch from the moment the
+    # task is stored merging, even when this process ends right after.
+    mark_merge(primary, task_id, merging)
+    try:
+        with task_locked(primary, task_id):
+            written = update(primary, task_id, change, locked=True)
+            _transition(primary, task_id, "merging")
+    except BaseException:
+        with contextlib.suppress(TaskError):
+            if unfinished_merge(primary) is None:
+                unmark_merge(primary)
+        raise
     return written
 
 
@@ -805,7 +893,11 @@ def merged_at(primary: Path, task_id: str, after: str) -> dict:
         record["merging"]["after"] = after
         return record
 
-    return update(primary, task_id, change)
+    written = update(primary, task_id, change)
+    # A marker still without the merge commit refuses commits all the same.
+    with contextlib.suppress(TaskError):
+        mark_merge(primary, task_id, written["merging"])
+    return written
 
 
 def end_merge(primary: Path, task_id: str) -> dict:
@@ -819,6 +911,7 @@ def end_merge(primary: Path, task_id: str) -> dict:
     with task_locked(primary, task_id):
         written = update(primary, task_id, change, locked=True)
         _transition(primary, task_id, "open")
+    unmark_merge(primary)
     return written
 
 
@@ -2052,6 +2145,10 @@ def _close_held(
             f"{task_id} stays {record['state']} without it; once the cause is fixed, {again} "
             "finishes the close",
         ) from error
+    if record["state"] == "merging":
+        # The merge that closes the task is decided: commits may land on the primary branch again,
+        # beginning with the decision log and the Issues the task resolves.
+        unmark_merge(primary)
     _finish_ending(primary, task_id, closed, finish)
     commit_decision_log(primary, task_id, closed["closed"], finish)
     warnings.extend(session.finish_sessions(primary, task_id))

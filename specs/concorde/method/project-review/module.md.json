@@ -78,7 +78,9 @@
         "meaning": "#uses-kernel",
         "relies_on": [
           "concept.merge-lock",
-          "concept.file-transaction"
+          "concept.file-transaction",
+          "concept.unfinished-merge-marker",
+          "req.kernel.marker-spans-merge"
         ]
       },
       {

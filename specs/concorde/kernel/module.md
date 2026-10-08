@@ -12,7 +12,9 @@ Concorde's parts cooperate through without importing each other. Coordination wr
 
 Method makes a [delivery commit](../glossary.json#concept.delivery-commit) that Coordination
 recognizes. Coordination's Tasks and the issues part's Issues take the same
-[merge lock](../glossary.json#concept.merge-lock). Every level records the same
+[merge lock](../glossary.json#concept.merge-lock). Tasks writes the
+[unfinished-merge marker](../glossary.json#concept.unfinished-merge-marker) that Issues and Method's
+project review read. Every level records the same
 [trace node](../glossary.json#concept.trace-node). Every level reports with the same
 [error chain](../glossary.json#concept.error-chain). Each of these agreements belongs to neither
 side, so it lives here. Every part that cooperates through an agreement depends on the Kernel
@@ -45,6 +47,7 @@ The Kernel's code is a small library with these functions:
 - Applying a file transaction
 - Finding and verifying the delivery commits of a workspace
 - Taking the workspace lock and the merge lock
+- Reading, writing and removing the unfinished-merge marker
 
 Each function refuses with a stable code. Its caller turns that code into its own error link.
 Tracing, the Kernel's child, adds the trace nodes and locks ([Library](contracts.md#library)).
@@ -239,6 +242,31 @@ runs ([Handing a lock on](tracing/contracts.md#handing-a-lock-on)). The lock kee
 first taker, the task merge. The reason is that every other taker takes it so as not to land a
 commit between a merge commit and its checks.
 
+<a id="concept.unfinished-merge-marker"></a>
+
+The lock alone cannot keep that promise across a crash. The operating system releases the lock when
+its holder ends, even in the middle of a merge. The **[unfinished-merge
+marker](../glossary.json#concept.unfinished-merge-marker)** keeps what the lock forgets. It is the
+file `.concorde/unfinished-merge.json` of the primary worktree, which Git ignores. A part that
+merges into the primary branch in several steps writes the marker while it holds the merge lock,
+before it changes anything. The part removes the marker once the merge is decided, kept or undone.
+A crash between leaves the marker behind. The marker names:
+
+- The part that wrote it, the only part that replaces or removes it.
+- The command that merges, its process and its start.
+- The branch, the commit before the merge, the commit merged in and the merge commit once it exists.
+- The commands that finish the merge.
+
+Every other part that commits on the primary branch reads the marker while it holds the merge lock.
+While the marker is present, that part refuses and commits nothing. The part also refuses when the
+marker cannot be read, since such a marker may describe a merge. The reader holds the lock, so the
+writer has ended. The writer may still run only when it handed the lock on, and it removes the
+marker before it does.
+
+In Concorde, Tasks writes the marker for a task merge. The Issue store and project review's record
+commit read it. The marker is Kernel state, not a task record. Thus, an Operation reads it without
+reading any part's records ([req.concorde.halves-apart](../requirements.md#req.concorde.halves-apart)).
+
 ## Overview
 
 The Kernel sits below every part that cooperates and above none. Each arrow says which agreement a
@@ -250,7 +278,7 @@ direction: up
 kernel: Kernel {
   data: "Typed values,\nfile transactions"
   workspace: "Workspace binding,\nworkspace lock"
-  primary: "Delivery commit,\nmerge lock"
+  primary: "Delivery commit, merge lock,\nunfinished-merge marker"
   tracing: "Tracing: trace nodes,\nlocks, error chain"
 }
 coordination: Coordination
@@ -260,12 +288,13 @@ method: Method
 harness: Worker harness
 issues: Issues
 coordination -> kernel.workspace: "writes the binding,\ntakes the lock to merge or close"
-coordination -> kernel.primary: "reads delivery commits,\ntakes the merge lock"
+coordination -> kernel.primary: "reads delivery commits, takes the\nmerge lock, writes the marker"
 execution -> kernel.workspace: "reads the binding,\nholds the lock for a run"
 workflow -> kernel.workspace: reads the binding
 method -> kernel.workspace: reads the binding
 method -> kernel.primary: makes delivery commits
-issues -> kernel.primary: takes the merge lock
+issues -> kernel.primary: "takes the merge lock,\nreads the marker"
+method -> kernel.primary: "reads the marker for\nthe review record"
 issues -> kernel.data: records and writes
 harness -> kernel.tracing: records worker runs
 coordination -> kernel.tracing: "records task nodes,\nhands on and waits for locks"
@@ -353,7 +382,8 @@ It imports nothing of Distribution. Thus, the dependency stays a format the Kern
 - The [error chain](../glossary.json#concept.error-chain) through which a failure travels up.
 
 The Kernel's own locks are the workspace lock and the merge lock. They are files of that place.
-The Kernel's own locks are taken through Tracing's library.
+The Kernel's own locks are taken through Tracing's library. The unfinished-merge marker is no lock.
+It lies outside `locks/`, which holds every lock and nothing else.
 
 ### Code
 
@@ -371,6 +401,7 @@ error chain code's `errors.py`. Its files hold these:
 - `binding.py` holds the workspace binding's reader and writer.
 - `delivery.py` holds the delivery commit's message and listing.
 - `locking.py` holds the workspace lock and the merge lock, taken through Tracing's lock library.
+- `marker.py` holds the unfinished-merge marker's reader, writer and account.
 
 Except for the spec part and Distribution, every part imports the Kernel library for these formats
 instead of keeping its own. The Spec tooling's copy lives in Spec core.
@@ -391,6 +422,7 @@ The **Kernel tests** exercise the library on the scenarios of the Kernel's
 - Locks refused.
 - Locks retired.
 - Locks taken.
+- Markers read, written, refused and removed.
 
 <a id="realization.kernel.guidance"></a>
 

@@ -741,7 +741,11 @@ Before touching anything, Tasks refuses these cases:
 - Anything changed outside the task's worktree ([below](#nothing-changed-outside-the-task)).
 
 Tasks merges the branch head those checks accepted, the task's latest delivery commit. Before
-merging, Tasks records the task as **merging**, with:
+merging, Tasks writes the Kernel's
+[unfinished-merge marker](../../glossary.json#concept.unfinished-merge-marker). The marker names the
+merge and the `--resume` and `--abort` that finish it. If the marker cannot be written, Tasks
+refuses with `marker_unwritable` and changes nothing. Tasks then records the task as **merging**,
+with:
 
 - The primary branch's commit before the merge.
 - The checked commit.
@@ -767,7 +771,8 @@ steps:
 
 The conflict is never resolved in the primary worktree.
 
-After the merge, Tasks records the merge commit. Tasks then runs the checks in the primary worktree.
+After the merge, Tasks records the merge commit, in the task record and in the marker. Tasks then
+runs the checks in the primary worktree.
 Tasks runs exactly the `--check` commands given, such as a project that must build first. If no
 commands are given and the spec part is installed, Tasks runs `concorde spec-validation` of the
 merged checkout. If the spec part is not installed and no check is given, the merge runs no check.
@@ -923,11 +928,27 @@ unchecked -> checks: "--resume, head still the merge commit"
 unchecked -> aborted: --abort
 ```
 
+**The unfinished-merge marker.** Every part that commits on the primary branch under the merge lock
+reads the marker, such as an Issue write or project review's record. While the marker is present,
+that part refuses, so nothing lands between a merge commit and its checks. Tasks removes the marker
+only after the task record no longer says `merging`. That is once the task is closed as merged. It
+is also once a conflict, a refused commit, a failed check or `--abort` returned the task to
+delivered. The record
+says `merging` only while the marker exists. Thus, the parts that read the marker never read a task
+record, and an Operation stays apart from Coordination's records.
+
+A process killed after writing the marker and before recording the merge leaves a marker no task
+record backs. So does a process killed after ending the merge and before removing the marker.
+Whenever Tasks takes the merge lock, it first makes the marker agree with its records. It removes a
+marker of its own part while no task is `merging`. It writes the marker of a `merging` task that
+has none. Such a task is a merge left by a Concorde that wrote no markers yet. It leaves another
+part's marker alone.
+
 **An interrupted merge.** If a merge's process ends before its checks decided, killed or crashed, it
-leaves the task `merging`. The process may also leave an unchecked merge commit at the head of the
-primary branch. The operating system releases the merge lock, so nothing but the record says that
-the primary branch is not to be built on. Every task command that changes something therefore looks
-for a `merging` task first. While no live process holds the merge lock, these commands, in any main
+leaves the task `merging` and the marker present. The process may also leave an unchecked merge
+commit at the head of the primary branch. The operating system releases the merge lock, so only
+the record and the marker say that the primary branch is not to be built on. Every task command that
+changes something therefore looks for a `merging` task first. While no live process holds the merge lock, these commands, in any main
 session and for any task, refuse with `merge_incomplete`:
 
 - `open`
@@ -1339,6 +1360,13 @@ write takes too, for these actions:
 - Opening.
 - Merging.
 - Closing.
+
+Tasks writes the [unfinished-merge marker](../../glossary.json#concept.unfinished-merge-marker) of
+each merge as the [marker contract](../../kernel/contracts.md#contract.kernel.unfinished-merge)
+requires, in the order the Kernel's
+[req.kernel.marker-spans-merge](../../kernel/requirements.md#req.kernel.marker-spans-merge) sets.
+Tasks relies on every other part that commits on the primary branch refusing while the marker is
+present.
 
 Tasks writes every record as a [file transaction](../../glossary.json#concept.file-transaction),
 complete or absent and bound to the bytes it replaces.

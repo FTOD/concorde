@@ -22,7 +22,6 @@ from __future__ import annotations
 
 import copy
 import errno
-import json
 import os
 import re
 import subprocess
@@ -32,6 +31,7 @@ from pathlib import Path
 from uuid import NAMESPACE_URL, uuid5
 
 from ..kernel import locking
+from ..kernel import marker as merge_marker
 from ..kernel.errors import ERROR_SCHEMA
 from ..kernel.files import apply_files
 from ..kernel.refusal import KernelError
@@ -109,11 +109,12 @@ class IssueError(ValueError):
             "unfinished",
             "have the main agent resume or abort the unfinished merge, then repeat the write",
         ),
-        "unreadable_task_record": (
-            "no Issue is committed on the primary branch while a task's merge there may be "
-            "unfinished, and a task record that cannot be read may be the merging task's",
-            "have the main agent repair the named task record, then repeat the write; carry "
-            "this error chain, never an Issue",
+        "unreadable_merge_marker": (
+            "no Issue is committed on the primary branch while a merge there may be "
+            "unfinished, and an unfinished-merge marker that cannot be read may describe one",
+            "have the main agent finish the merge the named marker describes, or remove the "
+            "marker once no merge is unfinished, then repeat the write; carry this error chain, "
+            "never an Issue",
         ),
         "commit_failed": (
             "an Issue write is acknowledged only once its record is committed on the primary "
@@ -808,7 +809,7 @@ def _writing(root: Path, what: str, wait: float):
     A process that holds the lock, such as a task merge closing the Issues its task resolves,
     hands it on to the ``concorde issues`` it starts, which adopts it without waiting; an
     unfinished merge refuses the write all the same. Refused with ``not_primary``,
-    ``merge_busy``, ``merge_incomplete``, ``unreadable_task_record`` or ``recovery_failed``.
+    ``merge_busy``, ``merge_incomplete``, ``unreadable_merge_marker`` or ``recovery_failed``.
     """
     primary = _require_primary(root)
     try:
@@ -825,79 +826,24 @@ def _writing(root: Path, what: str, wait: float):
         ) from None
 
 
-# Where the coordination part keeps its current tasks' records (contract.tasks.task-record).
-TASK_RECORDS = ".concorde/tasks"
-
-
-def unfinished_merge(primary: Path) -> dict | None:
-    """The record of the current task Tasks stores as ``merging``, read through Tasks' task record
-    format, or None; also None where the coordination part is not installed, since no
-    ``.concorde/tasks/`` then exists. A record that cannot be read as a JSON object cannot be told
-    not to be merging, and may be the merge's own, so it is refused with
-    ``unreadable_task_record``, as Tasks refuses its own commands on it."""
-    folder = Path(primary) / TASK_RECORDS
-    if not folder.is_dir():
-        return None
-    for path in sorted(folder.glob("*/task.json")):
-        try:
-            record = json.loads(path.read_text(encoding="utf-8"))
-            if not isinstance(record, dict):
-                raise ValueError(
-                    f"it holds a JSON {type(record).__name__}, not an object"
-                )
-        except (OSError, ValueError) as error:
-            raise IssueError(
-                f"the task record {path} cannot be read as a JSON object ({error}), so no "
-                "Issue write can tell whether that task's merge into the primary branch is "
-                "unfinished",
-                "unreadable_task_record",
-                path=str(path),
-            ) from None
-        if record.get("state") == "merging" and isinstance(record.get("merging"), dict):
-            return {**record, "id": record.get("id") or path.parent.name}
-    return None
-
-
-def merge_account(primary: Path, record: dict) -> str:
-    """Tasks' account of the unfinished merge ``record`` describes: the merging task, its
-    commits, where the primary branch is now and how to finish it."""
-    merging = record["merging"]
-    task = record["id"]
-    before, after = merging.get("before"), merging.get("after")
-    found = _git(primary, "rev-parse", "HEAD")
-    head = found.stdout.strip() if found.returncode == 0 else "(unknown)"
-    if after and head == after:
-        where = f"at {head}, the merge commit"
-    elif head == before:
-        where = f"back at {head}, the commit before the merge"
-    else:
-        where = (
-            f"at {head}, which is neither the commit before the merge nor the merge commit "
-            f"{after or '(never recorded)'}"
-        )
-    return (
-        f"task {task} was interrupted while being merged: `concorde task merge` (process "
-        f"{merging.get('pid')}, begun {merging.get('since')}) was merging its checked delivery "
-        f"commit {merging.get('checked')} into {merging.get('branch')} of {primary}, which was at "
-        f"{before}, and ended before its checks decided whether the merge stays; the primary "
-        f"branch is now {where}. `concorde task merge {task} --resume` reruns its checks on the "
-        f"merge commit and closes the task or undoes the merge, and `concorde task merge {task} "
-        f"--abort` resets {merging.get('branch')} to {before} and returns the task to delivered"
-    )
-
-
 def _refuse_unfinished_merge(primary: Path, what: str) -> None:
-    """``merge_incomplete`` while a task is stored ``merging``, ``unreadable_task_record`` while
-    a task record cannot be read; the merge lock is held."""
+    """``merge_incomplete`` while the Kernel's unfinished-merge marker of the primary worktree is
+    present, ``unreadable_merge_marker`` while it cannot be read; the merge lock is held, so the
+    process that wrote the marker has ended. Without a part that merges into the primary branch
+    there is never a marker, and the merge lock alone orders the writes."""
+    concorde = layout.concorde_of(primary)
     try:
-        unfinished = unfinished_merge(primary)
-    except IssueError as error:
+        unfinished = merge_marker.read_marker(concorde)
+    except KernelError as error:
         raise IssueError(
-            f"{what} was not written: {error.message}", error.code, path=error.path
+            f"{what} was not written: {error.code}: {error}, so no Issue write can tell whether "
+            "a merge into the primary branch is unfinished",
+            "unreadable_merge_marker",
+            path=error.field or None,
         ) from None
     if unfinished is not None:
         raise IssueError(
-            f"{what} was not written: {merge_account(primary, unfinished)}",
+            f"{what} was not written: {merge_marker.describe(concorde, unfinished)}",
             "merge_incomplete",
         )
 

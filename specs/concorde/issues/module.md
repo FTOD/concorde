@@ -209,14 +209,14 @@ The store relies on the Kernel for:
 - Its records.
 - Its file transactions.
 - The merge lock.
+- The [unfinished-merge marker](../glossary.json#concept.unfinished-merge-marker).
 
 The command relies on Tracing for the error chains it checks and prints.
 Where Spec core is installed, the command reads Spec core's registry for which Modules exist.
 The command reads the registry through the file that Spec core's Spec defines.
-Where Tasks is installed, the store reads Tasks' [task records](../glossary.json#concept.task-record)
-for an unfinished merge. The store reads the task records through the file that Tasks' Spec defines.
-Neither reads through that part's code. Through the command, Tasks closes the Issues a merged task
-resolves.
+The store learns of an unfinished merge from the Kernel's marker alone. It reads no
+[task record](../glossary.json#concept.task-record). Neither reads through another part's code.
+Through the command, Tasks closes the Issues a merged task resolves.
 
 ```d2
 issues: Issues
@@ -228,7 +228,6 @@ session: Main session
 issues -> kernel
 issues -> tracing
 issues -> core
-issues -> tasks
 tasks -> issues
 session -> issues
 ```
@@ -636,7 +635,7 @@ The following are refused without committing a record or leaving one a read show
 - Missing report evidence.
 - A busy merge lock.
 - An unfinished merge.
-- An unreadable task record.
+- An unfinished-merge marker that cannot be read.
 - A failed commit.
 - A record that could not be put back.
 - A record changed by hand.
@@ -719,6 +718,22 @@ The **Kernel** provides the following:
 - The [merge lock](../glossary.json#concept.merge-lock) every write holds or relies on its caller
   holding. A write relies on its caller holding the lock when a merge that has closed its task
   closes the Issues its task resolves.
+- The [unfinished-merge marker](../glossary.json#concept.unfinished-merge-marker) every write reads
+  while it holds the merge lock. While the marker is present, the store refuses the write with
+  `merge_incomplete`. Its message is the Kernel's account of that merge. The account names the
+  command that was merging, its process and start, and its commits. It also names where the
+  primary branch is now and the commands that finish the merge, such as a task's `--resume` and
+  `--abort`. A marker that
+  cannot be read may describe a merge. Therefore, the store refuses the write with
+  `unreadable_merge_marker`, an environment refusal naming the file. Where no part merges into the
+  primary branch, such as without the coordination part, there is never a marker. Then the merge
+  lock alone orders the writes.
+
+  The store relies on the marker's writer writing it before the merge touches the primary branch
+  and removing it only once the merge is decided
+  ([req.kernel.marker-spans-merge](../kernel/requirements.md#req.kernel.marker-spans-merge)). In
+  Concorde, Tasks is that writer. A merge that hands the lock on to close the Issues its task
+  resolves has removed the marker before.
 
 When a transaction is stale, it is refused. The refusal reports `stale_issue`. The transaction
 writes nothing. The store's error type,
@@ -755,37 +770,6 @@ Where the file is absent, a Module is a plain label. In that case, the following
 When `report --check` checks a report with an `origin` before handoff to another project, it
 resolves no reporting Module either way. The project that records the report resolves a reporting
 Module, so the report's `null` owner is never refused here.
-
-<a id="uses-tasks"></a>
-
-**Tasks** is an optional integration. Issues reaches it through its
-[task records](../coordination/tasks/contracts.md#contract.tasks.record) alone, never through the
-coordination part's code. Where the coordination part is installed, the following applies:
-
-- Tasks records that a task is `merging`
-  [before its merge touches the primary branch](../coordination/tasks/requirements.md#req.tasks.merging-recorded).
-- Before every write, the store reads the records of the current tasks,
-  `.concorde/tasks/*/task.json`.
-- While one task is stored `merging`, the store refuses the write with `merge_incomplete`.
-  Its message is
-  [Tasks' account of that merge](../coordination/tasks/requirements.md#req.tasks.merge-incomplete-refused),
-  built from the record's `merging`. The message names the following:
-  - The merging task.
-  - Its process and start.
-  - Its commits.
-  - Where the primary branch is now.
-  - The `--resume` and `--abort` that finish it.
-- A record that does not read as a JSON object cannot be told not to be `merging`.
-  That record may be the very record of the merge.
-  For these reasons, until the main agent repairs the record, the store refuses the write with
-  `unreadable_task_record`. This is an environment refusal naming the record, as Tasks refuses its
-  own commands on it.
-
-Where the coordination part is not installed, the following applies:
-
-- There is no `.concorde/tasks/`.
-- There is no task merge.
-- No write waits for a task merge.
 
 The store itself finds the primary worktree of any worktree of the repository through Git's common
 directory. This needs no part.
@@ -851,7 +835,7 @@ publication, it leaves the record as it was committed.
 direction: down
 check: "check the request\n(the report or disposition, the root)"
 lock: "take the merge lock,\nor the caller holds it"
-merge: "every task record read,\nnone stored merging?"
+merge: "no unfinished-merge\nmarker present?"
 recover: "put back what earlier\nwrites left uncommitted"
 revision: "committed record at the\nrevision the caller read?"
 publish: "publish through a file\ntransaction and sync"
@@ -869,7 +853,7 @@ publish -> commit
 commit -> done
 check -> refused: invalid_issue, not_primary
 lock -> refused: merge_busy
-merge -> refused: merge_incomplete, unreadable_task_record
+merge -> refused: merge_incomplete, unreadable_merge_marker
 recover -> refused: uncommitted_change
 recover -> failed: a record not put back
 revision -> refused: stale_issue, closed_issue, open_issue

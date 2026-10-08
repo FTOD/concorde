@@ -529,6 +529,23 @@ where the spec part is installed, and otherwise run no check and say so in its a
 - The history key the task will close under.
 - The checks the merge will run.
 
+### req.tasks.merge-marked — A merge is marked for every part until it is decided
+
+`concorde task merge` SHALL write the Kernel's [unfinished-merge marker](../../glossary.json#concept.unfinished-merge-marker) of its merge before it stores the task as `merging`, write it again once it has made the merge commit, and remove it only after the task is no longer stored `merging`, whether closed as merged or returned to delivered.
+
+The marker names the part `coordination`, the merge and the `--resume` and `--abort` of the task.
+A merge that cannot write the marker refuses with `marker_unwritable` and changes nothing. A marker
+that cannot be written again or removed stays as it was. It refuses only commits of other parts,
+and the next Tasks command under the merge lock settles it.
+
+### req.tasks.merge-marker-reconciled — Tasks makes the marker agree with its records
+
+Whenever Tasks takes the merge lock, it SHALL first remove a marker that names its part while no task is stored `merging`, and write the marker of a task stored `merging` when none exists.
+
+A marker Tasks wrote while no task is merging is one a process left when it ended right before
+recording a merge or right after ending one. A marker of another part is left alone. When a task
+record cannot be read, the marker stays as it is, and the command refuses as before.
+
 ### req.tasks.merge-incomplete-refused — Nothing builds on an unchecked merge
 
 While a task is stored as `merging` and no live process holds the merge lock, `concorde task open`,
