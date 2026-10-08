@@ -489,6 +489,9 @@ it allows. Optionally, the caller names a final check to run after the writes.
 4. When a write or the final check fails, the transaction restores every file written so far
    through the same temporary file and rename. When a file originally exists, the transaction
    restores its original bytes. When a file originally does not exist, the transaction removes it.
+   A file whose write was under way when the failure came counts as written, whether or not its
+   rename took place. When such a file still holds its original bytes, or is still absent, its
+   restoration changes nothing.
 
 What the caller then receives:
 

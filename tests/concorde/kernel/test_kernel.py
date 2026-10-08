@@ -587,6 +587,43 @@ class TransactionTests(unittest.TestCase):
             )
         self.assertEqual({"a.txt": "a\n", "b.txt": "b\n"}, self.contents())
 
+    @verifies("scenario.kernel.transaction-restored")
+    def test_an_interruption_just_after_a_rename_restores_that_file(self):
+        replace = os.replace
+
+        def interrupted_after(target: str):
+            interrupted = []
+
+            def renamed(source, destination):
+                replace(source, destination)
+                if Path(destination).name == target and not interrupted:
+                    interrupted.append(destination)
+                    raise KeyboardInterrupt
+
+            return renamed
+
+        for target, changes in (
+            ("b.txt", self.changes()),
+            (
+                "c.txt",
+                [
+                    files.file_change(self.root, "a.txt", "A\n"),
+                    files.file_change(self.root, "new/c.txt", "C\n"),
+                ],
+            ),
+        ):
+            with (
+                self.subTest(target=target),
+                patch.object(files.os, "replace", interrupted_after(target)),
+                self.assertRaises(KeyboardInterrupt),
+            ):
+                files.apply_files(self.root, changes, {"a.txt", "b.txt", "new/c.txt"})
+            self.assertEqual({"a.txt": "a\n", "b.txt": "b\n"}, self.contents())
+            self.assertFalse((self.root / "new/c.txt").exists())
+            self.assertEqual(
+                [], list(self.root.rglob(".concorde-write-*")), "no temporary file"
+            )
+
     @verifies("scenario.kernel.transaction-unrestored")
     def test_a_refused_restoration_is_named(self):
         failure = RuntimeError("the final check failed")
