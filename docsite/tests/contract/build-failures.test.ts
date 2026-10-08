@@ -52,14 +52,15 @@ it('validation precedes directory replacement and production isolates generated 
   expect(mocks.spawn.mock.calls[0][2].env.DOCUSAURUS_GENERATED_FILES_DIR_NAME).toBe('.generated/docusaurus-production');
 });
 
-// verifies: scenario.views.build-site
-it('failed backup removal attempts to restore the previous destination', async () => {
+// verifies: scenario.views.backup-cleanup-failure
+it('a failed backup removal keeps the promoted site and reports the problem', async () => {
+  const warn = vi.spyOn(process.stderr, 'write').mockReturnValue(true);
   mocks.rm.mockResolvedValue(undefined).mockResolvedValueOnce(undefined).mockRejectedValueOnce(new Error('remove failed'));
-  await expect(promoteCandidate('candidate', 'destination', 'backup')).rejects.toThrow('remove failed');
-  expect(mocks.rename.mock.calls).toEqual([
-    ['destination', 'backup'], ['candidate', 'destination'], ['backup', 'destination'],
-  ]);
-  expect(mocks.rm).toHaveBeenCalledWith('destination', {recursive: true, force: true});
+  await expect(promoteCandidate('candidate', 'destination', 'backup')).resolves.toBeUndefined();
+  expect(mocks.rename.mock.calls).toEqual([['destination', 'backup'], ['candidate', 'destination']]);
+  expect(mocks.rm).not.toHaveBeenCalledWith('destination', expect.anything());
+  expect(String(warn.mock.calls[0][0])).toMatch(/promoted to destination.*backup.*remove failed/s);
+  warn.mockRestore();
 });
 
 // verifies: scenario.views.build-site-failure

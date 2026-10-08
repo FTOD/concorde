@@ -186,10 +186,27 @@ back into place.
 Only a filesystem failure during that restoration itself can prevent it.
 If that failure occurs, the build fails with that error.
 The build then leaves the previous site in `docsite/.generated/previous-build/` for manual recovery.
+On the first publication there is no previous site, so nothing is backed up or restored.
+
+### req.views.promoted-site-kept — Cleanup never undoes a promotion
+
+When removing the previous site's backup fails after the candidate is in place, Promotion SHALL
+keep the promoted site and report the failure.
+
+A removal that fails halfway has already deleted part of the backup.
+Restoring that backup would replace a complete site with an incomplete one.
 
 ### req.views.production-preview-isolation — Production does not disturb the preview
 
 A production build SHALL NOT clear or overwrite the generated files of the development preview.
+
+The generated files of the preview are its staged pages, its sidebar, its staging identity record
+and Docusaurus's generated directory.
+
+### req.views.outputs-disjoint — Cleanup never reaches a source
+
+Publication SHALL refuse a source that lies inside one of its output directories, or that an
+output directory reaches through a symbolic link, before it clears anything.
 
 ### req.views.preview-follows-specs — The preview follows the Specs
 

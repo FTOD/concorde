@@ -23,6 +23,7 @@ import {
   rewriteLinks,
 } from "../plugins/scoped-content/model";
 import { materializeScoped } from "../plugins/scoped-content/materialize";
+import * as staging from "../plugins/scoped-content/staging";
 import scopedContent, { validateScopedBuild } from "../plugins/scoped-content";
 import { customDocsConfiguration } from "../plugins/scoped-content/custom-docs";
 import { userDocsConfiguration } from "../plugins/scoped-content/user-docs";
@@ -192,7 +193,7 @@ it("rejects missing or stale staging identities before writing the manifest", as
   await hooks.loadContent!();
   const outDir = resolve(root, "candidate");
   mkdirSync(outDir);
-  const identity = "docsite/.generated/scoped-materialization.json";
+  const identity = "docsite/.generated/preview/scoped-materialization.json";
   for (const bytes of [
     null,
     "{malformed",
@@ -302,7 +303,7 @@ it("validates cross-Module links and anchors in rendered output", async () => {
   await materializeScoped(registry);
   const staged = read(
     project,
-    "docsite/.generated/content/specs/audit/module.md",
+    "docsite/.generated/preview/content/specs/audit/module.md",
   );
   expect(staged).toContain(
     "[Source reference](/specs/transfer/requirements#scenario.transfer.submit)",
@@ -367,9 +368,17 @@ it.each(["/", "/%E6%96%87%E6%A1%A3/"])(
     // Execute the actual build module with this fixture as its site directory. Only the
     // Docusaurus child is replaced: preparation, postBuild, validation and promotion run live.
     const fixtureModule = { exports: {} as { buildSite: () => Promise<void> } };
-    const spawn = () => {
+    const spawn = (
+      _program: string,
+      _args: string[],
+      options: { env: NodeJS.ProcessEnv },
+    ) => {
       const child = new EventEmitter();
       queueMicrotask(async () => {
+        // The stand-in runs in this process, so it takes the child's mode as its own.
+        const mode = process.env[staging.PUBLICATION_MODE_VARIABLE];
+        process.env[staging.PUBLICATION_MODE_VARIABLE] =
+          options.env[staging.PUBLICATION_MODE_VARIABLE];
         try {
           const registry = load();
           const outDir = resolve(root, "docsite/.generated/candidate");
@@ -404,6 +413,10 @@ it.each(["/", "/%E6%96%87%E6%A1%A3/"])(
           child.emit("exit", 0);
         } catch (error) {
           child.emit("error", error);
+        } finally {
+          if (mode === undefined)
+            delete process.env[staging.PUBLICATION_MODE_VARIABLE];
+          else process.env[staging.PUBLICATION_MODE_VARIABLE] = mode;
         }
       });
       return child;
@@ -417,6 +430,7 @@ it.each(["/", "/%E6%96%87%E6%A1%A3/"])(
         if (id === "node:child_process") return { spawn };
         if (id === "../plugins/scoped-content/model") return { requireScoped };
         if (id === "../plugins/scoped-content") return { validateScopedBuild };
+        if (id === "../plugins/scoped-content/staging") return staging;
         if (id === "./prepare-publication")
           return { preparePublication, productionGeneratedDirectory };
         return nativeRequire(id);

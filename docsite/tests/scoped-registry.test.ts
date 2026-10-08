@@ -435,7 +435,7 @@ it("source lookup preserves query and fragment suffixes", async () => {
   await materializeScoped(registry);
   const staged = read(
     project,
-    "docsite/.generated/content/specs/audit/module.md",
+    "docsite/.generated/preview/content/specs/audit/module.md",
   );
   for (const [, destination] of links)
     expect(staged).toContain(`](${destination})`);
@@ -457,7 +457,10 @@ it("an unregistered link fails materialization and leaves no identity", async ()
   );
   expect(
     existsSync(
-      resolve(project.root, "docsite/.generated/scoped-materialization.json"),
+      resolve(
+        project.root,
+        "docsite/.generated/preview/scoped-materialization.json",
+      ),
     ),
   ).toBe(false);
 });
@@ -467,7 +470,7 @@ it("stages every page with front matter and writes both sidebars", async () => {
   const registry = load();
   await materializeScoped(registry);
   const staged = (path: string) =>
-    read(project, "docsite/.generated/content/specs/" + path);
+    read(project, "docsite/.generated/preview/content/specs/" + path);
   expect(staged("transfer/module.md")).toContain("title: Transfer\n");
   expect(staged("transfer/module.md")).toContain(
     "displayed_sidebar: moduleDocumentsSidebar",
@@ -481,10 +484,13 @@ it("stages every page with front matter and writes both sidebars", async () => {
     expect(staged(page.stagedPath)).toContain("toc_max_heading_level: 3\n");
   // Realization bindings stay in metadata; reading gains no file inventory.
   expect(staged("ledger/module.md")).not.toContain("src/ledger.ts");
-  const sidebars = readJson(project, "docsite/.generated/specs-sidebar.json");
+  const sidebars = readJson(
+    project,
+    "docsite/.generated/preview/specs-sidebar.json",
+  );
   expect(sidebars).toEqual({ moduleDocumentsSidebar: scopedSidebar(registry) });
   expect(
-    readJson(project, "docsite/.generated/scoped-materialization.json"),
+    readJson(project, "docsite/.generated/preview/scoped-materialization.json"),
   ).toEqual({ schema_version: 2, sourceDigest: registry.sourceDigest });
 });
 
@@ -496,7 +502,7 @@ it("omits the implementation sidebar when no document has that role", async () =
   rmSync(resolve(project.root, path + ".json"));
   await materializeScoped(load());
   expect(
-    readJson(project, "docsite/.generated/specs-sidebar.json"),
+    readJson(project, "docsite/.generated/preview/specs-sidebar.json"),
   ).not.toHaveProperty("implementationDocumentsSidebar");
 });
 
@@ -541,7 +547,16 @@ it("rejects missing metadata, duplicate JSON keys, symlinks and malformed UTF-8"
     resolve(project.root, path),
     Buffer.concat([reading, Buffer.from([255])]),
   );
-  expect(load).toThrow();
+  expect(load).toThrow(/Source is not valid UTF-8: specs\/ledger\/module\.md$/);
+  writeFileSync(resolve(project.root, path), reading);
+  writeFileSync(
+    resolve(project.root, path + ".json"),
+    Buffer.concat([Buffer.from(metadata), Buffer.from([255])]),
+  );
+  expect(load).toThrow(
+    /Source is not valid UTF-8: specs\/ledger\/module\.md\.json$/,
+  );
+  put(project, path + ".json", metadata);
   rmSync(resolve(project.root, path));
   symlinkSync(
     resolve(project.root, "specs/audit/module.md"),

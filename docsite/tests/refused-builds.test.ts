@@ -26,6 +26,7 @@ import * as model from "../plugins/scoped-content/model";
 import * as siteIdentity from "../plugins/scoped-content/site-identity";
 import * as userDocs from "../plugins/scoped-content/user-docs";
 import { materializeScoped } from "../plugins/scoped-content/materialize";
+import * as staging from "../plugins/scoped-content/staging";
 import {
   preparePublication,
   productionGeneratedDirectory,
@@ -61,6 +62,7 @@ function siteConfiguration(): any {
     "./plugins/scoped-content/model": model,
     "./plugins/scoped-content/site-identity": siteIdentity,
     "./plugins/scoped-content/user-docs": userDocs,
+    "./plugins/scoped-content/staging": staging,
   };
   runInNewContext(compile("../docusaurus.config.ts"), {
     module: loaded,
@@ -79,10 +81,18 @@ let spawned = 0;
 /** Load the real build script with the fixture as its site directory. */
 function buildScript(): () => Promise<void> {
   const loaded = { exports: {} as { buildSite: () => Promise<void> } };
-  const spawn = () => {
+  const spawn = (
+    _program: string,
+    _args: string[],
+    options: { env: NodeJS.ProcessEnv },
+  ) => {
     spawned++;
     const child = new EventEmitter();
     queueMicrotask(async () => {
+      // The stand-in runs in this process, so it sees the child's mode as its own.
+      const mode = process.env[staging.PUBLICATION_MODE_VARIABLE];
+      process.env[staging.PUBLICATION_MODE_VARIABLE] =
+        options.env[staging.PUBLICATION_MODE_VARIABLE];
       try {
         const config = siteConfiguration();
         const registry = load();
@@ -109,6 +119,10 @@ function buildScript(): () => Promise<void> {
         child.emit("exit", 0);
       } catch (error) {
         child.emit("error", error);
+      } finally {
+        if (mode === undefined)
+          delete process.env[staging.PUBLICATION_MODE_VARIABLE];
+        else process.env[staging.PUBLICATION_MODE_VARIABLE] = mode;
       }
     });
     return child;
@@ -122,6 +136,7 @@ function buildScript(): () => Promise<void> {
       if (id === "node:child_process") return { spawn };
       if (id === "../plugins/scoped-content/model") return model;
       if (id === "../plugins/scoped-content") return { validateScopedBuild };
+      if (id === "../plugins/scoped-content/staging") return staging;
       if (id === "./prepare-publication")
         return { preparePublication, productionGeneratedDirectory };
       return nativeRequire(id);
@@ -146,9 +161,9 @@ function snapshot(directory: string): Record<string, string> {
 }
 
 const published = () => resolve(root, "docsite/build");
-const staged = () => resolve(root, "docsite/.generated/content");
+const staged = () => resolve(root, "docsite/.generated/production/content");
 const identity = () =>
-  resolve(root, "docsite/.generated/scoped-materialization.json");
+  resolve(root, "docsite/.generated/production/scoped-materialization.json");
 
 beforeEach(() => {
   project = bankProject();
@@ -412,13 +427,13 @@ it("user documents without a root page fail the build and promote nothing", asyn
 // verifies: scenario.views.materialize-failure
 it("a staging that fails part-way leaves no identity and the build refuses it", async () => {
   const registry = load();
-  await materializeScoped(registry);
+  await materializeScoped(registry, "build");
   expect(existsSync(identity())).toBe(true);
   // The last registered page now fails to render, after earlier pages were already rewritten.
   const last = registry.pages.at(-1)!.sourcePath;
   put(last, read(project, last) + "\n[Unknown](unknown.md)\n");
   const partial = load();
-  await expect(materializeScoped(partial)).rejects.toThrow(
+  await expect(materializeScoped(partial, "build")).rejects.toThrow(
     /Unregistered local link/,
   );
   expect(
@@ -429,13 +444,18 @@ it("a staging that fails part-way leaves no identity and the build refuses it", 
   ).toBe(false);
   expect(existsSync(identity())).toBe(false);
   // A later build step reading the staged content refuses the partial staging.
+  process.env[staging.PUBLICATION_MODE_VARIABLE] = "build";
   const hooks = scopedContent(
     { siteDir: resolve(root, "docsite"), baseUrl: "/" } as LoadContext,
     {},
   );
-  await expect(hooks.loadContent!()).rejects.toThrow(
-    /scoped-materialization\.json/,
-  );
+  try {
+    await expect(hooks.loadContent!()).rejects.toThrow(
+      /scoped-materialization\.json/,
+    );
+  } finally {
+    delete process.env[staging.PUBLICATION_MODE_VARIABLE];
+  }
 });
 
 // verifies: scenario.views.custom-docs-refused

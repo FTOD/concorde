@@ -1,7 +1,15 @@
 /** Module publication model for Spec Protocol 16. Registered documents are the only sources. */
 import { createHash } from "node:crypto";
-import { lstatSync, readFileSync } from "node:fs";
-import { posix, resolve } from "node:path";
+import { lstatSync, readFileSync, realpathSync } from "node:fs";
+import {
+  basename,
+  dirname,
+  isAbsolute,
+  posix,
+  relative,
+  resolve,
+  sep,
+} from "node:path";
 import matter from "gray-matter";
 import {
   contracts,
@@ -130,9 +138,71 @@ export function safeRead(root: string, path: string): string {
     lstatSync(current).isFile(),
     `Source is not a regular file: ${path}`,
   );
-  return new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(
-    readFileSync(current),
+  try {
+    return new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(
+      readFileSync(current),
+    );
+  } catch (error) {
+    if (error instanceof TypeError)
+      throw new Error(`Source is not valid UTF-8: ${path}`, { cause: error });
+    throw error;
+  }
+}
+/** The directories publication clears, replaces or renames: the staging, the candidate and the
+ * backup under `.generated/`, the published site and the preview's Docusaurus files. */
+export const PUBLICATION_OUTPUTS = [
+  "docsite/.generated",
+  "docsite/build",
+  "docsite/.docusaurus",
+] as const;
+/** A path's physical location: the real path of its nearest existing ancestor, then the rest. */
+function physicalPath(path: string): string {
+  const missing: string[] = [];
+  for (let current = path; ; current = dirname(current)) {
+    try {
+      return resolve(realpathSync(current), ...missing.reverse());
+    } catch (error) {
+      if (
+        (error as NodeJS.ErrnoException).code !== "ENOENT" ||
+        dirname(current) === current
+      )
+        throw error;
+      missing.push(basename(current));
+    }
+  }
+}
+const within = (path: string, directory: string) => {
+  const rest = relative(directory, path);
+  return (
+    rest === "" ||
+    (rest !== ".." && !rest.startsWith(`..${sep}`) && !isAbsolute(rest))
   );
+};
+/**
+ * Refuses, before anything is cleared, every source that publication's cleanup could delete: a
+ * source lying lexically or physically inside an output directory, or an output directory that
+ * is a symbolic link, which would send its cleanup elsewhere.
+ */
+export function requireDisjointOutputs(root: string, sources: string[]): void {
+  for (const output of PUBLICATION_OUTPUTS) {
+    let link = false;
+    try {
+      link = lstatSync(resolve(root, output)).isSymbolicLink();
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+    }
+    requireThat(
+      !link,
+      `Publication output ${output}/ is a symbolic link; remove it, since publication clears that directory.`,
+    );
+    const physical = physicalPath(resolve(root, output));
+    for (const source of sources)
+      requireThat(
+        !(source + "/").startsWith(output + "/") &&
+          !within(physicalPath(resolve(root, source)), physical),
+        `Source ${source} lies inside the publication output ${output}/, which publication clears; move it out.`,
+      );
+  }
 }
 /** The project-owned site identity, the last input of the source digest when it exists. */
 const SITE_IDENTITY = "docsite/site.json";
@@ -662,6 +732,10 @@ export function loadScopedRegistry(root: string): ScopedRegistry {
   if (siteIdentityExists(root)) {
     inputs.push([SITE_IDENTITY, hash(safeRead(root, SITE_IDENTITY))]);
   }
+  requireDisjointOutputs(
+    root,
+    inputs.map(([path]) => path),
+  );
   return {
     schema_version: 23,
     projectRoot: root,

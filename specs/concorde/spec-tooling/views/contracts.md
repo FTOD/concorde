@@ -292,7 +292,7 @@ A project may also provide `docsite/custom-docs/index.ts`, exporting an object w
 They are added to the site as they are. Their routes must stay outside `/specs`.
 Duplicate routes fail the build.
 
-## Build commands
+## Build commands {#build-commands}
 
 Commands run from `docsite/` with the dependencies installed from `package-lock.json`.
 
@@ -311,6 +311,13 @@ A later staging failure or a Docusaurus exit is reported while the command keeps
 next change, as the [pipeline](pipeline.md#preview) describes.
 An interruption stops it.
 When the project has no Concorde configuration, `validate`, `start` and `build` fail first.
+
+**One build at a time.** Callers must serialize the production builds of one docsite for the
+whole build, from staging through promotion.
+A build deletes the previous candidate and backup and owns the candidate, `docsite/build/` and
+the backup directory exclusively until it ends.
+A second build started meanwhile can delete the first build's candidate or its recovery backup.
+A preview may run beside a build, since each mode stages into its own directory.
 
 ## Site manifest
 

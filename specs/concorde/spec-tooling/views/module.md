@@ -168,6 +168,11 @@ program, found through these alternatives:
 | `npm run validate` | Checks without building. |
 | `npm run build` | Builds a publication candidate, checks it, and, by promotion, makes it the published site in `docsite/build/`. |
 
+Run one `npm run build` of a docsite at a time. A build owns its candidate, the published site
+and the backup until it ends, so two overlapping builds can delete each other's candidate or
+recovery backup. A preview may run beside a build. The
+[build commands](contracts.md#build-commands) state this prerequisite.
+
 For another project, `concorde docsite --propose` returns a scaffold proposal.
 `--apply --proposal FILE` creates exactly those files, never replacing or deleting. Its results
 follow these cases:
@@ -248,10 +253,15 @@ validator. A site that builds proves nothing about conformance. The publisher is
 It does not call Spec tooling. It therefore recomputes each document's selecting Modules itself.
 That must equal Spec core's `selected-by` [impact index](../../glossary.json#concept.impact-index).
 A difference is a publisher defect, never a second definition of context. Preview and production
-keep Docusaurus's generated files in different directories. A build therefore never clears or
-overwrites the preview's generated files. Both modes stage the same pages under
-`docsite/.generated/`. A build run beside a preview rewrites `docsite/.generated/` from the same
-sources.
+stage their pages into directories of their own under `docsite/.generated/`. They also keep
+Docusaurus's generated files apart. A build therefore never clears or overwrites what a running
+preview reads.
+
+Publication clears and replaces its own output directories: `docsite/.generated/`,
+`docsite/build/` and `docsite/.docusaurus/`. A registered source inside one of them, lexically or
+through a symbolic link, would be deleted by that cleanup. So would a source reached through an
+output directory that is a symbolic link. The publisher therefore refuses both before it clears
+anything.
 
 <a id="realization.views.scaffold"></a>
 

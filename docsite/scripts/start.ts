@@ -4,6 +4,7 @@ import { resolve } from "node:path";
 
 import { preparePublication } from "./prepare-publication";
 import { PreviewSupervisor } from "./preview";
+import { PUBLICATION_MODE_VARIABLE } from "../plugins/scoped-content/staging";
 
 const siteDir = resolve(__dirname, "..");
 const projectRoot = resolve(siteDir, "..");
@@ -19,7 +20,11 @@ async function main(): Promise<void> {
       const child = spawn(process.execPath, [cli, "start", ...args], {
         cwd: siteDir,
         stdio: "inherit",
-        env: { ...process.env, NODE_ENV: "development" },
+        env: {
+          ...process.env,
+          NODE_ENV: "development",
+          [PUBLICATION_MODE_VARIABLE]: "preview",
+        },
       });
       // A process that never started has no exit of its own; report why and count it as exited.
       child.once("error", (error) => {

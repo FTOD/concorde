@@ -7,6 +7,7 @@ import {
  type ScopedRegistry,
 } from "../plugins/scoped-content/model";
 import { materializeScoped } from "../plugins/scoped-content/materialize";
+import type { PublicationMode } from "../plugins/scoped-content/staging";
 
 export const productionGeneratedDirectory = ".generated/docusaurus-production";
 
@@ -17,14 +18,14 @@ export const productionGeneratedDirectory = ".generated/docusaurus-production";
  */
 export async function preparePublication(
  projectRoot: string,
- options: { mode?: "preview" | "build" } = {},
+ options: { mode?: PublicationMode } = {},
 ): Promise<{ registry: ScopedRegistry }> {
  const root = resolve(projectRoot);
  requireScoped(root);
  const generatedDirectory =
   options.mode === "build" ? productionGeneratedDirectory : ".docusaurus";
  const registry = loadScopedRegistry(root);
- await materializeScoped(registry);
+ await materializeScoped(registry, options.mode ?? "preview");
  // Route and staging projections can change while Docusaurus's compiled content cache remains.
  // Discard that ignored cache so preview and production consume only the just-materialized registry.
  await rm(resolve(root, "docsite", generatedDirectory), {

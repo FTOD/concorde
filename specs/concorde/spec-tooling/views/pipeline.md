@@ -32,11 +32,13 @@ That comparison is the [Spec](../../glossary.json#concept.spec) validator's mirr
 
 Paths must be safe relative POSIX paths. Every path component is checked for symbolic links.
 Two members that are the same physical file are rejected. Files are decoded as strict UTF-8.
+A file that is not valid UTF-8 fails loading with an error naming its path.
 JSON is parsed with duplicate keys rejected. Markdown front matter is removed from the reading.
 
 When any of these conditions holds, loading fails with an `Error` naming the source:
 
 - The configuration or registry cannot be read.
+- A source is not valid UTF-8.
 - The registry is not schema 3.
 - A record is malformed.
 - A record repeats a Module identity or title.
@@ -75,6 +77,16 @@ When any of these conditions holds, loading fails with an `Error` naming the sou
 - A `relies_on` identity names no node defined by the relation's target.
 - An inclusion names an unknown Module or document.
 - Two documents would share a route.
+- A source lies inside a publication output directory: `docsite/.generated/`, `docsite/build/` or
+  `docsite/.docusaurus/`.
+  The sources are the configuration, the registry, both members of every document, the glossary
+  and the site identity.
+  A source counts as inside when its path lies there or when its physical location, after every
+  symbolic link is resolved, lies inside the output directory's physical location.
+- One of those output directories is a symbolic link, which would send its cleanup elsewhere.
+
+Every command loads before it clears or writes anything. So a source that publication could
+delete is refused while it is still intact.
 
 These are the checks the publisher needs to produce correct pages.
 Spec core's validator handles these checks:
@@ -153,9 +165,11 @@ implementation documents use the model title.
 
 ## Staging
 
-`materializeScoped(model)` writes under `docsite/.generated/`:
+`materializeScoped(model, mode)` writes into the **staging directory** of its mode:
+`docsite/.generated/preview/` for `preview` (the default) and `docsite/.generated/production/`
+for `build`. The steps below name paths inside that directory.
 
-1. It deletes the staging identity record, then the previous `content/` and `static/` directories.
+1. It deletes the staging identity record, then the previous `content/` directory.
 2. For every page, it writes `content/specs/<staged path>` with front matter giving:
    - The slug.
    - The title and navigation label.
@@ -246,11 +260,15 @@ It reports the same link and rendering failures without writing.
 - It stages.
 - It clears the Docusaurus generated directory of the mode.
 
-For `preview` (the default), that directory is `.docusaurus`.
+It stages into the staging directory of the mode.
+For `preview` (the default), the Docusaurus generated directory is `.docusaurus`.
 For `build`, it is `.generated/docusaurus-production`.
 The webpack filesystem cache lives inside that directory.
 Each launch therefore compiles from scratch.
 The two modes never share or clear each other's files.
+The publisher tells the Docusaurus process its mode through the environment variable
+`CONCORDE_PUBLICATION_MODE`, `preview` or `build`, so that the site configuration reads the
+staging directory of that mode.
 
 ## Navigation
 
@@ -297,7 +315,8 @@ Without user documents, the site root uses `rootModule` to redirect to the root 
 ## Build hooks
 
 The Docusaurus configuration loads the site identity and the model at start-up.
-The Spec docs instance reads `.generated/content/specs` at route base `/specs`.
+The Spec docs instance reads `content/specs` of the mode's staging directory at route base
+`/specs`. Its sidebar is that directory's `specs-sidebar.json`.
 User documents are a separate instance at route base `/` with a generated sidebar.
 With user documents, the root redirect page is left out.
 Each custom docs collection is a separate instance. Local search indexes all of them.
@@ -315,8 +334,8 @@ These are build errors:
 
 The content plugin:
 
-- On load, reloads the model. It requires the staging identity record to have `schema_version` 2
-  and the current source digest.
+- On load, reloads the model. It requires the staging identity record of its mode to have
+  `schema_version` 2 and the current source digest.
 - After the build, reloads the model. It fails if any of these conditions holds:
   - The source digest changed.
   - The staging record no longer matches.
@@ -465,16 +484,28 @@ On any failure, `buildSite()` deletes the candidate and rethrows.
 
 `promoteCandidate(candidate, destination, backup)` performs these steps:
 
-- It deletes the backup.
-- It renames the existing destination to the backup.
-- It renames the candidate to the destination.
-- It deletes the backup.
+1. It deletes the backup.
+2. When the destination exists, it renames the destination to the backup.
+   On the first publication there is no destination, so it skips this step and backs up nothing.
+3. It renames the candidate to the destination.
+4. When step 2 made a backup, it deletes the backup.
 
-If a rename fails, it removes a partially moved destination and renames the backup back.
+Steps 2 and 3 are the promotion. Each is one rename, so a failed rename moves nothing.
+When step 2 fails, nothing was moved: the destination is untouched and the build fails.
+When step 3 fails after step 2 made a backup, the function renames the backup back to the
+destination, then the build fails. It restores only a backup that step 2 made.
 
-If the filesystem fails during this rollback, the build fails with that error.
+Step 4 is cleanup after a finished promotion, outside that rollback.
+A recursive deletion that fails may already have removed part of the backup.
+The backup is then no safe source to restore from.
+So when step 4 fails, the promoted site stays in place.
+The function reports the failure as a warning naming the backup, and the build succeeds.
+The next build deletes what is left of the backup in step 1.
+
+If the filesystem fails while renaming the backup back, the build fails with that error.
 This rollback failure leaves the previous site in the backup directory,
 `docsite/.generated/previous-build/`, for manual recovery.
 
 The function checks nothing itself. Only `buildSite` calls it, after validation.
-The caller must own the candidate, build and backup directories exclusively for the whole build.
+The caller must own the candidate, build and backup directories exclusively for the whole build,
+as the [build commands](contracts.md#build-commands) require of whoever runs them.

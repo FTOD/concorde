@@ -384,7 +384,7 @@ describe("the glossary page", () => {
     await materializeScoped(registry);
     const staged = read(
       project,
-      "docsite/.generated/content/specs/bank/glossary.md",
+      "docsite/.generated/preview/content/specs/bank/glossary.md",
     );
     expect(staged).toContain("title: Glossary");
     expect(staged).toContain("### Hold {#concept.transfer.hold}");

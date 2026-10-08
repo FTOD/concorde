@@ -6,12 +6,22 @@ import { canonicalRoute, normalizeRoute } from "./routes";
 import { loadSiteIdentity } from "./site-identity";
 import { validateInternalLinks } from "./internal-links";
 import { parseJson } from "./reading-format";
-async function requireMaterialized(registry: ScopedRegistry): Promise<void> {
+import {
+  publicationMode,
+  stagingDirectory,
+  type PublicationMode,
+} from "./staging";
+async function requireMaterialized(
+  registry: ScopedRegistry,
+  mode: PublicationMode,
+): Promise<void> {
   const identity = parseJson(
     await readFile(
       resolve(
         registry.projectRoot,
-        "docsite/.generated/scoped-materialization.json",
+        "docsite",
+        stagingDirectory(mode),
+        "scoped-materialization.json",
       ),
       "utf8",
     ),
@@ -76,12 +86,13 @@ export default function scopedContent(
     (options as { projectRoot?: string })?.projectRoot ??
       resolve(context.siteDir, ".."),
   );
+  const mode = publicationMode();
   let loaded: ScopedRegistry;
   return {
     name: "concorde-content",
     async loadContent() {
       loaded = loadScopedRegistry(root);
-      await requireMaterialized(loaded);
+      await requireMaterialized(loaded, mode);
       return loaded;
     },
     async contentLoaded({ content, actions }) {
@@ -100,7 +111,7 @@ export default function scopedContent(
       const current = loadScopedRegistry(root);
       if (current.sourceDigest !== loaded.sourceDigest)
         throw new Error("Spec source changed during publication");
-      await requireMaterialized(loaded);
+      await requireMaterialized(loaded, mode);
       const routes = new Set(
         routesPaths.map((p) =>
           normalizeRoute(canonicalRoute(p, context.baseUrl)),
