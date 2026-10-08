@@ -15,26 +15,17 @@ from pathlib import Path
 from ..errors import SpecError
 
 TEMPLATE_ROOT = "docsite"
-EXCLUDED_DIRECTORIES = (
-    "node_modules",
-    "build",
-    ".generated",
-    ".docusaurus",
-    "coverage",
-    "tests/repository",
-    "custom-docs",
-)
+# Disposable directories, excluded wherever they occur as a directory component.
+EXCLUDED_COMPONENTS = ("node_modules", "build", ".generated", ".docusaurus", "coverage")
+# Project-owned subtrees, excluded only at the root of ``docsite/``.
+EXCLUDED_SUBTREES = ("tests/repository", "custom-docs")
 EXCLUDED_FILES = ("site.json",)
 ALLOWED_SUFFIXES = (".css", ".json", ".md", ".svg", ".ts", ".tsx", ".yml")
 SCAFFOLD_ONLY_DIRECTORIES = ("scaffold",)
 WORKFLOW_TEMPLATE = "scaffold/deploy-docsite.yml"
 
-_SINGLE_EXCLUDED_NAMES = frozenset(
-    name for name in EXCLUDED_DIRECTORIES if "/" not in name
-)
-_COMPOUND_EXCLUDED_PREFIXES = tuple(
-    tuple(name.split("/")) for name in EXCLUDED_DIRECTORIES if "/" in name
-)
+_EXCLUDED_COMPONENTS = frozenset(EXCLUDED_COMPONENTS)
+_EXCLUDED_SUBTREES = tuple(tuple(name.split("/")) for name in EXCLUDED_SUBTREES)
 
 
 class DocsiteTemplateError(SpecError):
@@ -44,9 +35,9 @@ class DocsiteTemplateError(SpecError):
 
 
 def _directory_excluded(parts: tuple[str, ...]) -> bool:
-    if any(part in _SINGLE_EXCLUDED_NAMES for part in parts):
+    if any(part in _EXCLUDED_COMPONENTS for part in parts):
         return True
-    return any(parts[: len(prefix)] == prefix for prefix in _COMPOUND_EXCLUDED_PREFIXES)
+    return any(parts[: len(prefix)] == prefix for prefix in _EXCLUDED_SUBTREES)
 
 
 def _walk(

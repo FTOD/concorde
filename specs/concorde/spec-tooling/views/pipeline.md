@@ -32,11 +32,13 @@ That comparison is the [Spec](../../glossary.json#concept.spec) validator's mirr
 
 Paths must be safe relative POSIX paths. Every path component is checked for symbolic links.
 Two members that are the same physical file are rejected. Files are decoded as strict UTF-8.
+A file that is not valid UTF-8 fails loading with an error naming its path.
 JSON is parsed with duplicate keys rejected. Markdown front matter is removed from the reading.
 
 When any of these conditions holds, loading fails with an `Error` naming the source:
 
 - The configuration or registry cannot be read.
+- A source is not valid UTF-8.
 - The registry is not schema 3.
 - A record is malformed.
 - A record repeats a Module identity or title.
@@ -75,6 +77,16 @@ When any of these conditions holds, loading fails with an `Error` naming the sou
 - A `relies_on` identity names no node defined by the relation's target.
 - An inclusion names an unknown Module or document.
 - Two documents would share a route.
+- A source lies inside a publication output directory: `docsite/.generated/`, `docsite/build/` or
+  `docsite/.docusaurus/`.
+  The sources are the configuration, the registry, both members of every document, the glossary
+  and the site identity.
+  A source counts as inside when its path lies there or when its physical location, after every
+  symbolic link is resolved, lies inside the output directory's physical location.
+- One of those output directories is a symbolic link, which would send its cleanup elsewhere.
+
+Every command loads before it clears or writes anything. So a source that publication could
+delete is refused while it is still intact.
 
 These are the checks the publisher needs to produce correct pages.
 Spec core's validator handles these checks:
@@ -128,8 +140,25 @@ Reasons are sorted by `relation`, then `kind`, then `id`.
 ## Source digest {#source-digest}
 
 `hash(value)` is `sha256:` followed by the lowercase hex SHA-256 of the bytes.
-The source digest is `hash` of the JSON serialization of the ordered list of `[path, hash(bytes)]`
-pairs. The pairs cover these sources in order:
+The source digest is `hash` of the serialization of the ordered list of `[path, hash(bytes)]`
+pairs. The serialization is the compact JSON that ECMAScript's `JSON.stringify` writes:
+
+- A `[`, then the pairs separated by `,`, then a `]`.
+- Each pair is `["<path>","<hash>"]`, with no whitespace anywhere.
+- Inside a string, `"` and `\` are escaped with a backslash. Control characters cannot occur, since
+  source paths exclude them. Every other character, non-ASCII included, is written as it is.
+- The text is encoded as UTF-8 and has no final newline.
+
+For example, a configuration `{}` and a registry `{"schema_version": 3}`, each followed by a
+newline, serialize as:
+
+```json
+[[".concorde/config.json","sha256:ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356"],[".concorde/specs.json","sha256:feaa30087d2ef50cda938089d9ea5d4dd7f0803b82ec53f10561078a9e9259db"]]
+```
+
+The digest of that text is
+`sha256:4cf77a4e7432e482a2255f3b172934c97232c6e6c5de74f6b9659719e48287d1`.
+A real project has more pairs. The pairs cover these sources in order:
 
 - The configuration.
 - The registry.
@@ -153,9 +182,11 @@ implementation documents use the model title.
 
 ## Staging
 
-`materializeScoped(model)` writes under `docsite/.generated/`:
+`materializeScoped(model, mode)` writes into the **staging directory** of its mode:
+`docsite/.generated/preview/` for `preview` (the default) and `docsite/.generated/production/`
+for `build`. The steps below name paths inside that directory.
 
-1. It deletes the staging identity record, then the previous `content/` and `static/` directories.
+1. It deletes the staging identity record, then the previous `content/` directory.
 2. For every page, it writes `content/specs/<staged path>` with front matter giving:
    - The slug.
    - The title and navigation label.
@@ -178,13 +209,17 @@ implementation documents use the model title.
      A link's text may wrap onto the next line. These links are left unchanged:
      - URLs with a scheme or starting with `/`.
      - Bare `#fragment` links.
-     - Links inside inline code spans.
+     - Links inside inline code spans, including a span that wraps onto later lines of the same
+       paragraph. A span opens and closes with backtick runs of the same length. It never
+       crosses a blank line or a fence.
    - **realization anchors**: when the reading does not carry a node's identity, the node gets an
      anchor at its `meaning` anchor.
    - **owned terms**: the entry page of a Module that owns concepts ends with a Terms list linking
      each to the glossary page.
-   - **definition headings**: a level-2 to level-5 heading `req.<id> — Title` or
+   - **definition headings**: a heading of any level `req.<id> — Title` or
      `scenario.<id> — Title` (em dash, en dash or hyphen) becomes `Title {#<id>}`.
+     These are exactly the headings loading takes as definitions, so every identity it admits is
+     anchored.
    - **contract anchors**: an HTML anchor whose id is the contract identity is inserted before
      each `concorde-contract` fence.
    - **diagrams**: each `d2` block is rendered by the `d2` program to an SVG staged beside the page.
@@ -246,11 +281,15 @@ It reports the same link and rendering failures without writing.
 - It stages.
 - It clears the Docusaurus generated directory of the mode.
 
-For `preview` (the default), that directory is `.docusaurus`.
+It stages into the staging directory of the mode.
+For `preview` (the default), the Docusaurus generated directory is `.docusaurus`.
 For `build`, it is `.generated/docusaurus-production`.
 The webpack filesystem cache lives inside that directory.
 Each launch therefore compiles from scratch.
 The two modes never share or clear each other's files.
+The publisher tells the Docusaurus process its mode through the environment variable
+`CONCORDE_PUBLICATION_MODE`, `preview` or `build`, so that the site configuration reads the
+staging directory of that mode.
 
 ## Navigation
 
@@ -294,10 +333,11 @@ list. In `owns` order, the list links to each of the owner's implementation page
 When the Module owns none, the footer wrapper shows nothing.
 Without user documents, the site root uses `rootModule` to redirect to the root Module's entry.
 
-## Build hooks
+## Build hooks {#build-hooks}
 
 The Docusaurus configuration loads the site identity and the model at start-up.
-The Spec docs instance reads `.generated/content/specs` at route base `/specs`.
+The Spec docs instance reads `content/specs` of the mode's staging directory at route base
+`/specs`. Its sidebar is that directory's `specs-sidebar.json`.
 User documents are a separate instance at route base `/` with a generated sidebar.
 With user documents, the root redirect page is left out.
 Each custom docs collection is a separate instance. Local search indexes all of them.
@@ -315,19 +355,20 @@ These are build errors:
 
 The content plugin:
 
-- On load, reloads the model. It requires the staging identity record to have `schema_version` 2
-  and the current source digest.
+- On load, reloads the model. It requires the staging identity record of its mode to have
+  `schema_version` 2 and the current source digest.
 - After the build, reloads the model. It fails if any of these conditions holds:
   - The source digest changed.
   - The staging record no longer matches.
   - Any registered page route is missing from the rendered routes.
+  - A rendered route under `/specs` is neither a registered page's route nor the glossary's.
 
   It then writes `build-manifest.json`.
 
 When any of these conditions holds during site configuration, user documents admission fails:
 
 - The directory is missing.
-- The directory has no root page.
+- The directory has no root page, or more than one.
 - The directory contains a registered document.
 - A top-level document or folder would publish under `/specs`, `/search` or a custom docs route.
 
@@ -337,6 +378,12 @@ When any of these conditions holds, custom docs admission fails:
 - A collection directory contains a registered document.
 - `custom-docs/index.ts` does not export an object.
 - `custom-docs/index.ts` exports `plugins` or `navbarItems` that is not an array.
+- A docs plugin among those `plugins` names a missing directory, or one that contains a registered
+  document.
+
+A directory contains a registered document when the document lies below it or when a symbolic
+link inside it reaches the document or a directory holding it. The check follows every link to a
+directory and walks each directory it reaches once, so links inside linked directories count too.
 
 An omitted property adds nothing.
 
@@ -465,16 +512,28 @@ On any failure, `buildSite()` deletes the candidate and rethrows.
 
 `promoteCandidate(candidate, destination, backup)` performs these steps:
 
-- It deletes the backup.
-- It renames the existing destination to the backup.
-- It renames the candidate to the destination.
-- It deletes the backup.
+1. It deletes the backup.
+2. When the destination exists, it renames the destination to the backup.
+   On the first publication there is no destination, so it skips this step and backs up nothing.
+3. It renames the candidate to the destination.
+4. When step 2 made a backup, it deletes the backup.
 
-If a rename fails, it removes a partially moved destination and renames the backup back.
+Steps 2 and 3 are the promotion. Each is one rename, so a failed rename moves nothing.
+When step 2 fails, nothing was moved: the destination is untouched and the build fails.
+When step 3 fails after step 2 made a backup, the function renames the backup back to the
+destination, then the build fails. It restores only a backup that step 2 made.
 
-If the filesystem fails during this rollback, the build fails with that error.
+Step 4 is cleanup after a finished promotion, outside that rollback.
+A recursive deletion that fails may already have removed part of the backup.
+The backup is then no safe source to restore from.
+So when step 4 fails, the promoted site stays in place.
+The function reports the failure as a warning naming the backup, and the build succeeds.
+The next build deletes what is left of the backup in step 1.
+
+If the filesystem fails while renaming the backup back, the build fails with that error.
 This rollback failure leaves the previous site in the backup directory,
 `docsite/.generated/previous-build/`, for manual recovery.
 
 The function checks nothing itself. Only `buildSite` calls it, after validation.
-The caller must own the candidate, build and backup directories exclusively for the whole build.
+The caller must own the candidate, build and backup directories exclusively for the whole build,
+as the [build commands](contracts.md#build-commands) require of whoever runs them.

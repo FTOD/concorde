@@ -5,7 +5,7 @@ describe("published definition titles", () => {
   // verifies: scenario.views.id-anchors
   it.each(
     ["req", "scenario"].flatMap((kind) =>
-      [2, 3, 4, 5].flatMap((level) =>
+      [1, 2, 3, 4, 5, 6].flatMap((level) =>
         ["—", "–", "-"].map((separator) => ({ kind, level, separator })),
       ),
     ),

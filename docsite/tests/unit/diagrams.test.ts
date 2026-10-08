@@ -211,7 +211,7 @@ describe("scenario.views.diagram-style", () => {
       )!;
       const staged = resolve(
         project.root,
-        "docsite/.generated/content/specs/bank/module.md",
+        "docsite/.generated/preview/content/specs/bank/module.md",
       );
       await mkdir(dirname(staged), { recursive: true });
       const out = await renderDiagrams(
@@ -332,7 +332,7 @@ describe("scenario.views.illustrative-label", () => {
       const page = registry.pages.find((p) => p.sourcePath === path)!;
       const staged = resolve(
         project.root,
-        "docsite/.generated/content/specs/bank/module.md",
+        "docsite/.generated/preview/content/specs/bank/module.md",
       );
       await mkdir(dirname(staged), { recursive: true });
       const out = await renderDiagrams(

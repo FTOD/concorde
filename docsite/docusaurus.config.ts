@@ -13,8 +13,14 @@ import {
   requireScoped,
 } from "./plugins/scoped-content/model";
 import { loadSiteIdentity } from "./plugins/scoped-content/site-identity";
+import {
+  publicationMode,
+  stagingDirectory,
+} from "./plugins/scoped-content/staging";
 
 const projectRoot = resolve(__dirname, "..");
+// The preview and a production build each read the pages they staged themselves.
+const specsContent = `${stagingDirectory(publicationMode())}/content/specs`;
 const identity = loadSiteIdentity(__dirname);
 const registry = loadScopedRegistry(projectRoot);
 const user = userDocsConfiguration(__dirname, identity, registry);
@@ -52,7 +58,7 @@ const config: Config = {
       "classic",
       {
         docs: {
-          path: ".generated/content/specs",
+          path: specsContent,
           routeBasePath: "specs",
           sidebarPath: "./sidebars.specs.ts",
           include: ["**/*.md"],
@@ -96,7 +102,7 @@ const config: Config = {
           ...(user ? [user.docsRouteBasePath] : []),
         ],
         docsDir: [
-          ".generated/content/specs",
+          specsContent,
           ...custom.docsDir,
           ...(user ? [user.docsDir] : []),
         ],

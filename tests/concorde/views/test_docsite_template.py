@@ -57,6 +57,12 @@ def write_fake_package(root: Path) -> None:
     _write(root / "docsite/site.json", json.dumps({"schema_version": 1, "title": "X"}))
     _write(root / "docsite/logo.png", "not-a-real-png")
     _write(root / "docsite/scaffold/deploy-docsite.yml", "name: Deploy\n")
+    _write(root / "docsite/custom-docs/index.ts", "export default {};\n")
+    _write(root / "docsite/tests/repository/data.json", "{}\n")
+    # Only the root subtrees are project-owned; the same names deeper are template files.
+    _write(root / "docsite/plugins/custom-docs/helper.ts", "export {};\n")
+    _write(root / "docsite/plugins/tests/repository/fixture.json", "{}\n")
+    _write(root / "docsite/plugins/build/output.json", "{}\n")
 
 
 class DocsiteTemplateFakePackageTests(unittest.TestCase):
@@ -73,6 +79,8 @@ class DocsiteTemplateFakePackageTests(unittest.TestCase):
                     "docsite/README.md",
                     "docsite/tests/unit/registry.test.ts",
                     "docsite/scaffold/deploy-docsite.yml",
+                    "docsite/plugins/custom-docs/helper.ts",
+                    "docsite/plugins/tests/repository/fixture.json",
                 },
             )
             self.assertEqual(

@@ -11,6 +11,7 @@ import {
 import { renderDiagrams } from "./diagrams";
 import { renderGlossaryPage } from "./glossary";
 import { renderPage } from "./render";
+import { stagingDirectory, type PublicationMode } from "./staging";
 interface SidebarItem {
   type: string;
   label: string;
@@ -65,12 +66,20 @@ export function scopedSidebar(registry: ScopedRegistry): SidebarItem[] {
   };
   return roots(registry).flatMap((module) => item(module));
 }
-export async function materializeScoped(registry: ScopedRegistry) {
-  const generated = resolve(registry.projectRoot, "docsite/.generated");
+/** Stages the pages, sidebar and staging identity record into the mode's own staging directory. */
+export async function materializeScoped(
+  registry: ScopedRegistry,
+  mode: PublicationMode = "preview",
+) {
+  const generated = resolve(
+    registry.projectRoot,
+    "docsite",
+    stagingDirectory(mode),
+  );
   const identity = resolve(generated, "scoped-materialization.json");
   await rm(identity, { force: true });
   await rm(resolve(generated, "content"), { recursive: true, force: true });
-  await rm(resolve(generated, "static"), { recursive: true, force: true });
+  await mkdir(generated, { recursive: true });
   for (const page of registry.pages) {
     const path = resolve(generated, "content/specs", page.stagedPath);
     await mkdir(dirname(path), { recursive: true });

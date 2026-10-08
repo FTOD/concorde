@@ -14,6 +14,7 @@ from pathlib import Path
 from unittest import mock
 
 from tests.concorde.support.paths import REPOSITORY_ROOT, RUNTIME_ROOT
+from tests.concorde.views.built_package import built_package
 
 sys.path.insert(0, str(RUNTIME_ROOT))
 
@@ -44,13 +45,14 @@ def _init_project(
 ) -> None:
     from concorde.distribution.project_defaults import install_project_defaults
 
+    package = built_package()
     install_project_defaults(
-        root, REPOSITORY_ROOT
+        root, package
     )  # what the installer places before initialization
     apply_project_proposal(
         root,
-        REPOSITORY_ROOT,
-        project_proposal(root, REPOSITORY_ROOT, name, module_id),
+        package,
+        project_proposal(root, package, name, module_id),
     )
 
 
@@ -176,7 +178,7 @@ class DocsiteScaffoldTests(unittest.TestCase):
                     if p.is_file()
                 }
                 with mock.patch(
-                    "concorde.spec.views.docsite_scaffold.apply_files"
+                    "concorde.spec.views.docsite_scaffold.create_files"
                 ) as apply:
                     result = apply_docsite(self.root, ".concorde/docsite-proposal.json")
                 self.assertEqual(result.status, "invalid", result.findings)
@@ -554,13 +556,13 @@ class DocsiteScaffoldRefusalTests(unittest.TestCase):
             json.dumps(value), encoding="utf-8"
         )
         with mock.patch(
-            "concorde.spec.views.docsite_scaffold.apply_files"
-        ) as apply_files:
+            "concorde.spec.views.docsite_scaffold.create_files"
+        ) as create_files:
             result = apply_docsite(
                 self.root, ".concorde/docsite-proposal.json", **options
             )
         if result.status != "success":
-            apply_files.assert_not_called()
+            create_files.assert_not_called()
         return result
 
     def proposal(self) -> dict:
@@ -668,17 +670,20 @@ class DocsiteScaffoldRefusalTests(unittest.TestCase):
         self.assertTrue((self.root / "docsite/package.json").is_symlink())
 
     @verifies("scenario.views.scaffold-apply")
-    def test_every_change_requires_an_absent_destination(self) -> None:
+    def test_apply_creates_exactly_the_proposed_files(self) -> None:
         (self.root / ".concorde/docsite-proposal.json").write_text(
             json.dumps(self.proposed.result), encoding="utf-8"
         )
         with mock.patch(
-            "concorde.spec.views.docsite_scaffold.apply_files", return_value=[]
-        ) as apply_files:
+            "concorde.spec.views.docsite_scaffold.create_files", return_value=[]
+        ) as create_files:
             apply_docsite(self.root, ".concorde/docsite-proposal.json")
-        changes = apply_files.call_args.args[1]
-        self.assertTrue(changes)
-        self.assertEqual({None}, {change["before_digest"] for change in changes})
+        files = create_files.call_args.args[1]
+        self.assertEqual(
+            sorted(item["path"] for item in self.proposed.result["proposal"]["files"]),
+            sorted(files),
+        )
+        self.assertTrue(all(isinstance(data, bytes) for data in files.values()))
 
 
 if __name__ == "__main__":

@@ -6,12 +6,22 @@ import { canonicalRoute, normalizeRoute } from "./routes";
 import { loadSiteIdentity } from "./site-identity";
 import { validateInternalLinks } from "./internal-links";
 import { parseJson } from "./reading-format";
-async function requireMaterialized(registry: ScopedRegistry): Promise<void> {
+import {
+  publicationMode,
+  stagingDirectory,
+  type PublicationMode,
+} from "./staging";
+async function requireMaterialized(
+  registry: ScopedRegistry,
+  mode: PublicationMode,
+): Promise<void> {
   const identity = parseJson(
     await readFile(
       resolve(
         registry.projectRoot,
-        "docsite/.generated/scoped-materialization.json",
+        "docsite",
+        stagingDirectory(mode),
+        "scoped-materialization.json",
       ),
       "utf8",
     ),
@@ -76,12 +86,13 @@ export default function scopedContent(
     (options as { projectRoot?: string })?.projectRoot ??
       resolve(context.siteDir, ".."),
   );
+  const mode = publicationMode();
   let loaded: ScopedRegistry;
   return {
     name: "concorde-content",
     async loadContent() {
       loaded = loadScopedRegistry(root);
-      await requireMaterialized(loaded);
+      await requireMaterialized(loaded, mode);
       return loaded;
     },
     async contentLoaded({ content, actions }) {
@@ -100,7 +111,7 @@ export default function scopedContent(
       const current = loadScopedRegistry(root);
       if (current.sourceDigest !== loaded.sourceDigest)
         throw new Error("Spec source changed during publication");
-      await requireMaterialized(loaded);
+      await requireMaterialized(loaded, mode);
       const routes = new Set(
         routesPaths.map((p) =>
           normalizeRoute(canonicalRoute(p, context.baseUrl)),
@@ -108,6 +119,23 @@ export default function scopedContent(
       );
       if (loaded.pages.some((p) => !routes.has(normalizeRoute(p.route))))
         throw new Error("Registered Spec page was not rendered");
+      // `/specs` belongs to the registered documents and the glossary alone, so a page an extension
+      // adds there could pass for a Spec page.
+      const owned = new Set(
+        [
+          ...loaded.pages.map((p) => p.route),
+          ...(loaded.glossary ? [loaded.glossary.route] : []),
+        ].map(normalizeRoute),
+      );
+      const intruders = [...routes].filter(
+        (route) =>
+          (route === "/specs" || route.startsWith("/specs/")) &&
+          !owned.has(route),
+      );
+      if (intruders.length)
+        throw new Error(
+          `Routes under /specs that no registered document or the glossary owns: ${intruders.sort().join(", ")}; custom docs and extension routes must stay outside /specs.`,
+        );
       await writeFile(
         resolve(outDir, "build-manifest.json"),
         JSON.stringify(

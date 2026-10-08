@@ -38,7 +38,8 @@ function inside(directory: string, path: string): boolean {
 
 /**
  * Refuses a documentation directory that contains a registered Spec document: one lying below it,
- * or one that a symbolic link inside it, to the document or to a directory holding it, reaches.
+ * or one that a symbolic link inside it reaches, to the document or to a directory holding it,
+ * however many links lie on the way. Every directory a link reaches is walked once.
  */
 export function refuseRegisteredSpecs(
   directory: string,
@@ -54,9 +55,16 @@ export function refuseRegisteredSpecs(
       `${collection} includes registered Spec ${sourcePath}; keep it separate from Module Specs.`,
     );
   };
-  for (const page of registered)
-    if (inside(directory, page.real)) refuse(page.sourcePath);
+  const reaches = (real: string) => {
+    for (const page of registered)
+      if (inside(real, page.real)) refuse(page.sourcePath);
+  };
+  const visited = new Set<string>();
   const walk = (current: string): void => {
+    const real = realpathSync(current);
+    if (visited.has(real)) return;
+    visited.add(real);
+    reaches(real);
     for (const entry of readdirSync(current, { withFileTypes: true })) {
       const path = resolve(current, entry.name);
       if (entry.isDirectory()) {
@@ -64,17 +72,56 @@ export function refuseRegisteredSpecs(
         continue;
       }
       if (!entry.isSymbolicLink()) continue;
-      let real: string;
+      let target: string;
       try {
-        real = realpathSync(path);
+        target = realpathSync(path);
       } catch {
         continue; // A dangling link publishes nothing.
       }
-      for (const page of registered)
-        if (inside(real, page.real)) refuse(page.sourcePath);
+      reaches(target);
+      if (statSync(target).isDirectory()) walk(target);
     }
   };
   walk(directory);
+}
+
+/** The names under which Docusaurus resolves its docs plugin. */
+const DOCS_PLUGINS = new Set([
+  "@docusaurus/plugin-content-docs",
+  "docusaurus-plugin-content-docs",
+  "content-docs",
+]);
+
+/**
+ * Applies the collections' admission to every docs instance an extension adds: its directory, which
+ * defaults to Docusaurus's `docs`, must exist and contain no registered Spec document.
+ */
+function refuseExtensionDocs(
+  siteDir: string,
+  plugins: PluginConfig[],
+  registry: ScopedRegistry,
+): void {
+  for (const plugin of plugins) {
+    const [name, options] = Array.isArray(plugin) ? plugin : [plugin, {}];
+    if (typeof name !== "string" || !DOCS_PLUGINS.has(name)) continue;
+    const path =
+      options && typeof options === "object" && "path" in options
+        ? String((options as { path: unknown }).path)
+        : "docs";
+    const id =
+      options && typeof options === "object" && "id" in options
+        ? String((options as { id: unknown }).id)
+        : "default";
+    refuseRegisteredSpecs(
+      collectionDirectory(
+        siteDir,
+        `custom-docs/index.ts docs plugin ${id}.path`,
+        path,
+      ),
+      registry,
+      `custom-docs/index.ts docs plugin ${id}`,
+    );
+  }
 }
 
 export function customDocsConfiguration(
@@ -112,6 +159,7 @@ export function customDocsConfiguration(
       throw new Error(`custom-docs/index.ts ${field} must be an array.`);
     }
   }
+  refuseExtensionDocs(siteDir, extension.plugins ?? [], registry);
   return {
     plugins: [
       ...collections.map(

@@ -31,9 +31,16 @@ export function userDocsConfiguration(
   );
   refuseRegisteredSpecs(directory, registry, "userDocs");
   const entries = readdirSync(directory);
-  if (!ROOT_PAGES.some((name) => entries.includes(name))) {
+  const rootPages = ROOT_PAGES.filter((name) => entries.includes(name));
+  if (!rootPages.length) {
     throw new Error(
       `userDocs.path ${userDocs.path} has no root page; add README.md or index.md, which becomes the site's home page.`,
+    );
+  }
+  // Each would be the home page at `/`, so exactly one may exist.
+  if (rootPages.length > 1) {
+    throw new Error(
+      `userDocs.path ${userDocs.path} has more than one root page: ${rootPages.join(", ")}; keep exactly one, which becomes the site's home page.`,
     );
   }
   // User documents share the site root with the Spec pages, search and every custom collection.

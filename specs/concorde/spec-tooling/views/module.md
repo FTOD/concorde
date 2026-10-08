@@ -105,7 +105,8 @@ Publication only reads Specs and writes derived output under `docsite/`.
 ### Publishing
 
 Rendering can fail halfway. Sources can change while a build runs. A build therefore publishes only
-a candidate whose inputs did not move and whose links all resolve:
+a candidate whose [source digest](pipeline.md#source-digest) did not move and whose links all
+resolve:
 
 ```d2 illustrative
 direction: right
@@ -119,6 +120,10 @@ a -> b -> c -> d
 d -> e: yes
 d -> f: no
 ```
+
+The source digest covers the configuration, the registry, every registered document with its
+metadata, the glossary and the site identity. It does not cover the contents of user documents or
+custom docs. A change to one of those during a build is therefore not detected.
 
 ### Scaffolding
 
@@ -137,7 +142,7 @@ apply: "concorde docsite --apply\n--proposal FILE"
 match: "Matches the installed\ntemplate inventory?" {shape: diamond}
 same: "Every file already\nhas the proposed bytes?" {shape: diamond}
 exists: "Any destination\nexists?" {shape: diamond}
-write: "Create every file through\na file transaction"
+write: "Create each file only\nwhere nothing exists"
 invalid: "invalid" {shape: page}
 unchanged: "unchanged:\nnothing written" {shape: page}
 conflict: "conflict:\nnothing written" {shape: page}
@@ -167,6 +172,11 @@ program, found through these alternatives:
 | `npm run start` | Previews the site, restarting the preview whenever its Specs change. |
 | `npm run validate` | Checks without building. |
 | `npm run build` | Builds a publication candidate, checks it, and, by promotion, makes it the published site in `docsite/build/`. |
+
+Run one `npm run build` of a docsite at a time. A build owns its candidate, the published site
+and the backup until it ends, so two overlapping builds can delete each other's candidate or
+recovery backup. A preview may run beside a build. The
+[build commands](contracts.md#build-commands) state this prerequisite.
 
 For another project, `concorde docsite --propose` returns a scaffold proposal.
 `--apply --proposal FILE` creates exactly those files, never replacing or deleting. Its results
@@ -202,8 +212,13 @@ owns. The publisher's other inputs are declared separately, each with its own ad
 The navigation follows `contains`, the Protocol's top-down reading path. Directory layout plays
 no part. Each document is published once, at a route derived from its source path. Its address
 therefore does not depend on which Modules read it. Consumers link to the owner's page instead
-of receiving a copy that could drift. There are no alias routes. Moving a document changes its
-route. When a link still points to the old route, the build refuses it.
+of receiving a copy that could drift. There are no alias routes.
+
+The [route rule](pipeline.md#routes) also depends on all registered documents together. While
+every one lies under `specs/`, a route leaves that leading `specs/` out. Registering one document
+outside `specs/` therefore changes the route of every other document. A move changes a document's
+route only when the route rule gives it another one. When a link still points to an old route,
+the build refuses it.
 
 Every enrichment is made on a staged copy under `docsite/.generated/`. Examples include:
 
@@ -248,10 +263,15 @@ validator. A site that builds proves nothing about conformance. The publisher is
 It does not call Spec tooling. It therefore recomputes each document's selecting Modules itself.
 That must equal Spec core's `selected-by` [impact index](../../glossary.json#concept.impact-index).
 A difference is a publisher defect, never a second definition of context. Preview and production
-keep Docusaurus's generated files in different directories. A build therefore never clears or
-overwrites the preview's generated files. Both modes stage the same pages under
-`docsite/.generated/`. A build run beside a preview rewrites `docsite/.generated/` from the same
-sources.
+stage their pages into directories of their own under `docsite/.generated/`. They also keep
+Docusaurus's generated files apart. A build therefore never clears or overwrites what a running
+preview reads.
+
+Publication clears and replaces its own output directories: `docsite/.generated/`,
+`docsite/build/` and `docsite/.docusaurus/`. A registered source inside one of them, lexically or
+through a symbolic link, would be deleted by that cleanup. So would a source reached through an
+output directory that is a symbolic link. The publisher therefore refuses both before it clears
+anything.
 
 <a id="realization.views.scaffold"></a>
 
@@ -260,11 +280,16 @@ package's `docsite/`. The scaffold proposes those files without `scaffold/`. Dis
 installer calls the same rule to ship them, `scaffold/` included, into a project's
 `.concorde/framework/docsite/`. An installed scaffold reads them there. A project therefore
 receives exactly the adapter Concorde runs itself. The proposal binds that inventory by digest.
-Applying goes through Spec core's [file transactions](../../glossary.json#concept.file-transaction).
-Every destination must be absent before staging and again before each write. On a concurrent
-change, the file transaction rolls back what was written. Because the scaffold can neither replace
-nor delete, accepting a proposal can never damage an existing site or Spec. Bringing a site up to
-a newer template is a manual, reviewed change.
+Applying creates each file only where nothing exists, in one step the operating system makes
+exclusive: the file is written apart and then hard-linked into place, which fails when anything
+is already there. Spec core's [file transaction](../../glossary.json#concept.file-transaction)
+cannot do this, since it replaces a file another process creates between its check and its
+rename. When a destination appears meanwhile, or a creation fails, the scaffold removes the files
+it created. It removes each only while it is still the file it created, judged by its device and
+inode, so a file another process put there keeps its bytes. Only a replacement made between that
+check and the removal itself can be lost, a window of one system call. Because the scaffold can
+neither replace nor delete what it did not create, accepting a proposal can never damage an
+existing site or Spec. Bringing a site up to a newer template is a manual, reviewed change.
 
 <a id="realization.views.concorde-site"></a>
 
@@ -279,13 +304,15 @@ or Protocol chapters.
 
 ## Around it
 
-Views sits between the Spec core it reads and the Distribution that packages and calls it:
+Views sits between the Spec core it reads and the Distribution that packages and calls it.
+Views also relies on Distribution's package layout:
 
 ```d2
 views: Views
 core: Spec core
 distribution: Distribution
 views -> core
+views -> distribution
 distribution -> views
 ```
 
@@ -296,7 +323,6 @@ distribution -> views
 - The project [registry](../../glossary.json#concept.registry).
 - Spec loading.
 - [impact indexes](../../glossary.json#concept.impact-index).
-- [file transactions](../../glossary.json#concept.file-transaction).
 
 The publisher relies on the registry for which Modules and documents exist and which contains
 which. It relies on the meaning of `selected-by` for the provenance it shows. The publisher parses
@@ -305,11 +331,25 @@ refuses it, failing the build and keeping the old site. It leaves full structura
 the Spec validator. The scaffold relies on Spec core for:
 
 - The root Module's title.
-- The common result shape.
-- A file transaction writing everything or nothing.
+- The common result shape and error record.
+- Safe project-relative paths without symbolic links.
 
-A null digest means the file must still be absent. When the project's Spec configuration isn't
-readable, the scaffold returns `invalid` and asks for initialization.
+It creates its files itself, as the scaffold's design above says. Both proposing and applying
+first read the project's Spec configuration. When it isn't readable, the scaffold returns
+`invalid` and asks for initialization, before it reads the proposal or touches a destination.
+
+The scaffold returns Spec core's [command-line envelope](../spec/contracts.md#validation-result)
+and its [error record](../spec/errors.md). Views includes both documents for these definitions.
+
+<a id="uses-distribution"></a>
+
+**Distribution** packages Views and installs its template. Views relies on two of its promises, as
+data and an installation layout, never by importing Distribution's code:
+
+- The package descriptor `concorde.json`, which must name `docsite` as a package root.
+- The installer, which
+  [places the template](../../distribution/requirements.md#req.distribution.installer-docsite-template)
+  under `.concorde/framework/docsite/`, where an installed scaffold reads it.
 
 Distribution calls the scaffold and packages it. The `distribution -> views` above is its own
 `uses`, declared there as an [optional integration](../../glossary.json#concept.optional-integration)

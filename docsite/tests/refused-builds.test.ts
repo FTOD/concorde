@@ -26,6 +26,7 @@ import * as model from "../plugins/scoped-content/model";
 import * as siteIdentity from "../plugins/scoped-content/site-identity";
 import * as userDocs from "../plugins/scoped-content/user-docs";
 import { materializeScoped } from "../plugins/scoped-content/materialize";
+import * as staging from "../plugins/scoped-content/staging";
 import {
   preparePublication,
   productionGeneratedDirectory,
@@ -61,6 +62,7 @@ function siteConfiguration(): any {
     "./plugins/scoped-content/model": model,
     "./plugins/scoped-content/site-identity": siteIdentity,
     "./plugins/scoped-content/user-docs": userDocs,
+    "./plugins/scoped-content/staging": staging,
   };
   runInNewContext(compile("../docusaurus.config.ts"), {
     module: loaded,
@@ -79,10 +81,18 @@ let spawned = 0;
 /** Load the real build script with the fixture as its site directory. */
 function buildScript(): () => Promise<void> {
   const loaded = { exports: {} as { buildSite: () => Promise<void> } };
-  const spawn = () => {
+  const spawn = (
+    _program: string,
+    _args: string[],
+    options: { env: NodeJS.ProcessEnv },
+  ) => {
     spawned++;
     const child = new EventEmitter();
     queueMicrotask(async () => {
+      // The stand-in runs in this process, so it sees the child's mode as its own.
+      const mode = process.env[staging.PUBLICATION_MODE_VARIABLE];
+      process.env[staging.PUBLICATION_MODE_VARIABLE] =
+        options.env[staging.PUBLICATION_MODE_VARIABLE];
       try {
         const config = siteConfiguration();
         const registry = load();
@@ -109,6 +119,10 @@ function buildScript(): () => Promise<void> {
         child.emit("exit", 0);
       } catch (error) {
         child.emit("error", error);
+      } finally {
+        if (mode === undefined)
+          delete process.env[staging.PUBLICATION_MODE_VARIABLE];
+        else process.env[staging.PUBLICATION_MODE_VARIABLE] = mode;
       }
     });
     return child;
@@ -122,6 +136,7 @@ function buildScript(): () => Promise<void> {
       if (id === "node:child_process") return { spawn };
       if (id === "../plugins/scoped-content/model") return model;
       if (id === "../plugins/scoped-content") return { validateScopedBuild };
+      if (id === "../plugins/scoped-content/staging") return staging;
       if (id === "./prepare-publication")
         return { preparePublication, productionGeneratedDirectory };
       return nativeRequire(id);
@@ -146,9 +161,9 @@ function snapshot(directory: string): Record<string, string> {
 }
 
 const published = () => resolve(root, "docsite/build");
-const staged = () => resolve(root, "docsite/.generated/content");
+const staged = () => resolve(root, "docsite/.generated/production/content");
 const identity = () =>
-  resolve(root, "docsite/.generated/scoped-materialization.json");
+  resolve(root, "docsite/.generated/production/scoped-materialization.json");
 
 beforeEach(() => {
   project = bankProject();
@@ -392,6 +407,24 @@ it("keeps the root redirect page when no user documents are configured", () => {
 });
 
 // verifies: scenario.views.user-docs-refused
+it("user documents with more than one root page fail the build naming every one", async () => {
+  const previous = await publishedSite();
+  put("docs/README.md", "# Bank\n");
+  put("docs/index.mdx", "# Bank\n");
+  put(
+    "docsite/site.json",
+    JSON.stringify({
+      ...readJson(project, "docsite/site.json"),
+      userDocs: { path: "../docs" },
+    }),
+  );
+  await expect(buildScript()()).rejects.toThrow(
+    /userDocs\.path \.\.\/docs has more than one root page: README\.md, index\.mdx/,
+  );
+  expect(snapshot(published())).toEqual(previous);
+});
+
+// verifies: scenario.views.user-docs-refused
 it("user documents without a root page fail the build and promote nothing", async () => {
   const previous = await publishedSite();
   put("docs/guide.md", "# Guide\n");
@@ -412,13 +445,13 @@ it("user documents without a root page fail the build and promote nothing", asyn
 // verifies: scenario.views.materialize-failure
 it("a staging that fails part-way leaves no identity and the build refuses it", async () => {
   const registry = load();
-  await materializeScoped(registry);
+  await materializeScoped(registry, "build");
   expect(existsSync(identity())).toBe(true);
   // The last registered page now fails to render, after earlier pages were already rewritten.
   const last = registry.pages.at(-1)!.sourcePath;
   put(last, read(project, last) + "\n[Unknown](unknown.md)\n");
   const partial = load();
-  await expect(materializeScoped(partial)).rejects.toThrow(
+  await expect(materializeScoped(partial, "build")).rejects.toThrow(
     /Unregistered local link/,
   );
   expect(
@@ -429,13 +462,18 @@ it("a staging that fails part-way leaves no identity and the build refuses it", 
   ).toBe(false);
   expect(existsSync(identity())).toBe(false);
   // A later build step reading the staged content refuses the partial staging.
+  process.env[staging.PUBLICATION_MODE_VARIABLE] = "build";
   const hooks = scopedContent(
     { siteDir: resolve(root, "docsite"), baseUrl: "/" } as LoadContext,
     {},
   );
-  await expect(hooks.loadContent!()).rejects.toThrow(
-    /scoped-materialization\.json/,
-  );
+  try {
+    await expect(hooks.loadContent!()).rejects.toThrow(
+      /scoped-materialization\.json/,
+    );
+  } finally {
+    delete process.env[staging.PUBLICATION_MODE_VARIABLE];
+  }
 });
 
 // verifies: scenario.views.custom-docs-refused
@@ -463,6 +501,23 @@ it.each([
     () => {
       put("docsite/guides/index.md", "# Guides\n");
       symlinkSync(resolve(root, "specs"), resolve(root, "docsite/guides/all"));
+      return { path: "guides", routeBasePath: "guides" };
+    },
+    /customDocs guides includes registered Spec/,
+  ],
+  [
+    "a link to a directory holding a link to a registered Spec document",
+    () => {
+      put("docsite/guides/index.md", "# Guides\n");
+      mkdirSync(resolve(root, "elsewhere"));
+      symlinkSync(
+        resolve(root, load().pages[0].sourcePath),
+        resolve(root, "elsewhere/spec.md"),
+      );
+      symlinkSync(
+        resolve(root, "elsewhere"),
+        resolve(root, "docsite/guides/shared"),
+      );
       return { path: "guides", routeBasePath: "guides" };
     },
     /customDocs guides includes registered Spec/,
@@ -498,6 +553,42 @@ it.each([
     expect(snapshot(published())).toEqual(previous);
   },
 );
+
+// verifies: scenario.views.user-docs-refused
+it("user documents reaching a registered Spec through two links fail the build and promote nothing", async () => {
+  const previous = await publishedSite();
+  put("docs/README.md", "# Bank\n");
+  mkdirSync(resolve(root, "elsewhere"));
+  symlinkSync(
+    resolve(root, load().pages[0].sourcePath),
+    resolve(root, "elsewhere/spec.md"),
+  );
+  symlinkSync(resolve(root, "elsewhere"), resolve(root, "docs/shared"));
+  put(
+    "docsite/site.json",
+    JSON.stringify({
+      ...readJson(project, "docsite/site.json"),
+      userDocs: { path: "../docs" },
+    }),
+  );
+  await expect(buildScript()()).rejects.toThrow(
+    /userDocs includes registered Spec/,
+  );
+  expect(snapshot(published())).toEqual(previous);
+});
+
+// verifies: scenario.views.custom-docs-refused
+it("an extension's docs plugin over registered Specs fails the build and promotes nothing", async () => {
+  const previous = await publishedSite();
+  put(
+    "docsite/custom-docs/index.ts",
+    'module.exports.default = {plugins: [["@docusaurus/plugin-content-docs", {id: "extra", path: "../specs", routeBasePath: "extra"}]]};',
+  );
+  await expect(buildScript()()).rejects.toThrow(
+    /custom-docs\/index\.ts docs plugin extra includes registered Spec/,
+  );
+  expect(snapshot(published())).toEqual(previous);
+});
 
 // verifies: scenario.views.custom-docs-refused
 it("a custom docs page with a broken internal link fails the build naming the link", async () => {

@@ -12,12 +12,11 @@ from unittest import mock
 
 from concorde.distribution.cli import main
 from concorde.distribution.project_defaults import install_project_defaults
-from concorde.spec import changes
 from concorde.spec.initialize import apply_project_proposal, project_proposal
 from concorde.spec.verification import verifies
-from concorde.spec.views import docsite_scaffold
+from concorde.spec.views import creation, docsite_scaffold
 from concorde.spec.views.docsite_scaffold import propose_docsite
-from tests.concorde.support.paths import REPOSITORY_ROOT
+from tests.concorde.views.built_package import built_package
 
 PROPOSAL = ".concorde/docsite-proposal.json"
 
@@ -40,11 +39,12 @@ class ScaffoldApplyOutcomeTests(unittest.TestCase):
         directory = tempfile.TemporaryDirectory()
         self.addCleanup(directory.cleanup)
         self.root = Path(directory.name)
-        install_project_defaults(self.root, REPOSITORY_ROOT)
+        package = built_package()
+        install_project_defaults(self.root, package)
         apply_project_proposal(
             self.root,
-            REPOSITORY_ROOT,
-            project_proposal(self.root, REPOSITORY_ROOT, "Atlas", "module.atlas"),
+            package,
+            project_proposal(self.root, package, "Atlas", "module.atlas"),
         )
         proposed = propose_docsite(self.root)
         self.assertEqual("proposal", proposed.status, proposed.findings)
@@ -74,7 +74,7 @@ class ScaffoldApplyOutcomeTests(unittest.TestCase):
         before = tree(self.root)
         with mock.patch.object(
             docsite_scaffold,
-            "apply_files",
+            "create_files",
             side_effect=AssertionError("an unchanged apply must not write"),
         ):
             repeated = self.apply()
@@ -87,20 +87,19 @@ class ScaffoldApplyOutcomeTests(unittest.TestCase):
     ):
         self.assertGreater(len(self.files), 2)
         ordered = sorted(self.files)
-        first, contested = ordered[0], ordered[-1]
+        contested = ordered[-1]
         spec = self.root / "specs/project/module.md"
         untouched = tree(self.root)
-        replace = changes.os.replace
+        link = creation.os.link
 
         def concurrent_create(source, destination):
-            replace(source, destination)
-            if Path(destination) == self.root / first:
-                # Another process creates a later destination once applying has started.
-                target = self.root / contested
-                target.parent.mkdir(parents=True, exist_ok=True)
-                target.write_bytes(b"created by another process\n")
+            if Path(destination) == self.root / contested:
+                # Another process creates the last destination just before it is published,
+                # after every check of this application found it absent.
+                Path(destination).write_bytes(b"created by another process\n")
+            return link(source, destination)
 
-        with mock.patch.object(changes.os, "replace", side_effect=concurrent_create):
+        with mock.patch.object(creation.os, "link", side_effect=concurrent_create):
             result = self.apply()
         self.assertEqual("failed", result["status"], result)
         self.assertEqual(
@@ -114,6 +113,27 @@ class ScaffoldApplyOutcomeTests(unittest.TestCase):
             {path: value[0] for path, value in after.items() if path != contested},
         )
         self.assertTrue(spec.is_file())
+
+    @verifies("scenario.views.scaffold-uninitialized")
+    def test_a_saved_proposal_is_invalid_once_the_configuration_is_unreadable(self):
+        config = self.root / ".concorde/config.json"
+        original = config.read_bytes()
+        for damage in ("removed", "corrupted"):
+            with self.subTest(damage=damage):
+                if damage == "removed":
+                    config.unlink()
+                else:
+                    config.write_text("{not json", "utf-8")
+                try:
+                    before = tree(self.root)
+                    result = self.apply()
+                    self.assertEqual("invalid", result["status"], result)
+                    self.assertEqual(
+                        "CONCORDE-DOCSITE-001", result["findings"][0]["rule_id"]
+                    )
+                    self.assertEqual(before, tree(self.root))
+                finally:
+                    config.write_bytes(original)
 
 
 if __name__ == "__main__":

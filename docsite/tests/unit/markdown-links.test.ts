@@ -36,6 +36,27 @@ describe("Markdown link rewriting", () => {
   });
 
   // verifies: scenario.views.materialize
+  it("leaves a link inside a code span wrapped across lines unchanged", () => {
+    const wrapped =
+      "An example `[label](missing.md)\nstill code` and\n[real](topic.md).";
+    expect(rewrite(wrapped)).toBe(
+      wrapped.replace("[real](topic.md)", "[real](/specs/a/topic)"),
+    );
+    const doubled = "Write ``a ` b\n[label](missing.md)`` here.";
+    expect(rewrite(doubled)).toBe(doubled);
+  });
+
+  // verifies: scenario.views.materialize
+  it("never lets a code span cross a blank line or a fence", () => {
+    expect(rewrite("A lone `\n\nthen [link](topic.md) and ` here.")).toBe(
+      "A lone `\n\nthen [link](/specs/a/topic) and ` here.",
+    );
+    expect(
+      rewrite("A lone `\n```\ncode\n```\n[link](topic.md) and ` here."),
+    ).toBe("A lone `\n```\ncode\n```\n[link](/specs/a/topic) and ` here.");
+  });
+
+  // verifies: scenario.views.materialize
   it("rewrites a link whose label contains inline code", () => {
     expect(rewrite("Read [`topic.md`](topic.md).")).toBe(
       "Read [`topic.md`](/specs/a/topic).",

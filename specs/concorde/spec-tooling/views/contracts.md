@@ -188,7 +188,9 @@ custom docs.
 **Conflicts.** `conflicts` lists every proposed destination that already exists, with reason
 `target already exists`. It is information only. It authorizes nothing.
 
-**Apply.** Apply rebuilds the complete inventory from the installed package and the proposal's
+**Apply.** Apply first requires the project's Spec configuration to be readable, as propose does.
+Otherwise, it returns `invalid` with a `CONCORDE-DOCSITE-001` finding and writes nothing.
+Apply rebuilds the complete inventory from the installed package and the proposal's
 `identity` and `github_pages`.
 Apply requires the proposal's `template_digest` and `files` to equal it exactly.
 Otherwise, Apply returns `invalid` with a `CONCORDE-DOCSITE-004` finding and Spec tooling's
@@ -205,11 +207,14 @@ Then:
   written.
 - Otherwise, when any destination exists, whatever its content, the result is `conflict`, naming
   every existing destination. Nothing is written.
-- When every destination is absent, the files are created through a
-  [file transaction](../../glossary.json#concept.file-transaction).
-  The transaction checks each destination is still absent before staging and before each write.
-  If one appears, the transaction removes the files it created.
-  The result is `success` with the created paths, or `failed` after a rollback.
+- When every destination is absent, the files are created in path order.
+  Each is created only where nothing exists: it is written apart, then hard-linked into place.
+  On a filesystem without hard links, it is opened with exclusive creation instead.
+  When a destination appears meanwhile, or a creation fails, Apply removes the files it created.
+  It removes each only while its device and inode are still those of the file it created.
+  The result is `success` with the created paths, or `failed` after that removal.
+  The `failed` result names the destination that appeared or failed, and any created file another
+  process had replaced.
 
 Apply never replaces or deletes a file. Therefore, Apply cannot update an existing site or touch a
 [Spec](../../glossary.json#concept.spec).
@@ -253,8 +258,11 @@ The removed field `homepage` is rejected with a message pointing to `userDocs`.
 The label defaults to "User documents".
 `path` names a directory relative to `docsite/` under the same rules
 as a collection's `path` below.
-The directory must contain a root page, `README.md`, `README.mdx`, `index.md` or `index.mdx`.
-The directory must contain no registered Spec document.
+The directory must contain exactly one root page: `README.md`, `README.mdx`, `index.md` or
+`index.mdx`. With none, or with more than one, admission fails naming `userDocs` and every root
+page found.
+The directory must contain no registered Spec document, neither below it nor reached through
+symbolic links, however many lie on the way.
 None of its top-level documents or folders may be named `specs`, `search` or the first segment of
 a collection's `routeBasePath`.
 The directory is published as one Docusaurus docs instance at route base `/`.
@@ -278,7 +286,8 @@ Both may use `../`. Neither may:
 - Use a drive prefix.
 - Contain a backslash.
 
-A collection must not contain a registered Spec document.
+A collection must not contain a registered Spec document, neither below its directory nor
+reached through symbolic links, however many lie on the way.
 Each collection is published as its own Docusaurus docs instance with:
 
 - A sidebar of its own.
@@ -290,9 +299,13 @@ Its landing document uses `slug: /`.
 A project may also provide `docsite/custom-docs/index.ts`, exporting an object with optional
 `plugins` and `navbarItems` arrays.
 They are added to the site as they are. Their routes must stay outside `/specs`.
+A docs plugin among `plugins` is admitted like a collection: its `path`, `docs` by default, must
+name an existing directory that contains no registered Spec document.
+After the build, a rendered route under `/specs` that is neither a registered document's route nor
+the glossary's fails the build, naming every such route.
 Duplicate routes fail the build.
 
-## Build commands
+## Build commands {#build-commands}
 
 Commands run from `docsite/` with the dependencies installed from `package-lock.json`.
 
@@ -311,6 +324,13 @@ A later staging failure or a Docusaurus exit is reported while the command keeps
 next change, as the [pipeline](pipeline.md#preview) describes.
 An interruption stops it.
 When the project has no Concorde configuration, `validate`, `start` and `build` fail first.
+
+**One build at a time.** Callers must serialize the production builds of one docsite for the
+whole build, from staging through promotion.
+A build deletes the previous candidate and backup and owns the candidate, `docsite/build/` and
+the backup directory exclusively until it ends.
+A second build started meanwhile can delete the first build's candidate or its recovery backup.
+A preview may run beside a build, since each mode stages into its own directory.
 
 ## Site manifest
 

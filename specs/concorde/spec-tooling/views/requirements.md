@@ -75,11 +75,16 @@ Publication SHALL NOT write rendered, enriched or rewritten content into any reg
 
 ### req.views.diagram-source-identity — A fence is its diagram's only source
 
-Publication SHALL render each D2 diagram from its fence in the containing document and from no other source.
+Publication SHALL take each D2 diagram's shapes, nesting, labels and edges from its fence in the containing document and from no other source.
 
 The rendered image is staged beside its page.
-The image is derived only from the fence and the publisher's house style.
-A diagram therefore changes only when the document containing it or the house style changes.
+Its look comes from the publisher's house style, applied to what each label resolves to in the
+loaded registry, metadata and glossary ([diagram-look](#req.views.diagram-look)).
+A diagram therefore changes only when one of these changes:
+
+- Its fence.
+- The house style.
+- What one of its labels resolves to, such as when another Module's composition changes.
 
 ### req.views.diagram-look — The publisher decides how a diagram looks
 
@@ -186,14 +191,32 @@ back into place.
 Only a filesystem failure during that restoration itself can prevent it.
 If that failure occurs, the build fails with that error.
 The build then leaves the previous site in `docsite/.generated/previous-build/` for manual recovery.
+On the first publication there is no previous site, so nothing is backed up or restored.
+
+### req.views.promoted-site-kept — Cleanup never undoes a promotion
+
+When removing the previous site's backup fails after the candidate is in place, Promotion SHALL
+keep the promoted site and report the failure.
+
+A removal that fails halfway has already deleted part of the backup.
+Restoring that backup would replace a complete site with an incomplete one.
 
 ### req.views.production-preview-isolation — Production does not disturb the preview
 
 A production build SHALL NOT clear or overwrite the generated files of the development preview.
 
+The generated files of the preview are its staged pages, its sidebar, its staging identity record
+and Docusaurus's generated directory.
+
+### req.views.outputs-disjoint — Cleanup never reaches a source
+
+Publication SHALL refuse a source that lies inside one of its output directories, or that an
+output directory reaches through a symbolic link, before it clears anything.
+
 ### req.views.preview-follows-specs — The preview follows the Specs
 
-While `npm run start` runs, a change to any of the following SHALL stage the Specs again:
+While `npm run start` runs, its preview supervisor SHALL stage the Specs again after a change to
+any of the following:
 
 - The site identity.
 - The configuration.
@@ -209,7 +232,7 @@ If a staging fails during the preview:
 
 ### req.views.preview-restart — A successful staging restarts the preview
 
-While `npm run start` runs, a staging that follows a change and succeeds SHALL restart the preview from the new staging.
+While `npm run start` runs, when a staging that follows a change succeeds, the preview supervisor SHALL restart the preview from the new staging.
 
 ### req.views.hash-format — Digest format
 

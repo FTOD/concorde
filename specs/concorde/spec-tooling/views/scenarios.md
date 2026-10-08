@@ -21,23 +21,28 @@ does.
 
 ### scenario.views.load-registry-refused — Inputs the publisher cannot publish are refused
 
-- GIVEN an unsafe path, a symbolic link, duplicate JSON keys, a duplicate identity, a composition
-  cycle, a Mermaid block, a `relies_on` identity its target does not define, a concept record in
-  document metadata, or a glossary that is malformed, declared twice or by a contained Module, or
-  has an entry whose owner or explanation does not resolve
+- GIVEN a project with an input that [loading and admission](pipeline.md#loading-and-admission)
+  refuses
 - WHEN the publisher loads the project
 - THEN loading fails with an error naming the source
 - BUT nothing is staged or promoted
 
+The pipeline lists every such input, one per item. Examples are an unsafe path, a symbolic link,
+a source that is not valid UTF-8, duplicate JSON keys, a duplicate identity and a composition
+cycle. A Mermaid block, an unresolved `relies_on` identity and a malformed glossary are refused
+too.
+
 ### scenario.views.reject-reading-collection — A document whose role or shape cannot be published is refused
 
-- GIVEN a document whose metadata is not schema 3 or has no valid `role`, an entry `module.md`
-  whose role is `implementation` or whose metadata lacks the `module` block, another document whose
-  metadata has a `module` block, a `module`-role document containing a requirement, a scenario or a
-  canonical contract, or an `implementation`-role document defining a concept
+- GIVEN a document whose role or shape [loading and admission](pipeline.md#loading-and-admission)
+  refuses
 - WHEN the publisher loads the project
 - THEN loading fails with an error naming the offending document
 - AND no candidate is staged or promoted
+
+Examples are metadata that is not schema 3 or has no valid `role`, and an entry `module.md` whose
+role is `implementation`. A `module`-role document containing a requirement, a scenario or a
+canonical contract is refused too.
 
 ### scenario.views.diagram-subset-refused — A checked diagram that sets its own look is refused
 
@@ -189,8 +194,9 @@ See [req.views.diagram-source-identity](requirements.md#req.views.diagram-source
 
 - GIVEN a loaded project model
 - WHEN the publisher stages it
-- THEN it replaces the staged content under `docsite/.generated/` with one Markdown page per
-  document and one sidebar per reading collection
+- THEN it replaces the staged content in its mode's staging directory under `docsite/.generated/`
+  with one Markdown page per document and the one Module documents sidebar
+- AND an implementation page displays that sidebar without being listed in it
 - AND each page carries its route, title and reading collection
 - AND each page's table of contents lists its level-2 and level-3 headings
 - AND only after every page and sidebar is written does it write the staging identity record with the source digest
@@ -201,6 +207,29 @@ See [req.views.diagram-source-identity](requirements.md#req.views.diagram-source
 - WHEN a later build step reads the staged content
 - THEN there is no staging identity record
 - AND the build refuses the partial staging
+
+### scenario.views.outputs-disjoint — Sources inside publication output are refused
+
+- GIVEN a registered source inside `docsite/.generated/`, `docsite/build/` or `docsite/.docusaurus/`
+- WHEN `npm run start`, `npm run validate` or `npm run build` runs
+- THEN it fails naming the source and the output directory
+- AND it clears nothing
+- AND every source keeps its bytes
+
+A source is inside an output directory by its path or by its physical location. When one of those
+directories is a symbolic link, publication is refused the same way.
+
+See [req.views.outputs-disjoint](requirements.md#req.views.outputs-disjoint).
+
+### scenario.views.production-preview-isolation — A build beside a preview leaves the preview alone
+
+- GIVEN a running `npm run start` preview that has staged its pages
+- WHEN `npm run build` runs beside it
+- THEN the build stages into its own staging directory
+- AND the preview's staged pages, sidebar, staging identity record and Docusaurus files keep their
+  bytes
+
+See [req.views.production-preview-isolation](requirements.md#req.views.production-preview-isolation).
 
 ### scenario.views.build-site — A build runs every step before promotion
 
@@ -234,6 +263,25 @@ See [req.views.diagram-source-identity](requirements.md#req.views.diagram-source
 - THEN promotion is refused
 - AND the candidate is deleted
 - AND the published site is unchanged
+
+### scenario.views.first-publication — The first build publishes without a backup
+
+- GIVEN a valid registered project and no published site in `docsite/build/`
+- WHEN `npm run build` runs
+- THEN the candidate becomes the published site in `docsite/build/`
+- AND no backup is made or left in `docsite/.generated/previous-build/`
+
+See [req.views.promote-atomic](requirements.md#req.views.promote-atomic).
+
+### scenario.views.backup-cleanup-failure — A failed backup cleanup keeps the promoted site
+
+- GIVEN a published site and a build whose candidate is promoted
+- WHEN removing the previous site's backup fails after deleting part of it
+- THEN the promoted site stays complete in `docsite/build/`
+- AND the build reports the failure as a warning naming the backup
+- AND the build succeeds
+
+See [req.views.promoted-site-kept](requirements.md#req.views.promoted-site-kept).
 
 ### scenario.views.rebuild-removes-stale-pages — Rebuilding removes pages no longer produced
 
@@ -308,12 +356,15 @@ to it. A link to a page or anchor that does not exist stops promotion, as
 
 ### scenario.views.user-docs-refused — User documents that cannot be published fail the build
 
-- GIVEN `userDocs.path` names a missing directory, one without a root page, one containing a
-  registered Spec document, or one whose top-level document or folder would publish under `/specs`,
-  `/search` or a custom docs route
+- GIVEN `userDocs.path` names a directory that user documents admission, in the
+  [build hooks](pipeline.md#build-hooks), refuses
 - WHEN the site is configured
 - THEN the build fails naming `userDocs` and the offending path
 - AND nothing is promoted
+
+Such a directory is missing, or has no root page or more than one. It may contain a registered
+Spec document, even one reached through links inside linked directories. A top-level document or
+folder may publish under `/specs`, `/search` or a custom docs route.
 
 ### scenario.views.custom-docs — Custom docs in their own tabs
 
@@ -325,7 +376,7 @@ to it. A link to a page or anchor that does not exist stops promotion, as
 
 ### scenario.views.custom-docs-refused — Invalid custom docs fail the build
 
-- GIVEN a custom docs collection containing a registered Spec document, a route that conflicts with a Spec page, missing content or a broken internal link
+- GIVEN a custom docs collection or an extension's docs plugin containing a registered Spec document, a route under `/specs`, missing content or a broken internal link
 - WHEN the site is built
 - THEN the build fails naming the collection or link
 - AND nothing is promoted
@@ -377,10 +428,20 @@ to it. A link to a page or anchor that does not exist stops promotion, as
 
 - GIVEN a valid proposal
 - AND when applying starts, its destinations are absent
-- WHEN another process creates one of the destinations during application of the proposal
+- WHEN another process creates one of the destinations during application of the proposal, even
+  just before that destination is created
 - THEN the result is `failed`
 - AND every file this application had already created is removed
 - BUT files it did not create keep their bytes
+- AND a created file that another process replaced keeps that process's bytes
+
+### scenario.views.scaffold-uninitialized — A proposal is not applied to an uninitialized project
+
+- GIVEN a saved valid proposal
+- AND the project's Spec configuration has since been removed or made unreadable
+- WHEN `concorde docsite --apply --proposal PATH` runs
+- THEN the result is `invalid`, asking for initialization
+- BUT nothing is written
 
 ### scenario.views.scaffold-conflict — Existing destinations block a scaffold
 
