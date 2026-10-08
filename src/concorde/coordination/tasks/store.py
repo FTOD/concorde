@@ -1764,7 +1764,9 @@ def _changes(worktree: Path) -> list[str]:
     task, and Delivery leaves them out as well. It only reads: without optional locks Git
     neither refreshes nor rewrites the worktree's index, so a reader never holds ``index.lock``
     while a close or merge removes the worktree. A worktree removed while it is read has no
-    changes."""
+    changes; a ``git status`` that fails on a worktree that still exists is ``git_failed``, never
+    a clean worktree, since a close removing a worktree with submodules forces the removal on the
+    strength of this answer."""
     if not worktree.exists():
         return []
     try:
@@ -1777,7 +1779,6 @@ def _changes(worktree: Path) -> list[str]:
             "--no-renames",
             "--untracked-files=all",
             "--ignore-submodules=none",
-            check=False,
         ).stdout
     except TaskError:
         if worktree.exists():

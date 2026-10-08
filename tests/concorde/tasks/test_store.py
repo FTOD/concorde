@@ -1433,6 +1433,45 @@ class TaskStoreTests(unittest.TestCase):
         # The submodule stays registered for every other worktree.
         self.assertEqual(config, shared.read_text())
 
+    def test_a_failed_status_never_lets_a_close_force_away_a_worktree_with_submodules(
+        self,
+    ):
+        library = self.root.parent / "library"
+        library.mkdir()
+        git(library, "init", "-q")
+        (library / "README.md").write_text("library\n")
+        git(library, "add", "-A")
+        git(
+            library, "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "lib"
+        )
+        self.project.open_task("t1")
+        worktree = self.project.worktree("t1")
+        git(
+            worktree,
+            "-c",
+            "protocol.file.allow=always",
+            "submodule",
+            "add",
+            "-q",
+            str(library),
+            "vendor/lib",
+        )
+        commit(worktree, "vendored the library")
+        (worktree / "notes.md").write_text("uncommitted work\n")
+        # A corrupt index makes `git status` fail with nothing on its standard output, which
+        # must not read as a clean worktree that the submodules' forced removal may discard.
+        index = Path(
+            git(worktree, "rev-parse", "--path-format=absolute", "--git-path", "index")
+        )
+        index.write_bytes(b"not an index")
+        before = self.record()
+        self.assertEqual(
+            (1, "git_failed"),
+            self.refusal("close", "t1", "--completed", "--note", "done"),
+        )
+        self.assertEqual("uncommitted work\n", (worktree / "notes.md").read_text())
+        self.assertEqual(before, self.record())
+
     @verifies("scenario.tasks.close-not-merged")
     def test_an_unmerged_task_cannot_close_as_merged(self):
         self.project.open_task("t1")
