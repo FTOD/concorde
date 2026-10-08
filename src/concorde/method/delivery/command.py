@@ -12,8 +12,10 @@ bound branch are its only record: their subject names the workspace.
 6. Stop ``ok``, ``recovered``, when step 2 noted a delivery commit: it validated again.
 7. Record the index with Git (its tree, intent-to-add paths and skip-worktree and
    assume-unchanged flags).
-8. Stage everything, record the staged tree and create the delivery commit, taking the commit
-   Git names as the one it created; when staging or the commit fails, give the recorded index
+8. Stage everything, record the staged tree, require a checkout of it to give back what the
+   readiness examined (``staged_unvalidated`` when a clean filter rewrote a validated file, say)
+   and create the delivery commit, taking the commit Git names as the one it created; when
+   staging, its comparison or the commit fails, give the recorded index
    back and name the worktree files that are not as the readiness examined them, such as a
    failing commit hook's edits, which stay.
 9. Verify the new head, its tree (the staged one, which a commit hook may have changed), its
@@ -52,6 +54,9 @@ from ..validation.measurement import (
     has_uncommitted,
     head_commit,
     measure,
+    real_path,
+    recorded_path,
+    sha256,
     special_paths,
 )
 
@@ -473,18 +478,33 @@ def decide(ctx: RunContext):
     return _not_reported(ctx, stop)
 
 
-SCENARIO_HEADING = re.compile(r"^### (scenario\.[a-z0-9][a-z0-9.-]*)\b", re.MULTILINE)
-NEXT_HEADING = re.compile(r"^#{1,3} ", re.MULTILINE)
+def scenario_sections(text: str) -> dict[str, str]:
+    """Each scenario a reading document defines, by identity, with its whole section.
+
+    Spec core's reading parser finds the scenarios, at every heading level it accepts and never
+    in a fence; a section runs from its heading to the next heading outside a fence.
+    """
+    from ...spec.syntax import parse_reading
+
+    reading = parse_reading(text)
+    lines = text.splitlines()
+    starts = sorted(heading.line for heading in reading.headings)
+    sections = {}
+    for identity, _title, line, _steps in reading.scenarios:
+        end = next((start for start in starts if start > line), len(lines) + 1)
+        sections[identity] = "\n".join(lines[line - 1 : end - 1]).strip()
+    return sections
 
 
-def scenario_blocks(text: str) -> dict[str, str]:
-    """Each scenario of a reading document with its heading and steps, by identity."""
-    blocks = {}
-    for match in SCENARIO_HEADING.finditer(text):
-        following = NEXT_HEADING.search(text, match.end())
-        end = following.start() if following else len(text)
-        blocks[match.group(1)] = text[match.start() : end].strip()
-    return blocks
+def _base_text(worktree: Path, base: str, path: str) -> str:
+    """A document's text at the base commit; empty when the base has none."""
+    shown = subprocess.run(
+        ["git", "show", f"{base}:{path}"],
+        cwd=worktree,
+        capture_output=True,
+        check=False,
+    )
+    return shown.stdout.decode("utf-8", "replace") if shown.returncode == 0 else ""
 
 
 def require_verified_scenarios(ctx: RunContext):
@@ -493,7 +513,7 @@ def require_verified_scenarios(ctx: RunContext):
     exempt."""
     from ...spec.repository import SpecRepository
     from ...spec.repository_base import bound_by
-    from ...spec.validation import validate_repository
+    from ...spec.verification import scan_declarations
 
     if ctx.arguments.adoption:
         return Continue(
@@ -508,8 +528,10 @@ def require_verified_scenarios(ctx: RunContext):
         )
     base = ctx.base_commit or ""
     # The paths the readiness measured, which Git gave NUL-separated, so that no path is split
-    # on whitespace or arrives quoted.
-    changed = [item["path"] for item in _state(ctx).readiness["inputs"]["changed"]]
+    # on whitespace or arrives quoted; each is decoded from the text the measurement records.
+    changed = [
+        real_path(item["path"]) for item in _state(ctx).readiness["inputs"]["changed"]
+    ]
     repository = SpecRepository(ctx.worktree)
     entries = [
         entry
@@ -528,24 +550,30 @@ def require_verified_scenarios(ctx: RunContext):
                 evidence("scenario-tests", "no-code", "the workspace changed no code")
             ]
         )
+    # The scenarios of the Specs as they read now, in each changed document.
+    defined: dict[str, set[str]] = {}
+    for scenario in repository.scenario_nodes.values():
+        defined.setdefault(scenario.document, set()).add(scenario.id)
     touched: dict[str, str] = {}
     for path in changed:
-        if not path.endswith(".md") or not (ctx.worktree / path).is_file():
+        if path not in defined or path not in repository.readings:
             continue
-        before = _git(ctx.worktree, "show", f"{base}:{path}").stdout
-        now = scenario_blocks((ctx.worktree / path).read_text(encoding="utf-8"))
-        earlier = scenario_blocks(before)
-        for identity, block in now.items():
-            if earlier.get(identity) != block:
+        now = scenario_sections(repository.readings[path].text)
+        earlier = scenario_sections(_base_text(ctx.worktree, base, path))
+        for identity in defined[path]:
+            if earlier.get(identity) != now.get(identity):
                 touched[identity] = path
-    unverified = sorted(
-        {
-            finding.subject_id
-            for finding in validate_repository(ctx.worktree).findings
-            if finding.rule_id == "CONCORDE-COVERAGE-001"
-            and finding.subject_id in touched
-        }
-    )
+    # Every declaration of every bound test file, whichever Module owns the scenario it names.
+    files = {
+        file
+        for module in repository.modules.values()
+        for file in repository.bound_files(module)
+    }
+    covered = {
+        declaration.scenario_id
+        for declaration in scan_declarations(ctx.worktree, files, [])
+    }
+    unverified = sorted(set(touched) - covered)
     if not unverified:
         return Continue(
             evidence=[
@@ -556,13 +584,16 @@ def require_verified_scenarios(ctx: RunContext):
                 )
             ]
         )
-    listing = "; ".join(f"{identity} ({touched[identity]})" for identity in unverified)
+    listing = "; ".join(
+        f"{identity} ({recorded_path(touched[identity])})" for identity in unverified
+    )
     stop = _blocked(
         ctx,
         "unverified_scenarios",
         f"{len(unverified)} scenario(s) the workspace added or changed have no test "
         "(unverified_scenarios); nothing was delivered.",
-        f"workspace {ctx.workspace_name} changes code ({', '.join(code[:5])}"
+        f"workspace {ctx.workspace_name} changes code "
+        f"({', '.join(recorded_path(path) for path in code[:5])}"
         + (", ..." if len(code) > 5 else "")
         + ") while no test declares that it verifies these scenarios it added or changed: "
         + listing,
@@ -699,6 +730,134 @@ def _differing(examined: list[dict], now: list[dict]) -> list[str]:
     )
 
 
+def _staged_entries(worktree: Path, tree: str) -> dict[str, tuple[str, str]]:
+    """Every entry of a tree, ``path: (mode, object)``, submodules included."""
+    entries = {}
+    for item in _index_git(worktree, "ls-tree", "-r", "-z", "--full-tree", tree).split(
+        b"\0"
+    ):
+        if not item:
+            continue
+        fields, _, path = item.partition(b"\t")
+        mode, _, rest = fields.partition(b" ")
+        entries[path.decode("utf-8", "surrogateescape")] = (
+            mode.decode(),
+            rest.partition(b" ")[2].decode(),
+        )
+    return entries
+
+
+def _blobs(worktree: Path, objects: set[str]) -> dict[str, bytes]:
+    """The raw content of each blob, read in one ``git cat-file --batch``."""
+    if not objects:
+        return {}
+    ordered = sorted(objects)
+    raw = _index_git(
+        worktree,
+        "cat-file",
+        "--batch",
+        stdin="".join(item + "\n" for item in ordered).encode(),
+    )
+    contents, position = {}, 0
+    for item in ordered:
+        header_end = raw.index(b"\n", position)
+        size = int(raw[position:header_end].split()[2])
+        contents[item] = raw[header_end + 1 : header_end + 1 + size]
+        position = header_end + 1 + size + 1
+    return contents
+
+
+def _same_mode(examined: str | None, staged: str | None, file_mode: bool) -> bool:
+    """Whether two Git modes agree; without ``core.fileMode`` Git ignores the executable bit."""
+    regular = {"100644", "100755"}
+    if not file_mode and examined in regular and staged in regular:
+        return True
+    return examined == staged
+
+
+def staged_differences(worktree: Path, tree: str, inputs: dict) -> list[str]:
+    """Each path at which a checkout of the staged ``tree`` would not give back what the
+    readiness's ``inputs`` examined, with what differs; empty when staging preserved it.
+
+    A path the readiness examined must be staged with its mode and, once checked out through
+    the repository's filters, its digest: a clean filter that Git's smudge filter reverses, as
+    Git LFS does, changes nothing a checkout gives back, while one that rewrites the content
+    does. Any other path must be staged as the base holds it. ``_IndexRefused`` when Git cannot
+    show the staged tree.
+    """
+    examined = {real_path(item["path"]): item for item in inputs["changed"]}
+    staged = _staged_entries(worktree, tree)
+    problems = []
+    moved = _split(
+        _index_git(
+            worktree,
+            "diff-tree",
+            "-r",
+            "-z",
+            "--no-renames",
+            "--name-only",
+            inputs["base"],
+            tree,
+        )
+    )
+    for path in moved:
+        if path not in examined:
+            problems.append(
+                f"{recorded_path(path)} is staged changed although the readiness examined it "
+                "as unchanged since the base"
+            )
+    setting = _git(worktree, "config", "--type=bool", "--get", "core.fileMode")
+    file_mode = setting.stdout.strip() != "false"
+    contents = _blobs(
+        worktree,
+        {
+            entry[1]
+            for path in examined
+            if (entry := staged.get(path)) and entry[0] != "160000"
+        },
+    )
+    for path, item in examined.items():
+        mode, digest = item["mode"], item["digest"]
+        entry = staged.get(path)
+        shown = recorded_path(path)
+        if entry is None:
+            if digest is not None:
+                problems.append(
+                    f"{shown} is staged as deleted although the readiness examined it present"
+                )
+            continue
+        if digest is None:
+            problems.append(
+                f"{shown} is staged although the readiness examined it as deleted"
+            )
+            continue
+        if not _same_mode(mode, entry[0], file_mode):
+            problems.append(
+                f"{shown} is staged with mode {entry[0]} although the readiness examined "
+                f"mode {mode}"
+            )
+            continue
+        if entry[0] == "160000":
+            given = sha256(b"gitlink:" + entry[1].encode())
+        elif entry[0] == "120000":
+            given = sha256(b"symlink:" + contents[entry[1]])
+        else:
+            given = sha256(contents[entry[1]])
+            if given != digest:
+                # What a checkout writes: the staged content through the smudge filters.
+                given = sha256(
+                    _index_git(
+                        worktree, "cat-file", "--filters", f"--path={path}", entry[1]
+                    )
+                )
+        if given != digest:
+            problems.append(
+                f"{shown} is staged with content a checkout would not give back as the "
+                "readiness examined it"
+            )
+    return problems
+
+
 # The first line ``git commit`` prints, after its post-commit hook ran, names the commit it
 # created: ``[<branch> <commit>] <subject>`` with ``core.abbrev=no``.
 CREATED = re.compile(r"\b([0-9a-f]{64}|[0-9a-f]{40})\]")
@@ -749,6 +908,46 @@ def commit(ctx: RunContext):
             causes=[_git_link("write-tree", tree), *undone.causes],
         )
     state.staged_tree = tree.stdout.strip()
+    try:
+        unvalidated = staged_differences(
+            ctx.worktree, state.staged_tree, state.readiness["inputs"]
+        )
+    except _IndexRefused as error:
+        undone = undo(ctx)
+        return _failed(
+            ctx,
+            "stage_failed",
+            f"Git could not show the staged content; nothing was committed and {undone}.",
+            [evidence("git", "staged", error.link["detail"])],
+            f"the staged tree {state.staged_tree} in {ctx.worktree} could not be compared "
+            f"with what the readiness examined; nothing was committed and {undone}: "
+            f"{error.link['detail']}",
+            ["repair the worktree's Git state, then run delivery again"],
+            causes=[error.link, *undone.causes],
+        )
+    if unvalidated:
+        undone = undo(ctx)
+        listing = "; ".join(unvalidated)
+        return _failed(
+            ctx,
+            "staged_unvalidated",
+            f"Staging changed {len(unvalidated)} path(s) the readiness examined "
+            f"(staged_unvalidated); nothing was committed and {undone}.",
+            [evidence("git", state.staged_tree, listing)],
+            f"git add staged in {ctx.worktree} content that a checkout of the commit would "
+            f"not give back as the readiness examined it, such as a Git clean filter's "
+            f"rewrite: {listing}; nothing was committed and {undone}",
+            [
+                (
+                    "remove or repair the Git attribute or filter that rewrites these paths "
+                    "when they are staged, then run delivery again"
+                ),
+                "make the worktree hold what Git stages, then run delivery again",
+            ],
+            reason="decision",
+            explanation="delivery commits only what the readiness examined, and how the "
+            "repository's Git attributes and filters stage files is the task level's to change",
+        )
     state.message = delivery_commit.message(ctx.workspace_name, ctx.workspace["goal"])
     result = subprocess.run(
         [

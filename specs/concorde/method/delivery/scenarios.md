@@ -34,6 +34,13 @@ commit and output are defined in the [contracts](contracts.md).
 - WHEN delivery runs
 - THEN the workspace is delivered, `ok`, without a test
 
+### scenario.delivery.unrealized-scenarios — An untested scenario of a Module without files stops a code change
+
+- GIVEN a workspace that changes `src/a/calc.py` and adds `scenario.b.more` to the Specs of Module B, which binds no file
+- WHEN delivery runs
+- THEN delivery is `blocked` with `unverified_scenarios` naming `scenario.b.more` and its document
+- BUT once a test in a file Module A binds declares that it verifies `scenario.b.more`, the workspace is delivered, `ok`
+
 ### scenario.delivery.adoption — An adoption delivery needs no scenario test
 
 - GIVEN a workspace that changes `src/a/calc.py` and adds `scenario.a.sum` without a test
@@ -133,6 +140,22 @@ commit and output are defined in the [contracts](contracts.md).
 - AND the index is restored as the readiness examined it
 - BUT the worktree keeps the hook's version of `src/a/calc.py`, and the run's summary and error name `src/a/calc.py` as not as the readiness examined it
 - AND the branch holds no delivery commit
+
+### scenario.delivery.staged-unvalidated — Staging that changes validated content is refused
+
+- GIVEN a workspace that is ready, with changes staged before the delivery, an intent-to-add path, a skip-worktree and an assume-unchanged flag
+- AND a Git clean filter that succeeds while it rewrites the new file `src/a/extra.py`, with no smudge filter to reverse it
+- WHEN the workspace is delivered
+- THEN the result has status `failed` with `staged_unvalidated`, reason `decision`, naming `src/a/extra.py` and no other path
+- AND the index is again exactly as before the delivery
+- AND a fresh measurement yields the readiness's input digest again, and the branch holds no delivery commit
+
+### scenario.delivery.staged-filtered — Staging through a filter a checkout reverses is delivered
+
+- GIVEN a workspace that is ready, with a new file `src/a/extra.py` under a clean filter that reverses each line and a smudge filter that reverses it back
+- WHEN the workspace is delivered
+- THEN the result has status `ok`
+- AND the delivery commit holds the filtered content, which a checkout turns back into the content the readiness examined
 
 ### scenario.delivery.stage-refused — Git refuses to stage a change
 

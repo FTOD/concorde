@@ -40,6 +40,13 @@ Changed code is a changed path outside `specs/` and `.concorde/` that a
 what it verifies by its
 [verification declaration](../../glossary.json#concept.verification-declaration).
 
+The rule holds for every scenario a [Spec](../../glossary.json#concept.spec) document defines, at
+every heading level Spec core accepts, and whichever Module owns it. A Module that binds no file
+still owns scenarios a code change may add, as
+[scenario.delivery.unrealized-scenarios](scenarios.md#scenario.delivery.unrealized-scenarios)
+shows. A scenario changed when its section, from its heading to the next heading, differs from its
+section at the base commit.
+
 ### req.delivery.blocked-reason — A refusal says its own reason
 
 A delivery run that ends `blocked` SHALL explain in its error link the reason of its own code as
@@ -60,6 +67,21 @@ A delivery run that ends `blocked` SHALL leave the workspace, its index and its 
 A delivery commit SHALL contain exactly the uncommitted changes the readiness examined.
 
 Its parent is fixed by [req.delivery.bound-branch](#req.delivery.bound-branch).
+
+### req.delivery.staged-validated — Staging is proven to keep what was validated
+
+Delivery SHALL commit only when a checkout of the staged index gives back each path the readiness
+examined with the mode and content it examined, and each other path as the base commit holds it,
+and otherwise fail with `staged_unvalidated`, naming every path that differs, and give the index
+back as [req.delivery.atomic](#req.delivery.atomic) requires.
+
+Git stages a file through the repository's clean filters and line-ending conversion. A clean filter
+may rewrite a validated file while Git still sees the worktree as clean, as
+[scenario.delivery.staged-unvalidated](scenarios.md#scenario.delivery.staged-unvalidated) shows.
+A checkout passes the staged content through the smudge filters. So a filter that a checkout
+reverses, such as Git LFS or line-ending conversion, changes nothing, as
+[scenario.delivery.staged-filtered](scenarios.md#scenario.delivery.staged-filtered) shows. When
+`core.fileMode` is false, Git ignores the executable bit, and so does this comparison.
 
 ### req.delivery.bound-branch — Commits go on the bound branch
 
@@ -117,7 +139,7 @@ only the commit the same run created.
 
 ### req.delivery.atomic — A failed commit gives the validated index back
 
-When staging or the commit fails, Delivery SHALL restore the index to the state the readiness
+When staging, its comparison or the commit fails, Delivery SHALL restore the index to the state the readiness
 examined, leave the worktree as it is, and name in the run's summary and error every worktree path
 whose mode or content is no longer what the readiness examined.
 

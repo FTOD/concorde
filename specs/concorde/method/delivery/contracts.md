@@ -19,8 +19,9 @@ readiness examined that branch's commits since the base commit.
 The commit contains every uncommitted change of the workspace that Git does not ignore, with one
 exception. It excludes the untracked paths Validation's
 [input measurement](../validation/contracts.md#input-measurement) leaves out as no content of the
-task. When every step was committed before, the commit changes nothing. In that case, it is still
-made as the mark of the delivery.
+task. Delivery commits only when a checkout of the staged index gives back what the readiness
+examined. When every step was committed before, the commit changes nothing. In that case, it is
+still made as the mark of the delivery.
 
 The [delivery commits](../../glossary.json#concept.delivery-commit) are the only record of a
 delivery. The Kernel's convention defines which commit is a delivery commit of a workspace

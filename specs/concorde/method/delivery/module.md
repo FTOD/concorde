@@ -114,7 +114,7 @@ readiness -> failed: "measurement, checks\nor inputs fail" {style.stroke-dash: 3
 ready -> blocked: "no: not_ready" {style.stroke-dash: 3}
 tests -> blocked: "no: unverified_scenarios" {style.stroke-dash: 3}
 index -> failed: "index_unrecorded" {style.stroke-dash: 3}
-commit -> failed: "Git refuses: the index given back" {style.stroke-dash: 3}
+commit -> failed: "Git refuses, or staging changed\nvalidated content: the index given back" {style.stroke-dash: 3}
 verify -> failed: "mismatch: commit_unverified,\nthe commit taken off the branch" {style.stroke-dash: 3}
 ```
 
@@ -171,7 +171,7 @@ records it as `scenario-tests` evidence `exempt`. Every other rule applies uncha
 | `blocked` | `nothing_to_deliver` | `decision` | no commit since the base commit and no uncommitted change (`git` evidence) |
 | `blocked` | `not_ready` | `decision` | the whole workspace is not ready; Validation's `not_deliverable` link is the cause, with one cause per finding |
 | `blocked` | `unverified_scenarios` | `decision` | the workspace changed code while a scenario it added or changed has no verifying test; names each with its document |
-| `failed` | — | — | `wrong_branch`, Validation's `measurement_failed`, `checks_unavailable` or `inputs_changed`, an index Git cannot record (`index_unrecorded`), Git refusing (`stage_failed`, `commit_failed`) or a commit that does not verify, the one it made, which it takes off the branch again, one Git did not name, or the delivery commit it found at the head (`commit_unverified`) |
+| `failed` | — | — | `wrong_branch`, Validation's `measurement_failed`, `checks_unavailable` or `inputs_changed`, an index Git cannot record (`index_unrecorded`), Git refusing (`stage_failed`, `commit_failed`), staging that changed what the readiness examined (`staged_unvalidated`, reason `decision`) or a commit that does not verify, the one it made, which it takes off the branch again, one Git did not name, or the delivery commit it found at the head (`commit_unverified`) |
 
 The error is the run's own link of level `command`, with the actor `Command delivery <run-id>
 (workspace <workspace>)`. Every `blocked` code carries a host evidence `ref` of the same name.
@@ -251,7 +251,7 @@ commit names the workspace, which the binding names, and nothing else.
 | 6 | When the workspace changed code, require a test declaring that it verifies every scenario it added or changed since its base commit, unless `--adoption` | host, Spec core, read-only Git | an unverified scenario (`blocked`, `unverified_scenarios`, naming each with its document) |
 | 7 | Report the delivery commit step 2 noted, numbered among the delivery commits on the branch | host | it noted one (`ok`, `recovered`) |
 | 8 | Record the index with Git | host, Git | the index cannot be recorded (`failed`, `index_unrecorded`) |
-| 9 | Stage every change; record the staged tree; commit, taking the commit Git names | host, Git | Git refuses (`failed`; the index restored, a hook's worktree edits kept and named) |
+| 9 | Stage every change; record the staged tree; require a checkout of it to give back what the readiness examined; commit, taking the commit Git names | host, Git | Git refuses, or staging changed what the readiness examined (`failed`, `staged_unvalidated`; the index restored, a hook's worktree edits kept and named) |
 | 10 | Verify the commit is head, its tree the staged tree, its subject the delivery subject, parent validated, worktree clean | host, read-only Git | mismatch (`failed`, `commit_unverified`; the commit taken off the branch) |
 | 11 | Return the commit as the output, numbered after the delivery commits on the branch | host | — |
 
@@ -273,6 +273,7 @@ these:
 
 - `measurement_failed` while staging.
 - `stage_failed`.
+- `staged_unvalidated`.
 - `commit_failed`.
 
 Delivery never undoes an edit of the worktree. A failing commit hook may leave edits the developer
@@ -332,8 +333,19 @@ The error includes `git update-ref`'s account as a `component` cause. Repairing 
 the task level's decision. See the [requirements](requirements.md) and
 [scenarios](scenarios.md).
 
-Delivery proves what it committed rather than assuming it. The repository's commit hooks run
-normally. A pre-commit hook may change a file. The hook may then stage it again. In that case, the
+Delivery proves what it staged and what it committed rather than assuming it. Git stages each file
+through the repository's clean filters and line-ending conversion. A clean filter may rewrite a
+validated file while Git still sees the worktree as clean. So, once step 9 has recorded the staged
+tree, it compares that tree with the readiness's measurement. Each path the readiness examined must
+be staged with the mode it examined. Its content, passed through the smudge filters as a checkout
+passes it, must have the digest the readiness examined. Each other path must be staged as the base
+commit holds it. A filter that a checkout reverses, such as Git LFS, therefore passes. A filter
+that rewrites the content does not. Without `core.fileMode`, Git ignores the executable bit, and so
+does the comparison. When a path differs, the run fails `staged_unvalidated`, names every such
+path and gives the index back. What the repository's attributes and filters do is the task level's
+to change.
+
+The repository's commit hooks run normally. A pre-commit hook may change a file. The hook may then stage it again. In that case, the
 commit Git creates can hold content the readiness never examined. This can happen while the
 worktree is still clean. Just before `git commit`, step 9 therefore records the tree of the staged
 index with `git write-tree`. Step 10 compares it with the new commit's tree. It names every path
@@ -407,8 +419,12 @@ The **Delivery command** realization holds these parts and their tests:
   readiness records. It never changes a finding. It treats a readiness that is not ready as
   blocking.
 - <a id="uses-spec"></a>**Spec core** answers step 6 on the workspace's Specs as they read now.
-  It answers which changed paths a Module's realization binds. Through its structural validation's
-  coverage findings, it also answers which scenarios no test declares that it verifies. Delivery
-  reads the base commit's text of each changed reading document itself, with read-only Git. This
-  finds the scenarios the workspace added or changed. Delivery relies on Spec core loading the
+  It answers which changed paths a Module's realization binds and which scenarios each document
+  defines. Its declaration scanner reads the verification declarations of every bound test file.
+  These answer which scenarios a test declares that it verifies, whichever Module owns them.
+  Delivery reads the base commit's text of each changed reading document itself, with read-only
+  Git. It reads that text with Spec core's reading parser. This finds the scenarios the workspace
+  added or changed, at every heading level Spec core accepts and never inside a fence. Delivery
+  decodes each changed path from the text the readiness's measurement records before it matches
+  it. Delivery relies on Spec core loading the
   Specs completely or refusing. Delivery never changes them in this step.
