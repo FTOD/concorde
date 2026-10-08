@@ -239,6 +239,11 @@ def complete(entry: dict[str, str]) -> None:
         )
 
 
+def skill_target(name: str) -> str:
+    """The text of the link ``.claude/skills/<name>``: the skill's folder of the build's output."""
+    return (Path("../../generated/skills") / name).as_posix()
+
+
 def link_skills(check: bool) -> int:
     """Link ``.claude/skills/<name>`` to ``generated/skills/<name>`` for every skill; return how
     many are not linked. A link pointing elsewhere is replaced, a real file or directory is never
@@ -247,7 +252,7 @@ def link_skills(check: bool) -> int:
     for name in SKILLS:
         link = ROOT / ".claude" / "skills" / name
         shown = link.relative_to(ROOT).as_posix()
-        target = (Path("../../generated/skills") / name).as_posix()
+        target = skill_target(name)
         if link.is_symlink():
             found = os.readlink(link)
             if found == target:
