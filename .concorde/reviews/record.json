@@ -1,76 +1,129 @@
 {
   "architecture": {
-    "commit": "a5d10ce4554159cc1f8ca09d5a84e182608a6036",
-    "context_identity": "sha256:43658a6822fc5d55e13ba89679ad39e4244612f565000b6cecb03098887a977d",
-    "judged_at": "2026-10-08T04:24:08Z",
-    "run": "r-20261008T024839-project_review-a7857ff6"
+    "commit": "ce20cc74890dd20fae25a0a858f03eeb91514ac0",
+    "context_identity": "sha256:d60a2243d2ea4900cc78529447d25f87327f36be2dbd0e528e665dfff1bcbf94",
+    "judged_at": "2026-10-08T09:44:13Z",
+    "run": "r-20261008T063808-project_review-9851e69f"
   },
   "modules": {
     "module.adoption": {
+      "code_review": {
+        "code_digest": "sha256:a740e0dd7b8b7ebf8f2f69956fa7963599bd3b62f83e91df238397e48317f937",
+        "commit": "ce20cc74890dd20fae25a0a858f03eeb91514ac0",
+        "context_identity": "sha256:2f179174326ccd8ed2c6a39f70f20983346f3cd314470930b75aa861ee71cf43",
+        "judged_at": "2026-10-08T09:44:13Z",
+        "run": "r-20261008T063808-project_review-9851e69f"
+      },
       "panel": {
-        "commit": "a5d10ce4554159cc1f8ca09d5a84e182608a6036",
-        "context_identity": "sha256:419d153fe4bca21c25de5e5fdb0218f7b6c5b667170c6bb3a6e7cf45ffeaea5d",
-        "judged_at": "2026-10-08T04:24:08Z",
-        "run": "r-20261008T024839-project_review-a7857ff6"
+        "commit": "ce20cc74890dd20fae25a0a858f03eeb91514ac0",
+        "context_identity": "sha256:2f179174326ccd8ed2c6a39f70f20983346f3cd314470930b75aa861ee71cf43",
+        "judged_at": "2026-10-08T09:44:13Z",
+        "run": "r-20261008T063808-project_review-9851e69f"
       }
     },
     "module.checks": {
       "code_review": {
-        "code_digest": "sha256:3d465558ecbeb533040b652426b7b1770f5af4ef1bc1a60c5ac52b9afb06689f",
-        "commit": "a5d10ce4554159cc1f8ca09d5a84e182608a6036",
-        "context_identity": "sha256:5a17522a86bb9ffcdc0ba49bb41bee402dad2d56750770eed6f551167cc67df5",
-        "judged_at": "2026-10-08T04:24:08Z",
-        "run": "r-20261008T024839-project_review-a7857ff6"
+        "code_digest": "sha256:da7f4269cf286c275827bae055dcf4db6054f3e459f1ab3513ff6cfcc6147dd7",
+        "commit": "ce20cc74890dd20fae25a0a858f03eeb91514ac0",
+        "context_identity": "sha256:922b60d46218c71ca9ae9bdbd2f9817333e2b02167de201b7428210220ee3461",
+        "judged_at": "2026-10-08T09:44:13Z",
+        "run": "r-20261008T063808-project_review-9851e69f"
+      },
+      "panel": {
+        "commit": "ce20cc74890dd20fae25a0a858f03eeb91514ac0",
+        "context_identity": "sha256:922b60d46218c71ca9ae9bdbd2f9817333e2b02167de201b7428210220ee3461",
+        "judged_at": "2026-10-08T09:44:13Z",
+        "run": "r-20261008T063808-project_review-9851e69f"
       }
     },
     "module.code-review": {
       "code_review": {
         "code_digest": "sha256:8e19db509978fc7b939f53bfecab7a05b4c542e4ae0aaaddf23855395c806b6c",
-        "commit": "a5d10ce4554159cc1f8ca09d5a84e182608a6036",
-        "context_identity": "sha256:6f6d67f19f424a98e23bad826916060f7cb14e4aea2afe44db98bc5ee3bd4a44",
-        "judged_at": "2026-10-08T04:24:08Z",
-        "run": "r-20261008T024839-project_review-a7857ff6"
+        "commit": "ce20cc74890dd20fae25a0a858f03eeb91514ac0",
+        "context_identity": "sha256:ccea2e1da113a76ac06d88c84cfe0f43221019dfed9839e3878fa519fdc15fd8",
+        "judged_at": "2026-10-08T09:44:13Z",
+        "run": "r-20261008T063808-project_review-9851e69f"
+      },
+      "panel": {
+        "commit": "ce20cc74890dd20fae25a0a858f03eeb91514ac0",
+        "context_identity": "sha256:ccea2e1da113a76ac06d88c84cfe0f43221019dfed9839e3878fa519fdc15fd8",
+        "judged_at": "2026-10-08T09:44:13Z",
+        "run": "r-20261008T063808-project_review-9851e69f"
       }
     },
     "module.commands": {
       "code_review": {
         "code_digest": "sha256:9e1ca80ffe3d57984ca4401770d6a485b88b61e44c5317822066b296c4654976",
-        "commit": "a5d10ce4554159cc1f8ca09d5a84e182608a6036",
-        "context_identity": "sha256:9dfc2337f535f8f0d335bb080da35441ae83254fb4b8c7d1d678d2686ccc2b98",
-        "judged_at": "2026-10-08T04:24:08Z",
-        "run": "r-20261008T024839-project_review-a7857ff6"
+        "commit": "ce20cc74890dd20fae25a0a858f03eeb91514ac0",
+        "context_identity": "sha256:8b32af3f4bf9e83236a2445b280a2da025fcc37857baed5e351e524efbd06f18",
+        "judged_at": "2026-10-08T09:44:13Z",
+        "run": "r-20261008T063808-project_review-9851e69f"
       },
       "panel": {
-        "commit": "a5d10ce4554159cc1f8ca09d5a84e182608a6036",
-        "context_identity": "sha256:9dfc2337f535f8f0d335bb080da35441ae83254fb4b8c7d1d678d2686ccc2b98",
-        "judged_at": "2026-10-08T04:24:08Z",
-        "run": "r-20261008T024839-project_review-a7857ff6"
+        "commit": "ce20cc74890dd20fae25a0a858f03eeb91514ac0",
+        "context_identity": "sha256:8b32af3f4bf9e83236a2445b280a2da025fcc37857baed5e351e524efbd06f18",
+        "judged_at": "2026-10-08T09:44:13Z",
+        "run": "r-20261008T063808-project_review-9851e69f"
       }
     },
     "module.concorde": {
+      "code_review": {
+        "code_digest": "sha256:3a44b9ed37d12fe3e82ab71399bd3d5ca0a5024ae265afccd96b5aabf4ecb47d",
+        "commit": "ce20cc74890dd20fae25a0a858f03eeb91514ac0",
+        "context_identity": "sha256:46fa10eeb170e8540b819ce1f1c966c2d751aff9961e8f5e44bc36a2af0f79d8",
+        "judged_at": "2026-10-08T09:44:13Z",
+        "run": "r-20261008T063808-project_review-9851e69f"
+      },
       "panel": {
-        "commit": "a5d10ce4554159cc1f8ca09d5a84e182608a6036",
-        "context_identity": "sha256:d7f6edb1987190d1f25b8b3dc70790a006ca66de907f5fc686aeb6f15764e673",
-        "judged_at": "2026-10-08T04:24:08Z",
-        "run": "r-20261008T024839-project_review-a7857ff6"
+        "commit": "ce20cc74890dd20fae25a0a858f03eeb91514ac0",
+        "context_identity": "sha256:46fa10eeb170e8540b819ce1f1c966c2d751aff9961e8f5e44bc36a2af0f79d8",
+        "judged_at": "2026-10-08T09:44:13Z",
+        "run": "r-20261008T063808-project_review-9851e69f"
+      }
+    },
+    "module.coordination": {
+      "code_review": {
+        "code_digest": "sha256:4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "commit": "ce20cc74890dd20fae25a0a858f03eeb91514ac0",
+        "context_identity": "sha256:5b85c72ad95db1b6001eef8dba8031ce8036b33b1d66614c541adb6eaf157e3f",
+        "judged_at": "2026-10-08T09:44:13Z",
+        "run": "r-20261008T063808-project_review-9851e69f"
+      },
+      "panel": {
+        "commit": "ce20cc74890dd20fae25a0a858f03eeb91514ac0",
+        "context_identity": "sha256:5b85c72ad95db1b6001eef8dba8031ce8036b33b1d66614c541adb6eaf157e3f",
+        "judged_at": "2026-10-08T09:44:13Z",
+        "run": "r-20261008T063808-project_review-9851e69f"
       }
     },
     "module.delivery": {
       "code_review": {
         "code_digest": "sha256:497a88e3fdd4c7fdf6cd7d0e2562a8d2ed5b80761cfe2f6005e1ebafc6b490b1",
-        "commit": "a5d10ce4554159cc1f8ca09d5a84e182608a6036",
-        "context_identity": "sha256:bb75eb23a346fa8d7b97ba6c94614e17456aa5cd9da319522180f87e9ae4d703",
-        "judged_at": "2026-10-08T04:24:08Z",
-        "run": "r-20261008T024839-project_review-a7857ff6"
+        "commit": "ce20cc74890dd20fae25a0a858f03eeb91514ac0",
+        "context_identity": "sha256:b7f339a7d9a3c47d381807c63ba70da0bf47aa10ace6491f903f9d104d8d4af5",
+        "judged_at": "2026-10-08T09:44:13Z",
+        "run": "r-20261008T063808-project_review-9851e69f"
+      },
+      "panel": {
+        "commit": "ce20cc74890dd20fae25a0a858f03eeb91514ac0",
+        "context_identity": "sha256:b7f339a7d9a3c47d381807c63ba70da0bf47aa10ace6491f903f9d104d8d4af5",
+        "judged_at": "2026-10-08T09:44:13Z",
+        "run": "r-20261008T063808-project_review-9851e69f"
       }
     },
     "module.distribution": {
       "code_review": {
         "code_digest": "sha256:95882426a0c2eacb5a159ee0b72c4afa1fbb2a6f8518bb55e8e7d7e16d7b0a7f",
-        "commit": "a5d10ce4554159cc1f8ca09d5a84e182608a6036",
-        "context_identity": "sha256:b7ac394c8ef9e3f14cdcb9115bfcd3258d40755f12241c105734cf726711298d",
-        "judged_at": "2026-10-08T04:24:08Z",
-        "run": "r-20261008T024839-project_review-a7857ff6"
+        "commit": "ce20cc74890dd20fae25a0a858f03eeb91514ac0",
+        "context_identity": "sha256:351462ae398f78372c5c7be368810d05008976bca7e29394f2664300193a1ece",
+        "judged_at": "2026-10-08T09:44:13Z",
+        "run": "r-20261008T063808-project_review-9851e69f"
+      },
+      "panel": {
+        "commit": "ce20cc74890dd20fae25a0a858f03eeb91514ac0",
+        "context_identity": "sha256:351462ae398f78372c5c7be368810d05008976bca7e29394f2664300193a1ece",
+        "judged_at": "2026-10-08T09:44:13Z",
+        "run": "r-20261008T063808-project_review-9851e69f"
       }
     },
     "module.dogfood-scenarios": {
@@ -95,138 +148,207 @@
         "context_identity": "sha256:96f848a936acf6288496ec3bf9176b2b766e4ed3abd86967249938b8a72a0970",
         "judged_at": "2026-10-08T04:24:08Z",
         "run": "r-20261008T024839-project_review-a7857ff6"
+      },
+      "panel": {
+        "commit": "ce20cc74890dd20fae25a0a858f03eeb91514ac0",
+        "context_identity": "sha256:96f848a936acf6288496ec3bf9176b2b766e4ed3abd86967249938b8a72a0970",
+        "judged_at": "2026-10-08T09:44:13Z",
+        "run": "r-20261008T063808-project_review-9851e69f"
       }
     },
     "module.e2e": {
       "code_review": {
         "code_digest": "sha256:50ba60787dd97c82d4790653eeea8251b49c0e20c8cc6e9ca4d6504a1f38cc5c",
-        "commit": "a5d10ce4554159cc1f8ca09d5a84e182608a6036",
-        "context_identity": "sha256:ec4d827650a5bbe4f9df87290753474cb70570866332ad2a91b7cf17b35822b5",
-        "judged_at": "2026-10-08T04:24:08Z",
-        "run": "r-20261008T024839-project_review-a7857ff6"
+        "commit": "ce20cc74890dd20fae25a0a858f03eeb91514ac0",
+        "context_identity": "sha256:d46c3bba398685dcab5f98eb95a5687f19bd9593c39774061b78663ec545fadc",
+        "judged_at": "2026-10-08T09:44:13Z",
+        "run": "r-20261008T063808-project_review-9851e69f"
       },
       "panel": {
-        "commit": "a5d10ce4554159cc1f8ca09d5a84e182608a6036",
-        "context_identity": "sha256:ec4d827650a5bbe4f9df87290753474cb70570866332ad2a91b7cf17b35822b5",
-        "judged_at": "2026-10-08T04:24:08Z",
-        "run": "r-20261008T024839-project_review-a7857ff6"
+        "commit": "ce20cc74890dd20fae25a0a858f03eeb91514ac0",
+        "context_identity": "sha256:d46c3bba398685dcab5f98eb95a5687f19bd9593c39774061b78663ec545fadc",
+        "judged_at": "2026-10-08T09:44:13Z",
+        "run": "r-20261008T063808-project_review-9851e69f"
+      }
+    },
+    "module.execution": {
+      "code_review": {
+        "code_digest": "sha256:a6f281da27967c8f576a97dfe5de2fef58f996b8503ee5ff91083f4df7dd92e4",
+        "commit": "ce20cc74890dd20fae25a0a858f03eeb91514ac0",
+        "context_identity": "sha256:0a3bf4281201b623510ea306359717d9cdd4a2c521a0bee0940eb6449eaefa39",
+        "judged_at": "2026-10-08T09:44:13Z",
+        "run": "r-20261008T063808-project_review-9851e69f"
+      },
+      "panel": {
+        "commit": "ce20cc74890dd20fae25a0a858f03eeb91514ac0",
+        "context_identity": "sha256:0a3bf4281201b623510ea306359717d9cdd4a2c521a0bee0940eb6449eaefa39",
+        "judged_at": "2026-10-08T09:44:13Z",
+        "run": "r-20261008T063808-project_review-9851e69f"
+      }
+    },
+    "module.general-work": {
+      "code_review": {
+        "code_digest": "sha256:1c12ba3692105ef37981ba2c9c7ea2aa6696dd5d6fa85e170aca87bd60cafec0",
+        "commit": "ce20cc74890dd20fae25a0a858f03eeb91514ac0",
+        "context_identity": "sha256:b235e36c0f88cdeeb77624cbec0b5a434f24ca9386e7777c5546c8ce6d18f586",
+        "judged_at": "2026-10-08T09:44:13Z",
+        "run": "r-20261008T063808-project_review-9851e69f"
+      },
+      "panel": {
+        "commit": "ce20cc74890dd20fae25a0a858f03eeb91514ac0",
+        "context_identity": "sha256:b235e36c0f88cdeeb77624cbec0b5a434f24ca9386e7777c5546c8ce6d18f586",
+        "judged_at": "2026-10-08T09:44:13Z",
+        "run": "r-20261008T063808-project_review-9851e69f"
+      }
+    },
+    "module.harness": {
+      "code_review": {
+        "code_digest": "sha256:6adb00d55877afa75ca8c43125140eee0a75a878698ccc025be191893129de67",
+        "commit": "ce20cc74890dd20fae25a0a858f03eeb91514ac0",
+        "context_identity": "sha256:9a3e9b9f367f7b8d2473b76d52c4f1d6c93178fc8fab1efc143a338d7bfab1f2",
+        "judged_at": "2026-10-08T09:44:13Z",
+        "run": "r-20261008T063808-project_review-9851e69f"
+      },
+      "panel": {
+        "commit": "ce20cc74890dd20fae25a0a858f03eeb91514ac0",
+        "context_identity": "sha256:9a3e9b9f367f7b8d2473b76d52c4f1d6c93178fc8fab1efc143a338d7bfab1f2",
+        "judged_at": "2026-10-08T09:44:13Z",
+        "run": "r-20261008T063808-project_review-9851e69f"
+      }
+    },
+    "module.headless-sessions": {
+      "code_review": {
+        "code_digest": "sha256:4750096121c46f01bc692dd44059f9520ce94a52dceae8cbc229d02df0397172",
+        "commit": "ce20cc74890dd20fae25a0a858f03eeb91514ac0",
+        "context_identity": "sha256:ea291ce4f182af4f018c238f0282b66a550500ff60088a2b57d4d8443a4eedfc",
+        "judged_at": "2026-10-08T09:44:13Z",
+        "run": "r-20261008T063808-project_review-9851e69f"
+      },
+      "panel": {
+        "commit": "ce20cc74890dd20fae25a0a858f03eeb91514ac0",
+        "context_identity": "sha256:ea291ce4f182af4f018c238f0282b66a550500ff60088a2b57d4d8443a4eedfc",
+        "judged_at": "2026-10-08T09:44:13Z",
+        "run": "r-20261008T063808-project_review-9851e69f"
+      }
+    },
+    "module.implementation": {
+      "code_review": {
+        "code_digest": "sha256:cd1998c04951c35c2fd9545ece16a5fe69eca7199b38534b42bf90a2d4112f1c",
+        "commit": "ce20cc74890dd20fae25a0a858f03eeb91514ac0",
+        "context_identity": "sha256:bccff1caacc162ff3f53e0e9a04821329019b64e17a4824e57bc37fc328d943b",
+        "judged_at": "2026-10-08T09:44:13Z",
+        "run": "r-20261008T063808-project_review-9851e69f"
+      },
+      "panel": {
+        "commit": "ce20cc74890dd20fae25a0a858f03eeb91514ac0",
+        "context_identity": "sha256:bccff1caacc162ff3f53e0e9a04821329019b64e17a4824e57bc37fc328d943b",
+        "judged_at": "2026-10-08T09:44:13Z",
+        "run": "r-20261008T063808-project_review-9851e69f"
+      }
+    },
+    "module.issues": {
+      "code_review": {
+        "code_digest": "sha256:423a3ff7407c9904a557757bc84ada1be8dedd6d8a4838c3eaff4487a5090b10",
+        "commit": "ce20cc74890dd20fae25a0a858f03eeb91514ac0",
+        "context_identity": "sha256:985a655511357d2b9a8f9c799ecb1ace344be22b1cebfc16804d474ab231d869",
+        "judged_at": "2026-10-08T09:44:13Z",
+        "run": "r-20261008T063808-project_review-9851e69f"
+      },
+      "panel": {
+        "commit": "ce20cc74890dd20fae25a0a858f03eeb91514ac0",
+        "context_identity": "sha256:985a655511357d2b9a8f9c799ecb1ace344be22b1cebfc16804d474ab231d869",
+        "judged_at": "2026-10-08T09:44:13Z",
+        "run": "r-20261008T063808-project_review-9851e69f"
+      }
+    },
+    "module.kernel": {
+      "code_review": {
+        "code_digest": "sha256:965b1a322b9b3305fd813ae686a38608680798820490362361fb0ee247c256db",
+        "commit": "ce20cc74890dd20fae25a0a858f03eeb91514ac0",
+        "context_identity": "sha256:38fb97ee416d835df8b93ba25ef63df191efde71b842d7f3e68c655402335962",
+        "judged_at": "2026-10-08T09:44:13Z",
+        "run": "r-20261008T063808-project_review-9851e69f"
+      },
+      "panel": {
+        "commit": "ce20cc74890dd20fae25a0a858f03eeb91514ac0",
+        "context_identity": "sha256:38fb97ee416d835df8b93ba25ef63df191efde71b842d7f3e68c655402335962",
+        "judged_at": "2026-10-08T09:44:13Z",
+        "run": "r-20261008T063808-project_review-9851e69f"
+      }
+    },
+    "module.main-session": {
+      "code_review": {
+        "code_digest": "sha256:2269e9dc4f11bcc128a7a224c677d292c56cf15b4d2935b976f73b50e5fa5e3b",
+        "commit": "ce20cc74890dd20fae25a0a858f03eeb91514ac0",
+        "context_identity": "sha256:c40333ef11711b6c8c620738011559fa55361a3f87596146fb95d1e0d22788ae",
+        "judged_at": "2026-10-08T09:44:13Z",
+        "run": "r-20261008T063808-project_review-9851e69f"
+      },
+      "panel": {
+        "commit": "ce20cc74890dd20fae25a0a858f03eeb91514ac0",
+        "context_identity": "sha256:c40333ef11711b6c8c620738011559fa55361a3f87596146fb95d1e0d22788ae",
+        "judged_at": "2026-10-08T09:44:13Z",
+        "run": "r-20261008T063808-project_review-9851e69f"
+      }
+    },
+    "module.method": {
+      "code_review": {
+        "code_digest": "sha256:fdc82dacb4ab0fed4d5a5a7a9dbeefdb09693d616b6f03ad22101956ab15054b",
+        "commit": "ce20cc74890dd20fae25a0a858f03eeb91514ac0",
+        "context_identity": "sha256:d54d768ad7d3c5e67afd9b0e84e27e9dfacdaab25ce1f46fbcbf1d1678f815fb",
+        "judged_at": "2026-10-08T09:44:13Z",
+        "run": "r-20261008T063808-project_review-9851e69f"
+      },
+      "panel": {
+        "commit": "ce20cc74890dd20fae25a0a858f03eeb91514ac0",
+        "context_identity": "sha256:d54d768ad7d3c5e67afd9b0e84e27e9dfacdaab25ce1f46fbcbf1d1678f815fb",
+        "judged_at": "2026-10-08T09:44:13Z",
+        "run": "r-20261008T063808-project_review-9851e69f"
       }
     },
     "module.operations": {
       "code_review": {
         "code_digest": "sha256:2decf4158fa32c72116386c86331bd7be5927e0800fa4d6364732ef4a74e1032",
-        "commit": "a5d10ce4554159cc1f8ca09d5a84e182608a6036",
-        "context_identity": "sha256:28ae27bb49775326389860d6cdf78fd56bf95e40046cab3f1efdc60fde8c214e",
-        "judged_at": "2026-10-08T04:24:08Z",
-        "run": "r-20261008T024839-project_review-a7857ff6"
+        "commit": "ce20cc74890dd20fae25a0a858f03eeb91514ac0",
+        "context_identity": "sha256:b1acca3ccb388bd3f75937b89c45a5e06e25fbe39cea9687e5e44c61767c5324",
+        "judged_at": "2026-10-08T09:44:13Z",
+        "run": "r-20261008T063808-project_review-9851e69f"
       },
       "panel": {
-        "commit": "a5d10ce4554159cc1f8ca09d5a84e182608a6036",
-        "context_identity": "sha256:28ae27bb49775326389860d6cdf78fd56bf95e40046cab3f1efdc60fde8c214e",
-        "judged_at": "2026-10-08T04:24:08Z",
-        "run": "r-20261008T024839-project_review-a7857ff6"
+        "commit": "ce20cc74890dd20fae25a0a858f03eeb91514ac0",
+        "context_identity": "sha256:b1acca3ccb388bd3f75937b89c45a5e06e25fbe39cea9687e5e44c61767c5324",
+        "judged_at": "2026-10-08T09:44:13Z",
+        "run": "r-20261008T063808-project_review-9851e69f"
       }
     },
     "module.project-review": {
       "code_review": {
-        "code_digest": "sha256:c765f198b68fb383a8782004fb171c3597a74805296268db1949b6613d6f76a0",
-        "commit": null,
-        "context_identity": "sha256:6ad3677af15f07309512a1abd3628bae74ad989aa51a6c1df9201f11dba948a3",
-        "judged_at": "2026-10-06T20:17:36Z",
-        "resolved": [
-          {
-            "issue": "I-148d8bf755f8596aa666e8b46180b146",
-            "revision": "sha256:28175a2431cdf3fba329699d3e952933c9d9149fe3056f5caf833ec2c58457c9"
-          },
-          {
-            "issue": "I-2b2ca389814a593683aaab936f7fce23",
-            "revision": "sha256:4912487ceda9f0faf5b1cf9934fdf5674919c2cd61d5c3645ceec87c6f1f358b"
-          },
-          {
-            "issue": "I-3bf12471259c5b67a2a8775895aa12ea",
-            "revision": "sha256:7de09b50534d8b0af87c932c9844ac735195eb7d408b379c8d3ffacf6deb0468"
-          },
-          {
-            "issue": "I-3fd5bc7d1d8f510aa7d4f3a24d104c5c",
-            "revision": "sha256:720b549dff13ead50dcf3ce6f864e04eb59f0b612891b87524867fd3e9e5ada1"
-          },
-          {
-            "issue": "I-4abca839abf758ada2708cd1613dffa3",
-            "revision": "sha256:5f7305da34d11ed9dc8d6fa6fb9a49caec00b4afcf5c467eeaad27e5e4d476c7"
-          },
-          {
-            "issue": "I-7388602044fc57aebe2207dd6befaf4d",
-            "revision": "sha256:78addfa72dcd7c4e93af3e2da32dccd1405b88df6832127f58061a2d6c627756"
-          },
-          {
-            "issue": "I-a53277664baf5aafa1d0a07748cb495f",
-            "revision": "sha256:fdfe660a342ac333a055c6ca6d8e7de4e253194a222b7f39c8dac3c7eb186fc5"
-          },
-          {
-            "issue": "I-a808a1fca277556ea3a2e530578f041a",
-            "revision": "sha256:5d3e6d8f3325cfe465b79abeed494d2f7ca45e04260dccb302fbc1c5e30ad250"
-          },
-          {
-            "issue": "I-b1596d99db2d5804bd90c6eb887aa4a7",
-            "revision": "sha256:38784f91d7ea3eec0b4d7ce400baacbd564d77abeb07ad174ae0aa18da388496"
-          },
-          {
-            "issue": "I-b419f2d5f4505f49bc0220d5da078c0a",
-            "revision": "sha256:ebd8faaf546a1aa8cac740381a5f22a251f1a828e0f3ae3dbcbbab8effeafc1c"
-          }
-        ],
-        "run": "r-20261006T201155-project_review-dee010b9"
+        "code_digest": "sha256:8abd4c35be61a4932a2860a171adfdc683b4b49730bcf151ce89e1697ebe178d",
+        "commit": "ce20cc74890dd20fae25a0a858f03eeb91514ac0",
+        "context_identity": "sha256:d15b2b57ef317f7e6b2d664ba69e03a8ba0fc0a7134d29a91477dab3cc09aaba",
+        "judged_at": "2026-10-08T09:44:13Z",
+        "run": "r-20261008T063808-project_review-9851e69f"
       },
       "panel": {
-        "commit": null,
-        "context_identity": "sha256:6ad3677af15f07309512a1abd3628bae74ad989aa51a6c1df9201f11dba948a3",
-        "judged_at": "2026-10-06T20:17:36Z",
-        "resolved": [
-          {
-            "issue": "I-2293a17feffd59119713a5d6673f12fd",
-            "revision": "sha256:58e9e312ec67e777cd000f4da2503220faeec85c8da3c83bc94a718760aca9ae"
-          },
-          {
-            "issue": "I-5570bd5d427e5f3aa80841d118b3d84f",
-            "revision": "sha256:54aac8dd8a6ac5d912ea175c770efd608b66cc2e4029f5113aaff27699809cbd"
-          },
-          {
-            "issue": "I-7116eb0a771759468ccecebba79a3663",
-            "revision": "sha256:bef67f26fa3ce6a5e09f0e79d4f20c99506e883f8bcf0f26226b7d420e72dead"
-          },
-          {
-            "issue": "I-9bb314ac6b8b5264a25fbeeafb88c505",
-            "revision": "sha256:492c659a35c9cb00e777a3dec4f0fc1874b4277145cab7bb4dd6526352e7e4d8"
-          },
-          {
-            "issue": "I-d67a43294325508cab48fe06e9d48553",
-            "revision": "sha256:ff7e6f6173f9f472be66120e24e71b53283e71386d8739fd4eb604916524090b"
-          },
-          {
-            "issue": "I-d83becc1c974521885b934f0925c82a0",
-            "revision": "sha256:7b21605980f6cb4df779f9d8e622846999938af78c58217a611d5769e608a517"
-          },
-          {
-            "issue": "I-f84119e0853a54d9b58d00c4bea53acc",
-            "revision": "sha256:d840517726878901d8a022e3633ac675c2f074d0d2ba5a4118b932d0b57c4d51"
-          }
-        ],
-        "run": "r-20261006T201155-project_review-dee010b9"
+        "commit": "ce20cc74890dd20fae25a0a858f03eeb91514ac0",
+        "context_identity": "sha256:d15b2b57ef317f7e6b2d664ba69e03a8ba0fc0a7134d29a91477dab3cc09aaba",
+        "judged_at": "2026-10-08T09:44:13Z",
+        "run": "r-20261008T063808-project_review-9851e69f"
       }
     },
     "module.scaffold": {
       "code_review": {
-        "code_digest": "sha256:7ecb92623ef3140e3cdcc7ee4a767f7afe18108078ab0bb3d7c7b13093a0b610",
-        "commit": null,
-        "context_identity": "sha256:50dd3a90e073cb7860403921d05db9aca50ffdbb650a18efc1c90b0fa321661c",
-        "judged_at": "2026-10-06T19:53:54Z",
-        "run": "r-20261006T193742-project_review-4cbffb26"
+        "code_digest": "sha256:3b7b500e922b69cca1f3e5c67f5c80dfc2ff6c854f477b12c0a7fc0139f2ec55",
+        "commit": "ce20cc74890dd20fae25a0a858f03eeb91514ac0",
+        "context_identity": "sha256:bc468d6e76da360f307ce29908cc1d9395619b8c276c8f0072da75440f292c49",
+        "judged_at": "2026-10-08T09:44:13Z",
+        "run": "r-20261008T063808-project_review-9851e69f"
       },
       "panel": {
-        "commit": "a5d10ce4554159cc1f8ca09d5a84e182608a6036",
-        "context_identity": "sha256:1bfaba43d27e1893eccf349aa8d89a8839f1dd333b89c562d0ac70b07c58da1e",
-        "judged_at": "2026-10-08T04:24:08Z",
-        "run": "r-20261008T024839-project_review-a7857ff6"
+        "commit": "ce20cc74890dd20fae25a0a858f03eeb91514ac0",
+        "context_identity": "sha256:bc468d6e76da360f307ce29908cc1d9395619b8c276c8f0072da75440f292c49",
+        "judged_at": "2026-10-08T09:44:13Z",
+        "run": "r-20261008T063808-project_review-9851e69f"
       }
     },
     "module.spec": {
@@ -236,6 +358,12 @@
         "context_identity": "sha256:b9d71c73a527514a46b9ca3276c669e4c070ce765d7a7c1c3f02e4b4fde5b92b",
         "judged_at": "2026-10-08T04:24:08Z",
         "run": "r-20261008T024839-project_review-a7857ff6"
+      },
+      "panel": {
+        "commit": "ce20cc74890dd20fae25a0a858f03eeb91514ac0",
+        "context_identity": "sha256:b9d71c73a527514a46b9ca3276c669e4c070ce765d7a7c1c3f02e4b4fde5b92b",
+        "judged_at": "2026-10-08T09:44:13Z",
+        "run": "r-20261008T063808-project_review-9851e69f"
       }
     },
     "module.spec-mcp": {
@@ -245,15 +373,27 @@
         "context_identity": "sha256:af82eaf7bfd3aac2fcb03f3bdb58251bc378347bc7f2b624c34d591d59b1dcbd",
         "judged_at": "2026-10-08T04:24:08Z",
         "run": "r-20261008T024839-project_review-a7857ff6"
+      },
+      "panel": {
+        "commit": "ce20cc74890dd20fae25a0a858f03eeb91514ac0",
+        "context_identity": "sha256:af82eaf7bfd3aac2fcb03f3bdb58251bc378347bc7f2b624c34d591d59b1dcbd",
+        "judged_at": "2026-10-08T09:44:13Z",
+        "run": "r-20261008T063808-project_review-9851e69f"
       }
     },
     "module.spec-review": {
       "code_review": {
         "code_digest": "sha256:3f27f0f9ae0103993efe456824788c193311c4b3a78ce223a41b2021fa8e666c",
-        "commit": "a5d10ce4554159cc1f8ca09d5a84e182608a6036",
-        "context_identity": "sha256:7c782a6ec8bbb94b864031873c1cf643a40a3ef358b32776a5ec6450fd86c1c1",
-        "judged_at": "2026-10-08T04:24:08Z",
-        "run": "r-20261008T024839-project_review-a7857ff6"
+        "commit": "ce20cc74890dd20fae25a0a858f03eeb91514ac0",
+        "context_identity": "sha256:4a1a46c4aec1a2e9ff732fb154c43ba4102165335de958b0848f3292eba777e5",
+        "judged_at": "2026-10-08T09:44:13Z",
+        "run": "r-20261008T063808-project_review-9851e69f"
+      },
+      "panel": {
+        "commit": "ce20cc74890dd20fae25a0a858f03eeb91514ac0",
+        "context_identity": "sha256:4a1a46c4aec1a2e9ff732fb154c43ba4102165335de958b0848f3292eba777e5",
+        "judged_at": "2026-10-08T09:44:13Z",
+        "run": "r-20261008T063808-project_review-9851e69f"
       }
     },
     "module.spec-tooling": {
@@ -263,21 +403,72 @@
         "context_identity": "sha256:5f43a2948d68408931257017acf7733d2447866d4bed0326cd165cec601605ce",
         "judged_at": "2026-10-08T04:24:08Z",
         "run": "r-20261008T024839-project_review-a7857ff6"
+      },
+      "panel": {
+        "commit": "ce20cc74890dd20fae25a0a858f03eeb91514ac0",
+        "context_identity": "sha256:5f43a2948d68408931257017acf7733d2447866d4bed0326cd165cec601605ce",
+        "judged_at": "2026-10-08T09:44:13Z",
+        "run": "r-20261008T063808-project_review-9851e69f"
+      }
+    },
+    "module.specification": {
+      "code_review": {
+        "code_digest": "sha256:6992171f68a615dc984e2b9e5f31ec1c7b54b785a1a106c18d70d9f8665aea04",
+        "commit": "ce20cc74890dd20fae25a0a858f03eeb91514ac0",
+        "context_identity": "sha256:6e4668e879e4a1c01d7c787744154d34aa66eebf92b1609332a2c9a7ce9c8e3e",
+        "judged_at": "2026-10-08T09:44:13Z",
+        "run": "r-20261008T063808-project_review-9851e69f"
+      },
+      "panel": {
+        "commit": "ce20cc74890dd20fae25a0a858f03eeb91514ac0",
+        "context_identity": "sha256:6e4668e879e4a1c01d7c787744154d34aa66eebf92b1609332a2c9a7ce9c8e3e",
+        "judged_at": "2026-10-08T09:44:13Z",
+        "run": "r-20261008T063808-project_review-9851e69f"
+      }
+    },
+    "module.swe-bench-cases": {
+      "code_review": {
+        "code_digest": "sha256:993e19d674d70f9eae5ba7f607410ff41b861110a1472e445859b4fa39a8a5f5",
+        "commit": "ce20cc74890dd20fae25a0a858f03eeb91514ac0",
+        "context_identity": "sha256:3281dc02a6ab21d9180cb063c21ae6305d077f36282313a4896dc10cf590623a",
+        "judged_at": "2026-10-08T09:44:13Z",
+        "run": "r-20261008T063808-project_review-9851e69f"
+      },
+      "panel": {
+        "commit": "ce20cc74890dd20fae25a0a858f03eeb91514ac0",
+        "context_identity": "sha256:3281dc02a6ab21d9180cb063c21ae6305d077f36282313a4896dc10cf590623a",
+        "judged_at": "2026-10-08T09:44:13Z",
+        "run": "r-20261008T063808-project_review-9851e69f"
       }
     },
     "module.task-session": {
       "code_review": {
         "code_digest": "sha256:fe36aa409f73f6759577edb55d4cddcb11bfb0250b2142f1c22b379c8fe2251f",
-        "commit": "a5d10ce4554159cc1f8ca09d5a84e182608a6036",
-        "context_identity": "sha256:890863ee44b220167ff4778ecf90df850af1bbfeaad300511e8bf57ad06b1a29",
-        "judged_at": "2026-10-08T04:24:08Z",
-        "run": "r-20261008T024839-project_review-a7857ff6"
+        "commit": "ce20cc74890dd20fae25a0a858f03eeb91514ac0",
+        "context_identity": "sha256:74e4347c72e84a656e8228ac4d218cf99798e6bbfc6f8a264dba531918f7bafd",
+        "judged_at": "2026-10-08T09:44:13Z",
+        "run": "r-20261008T063808-project_review-9851e69f"
       },
       "panel": {
-        "commit": "a5d10ce4554159cc1f8ca09d5a84e182608a6036",
-        "context_identity": "sha256:890863ee44b220167ff4778ecf90df850af1bbfeaad300511e8bf57ad06b1a29",
-        "judged_at": "2026-10-08T04:24:08Z",
-        "run": "r-20261008T024839-project_review-a7857ff6"
+        "commit": "ce20cc74890dd20fae25a0a858f03eeb91514ac0",
+        "context_identity": "sha256:74e4347c72e84a656e8228ac4d218cf99798e6bbfc6f8a264dba531918f7bafd",
+        "judged_at": "2026-10-08T09:44:13Z",
+        "run": "r-20261008T063808-project_review-9851e69f"
+      }
+    },
+    "module.tasks": {
+      "code_review": {
+        "code_digest": "sha256:7da01479814dc92f90997b76f6786d76703ceadb39a3ccccf91983f577713cfb",
+        "commit": "ce20cc74890dd20fae25a0a858f03eeb91514ac0",
+        "context_identity": "sha256:371254edb81afb6f42aa4ce6761c1921cf5475dad4c7379cdf74220829d75420",
+        "judged_at": "2026-10-08T09:44:13Z",
+        "run": "r-20261008T063808-project_review-9851e69f"
+      },
+      "panel": {
+        "commit": "ce20cc74890dd20fae25a0a858f03eeb91514ac0",
+        "context_identity": "sha256:371254edb81afb6f42aa4ce6761c1921cf5475dad4c7379cdf74220829d75420",
+        "judged_at": "2026-10-08T09:44:13Z",
+        "run": "r-20261008T063808-project_review-9851e69f"
       }
     },
     "module.tracing": {
@@ -287,15 +478,42 @@
         "context_identity": "sha256:6ba719a799a12861ee1c3bd64ab1446230033f4b4c7fb6b7429e6412c325bcdf",
         "judged_at": "2026-10-08T04:24:08Z",
         "run": "r-20261008T024839-project_review-a7857ff6"
+      },
+      "panel": {
+        "commit": "ce20cc74890dd20fae25a0a858f03eeb91514ac0",
+        "context_identity": "sha256:6ba719a799a12861ee1c3bd64ab1446230033f4b4c7fb6b7429e6412c325bcdf",
+        "judged_at": "2026-10-08T09:44:13Z",
+        "run": "r-20261008T063808-project_review-9851e69f"
       }
     },
     "module.understanding": {
       "code_review": {
         "code_digest": "sha256:90ab3f635b219795de5af2f24d33d7d07bbf83232bcf6b2e756ad44ccb016bde",
-        "commit": "a5d10ce4554159cc1f8ca09d5a84e182608a6036",
-        "context_identity": "sha256:6d21fb9b2ba5d255a99217801743a6b9b34b9a4f9715f2806dfa06df1f7851db",
-        "judged_at": "2026-10-08T04:24:08Z",
-        "run": "r-20261008T024839-project_review-a7857ff6"
+        "commit": "ce20cc74890dd20fae25a0a858f03eeb91514ac0",
+        "context_identity": "sha256:4b9519cd1be035d9ee1074a1315db9c0f6e79463cc52762cb98a7b90fb5a137f",
+        "judged_at": "2026-10-08T09:44:13Z",
+        "run": "r-20261008T063808-project_review-9851e69f"
+      },
+      "panel": {
+        "commit": "ce20cc74890dd20fae25a0a858f03eeb91514ac0",
+        "context_identity": "sha256:4b9519cd1be035d9ee1074a1315db9c0f6e79463cc52762cb98a7b90fb5a137f",
+        "judged_at": "2026-10-08T09:44:13Z",
+        "run": "r-20261008T063808-project_review-9851e69f"
+      }
+    },
+    "module.validation": {
+      "code_review": {
+        "code_digest": "sha256:48706e05b247533dac57f0c17372e03ecdfccbf1eb7a4feeb6628b2a70f7de9c",
+        "commit": "ce20cc74890dd20fae25a0a858f03eeb91514ac0",
+        "context_identity": "sha256:850702e74a9f8e4920740094a342b887437356e01d061953e3a42960eced947c",
+        "judged_at": "2026-10-08T09:44:13Z",
+        "run": "r-20261008T063808-project_review-9851e69f"
+      },
+      "panel": {
+        "commit": "ce20cc74890dd20fae25a0a858f03eeb91514ac0",
+        "context_identity": "sha256:850702e74a9f8e4920740094a342b887437356e01d061953e3a42960eced947c",
+        "judged_at": "2026-10-08T09:44:13Z",
+        "run": "r-20261008T063808-project_review-9851e69f"
       }
     },
     "module.views": {
@@ -316,18 +534,46 @@
     "module.worker-harness": {
       "code_review": {
         "code_digest": "sha256:7501416d4704c2fa5668d68f1ba0b5f252d7012e918d72a262b625c113093d23",
-        "commit": "a5d10ce4554159cc1f8ca09d5a84e182608a6036",
-        "context_identity": "sha256:5c3d1bcd40a7c9bc4821f168a2225ddb22d9c8124f005c216ec19d9c228950a7",
-        "judged_at": "2026-10-08T04:24:08Z",
-        "run": "r-20261008T024839-project_review-a7857ff6"
+        "commit": "ce20cc74890dd20fae25a0a858f03eeb91514ac0",
+        "context_identity": "sha256:4e21df537984ec4ac28d9313fb56cd454bd9dad3e77cde20d16fddff5cf2d4f4",
+        "judged_at": "2026-10-08T09:44:13Z",
+        "run": "r-20261008T063808-project_review-9851e69f"
+      },
+      "panel": {
+        "commit": "ce20cc74890dd20fae25a0a858f03eeb91514ac0",
+        "context_identity": "sha256:4e21df537984ec4ac28d9313fb56cd454bd9dad3e77cde20d16fddff5cf2d4f4",
+        "judged_at": "2026-10-08T09:44:13Z",
+        "run": "r-20261008T063808-project_review-9851e69f"
       }
     },
     "module.workers": {
+      "code_review": {
+        "code_digest": "sha256:50863cd7fa4c57a90cb880164551998ab244f88509a0eba5ec37cb5ace1818f3",
+        "commit": "ce20cc74890dd20fae25a0a858f03eeb91514ac0",
+        "context_identity": "sha256:25bf3ca79f4b812d672ebebd9c10145532654c754fdee7567f552ea2f5639d06",
+        "judged_at": "2026-10-08T09:44:13Z",
+        "run": "r-20261008T063808-project_review-9851e69f"
+      },
       "panel": {
-        "commit": "a5d10ce4554159cc1f8ca09d5a84e182608a6036",
-        "context_identity": "sha256:282dd808e93ba79a7bcb25ced61ed858e65a846d687be073d6e537fc531d020d",
-        "judged_at": "2026-10-08T04:24:08Z",
-        "run": "r-20261008T024839-project_review-a7857ff6"
+        "commit": "ce20cc74890dd20fae25a0a858f03eeb91514ac0",
+        "context_identity": "sha256:25bf3ca79f4b812d672ebebd9c10145532654c754fdee7567f552ea2f5639d06",
+        "judged_at": "2026-10-08T09:44:13Z",
+        "run": "r-20261008T063808-project_review-9851e69f"
+      }
+    },
+    "module.workflows": {
+      "code_review": {
+        "code_digest": "sha256:b5372906e03d8b94f3f3a56b3274be708caf056359109b1873bd175e010ac10b",
+        "commit": "ce20cc74890dd20fae25a0a858f03eeb91514ac0",
+        "context_identity": "sha256:68c66c193fe463da1fbb4fa96d0de82eca92444f1e6c4885bc66a36525c6324b",
+        "judged_at": "2026-10-08T09:44:13Z",
+        "run": "r-20261008T063808-project_review-9851e69f"
+      },
+      "panel": {
+        "commit": "ce20cc74890dd20fae25a0a858f03eeb91514ac0",
+        "context_identity": "sha256:68c66c193fe463da1fbb4fa96d0de82eca92444f1e6c4885bc66a36525c6324b",
+        "judged_at": "2026-10-08T09:44:13Z",
+        "run": "r-20261008T063808-project_review-9851e69f"
       }
     }
   },
