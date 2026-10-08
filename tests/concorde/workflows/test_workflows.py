@@ -1689,7 +1689,11 @@ class ScriptTests(unittest.TestCase):
             ["survey", *["scaffold"] * 3, "report"], [c["key"] for c in run["calls"]]
         )
         self.assertEqual("scaffold", run["calls"][-1]["lost"])
-        self.assertNotIn("relayed", run["result"])
+        # The exhausted relays are kept even though the last one returned nothing.
+        self.assertEqual(
+            {"key": "scaffold", "attempts": 3, "outcome": None},
+            run["result"]["relayed"],
+        )
 
     def test_a_rejected_step_travels_with_the_report(self):
         outcomes = self.full()
