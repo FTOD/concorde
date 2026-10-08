@@ -432,10 +432,10 @@ an entry naming that path. The host then takes each remaining entry in order:
 
 | The proposed path | Outcome | Recorded in |
 | --- | --- | --- |
-| outside the worktree, outside the `rw` list, or an existing entry that is not a file, such as a directory | refused, nothing changes | `deletions_refused`, as the worker gave it |
+| outside the worktree, outside the `rw` list, or an existing entry that is neither a file nor a symbolic link, such as a directory | refused, nothing changes | `deletions_refused`, as the worker gave it |
 | in the `rw` list and absent from the worktree | nothing to do | `deletions_absent`, relative to the worktree |
-| an existing file in the `rw` list | deleted | `deleted`, relative to the worktree |
-| an existing file in the `rw` list whose deletion fails | left in place; the host goes on with the next | `deletions_failed`, relative to the worktree |
+| an existing file or symbolic link in the `rw` list, the link dangling or naming a directory included | deleted; a link's target stays | `deleted`, relative to the worktree |
+| an existing file or symbolic link in the `rw` list whose deletion fails | left in place; the host goes on with the next | `deletions_failed`, relative to the worktree |
 
 When a deletion failed, the run ends `failed` with `deletion_failed` whatever status it would
 otherwise have had. Its error lists what was deleted and what was not. The link the run would

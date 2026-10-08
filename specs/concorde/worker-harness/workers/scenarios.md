@@ -409,13 +409,15 @@ the run. [The run mechanics](launch.md) give these exact details:
 - AND a `rw` directory holding a symbolic link to a `ro` Spec directory
 - AND the directory holds a symbolic link to a directory outside the worktree
 - AND the directory holds a symbolic link to a `rw` file
-- AND a worker result whose `proposed_deletions` names a file below each directory link and the file
-  link itself
+- AND the directory holds a dangling symbolic link
+- AND a worker result whose `proposed_deletions` names a file below each directory link, the file
+  link itself, the dangling link and the link to the outside directory itself
 - WHEN the run ends
 - THEN the host refuses both files reached through a directory link
 - AND the host records both files in `deletions_refused`
 - AND both files still exist
-- AND the host removes the file link itself, never its target
+- AND the host removes the file link, the dangling link and the directory link themselves
+- AND every link's target stays
 
 ### scenario.workers.deletions-whatever-the-outcome — Proposed deletions follow a clean last round whatever its outcome
 

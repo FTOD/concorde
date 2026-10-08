@@ -265,6 +265,9 @@ class ClaudeStream:
             }
             concluded.result = envelope.get("structured_output")
             concluded.final_text = str(envelope.get("result") or "").strip()
+        # A round that ended without its envelope, such as one killed at its deadline, still
+        # names the session its output announced last.
+        concluded.session = concluded.session or self.session
         concluded.failure = claude_failure(outcome, envelope)
         concluded.exhausted = bool(
             concluded.failure
