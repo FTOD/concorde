@@ -1540,6 +1540,11 @@
           "reason": "Method's standard worker sequence, through which every worker of this Module is launched, with its round validation, worker settings and errors"
         },
         {
+          "kind": "document",
+          "target": "document.method.requirements",
+          "reason": "Method's requirements for every review, which keep the findings in the result and state that they were not recorded where the issues part is not installed"
+        },
+        {
           "kind": "external",
           "target": "references/langgraph/",
           "reason": "LangGraph's source at the locked version, whose Graph API (StateGraph, conditional edges, Send, the recursion limit) the spec_panel graph is built on"

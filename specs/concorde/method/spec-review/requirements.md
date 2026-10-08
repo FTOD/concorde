@@ -53,33 +53,63 @@ not installed, there are none. In that case, the workers receive none.
 
 ### req.spec-review.reports-issues — Every finding that stands becomes an Issue where Issues exist
 
-The Operation SHALL report every finding its chair merged into the panel report as an [Issue report](../../glossary.json#concept.issue-report) through the Issue store
-wherever the issues part is installed, and otherwise keep every such finding in its result with its
-tier and severity, recording nothing outside the run and saying in its result that the findings were
-not recorded as Issues.
+Wherever the issues part is installed, the Operation SHALL report every finding its chair merged
+into the panel report as an [Issue report](../../glossary.json#concept.issue-report) through the
+Issue store.
 
 A worker never writes an Issue. The Operation reports in bound and unbound runs alike. Issues is an
 [optional integration](../../glossary.json#concept.optional-integration) of the method part. The
 review's judgement and its verdict are the same either way. Without Issues, the verdict follows from
 the blocking findings that stand. Otherwise, it follows from the Issues they became.
 
+### req.spec-review.nothing-recorded-without-issues — Without Issues, nothing is recorded outside the run
+
+Where the issues part is not installed, the Operation SHALL record nothing outside the run.
+
+Method's requirements for every review then apply. The findings stay in the result with their tier
+and severity ([req.method.findings-kept](../requirements.md#req.method.findings-kept)). The result
+says that they were not recorded as Issues
+([req.method.issues-absent-stated](../requirements.md#req.method.issues-absent-stated)).
+
 ### req.spec-review.blank-earlier — An empty earlier names no Issue
 
 The Operation SHALL treat a worker's finding whose `earlier` is empty or blank as naming no earlier
-Issue, as if the field were left out, while every other `earlier` is checked against the earlier
-Issues it offered.
+Issue, as if the field were left out.
 
 A worker may write an empty `earlier` for a new finding instead of leaving the field out. Refusing
 its whole result for it would lose every other finding of that worker.
 
-### req.spec-review.finding-path — A finding whose path does not hold is rejected alone
+### req.spec-review.earlier-checked — Every other earlier is checked against the Issues offered
 
-The Operation SHALL resume a worker whose findings name a path that is not one of the workspace
-once, with those paths to correct, and then report no finding whose path still does not hold,
-listing it as rejected with the reason and still reporting every other finding of that worker.
+The Operation SHALL check every `earlier` of a worker's finding that is not empty or blank against
+the earlier Issues it offered.
+
+The [definition](panel.md#earlier-issues) says what follows from a name that was not offered.
+
+### req.spec-review.finding-path-resumed — A worker is resumed once to correct its paths
+
+When findings of a worker name a path that is not one of the workspace, the Operation SHALL resume
+that worker once, with those paths to correct.
 
 A path that does not hold is a slip of one finding. The worker gets one chance to correct it.
-Afterwards, it costs only that finding. The Module is not made `incomplete` for it.
+
+### req.spec-review.finding-path — A finding whose path does not hold is not reported
+
+The Operation SHALL report no finding whose path is still not one of the workspace after the
+worker's [resume round](../../glossary.json#concept.resume-round).
+
+Afterwards, a path that does not hold costs only that finding. The Module is not made `incomplete`
+for it.
+
+### req.spec-review.finding-path-listed — A finding rejected for its path is listed
+
+The Operation SHALL list each finding that it does not report because of its path as rejected,
+with the reason.
+
+### req.spec-review.finding-path-others-stand — The worker's other findings stand
+
+When the Operation rejects a finding of a worker because of its path, it SHALL still report every
+other finding of that worker.
 
 ### req.spec-review.never-disposes — Review closes no Issue
 

@@ -342,7 +342,11 @@ names it for the merged finding. The Operation keeps what no worker may decide:
 - It records the Issues itself with the run's provenance.
 - It derives the outcome from the Issues that stand.
 
-Thus, until a review finds it resolved and a task closes it, a blocking Issue stands.
+Thus, an open blocking Issue stands in a review unless that review finds it resolved. An Issue
+the chair found resolved does not count for that review's verdict. A Module whose last blocking
+Issue is found resolved is therefore `accepted`
+([scenario.spec-review.last-blocker-resolved](scenarios.md#scenario.spec-review.last-blocker-resolved)).
+The Issue itself stays open until a task closes it, and a later review offers it again.
 
 The Operation appends to an earlier Issue at the revision it reads just before. Thus, a report
 made in between is never overwritten. The store refuses the append instead, as it refuses any
