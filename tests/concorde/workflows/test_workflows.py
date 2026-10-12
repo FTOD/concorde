@@ -353,6 +353,7 @@ class StepTests(unittest.TestCase):
         self.assertEqual(outcome["run_id"], again["run_id"])
 
     @verifies("scenario.workflows.step-retired")
+    @verifies("scenario.workflows.step-binding-gone")
     def test_a_step_waiting_while_its_task_closes_is_refused(self):
         from concorde.coordination.tasks import store as tasks
 
@@ -430,7 +431,7 @@ class StepTests(unittest.TestCase):
         )
         self.assertEqual(1, len(self.started))
 
-    @verifies("scenario.workflows.step-retired")
+    @verifies("scenario.workflows.step-binding-changed")
     def test_a_step_whose_binding_changed_is_refused(self):
         path = self.space.root / ".concorde/workspace.json"
         changed = json.loads(path.read_text())
@@ -816,7 +817,7 @@ class StepTests(unittest.TestCase):
         [recorded] = store.load(self.space)["steps"]
         self.assertEqual(run_id, recorded["run_id"])
 
-    @verifies("scenario.workflows.step-adopted")
+    @verifies("scenario.workflows.step-unstarted")
     def test_a_starting_step_whose_run_never_started_starts_anew(self):
         folder = store.next_step_folder(self.space, None, "survey")
         folder.mkdir(parents=True)
@@ -832,6 +833,18 @@ class StepTests(unittest.TestCase):
             ("step_lost", "environment"),
             (result["error"]["code"], result["error"]["unhandled"]["reason"]),
         )
+        # The report ends the step's node lost at once, as its row says.
+        node = trace.read(folder)
+        self.assertEqual(
+            ("lost", "failed", "lost", "step_lost"),
+            (
+                node["content"]["data"]["state"],
+                node["status"],
+                node["outcome"],
+                node["error"]["code"],
+            ),
+        )
+        self.assertIsNotNone(node["ended_at"])
         with self.starter(output=SURVEY_OUTPUT):
             status, value = run_step(self.space, self.request())
         self.assertEqual((0, "finished"), (status, value["state"]))
@@ -857,6 +870,41 @@ class StepTests(unittest.TestCase):
         )
         self.assertEqual([], self.started)
         self.assertIsNone(store.load(self.space))
+
+    @verifies("scenario.workflows.step-ends-later")
+    def test_ending_the_step_node_waits_for_the_workflow_lock_only_within_its_bound(
+        self,
+    ):
+        held = contextlib.ExitStack()
+        self.addCleanup(held.close)
+        observe = steps.run_state
+
+        def report_takes_the_lock(at, run_id):
+            # A report command takes the workflow lock while the run finishes.
+            if not held._exit_callbacks:
+                held.enter_context(
+                    locks.hold(self.space.lock, "a report command", wait=0)
+                )
+            return observe(at, run_id)
+
+        with (
+            self.starter(output=SURVEY_OUTPUT),
+            patch.object(steps, "run_state", side_effect=report_takes_the_lock),
+        ):
+            before = time.monotonic()
+            status, outcome = run_step(self.space, self.request(), wait=0.3)
+            self.assertLess(time.monotonic() - before, 5)
+        self.assertEqual((0, "finished"), (status, outcome["state"]))
+        node = self.space.directory / "steps/1-survey"
+        self.assertEqual("running", trace.read(node)["content"]["data"]["state"])
+        held.close()
+        # The next step command that sees the run ended ends the step's node.
+        self.assertEqual(0, run_step(self.space, self.request(), wait=0.3)[0])
+        ended = trace.read(node)
+        self.assertEqual(
+            ("finished", "ok", "finished"),
+            (ended["content"]["data"]["state"], ended["status"], ended["outcome"]),
+        )
 
     @verifies("scenario.workflows.refused-step")
     def test_a_launcher_that_cannot_run_makes_the_step_refused(self):
@@ -1062,6 +1110,22 @@ class CliTests(unittest.TestCase):
         )
         self.assertEqual("workflow_conflict", value["error"]["code"])
 
+    def test_a_malformed_lost_key_is_refused_before_anything_is_written(self):
+        self.project.open_task()
+        worktree = self.project.worktree()
+        argv = ["report", "--workflow", "brownfield", "--mode", "no-ask"]
+        # Without a record, then with one: neither is touched.
+        for existing in (False, True):
+            if existing:
+                self.main([*argv, "--lost", "survey"], worktree)
+            before = store.load(store.workspace(worktree))
+            with self.subTest(existing=existing):
+                status, value = self.main([*argv, "--lost", "BAD key"], worktree)
+                self.assertEqual(2, status)
+                self.assertEqual("invalid_request", value["error"]["code"])
+                self.assertIn("BAD key", value["error"]["detail"])
+                self.assertEqual(before, store.load(store.workspace(worktree)))
+
     def test_a_request_naming_no_operation_or_command_is_refused_at_once(self):
         self.project.open_task()
         worktree = self.project.worktree()
@@ -1260,6 +1324,37 @@ class ReportTests(unittest.TestCase):
             ),
         )
 
+    @verifies("scenario.workflows.mode-changed-replay")
+    def test_an_interactive_replay_is_judged_where_its_script_stops(self):
+        self.complete()
+        # Without --mode the latest recorded step's mode judges: the no-ask run ended ok.
+        self.assertEqual("ok", report(self.space)["status"])
+        # Replayed interactively, the script stops at the finished survey's unsettled point.
+        result = report(self.space, mode="interactive")
+        validate(result, RESULT_SCHEMA)
+        self.assertEqual(
+            ("awaiting_decision", "interactive"), (result["status"], result["mode"])
+        )
+        self.assertEqual(
+            [("survey", "d.db-helper")],
+            [(p["step"], p["id"]) for p in result["pending"]],
+        )
+        self.assertEqual("awaiting_decision", result["error"]["code"])
+
+    @verifies("scenario.workflows.mode-changed-replay")
+    def test_an_interactive_replay_of_a_failed_run_awaits_the_earlier_decision(self):
+        self.record("survey", "survey", output=SURVEY_OUTPUT)
+        self.record("scaffold", "scaffold", output=created_output())
+        self.record("describe:module.inventory", "code_to_spec", "failed")
+        self.assertEqual("step_failed", report(self.space)["error"]["code"])
+        result = report(self.space, mode="interactive")
+        self.assertEqual("awaiting_decision", result["status"])
+        self.assertEqual(["survey"], [p["step"] for p in result["pending"]])
+        # The failed step is still listed as a problem.
+        self.assertEqual(
+            ["describe:module.inventory"], [p["step"] for p in result["problems"]]
+        )
+
     @verifies("scenario.workflows.failed-chain")
     def test_a_stopping_step_keeps_its_chain_under_the_workflow_link(self):
         self.record("survey", "survey", output=SURVEY_OUTPUT)
@@ -1346,6 +1441,47 @@ class ReportTests(unittest.TestCase):
         with self.assertRaises(tools.ToolRefusal) as refused:
             tools.workflow_report(self.primary, {"folder": folder, "number": 9})
         self.assertEqual("no_report", refused.exception.link["code"])
+
+    def test_a_step_tool_timeout_keeps_the_commands_output(self):
+        from concorde.workflows import tools
+
+        real = subprocess.run
+
+        def timing_out(stderr):
+            # As on POSIX: the output captured until the timeout comes as bytes.
+            def run(command, **kwargs):
+                if "workflow" not in command:
+                    return real(command, **kwargs)
+                raise subprocess.TimeoutExpired(
+                    command, kwargs["timeout"], output=None, stderr=stderr
+                )
+
+            return run
+
+        request = {
+            "workflow": "brownfield",
+            "mode": "no-ask",
+            "key": "survey",
+            "argv": ["survey"],
+        }
+        for stderr, shown in (
+            (b"launcher still waiting\n", "launcher still waiting"),
+            (None, "(no output)"),
+        ):
+            with (
+                self.subTest(stderr=stderr),
+                patch.object(tools.subprocess, "run", side_effect=timing_out(stderr)),
+                self.assertRaises(tools.ToolRefusal) as refused,
+            ):
+                tools.workflow_step(
+                    self.project.worktree(), {"request": request, "wait": 1}
+                )
+            link = refused.exception.link
+            self.assertEqual(
+                ("step_failed", "environment"),
+                (link["code"], link["unhandled"]["reason"]),
+            )
+            self.assertIn(shown, link["detail"])
 
     def test_a_report_during_a_running_step(self):
         self.record("survey", "survey", None, running=True)
@@ -1585,7 +1721,11 @@ class ScriptTests(unittest.TestCase):
             ["survey", *["scaffold"] * 3, "report"], [c["key"] for c in run["calls"]]
         )
         self.assertEqual("scaffold", run["calls"][-1]["lost"])
-        self.assertNotIn("relayed", run["result"])
+        # The exhausted relays are kept even though the last one returned nothing.
+        self.assertEqual(
+            {"key": "scaffold", "attempts": 3, "outcome": None},
+            run["result"]["relayed"],
+        )
 
     def test_a_rejected_step_travels_with_the_report(self):
         outcomes = self.full()
@@ -1735,6 +1875,15 @@ class ScriptTests(unittest.TestCase):
             {"workflow", "mode", "key", "argv"},
             set(run["calls"][-2]["request"]),
         )
+
+    @verifies("scenario.workflows.relay-exhausted")
+    def test_three_refused_relays_make_the_step_lost_with_the_last_refusal(self):
+        refusal = {
+            "key": "workflow_step_result",
+            "state": "error",
+            "error": {"code": "invalid_request", "detail": "/answers: missing"},
+        }
+        outcomes = self.full()
         outcomes["delivery"] = [refusal]
         run = self.run_script(self.ARGS, outcomes)
         self.assertEqual(3, [c["key"] for c in run["calls"]].count("delivery"))

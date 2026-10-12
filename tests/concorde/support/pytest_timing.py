@@ -40,6 +40,7 @@ import json
 import os
 import platform
 import shutil
+import stat
 import subprocess
 import sys
 import tempfile
@@ -195,11 +196,16 @@ def fingerprint(tests: list[str], root: Path = ROOT) -> dict:
     for name in sorted(set(files)):
         if name in exact or name.startswith(prefixes):
             path = root / name
-            if path.is_file() and not path.is_symlink():
-                try:
-                    entries[name] = hashlib.sha256(path.read_bytes()).hexdigest()
-                except OSError:
-                    complete = False
+            try:
+                # A path that is missing, or is no regular file, such as a symbolic link, is no
+                # input; one that cannot be inspected or read makes the input incomplete.
+                if not stat.S_ISREG(path.lstat().st_mode):
+                    continue
+                entries[name] = hashlib.sha256(path.read_bytes()).hexdigest()
+            except (FileNotFoundError, NotADirectoryError):
+                continue
+            except OSError:
+                complete = False
     try:
         runtime = {
             "python": platform.python_version(),

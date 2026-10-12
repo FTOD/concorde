@@ -172,7 +172,24 @@ def workflow_step(where: Path, arguments: dict) -> dict:
             timeout=wait + STEP_GRACE,
             check=False,
         )
-    except (OSError, subprocess.TimeoutExpired) as error:
+    except subprocess.TimeoutExpired as error:
+        # On POSIX the output captured before the timeout comes as bytes, even in text mode.
+        captured = "".join(
+            part.decode(errors="replace") if isinstance(part, bytes) else part or ""
+            for part in (error.stderr, error.output)
+        )
+        raise own(
+            tool,
+            "step_failed",
+            f"`{shown}` in {root} did not answer: {error}; its output until then: "
+            f"{captured.strip()[-2000:] or '(no output)'}",
+            reason="environment",
+            explanation="the server only passes the step command's answer on and has none",
+            options=[
+                "ask for the same step again; the same key never starts a run twice"
+            ],
+        ) from None
+    except OSError as error:
         raise own(
             tool,
             "step_failed",

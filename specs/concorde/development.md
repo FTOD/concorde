@@ -109,7 +109,8 @@ They also include these files:
 When a path Git lists is no such file, it is no input. Examples are a tracked file deleted from
 the working tree or a symbolic link. Its absence from the inputs is what changes their digest.
 No other file and no environment variable is an input, so `environment_complete` is always `false`.
-When Git cannot list the files or a file cannot be read, `input_complete` is `false`.
+When Git cannot list the files, or a listed path cannot be inspected or read, `input_complete` is
+`false`.
 In that case, `input` is `null`.
 
 Each digest of the fingerprint is the lowercase hexadecimal SHA-256 of one JSON value's UTF-8
