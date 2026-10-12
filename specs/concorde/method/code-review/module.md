@@ -325,6 +325,26 @@ base, paths, check results, Issues, outcomes and verdict.
 
 ## What it relies on
 
+- <a id="uses-method"></a>**Method**, this Module's parent, owns the
+  [standard worker sequence](../../glossary.json#concept.standard-worker-sequence) through which
+  `code_review` launches its reviewer. Code review relies on these promises of Method for that sequence:
+
+  - Grants come from the Specs of the worktree the run works on
+    ([req.method.workspace-specs](../requirements.md#req.method.workspace-specs)).
+  - Every worker is placed before the first launches
+    ([req.method.models-placed-first](../requirements.md#req.method.models-placed-first)).
+  - The worker harness receives the effective grant as data
+    ([req.method.grant-as-data](../requirements.md#req.method.grant-as-data)).
+  - A refused trace write below the run is in its result
+    ([req.method.trace-writes-reported](../requirements.md#req.method.trace-writes-reported)).
+  - The glossary is audited by entry
+    ([req.method.glossary-by-entry](../requirements.md#req.method.glossary-by-entry)).
+  - Spec gaps and grant denials are never repaired
+    ([req.method.gaps-never-repaired](../requirements.md#req.method.gaps-never-repaired)).
+
+  [How an Operation runs its workers](../workers.md) gives the sequence's steps and the
+  [errors](../workers.md#errors-of-the-worker-sequence) that Code review's results pass on.
+
 - <a id="uses-operations"></a>**Operations**, Execution's Operation framework, is what `code_review`
   plugs into. Method registers its definition as an Operation that writes nothing and may run
   unbound. The definition names this Module as its provider

@@ -468,6 +468,7 @@ checklist covering all dimensions. Splitting by dimension and server queries are
 
 Spec review is part of Method, the part that composes the others. It has these relations:
 
+- It launches every worker through Method's standard worker sequence.
 - It asks Spec core whether a Module can be reviewed at all.
 - It reaches an agent only through Workers in the worker harness.
 - Where the issues part is installed, it records its findings through Issues.
@@ -477,12 +478,14 @@ Spec review is part of Method, the part that composes the others. It has these r
 
 ```d2
 review: Spec review
+method: Method
 spec: Spec core
 workers: Workers
 operations: Operations
 execution: Execution
 issues: Issues
 workflows: Workflows
+review -> method
 review -> spec
 review -> workers
 review -> operations
@@ -490,6 +493,28 @@ review -> execution
 review -> issues
 review -> workflows
 ```
+
+<a id="uses-method"></a>
+
+**Method**, this Module's parent, owns the
+[standard worker sequence](../../glossary.json#concept.standard-worker-sequence) through which
+`spec_panel` launches its reviewers, architects and chair. Spec review relies on these promises of Method for that sequence:
+
+- Grants come from the Specs of the worktree the run works on
+  ([req.method.workspace-specs](../requirements.md#req.method.workspace-specs)).
+- Every worker is placed before the first launches
+  ([req.method.models-placed-first](../requirements.md#req.method.models-placed-first)).
+- The worker harness receives the effective grant as data
+  ([req.method.grant-as-data](../requirements.md#req.method.grant-as-data)).
+- A refused trace write below the run is in its result
+  ([req.method.trace-writes-reported](../requirements.md#req.method.trace-writes-reported)).
+- The glossary is audited by entry
+  ([req.method.glossary-by-entry](../requirements.md#req.method.glossary-by-entry)).
+- [Spec gaps](../../glossary.json#concept.spec-gap) and grant denials are never repaired
+  ([req.method.gaps-never-repaired](../requirements.md#req.method.gaps-never-repaired)).
+
+[How an Operation runs its workers](../workers.md) gives the sequence's steps and the
+[errors](../workers.md#errors-of-the-worker-sequence) that Spec review's results pass on.
 
 <a id="uses-spec"></a>
 

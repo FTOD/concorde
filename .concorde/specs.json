@@ -14,6 +14,19 @@
       "contains": [],
       "uses": [
         {
+          "target": "module.method",
+          "meaning": "#uses-method",
+          "relies_on": [
+            "concept.standard-worker-sequence",
+            "req.method.workspace-specs",
+            "req.method.models-placed-first",
+            "req.method.grant-as-data",
+            "req.method.trace-writes-reported",
+            "req.method.glossary-by-entry",
+            "req.method.gaps-never-repaired"
+          ]
+        },
+        {
           "target": "module.execution",
           "meaning": "#uses-execution",
           "relies_on": [
@@ -54,6 +67,11 @@
           "kind": "document",
           "target": "document.tracing.contracts",
           "reason": "the Framework's error contract, which this Module's errors follow"
+        },
+        {
+          "kind": "document",
+          "target": "document.method.workers",
+          "reason": "the steps and errors of Method's standard worker sequence, which this Module's workers run through and whose error codes its results pass on"
         }
       ],
       "participates": []
@@ -110,6 +128,19 @@
       "contains": [],
       "uses": [
         {
+          "target": "module.method",
+          "meaning": "#uses-method",
+          "relies_on": [
+            "concept.standard-worker-sequence",
+            "req.method.workspace-specs",
+            "req.method.models-placed-first",
+            "req.method.grant-as-data",
+            "req.method.trace-writes-reported",
+            "req.method.glossary-by-entry",
+            "req.method.gaps-never-repaired"
+          ]
+        },
+        {
           "target": "module.operations",
           "meaning": "#uses-operations"
         },
@@ -161,11 +192,6 @@
           "kind": "document",
           "target": "document.tracing.contracts",
           "reason": "the Framework's error contract, which this Module's errors follow"
-        },
-        {
-          "kind": "document",
-          "target": "document.method.module",
-          "reason": "Method's account of the Operations it registers and of its review Issue helpers, which read, settle and report this Module's earlier Issues"
         },
         {
           "kind": "document",
@@ -1587,6 +1613,19 @@
       "contains": [],
       "uses": [
         {
+          "target": "module.method",
+          "meaning": "#uses-method",
+          "relies_on": [
+            "concept.standard-worker-sequence",
+            "req.method.workspace-specs",
+            "req.method.models-placed-first",
+            "req.method.grant-as-data",
+            "req.method.trace-writes-reported",
+            "req.method.glossary-by-entry",
+            "req.method.gaps-never-repaired"
+          ]
+        },
+        {
           "target": "module.spec",
           "meaning": "#uses-spec",
           "relies_on": [
@@ -1658,18 +1697,8 @@
         },
         {
           "kind": "document",
-          "target": "document.method.module",
-          "reason": "Method's account of the Operations it registers and of its review Issue helpers, which read, settle and report this Module's earlier Issues"
-        },
-        {
-          "kind": "document",
           "target": "document.method.workers",
           "reason": "Method's standard worker sequence, through which every worker of this Module is launched, with its round validation, worker settings and errors"
-        },
-        {
-          "kind": "document",
-          "target": "document.method.requirements",
-          "reason": "Method's requirements for every review, which keep the findings in the result and state that they were not recorded where the issues part is not installed"
         },
         {
           "kind": "external",
@@ -1696,6 +1725,19 @@
       ],
       "contains": [],
       "uses": [
+        {
+          "target": "module.method",
+          "meaning": "#uses-method",
+          "relies_on": [
+            "concept.standard-worker-sequence",
+            "req.method.workspace-specs",
+            "req.method.models-placed-first",
+            "req.method.grant-as-data",
+            "req.method.trace-writes-reported",
+            "req.method.glossary-by-entry",
+            "req.method.gaps-never-repaired"
+          ]
+        },
         {
           "target": "module.spec-review",
           "meaning": "#uses-spec-review",
@@ -1804,11 +1846,6 @@
         },
         {
           "kind": "document",
-          "target": "document.method.module",
-          "reason": "Method's account of the Operations it registers and of its review Issue helpers, which read, settle and report the earlier Issues of every part of the review"
-        },
-        {
-          "kind": "document",
           "target": "document.spec.contracts",
           "reason": "Spec core's library of grants, context identities, validation and verification declarations the host steps call"
         },
@@ -1821,6 +1858,11 @@
           "kind": "document",
           "target": "document.kernel.contracts",
           "reason": "the merge lock and the file transaction the review record is committed through"
+        },
+        {
+          "kind": "document",
+          "target": "document.method.workers",
+          "reason": "the steps and errors of Method's standard worker sequence, which this Module's workers run through and whose error codes its results pass on"
         }
       ],
       "participates": []
@@ -1871,6 +1913,19 @@
       ],
       "contains": [],
       "uses": [
+        {
+          "target": "module.method",
+          "meaning": "#uses-method",
+          "relies_on": [
+            "concept.standard-worker-sequence",
+            "req.method.workspace-specs",
+            "req.method.models-placed-first",
+            "req.method.grant-as-data",
+            "req.method.trace-writes-reported",
+            "req.method.glossary-by-entry",
+            "req.method.gaps-never-repaired"
+          ]
+        },
         {
           "target": "module.operations",
           "meaning": "#uses-operations"

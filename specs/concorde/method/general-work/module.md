@@ -222,7 +222,7 @@ for the reviewer. It is tested against a fake worker in `tests/concorde/general_
 
 **Method**, this Module's parent, owns the
 [standard worker sequence](../../glossary.json#concept.standard-worker-sequence) through which
-`general` launch the worker and the reviewer of `general`. General work relies on these promises of Method for that sequence:
+`general` launches its worker and its reviewer. General work relies on these promises of Method for that sequence:
 
 - Grants come from the Specs of the worktree the run works on
   ([req.method.workspace-specs](../requirements.md#req.method.workspace-specs)).
