@@ -186,15 +186,16 @@ def link(
 
 
 def _streams(error: BaseException) -> list[tuple[str, str]]:
-    """The nonblank standard output and standard error of a failed command, in that order."""
+    """The nonempty standard output and standard error of a failed command, in that order,
+    each exactly as captured, whitespace included."""
     if not isinstance(error, subprocess.CalledProcessError):
         return []
     found = []
     for name, value in (("stdout", error.stdout), ("stderr", error.stderr)):
         if isinstance(value, bytes):
             value = value.decode("utf-8", "replace")
-        if isinstance(value, str) and value.strip():
-            found.append((name, value.strip()))
+        if isinstance(value, str) and value:
+            found.append((name, value))
     return found
 
 

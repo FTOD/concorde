@@ -4,7 +4,8 @@
 each through a temporary file in its own directory that is flushed and renamed into place. A
 malformed list, a path outside the allowed ones or a file that no longer matches its
 ``before_digest`` writes nothing. When a write or the final check fails, every file written so far
-is restored, or removed when it did not exist; a restoration the operating system refuses is named
+is restored, or removed when it did not exist, the file whose write was under way included; a
+restoration the operating system refuses is named
 in a ``system_error``. A killed process restores nothing, and the caller excludes every other
 writer of its files by holding the lock its records require
 (``specs/concorde/kernel/contracts.md#file-transactions``).
@@ -146,6 +147,8 @@ def apply_files(
     """
     root = Path(root)
     backups = _checked(root, changes, allowed)
+    # A target is recorded before its write begins, so that an interruption after its rename
+    # still restores it; restoring a target the write never reached changes nothing.
     written: list[str] = []
     current: str | None = None
     try:
@@ -158,8 +161,8 @@ def apply_files(
                     "written so far was restored",
                     field=current,
                 )
-            _write(checked_path(root, current, current), item["content"].encode())
             written.append(current)
+            _write(checked_path(root, current, current), item["content"].encode())
         current = None
         if verify is not None:
             verify()
@@ -189,18 +192,30 @@ def apply_files(
 def _restore(
     root: Path, written: list[str], backups: dict[str, bytes | None]
 ) -> list[tuple[str, OSError]]:
-    """Restore every written file, newest first; each restoration refused, with its error."""
+    """Restore every written file, newest first; each restoration refused, with its error.
+
+    The newest may never have been renamed into place: a file still absent or still holding its
+    original bytes is left as it is.
+    """
     refused = []
     for relative in reversed(written):
         path = checked_path(root, relative, relative)
         try:
             if backups[relative] is None:
-                path.unlink()
-            else:
+                path.unlink(missing_ok=True)
+            elif not _holds(path, backups[relative]):
                 _write(path, backups[relative])
         except OSError as problem:
             refused.append((relative, problem))
     return refused
+
+
+def _holds(path: Path, data: bytes) -> bool:
+    """Whether ``path`` holds exactly ``data``; a file that cannot be read does not."""
+    try:
+        return path.read_bytes() == data
+    except OSError:
+        return False
 
 
 __all__ = ["apply_files", "file_change"]

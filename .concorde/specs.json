@@ -1885,6 +1885,7 @@
             "concept.unfinished-merge-marker",
             "contract.kernel.unfinished-merge",
             "req.kernel.marker-spans-merge",
+            "req.kernel.marker-changed-under-lock",
             "req.kernel.marker-refuses-commits"
           ]
         },

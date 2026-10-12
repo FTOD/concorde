@@ -255,7 +255,10 @@ Every `trace.json` holds the same fields, defined by the
   - Duration.
   The usage covers the node itself, never its children.
   Because of this, a sum over a subtree counts every token once.
-- When it did not end `ok`, its error link.
+- When it ended `blocked` or `failed` and its producer reports that end with an error link, such
+  as a run or a worker run, that link. Every other node carries none. A node whose failure its
+  parent reports, such as a worker round whose checks failed, carries none either. The
+  [node contract](contracts.md#contract.tracing.node) gives the exact rule.
 - **Metadata**, whichever the level has:
   - The workspace.
   - The Modules.
@@ -308,7 +311,8 @@ The reason is that, when the task ends, the task's folder moves.
 
 ### Reading a trace
 
-`concorde trace` reads traces. It never changes one:
+`concorde trace` has three forms. `show` and `list` read traces and never change one. `prune`
+removes what retention allows, as [Retention](#retention) says:
 
 ```text
 concorde trace show [<node>] [--depth <n>] [--format json|tree]
@@ -353,7 +357,9 @@ This applies in both cases:
 A worker run is addressed directly by its identity.
 `list` lists the current tasks with their status and rolled-up usage.
 With its options, it also lists the history and the unbound runs with their status and rolled-up
-usage. When a root's part is not installed, the root is simply not searched or listed.
+usage. Its JSON output is one array with one entry per top node it lists, `[]` when it lists none
+([Reading traces](contracts.md#reading-traces)). When a root's part is not installed, the root is
+simply not searched or listed.
 Tracing registers `concorde trace` as a command of the kernel part.
 A result's error chain names the node that reported the result as evidence of kind `trace`.
 The evidence's reference is the run or worker run identity.
@@ -609,7 +615,18 @@ The **tracing library** gives every producer the same means:
 - telling a run lost by its run lock
 - removing what retention allows
 
-It never decides what a producer records.
+It never decides what a producer records. The [Library](contracts.md#library) names each of its
+calls with its arguments, result and refusals.
+
+A producer's normal path through the library runs as follows. When its code loads, the producer
+registers its node kinds, and a part that keeps top nodes registers its trace roots. Registering
+an equal definition again changes nothing. For each level of work, the producer makes a `Node` in
+the folder its parent chose. It writes the node's start before the work begins. It may write the
+node again while the work runs. It writes the node's end with the status, the outcome, the error
+link and the node's own usage. A write the operating system refused never stops the work. The
+producer reports each account the node kept in its own result. A producer that holds a lock takes
+it with `locks.hold` for the whole work. When a process it starts must hold the same lock, it
+hands the lock on with `locks.handed_on`.
 
 <a id="realization.tracing.command"></a>
 
