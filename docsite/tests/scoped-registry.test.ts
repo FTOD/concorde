@@ -135,6 +135,22 @@ it("derives which Modules select each document from owns, contains, uses and inc
 });
 
 // verifies: scenario.views.load-registry
+it("loads a bound inclusion, which selects no document", () => {
+  const before = page("specs/audit/module.md").includedBy;
+  record("module.audit").includes = [
+    { kind: "bound", target: "src/audit/", reason: "the text Audit defers to" },
+  ];
+  writeRegistry(project);
+  expect(load).not.toThrow();
+  expect(page("specs/audit/module.md").includedBy).toEqual(before);
+  record("module.audit").includes = [
+    { kind: "bound", target: "", reason: "an empty path" },
+  ];
+  writeRegistry(project);
+  expect(load).toThrow(/Invalid includes/);
+});
+
+// verifies: scenario.views.load-registry
 it("requires registry schema 3 and a module block exactly in each entry", () => {
   const registry = readJson(project, ".concorde/specs.json");
   for (const invalid of [

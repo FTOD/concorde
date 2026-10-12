@@ -333,7 +333,7 @@ export interface Selection {
   relies_on?: string[];
 }
 export interface Inclusion {
-  kind: "module" | "document" | "external";
+  kind: "module" | "document" | "bound" | "external";
   target: string;
   reason: string;
 }
@@ -425,10 +425,12 @@ export function moduleBlock(value: any, subject: string): ModuleBlock {
   for (const i of value.includes) {
     fields(i, ["kind", "target", "reason"], [], subject);
     requireThat(
-      ["module", "document", "external"].includes(i.kind) &&
+      ["module", "document", "bound", "external"].includes(i.kind) &&
         typeof i.target === "string" &&
         i.target.trim() &&
-        (i.kind === "external" || identityPattern.test(i.target)) &&
+        (i.kind === "bound" ||
+          i.kind === "external" ||
+          identityPattern.test(i.target)) &&
         typeof i.reason === "string" &&
         i.reason.trim(),
       `Invalid includes: ${subject}`,

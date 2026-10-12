@@ -676,7 +676,8 @@ export function loadScopedRegistry(root: string): ScopedRegistry {
     for (const r of m.uses)
       add(selection(m, r), { relation: "uses", id: r.target });
     for (const i of m.includes) {
-      if (i.kind === "external") continue;
+      // A bound or external inclusion names files, never a document: it selects nothing here.
+      if (i.kind === "bound" || i.kind === "external") continue;
       const paths =
         i.kind === "module"
           ? byId.get(i.target)?.owns
