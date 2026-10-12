@@ -4,7 +4,7 @@
 {
   "schema_version": 4,
   "id": "I-78c73ffdedb859da90333eb570ddd9ce",
-  "status": "open",
+  "status": "closed",
   "reports": [
     {
       "id": "sha256:e7862ada7b167f46cdf9a2f1a8557902293659a335bfda931ca90e7340284896",
@@ -47,6 +47,18 @@
       }
     }
   ],
-  "dispositions": []
+  "dispositions": [
+    {
+      "reason": "resolved",
+      "note": "Fixed by task r2-spec, merged into the primary branch at e18fba547f507cbaa1f05126092cc01f5b213641.",
+      "evidence": [
+        "merge commit e18fba547f507cbaa1f05126092cc01f5b213641",
+        "task r2-spec"
+      ],
+      "duplicate_of": null,
+      "actor": "main-agent",
+      "created_at": "2026-10-12T14:46:03.539121+00:00"
+    }
+  ]
 }
 ```
