@@ -11,8 +11,8 @@ Steps (the step table of "How it is built" in the General work Module Spec):
    writes withheld with ``--read-only``, no checks and no resume round.
 4. ``record_after``: record the worktree again; keep the diff between the two trees as
    ``change.diff`` and the earlier content of every modified or deleted file under ``before/``.
-5. ``review``: the standard worker sequence for the same type with the worker ``reviewer``, every
-   writable level withheld, the kept diff and earlier files readable.
+5. ``review``: the standard worker sequence with the worker ``reviewer``, under the worker's grant
+   with every writable level withheld, the kept diff and earlier files readable.
 6. ``check_review``: the finding ids are distinct; derive the verdict and return the result.
 
 The reviewer only reports: acting on a finding is the caller's decision.
@@ -392,7 +392,9 @@ def worker_instructions(ctx: RunContext) -> str:
 
 
 def work(ctx: RunContext):
-    """Step 3: run the worker once under the named type's grant."""
+    """Step 3: run the worker once under the named type's grant, kept for the reviewer."""
+    grants: list[dict] = []
+    ctx.state["grants"] = grants
     return run_worker(
         ctx,
         worker_instructions(ctx),
@@ -402,6 +404,7 @@ def work(ctx: RunContext):
         read_only=ctx.arguments.read_only,
         checks=False,
         rounds=0,
+        grants=grants,
     )
 
 
@@ -446,7 +449,8 @@ def reviewer_instructions(ctx: RunContext) -> str:
 
 
 def review(ctx: RunContext):
-    """Step 5: run the reviewer once, read-only, with the kept change readable."""
+    """Step 5: run the reviewer once, read-only, under the worker's grant, with the kept change
+    readable; the Specs the worker changed give the reviewer no other grant."""
     change = ctx.state["change"]
     return run_worker(
         ctx,
@@ -458,6 +462,7 @@ def review(ctx: RunContext):
         readable=(Path(change["diff"]), Path(change["before"])),
         checks=False,
         rounds=0,
+        frozen=ctx.state["grants"][0],
     )
 
 

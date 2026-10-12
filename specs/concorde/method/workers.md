@@ -328,6 +328,12 @@ harness receives. It turns `rw` into `ro`. It never does the following:
 - Raises a level.
 - Changes the context identity.
 
+A step may instead give its worker the frozen grant that an earlier worker of the same run
+received. The step then computes no grant, and the worker runs under that grant's context identity.
+Its provider may still lower the grant's writable levels. The `grant-frozen` evidence names the
+reused context identity. The reviewer of [General work](general-work/module.md) is the one step
+that does this, so that it reads what the worker it judges could read.
+
 The context identity stays that of the computed grant. Thus, the evidence still names the Specs the
 grant came from.
 

@@ -180,6 +180,45 @@ class GeneralTests(unittest.TestCase):
             self.assertIn("## Admitted inputs", brief)
             self.assertIn("the earlier answer is 42", brief)
 
+    @verifies("scenario.general-work.reviewer-frozen-grant")
+    def test_the_reviewer_keeps_the_grant_the_worker_received(self):
+        self.bound()
+        metadata = self.worktree / f"{SPEC}.json"
+        self.script(
+            worker={
+                "writes": {str(metadata): "{ broken"},
+                "result": {"summary": "edited", "output": {"answer": "edited"}},
+            },
+            reviewer={
+                "result": {
+                    "summary": "the metadata is broken",
+                    "output": {"findings": [finding(1, kind="error")]},
+                }
+            },
+        )
+        status, envelope = self.run_general(
+            "--type", "specify", "--instruction", "Restyle the metadata."
+        )
+        self.assertEqual((0, "ok"), (status, envelope["status"]), envelope)
+        self.assertEqual("changes_required", envelope["output"]["review"]["verdict"])
+        worker, reviewer = self.records(envelope)
+        self.assertEqual(worker["context_identity"], reviewer["context_identity"])
+        worker_grant, reviewer_grant = (
+            json.loads((Path(record["run_directory"]) / "grant.json").read_text())
+            for record in (worker, reviewer)
+        )
+        self.assertEqual(
+            sorted(entry["path"] for entry in worker_grant["entries"]),
+            sorted(entry["path"] for entry in reviewer_grant["entries"]),
+        )
+        self.assertFalse(
+            [item for item in reviewer_grant["entries"] if item["level"] == "rw"]
+        )
+        readable = self.brief(reviewer).split("You may read")[1]
+        self.assertIn(f"{self.worktree}/specs/b/module.md", readable)
+        kinds = {item["kind"] for item in envelope["host_evidence"]}
+        self.assertIn("grant-frozen", kinds)
+
     @verifies("scenario.general-work.instruction-file")
     def test_an_instruction_file_is_kept_as_it_was(self):
         self.bound()

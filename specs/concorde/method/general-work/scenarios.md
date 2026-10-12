@@ -35,6 +35,14 @@ the [contracts](contracts.md).
 - THEN the worker's brief carries that run's output as admitted material
 - AND the reviewer's brief carries the same material
 
+### scenario.general-work.reviewer-frozen-grant — The reviewer keeps the worker's grant
+
+- GIVEN a bound Module that uses another Module
+- WHEN a `general --type specify` worker breaks the bound Module's metadata, where that use is declared
+- THEN the reviewer still launches, under the grant the worker received with every writable level lowered to read
+- AND the reviewer's grant has the worker's [context identity](../../glossary.json#concept.context-identity) and still reads the used Module's Spec
+- AND the result has status `ok` with the reviewer's findings
+
 ### scenario.general-work.read-only-unbound — A read-only run works unbound
 
 - GIVEN the primary worktree, which has no [workspace binding](../../glossary.json#concept.workspace-binding)

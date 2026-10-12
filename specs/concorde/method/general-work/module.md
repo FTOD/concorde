@@ -81,9 +81,14 @@ worker's own account of what it did is its claim.
 ### The review
 
 The reviewer is a second worker, [worker id](../../glossary.json#concept.worker-id) `reviewer`. It
-shares no session and no transcript with the worker. It runs under the same task type's grant with
-every writable level lowered to read. It therefore reads what the worker could read and changes
-nothing. Its brief gives it this task context:
+shares no session and no transcript with the worker. It runs under the grant the worker received,
+with the same [context identity](../../glossary.json#concept.context-identity) and every writable
+level lowered to read. It therefore reads what the worker could read and changes nothing. The
+Operation never computes the reviewer's grant from the Specs as the worker left them. This is the
+exception to Spec core's rule that the next worker's grant comes from the changed Specs. A worker
+that changes a Module's declarations therefore changes neither what the reviewer reads nor whether
+it launches. A Spec document the worker broke is the reviewer's to report. Its brief gives it this
+task context:
 
 - The instruction.
 - In a bound workspace, the workspace's goal.
@@ -188,7 +193,7 @@ no fixed task type ([Operations](../../execution/operations/module.md)).
 | 2 | Record the worktree as a Git tree, with a temporary index | Operation, Git | Git fails (`failed`) |
 | 3 | Run the worker through the standard worker sequence for the `--type` grant, writes withheld with `--read-only` | Operation, Spec core, Workers, worker | a code of the worker sequence (`failed`); `blocked` passed on |
 | 4 | Record the worktree again; keep the diff and the earlier content of each modified or deleted file | Operation, Git | Git fails (`failed`) |
-| 5 | Run the reviewer through the standard worker sequence for the same type, writes withheld | Operation, Spec core, Workers, reviewer | a code of the worker sequence (`failed`); `blocked` passed on |
+| 5 | Run the reviewer through the standard worker sequence under the worker's grant, writes withheld | Operation, Workers, reviewer | a code of the worker sequence (`failed`); `blocked` passed on |
 | 6 | Check the review, derive the verdict and return the result | Operation, Execution runner | duplicate finding ids (`failed`) |
 
 Neither worker gets configured checks or [resume rounds](../../glossary.json#concept.resume-round).
@@ -276,4 +281,4 @@ files, which lie outside its grant, as host material.
 <a id="uses-spec"></a>
 
 **Spec core** computes the grant of the named type from the Specs of the worktree the run works
-on. It also resolves the run's Modules.
+on, once, before the worker launches. It also resolves the run's Modules.

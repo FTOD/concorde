@@ -564,6 +564,8 @@ def run_worker(
     readable: tuple[Path, ...] = (),
     validate: Callable[[dict], str | None] | None = None,
     records: list[dict] | None = None,
+    frozen: dict | None = None,
+    grants: list[dict] | None = None,
 ):
     """The standard worker sequence of one worker-backed step; returns ``Continue`` or ``Stop``.
 
@@ -579,6 +581,11 @@ def run_worker(
     host ran for this run. ``records``, when given, receives the worker run record once Workers
     wrote it: a step that launches workers at the same time as others reads its own worker's
     result there, never from the run context's latest one.
+
+    ``frozen`` is a grant an earlier worker of the same run received, as ``grants`` gave it; the
+    worker then runs under that grant, with the same context identity, instead of one computed
+    from the worktree's Specs as they are now. ``grants``, when given, receives the grant this
+    worker runs under, writes already withheld when ``read_only`` asked for it.
     """
     from ..spec.errors import SpecError
     from .checks import checked_modules
@@ -608,11 +615,21 @@ def run_worker(
             ],
         )
     try:
-        repository = SpecRepository(ctx.worktree)
-        computed = grant(repository, bound, task_type).value
+        repository = SpecRepository(ctx.worktree) if frozen is None or checks else None
+        computed = (
+            grant(repository, bound, task_type).value if frozen is None else frozen
+        )
         check_modules = checked_modules(repository, bound) if checks else None
     except (SpecError, OSError, ValueError) as error:
         return grant_failure(ctx, task_type, bound, error)
+    if frozen is not None:
+        ctx.evidence.append(
+            evidence(
+                "grant-frozen",
+                computed["context_identity"],
+                f"the {task_type} grant an earlier worker of this run received",
+            )
+        )
     if read_only:
         computed = withhold_writes(computed)
         ctx.evidence.append(
@@ -628,6 +645,8 @@ def run_worker(
         model = models.worker_choice(config, declared, ctx.name, worker)
     except models.ModelConfigError as error:
         return model_failure(ctx, worker, error)
+    if grants is not None:
+        grants.append(computed)
     bounds = models.limits(config)
     readable_paths = tuple(
         Path(path) if os.path.isabs(path) else ctx.worktree / path
