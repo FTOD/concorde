@@ -37,7 +37,8 @@ Evaluation happens at two levels, each read from its own boundary:
 | [Module quality](#module-quality) | one Module's own documents, for the reader of that Module | the Module's `SpecContext` and external context, as a `review-spec` task receives them |
 | [Architecture quality](#architecture-quality) | how the project is divided into Modules and how they rely on each other | every Module's Specs, `ProjectSpecification`, as a `review-architecture` task receives them |
 
-Neither level reads code contents (see [Task types](boundaries.md#task-types)). A Spec is judged by
+Neither level reads code contents beyond the files of bound inclusions (see
+[Task types](boundaries.md#task-types)). A Spec is judged by
 what it tells its reader. Whether the code does what the Spec says is implementation conformance,
 established by evidence. Code never repairs a Spec's missing meaning.
 

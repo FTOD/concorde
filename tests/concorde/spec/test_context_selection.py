@@ -130,7 +130,7 @@ class ContextSelectionTests(unittest.TestCase):
         )
         self.assertEqual([{"relation": "owns", "id": "scope.audit"}], entry["reasons"])
         # A context record carries only Protocol relations: sharing a file adds nothing.
-        self.assertEqual(4, resolved["schema_version"])
+        self.assertEqual(5, resolved["schema_version"])
         self.assertNotIn("shares", resolved)
         scenario = r.spec_context("scenario.transfer.debit").value
         self.assertEqual("service.transfer", scenario["module_id"])

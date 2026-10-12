@@ -365,20 +365,22 @@ def module_block_problems(block: Any) -> list[tuple[str, str]]:
             if not isinstance(item["kind"], str) or item["kind"] not in {
                 "module",
                 "document",
+                "bound",
                 "external",
             }:
                 problems.append(
                     (
                         "CHK.document.schema",
-                        f"includes kind must be module, document or external: {item['kind']!r}",
+                        "includes kind must be module, document, bound or external: "
+                        f"{item['kind']!r}",
                     )
                 )
-            elif item["kind"] == "external":
+            elif item["kind"] in {"bound", "external"}:
                 if _path_list([item["target"]], nonempty=True):
                     problems.append(
                         (
                             "CHK.relation.endpoints",
-                            f"external include target is not a path: {item['target']!r}",
+                            f"{item['kind']} include target is not a path: {item['target']!r}",
                         )
                     )
             elif not is_identity(item["target"]):

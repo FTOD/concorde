@@ -69,7 +69,8 @@ Strictness: a violation of an **error** check blocks structural conformance. A v
 | `CHK.includes.no-self` | A Module does not include itself or a document it owns. | error |
 | `CHK.includes.unique` | No duplicate `(kind, target)` pairs. | error |
 | `CHK.includes.reason` | Each `includes` has a nonempty `reason`. | error |
-| `CHK.includes.redundant` | A spec inclusion whose documents are all already selected by `owns`, `contains`, `uses` or another inclusion is reported. | warning |
+| `CHK.includes.redundant` | A spec inclusion whose documents are all already selected by `owns`, `contains`, `uses` or another inclusion is reported, and so is a bound inclusion whose files another bound inclusion of the same Module already selects. | warning |
+| `CHK.includes.bound` | The path of a bound inclusion exists, is a directory exactly when it ends in `/`, lies at or below an entry of one of the declaring Module's own realizations, and selects at least one file that Module binds. | error |
 | `CHK.external.exists` | External material exists at the declared path and is tracked by the project's version control. | error |
 | `CHK.external.no-overlap` | External paths overlap no document member and no realization entry. | error |
 | `CHK.binds.exists` | Every entry exists; exact entries are files and `/` entries are directories. | error |

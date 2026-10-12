@@ -372,3 +372,28 @@ obligation and dropped words such as "since", "only" and "every". Now:
 Every specification valid under 16.3 stays valid. A requirement statement of more than 35 words
 is no longer reported. Nothing needs to change. A requirement that an earlier rewrite split or
 changed may be restored to one sentence.
+
+## Version 16.5
+
+Version 16.5 lets a Module read its own realization as part of its Spec. Some Modules realize a
+written standard and state their promises by reference to it. Their requirements say, for example,
+that validation evaluates every check the standard lists. That text is a file the Module binds.
+Under 16.4, a task that works on the Module's Specs saw only the file's name. It could not read
+the definitions its own requirements defer to. Making the file external would have said it was
+third-party material. It is not. Now:
+
+- `includes` has a fourth kind, `bound`. Its target is a path at or below an entry of one of the
+  declaring Module's own realizations. See [`includes`](relations.md#includes).
+- The files a bound inclusion selects are part of the Module's `SpecContext`, read only. They are
+  also part of `ProjectSpecification`. They add no document and no term. A Module that selects
+  the declaring Module does not receive them. See [Context](context.md#spec-context-selection).
+- A bound inclusion makes nothing writable. A task may write the files only where its type assigns
+  `write` to `ImplementationScope`. See [Boundaries](boundaries.md#task-types).
+- The context identity covers the files' exact bytes. A change of an included file changes the
+  identity of the Module's context.
+- A new check with strictness error, `CHK.includes.bound`, requires the path to exist and to lie
+  within the declaring Module's own realization. `CHK.includes.redundant` also reports a bound
+  inclusion that another bound inclusion of the same Module already covers.
+
+Every specification valid under 16.4 stays valid. Nothing needs to change. A Module whose
+promises defer to text in its own realization may now include that text.

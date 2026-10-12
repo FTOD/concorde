@@ -21,19 +21,20 @@ same checkout get the same answer.
 
 | Set | Definition | Derived from |
 | --- | --- | --- |
-| `SpecContext(M)` | both members of every document M owns or selects, and the glossary entries of `Terms(M)` | `owns`, `contains`, `uses`, `includes`; term selection |
+| `SpecContext(M)` | both members of every document M owns or selects, the files of `Bound(M)`, and the glossary entries of `Terms(M)` | `owns`, `contains`, `uses`, `includes`, `binds`; term selection |
 | `ExternalContext(M)` | pinned material M includes | `includes` of kind `external` |
 | `ImplementationContext(M)` | the names of every file M's realizations bind | `binds` |
 | `SpecScope(M)` | both members of every document M owns, including the entry and its `module` block, and the glossary entries M owns | `owns`, glossary `owner` |
 | `ImplementationScope(M)` | every file covered by M's realization entries | `binds` |
 | `ProjectImplementation` | every file any Module's realizations bind and all external material any Module includes; the same for every Module | `binds`, `includes` of kind `external` |
-| `ProjectSpecification` | both members of every document any Module owns, and the whole glossary; the same for every Module | `owns`, the glossary |
+| `ProjectSpecification` | both members of every document any Module owns, the files of every Module's `Bound`, and the whole glossary; the same for every Module | `owns`, `includes` of kind `bound`, the glossary |
 
 `SpecContext`, `ExternalContext`, `ImplementationContext`, `ProjectImplementation` and
 `ProjectSpecification` are **read** sets. `SpecScope` and `ImplementationScope` are **write** sets.
 They are deliberately different. Because M `uses` a provider, M may read the provider's documents.
 Those documents stay in the provider's `SpecScope`, never in M's. Reading never widens what may be
-written.
+written. A bound inclusion follows the same rule. `Bound(M)` lies inside `ImplementationScope(M)`,
+and its read access adds nothing to what the task type lets a task write there.
 
 Every declaration a Module makes lies in its own documents or in its own glossary entries. The
 documents make `SpecScope(M)` a plain set of files that a harness can enforce with file
@@ -156,7 +157,8 @@ A harness MUST keep every boundary within these limits:
    - Specification contents come from the bound Modules' `SpecContext` or, for the task type that
      assigns it, from `ProjectSpecification`.
    - Implementation contents come from their `ImplementationScope` or, for the task types that
-     assign it, from `ProjectImplementation`.
+     assign it, from `ProjectImplementation`. The files of a bound inclusion are the exception.
+     Their contents come from `SpecContext`.
    - External material comes from their `ExternalContext` or `ProjectImplementation`.
 
    A provider's code may be read and run, never changed. The code never replaces the provider's
@@ -188,7 +190,8 @@ The task types that read code, `implement`, `test`, `review-code` and `code-to-s
 whole `ProjectImplementation`. Code is read and run together with the code it uses and the code
 that uses it. A package can only be imported whole. What they may change stays within the bound
 Modules' scopes. Thus, a Module's `uses` limits what a task changes, not what it reads. The task
-types that work on Specs alone never see code contents.
+types that work on Specs alone see no code contents beyond the files of their Modules' bound
+inclusions. Those files are part of the Spec by declaration.
 
 - **`understand`** learns what a Module promises and how it is realized, without reading code.
   Its uses include:
@@ -226,14 +229,15 @@ relation to each other. Only when every Module's Specs are read together is an o
 responsibilities or a promise two Modules state differently visible.
 
 The task sees the names of the whole project's files. Those names show where each Module's
-realization lies. The task sees no code contents. Architecture is judged from what the Modules
+realization lies. The task sees no code contents beyond the files of bound inclusions. Architecture is judged from what the Modules
 promise and how they rely on each other, not from how their code happens to work.
 A [context identity](context.md#context-identity) of such a task covers every member of
 `ProjectSpecification`. Thus, a change to any Module's Specs changes what the task judged.
 
 A `none` in the `SpecScope` column does not hide the Module's own documents. They are in
-`SpecContext`, which every type reads. `ProjectSpecification` holds every Module's documents and
-the whole glossary. It therefore contains every `SpecContext`. Each row stays inside rules 1 to 4.
+`SpecContext`, which every type reads. `ProjectSpecification` holds every Module's documents, the
+files of every Module's bound inclusions and the whole glossary. It therefore contains every
+`SpecContext`. Each row stays inside rules 1 to 4.
 Every level can be computed exactly from declarations. A harness MUST NOT give a task a level its
 type does not assign. A harness MAY give less, for example by withholding external material a task
 does not need.
@@ -241,4 +245,5 @@ does not need.
 A scenario-scoped task is bound to the scenario's owner. A task bound to several Modules receives,
 for each bound Module, that Module's sets at the levels its type assigns. When a path falls into
 several sets, it receives the highest level any of them assigns. The levels are ordered `none`,
-`names`, `read`, `write`.
+`names`, `read`, `write`. A file of a bound inclusion is thus readable for every task type. It is
+writable only where its type assigns `write` to `ImplementationScope`.

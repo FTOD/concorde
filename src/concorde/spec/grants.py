@@ -29,6 +29,7 @@ from .repository_base import (
     digest,
     installed_files,
     is_directory_entry,
+    read_file,
 )
 
 TASK_TYPES = (
@@ -185,6 +186,7 @@ def context_identity(
                 "module": module,
                 "sources": context["sources"],
                 "terms": context["terms"],
+                "bound": context["bound"],
                 "external": sorted(
                     (
                         {"path": entry.path, "digest": entry.digest}
@@ -197,7 +199,15 @@ def context_identity(
     if not project_specification:
         return digest({"modules": items})
     project = [
-        {"path": path, "digest": digest(repository.loaded_bytes(path))}
+        {
+            "path": path,
+            "digest": digest(
+                repository.loaded_bytes(path)
+                if path in repository.member_bytes or path == repository.glossary_path
+                # A file of a bound inclusion is read when asked, like every bound file.
+                else read_file(repository.root, path)
+            ),
+        }
         for path in repository.project_specification()
     ]
     return digest({"modules": items, "project_specification": project})

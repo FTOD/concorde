@@ -200,12 +200,13 @@ SpecRepository.context_bytes(context: SpecContext) -> dict[str, bytes]
 
 `spec_context` accepts a Module identity or a scenario identity. A scenario resolves to its owner.
 Any other identity fails with code `invalid_target`. `paths` is the Protocol's `SpecContext`: the
-paths of both members of every selected document, without duplicates and sorted. `value` is the
-record of that context, a JSON object with:
+paths of both members of every selected document and of the files of the Module's bound
+inclusions, without duplicates and sorted. `value` is the record of that context, a JSON object
+with:
 
 | Field | Meaning |
 | --- | --- |
-| `schema_version` | `4` |
+| `schema_version` | `5` |
 | `query_id`, `query_kind` | the queried identity and whether it is a `module` or a `scenario` |
 | `module_id` | the Module whose context was selected |
 | `registration` | that Module's descriptor, as `module` returns it |
@@ -213,6 +214,7 @@ record of that context, a JSON object with:
 | `documents` | the paths of the documents that Module owns |
 | `references` | that Module's inclusions |
 | `sources` | one record per selected member, sorted by path |
+| `bound` | one record per file of the Module's bound inclusions, sorted by path |
 | `terms` | one record per selected glossary entry, sorted by concept identity |
 
 Each source record has `document_id`, `path`, `owner`, `role`, `digest` and `reasons`.
@@ -232,6 +234,20 @@ The reasons are:
 | `{"relation": "contains", "id": N}` | a `contains` of child N selected it |
 | `{"relation": "uses", "id": N}` | a `uses` of provider N selected it |
 | `{"relation": "includes", "kind": "module" or "document", "id": X}` | an `includes` of Module or document X selected it |
+
+Each bound record has `path`, `owner`, `digest` and `reasons`.
+A bound inclusion is an `includes` of kind `bound`.
+Its records are the files that the queried Module's realizations bind at or below its path.
+Their details are:
+
+- `owner` is the queried Module.
+- `digest` is SHA-256 of the file's bytes when the record was computed, in the form of a source
+  record's digest.
+- `reasons` lists `{"relation": "includes", "kind": "bound", "path": P}` for every bound inclusion
+  P that selects the file, sorted by path.
+
+A bound record adds no source and no term. A selection of the Module by another Module never
+brings it.
 
 Each term record is `{"entry": E, "reasons": R}`.
 `E` is the concept's whole glossary entry as written.
@@ -256,7 +272,7 @@ When a member is not valid UTF-8 or cannot be read, resolution fails.
 `recheck_context(context)` recomputes the record from the current files.
 When anything differs, `recheck_context(context)` fails with `stale_context`.
 `context_bytes(context)` rechecks the context.
-`context_bytes(context)` returns the exact bytes of every source.
+`context_bytes(context)` returns the exact bytes of every source and of every bound file.
 
 ### Boundary sets and impact indexes {#boundary-sets}
 
@@ -266,7 +282,7 @@ chapters from declarations alone:
 
 | Set or index | Returns | Repository query |
 | --- | --- | --- |
-| [Spec context](../../glossary.json#concept.spec-context) | both members of each owned and selected document, sorted, with the selecting relations | `spec_context(...).paths`, `spec_context` |
+| [Spec context](../../glossary.json#concept.spec-context) | both members of each owned and selected document and the files of each bound inclusion, sorted, with the selecting relations | `spec_context(...).paths`, `spec_context`; `bound_inclusions` lists the declared paths, `bound_selection` the files the Module binds at or below one of them |
 | [External context](../../glossary.json#concept.external-context) | per external inclusion: the entry, whether it is a directory, whether it exists, the readable files below it and one digest over their paths and bytes | `external_context`; `external_inclusions` lists the declared entries, `external_files` and `external_digest` expand and digest one entry |
 | Implementation context | the names of the files the realizations bind | `implementation_context`; `bound_files` lists the same files |
 | Spec scope | both members of each owned document, and the project glossary, of whose entries only those the Module owns or adds are its to change | `spec_scope` |
@@ -315,6 +331,7 @@ Without `relies_on`, a `uses` or `contains` selects every document the target ow
 
 For kind `document`, an `includes` selects that document.
 For kind `module`, an `includes` selects every document that Module owns.
+For kinds `bound` and `external`, `selection` returns no document.
 Selection never follows the selected Modules' own relations.
 
 ### Implementation exclusions {#implementation-exclusions}
@@ -398,8 +415,10 @@ Each entry's `level` follows the table below, where a dash means the set contrib
 
 The sets contribute these paths:
 
-- Spec context and Spec scope: both members of each document, as exact paths. Spec scope also
-  contributes the project glossary. A task that writes Specs may therefore change the entries its
+- Spec context and Spec scope: both members of each document, as exact paths. Spec context also
+  contributes the files of the Module's bound inclusions, as exact paths. Such a file is therefore
+  `ro` where the task type gives the implementation scope no level or `ro`, and stays `rw` where
+  it gives `rw`. Spec scope also contributes the project glossary. A task that writes Specs may therefore change the entries its
   bound Modules own. Which entries it changed is checked after the task, not by the grant.
 - Implementation context: the files the realizations bind, expanded below directory entries by the
   [exclusion rule](#implementation-exclusions).
@@ -411,9 +430,10 @@ The sets contribute these paths:
 - ProjectImplementation: the files every registered Module's realizations bind and their external
   inclusions. A task that reads code therefore reads the code it uses and the code that uses it.
   Only the bound Modules' own scopes are ever `rw`.
-- ProjectSpecification: both members of every document of every registered Module and the project
-  glossary, as exact paths. A `review-architecture` task therefore reads every Module's Specs and
-  every term. The glossary is then listed `ro`.
+- ProjectSpecification: both members of every document of every registered Module, the files of
+  every registered Module's bound inclusions and the project glossary, as exact paths. A
+  `review-architecture` task therefore reads every Module's Specs and every term. The glossary is
+  then listed `ro`.
 
 The computation runs in this order:
 
@@ -456,12 +476,13 @@ cases:
 `context_identity(repository, modules, project_specification)` returns `sha256:` and 64 lowercase
 hexadecimal digits over the canonical JSON of one object.
 Its `modules` member has one item per bound Module in sorted order:
-`{"module": M, "sources": S, "terms": T, "external": E}`.
+`{"module": M, "sources": S, "terms": T, "bound": B, "external": E}`.
 The fields are:
 
 - `S`: the `sources` list of `spec_context(M).value`
   ([Spec context records](#spec-context-records)).
 - `T`: the `terms` list of `spec_context(M).value`.
+- `B`: the `bound` list of `spec_context(M).value`.
 - `E`: `{path, digest}` for each of M's external inclusions, sorted by path.
 
 When `project_specification` is false, the object is `{"modules": [...]}`. This ordinary identity
@@ -471,7 +492,7 @@ selects is outside it.
 When `project_specification` is true, the object also has the member `project_specification`.
 This member lists `{path, digest}` for each path of ProjectSpecification, sorted by path. Each digest
 is over the bytes of that path. The list holds both members of every document of every registered
-Module. It also holds the project glossary file whole, so every glossary entry is covered.
+Module and the files of every registered Module's bound inclusions. It also holds the project glossary file whole, so every glossary entry is covered.
 
 `grant` sets the grant's `context_identity` to this value for its Modules.
 It gives `project_specification` as true exactly when the task type's ProjectSpecification column in

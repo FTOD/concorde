@@ -111,7 +111,8 @@ the Protocol's ProjectImplementation. Such a task type writes only within the bo
 terms as whole glossary entries. The grant also carries its
 **[context identity](../../glossary.json#concept.context-identity)**.
 The identity lets a caller detect later changes to a Spec source or pinned external material the
-worker could read. The context identity does not cover implementation files. The
+worker could read. The context identity does not cover implementation files, except the files a
+bound inclusion makes part of the Module's Spec. The
 [Operation](../../glossary.json#concept.operation) that launches a worker freezes the grant into it
 at launch. The Spec MCP server returns the same computation. Spec core does not store it.
 Spec core does not enforce it.
@@ -456,7 +457,7 @@ shared: "Does an rw entry cover a file\nan unbound Module also binds?" {shape: d
 covered: "Does an rw directory entry\ncover an installed file?" {shape: diamond}
 installed: "Lower installed files'\nexact entries from rw to ro"
 drop: "Drop exact paths a directory entry\nof equal or higher level covers"
-identity: "Compute the context identity over the\nSpec sources, terms and pinned\nexternal material (and every\nModule's Specs for review-architecture)"
+identity: "Compute the context identity over the\nSpec sources, bound files, terms and\npinned external material (and every\nModule's Specs for review-architecture)"
 grant: "Grant: sorted entries, terms,\nglossary path, context identity" {shape: page}
 refused: "Refused, no grant:\ninvalid_input, invalid_task_type,\nunknown_module, shared_file\nor installed_file" {shape: page}
 

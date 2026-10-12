@@ -603,6 +603,9 @@ class Checks:
                 continue
             if kind == "external":
                 continue
+            if kind == "bound":
+                self.bound_inclusion(module, item)
+                continue
             selected = set(repository.selection({**item, "kind": kind}))
             others = set(module.owns)
             for relation in (*module.contains, *module.uses):
@@ -617,6 +620,45 @@ class Checks:
                     f"{module.id} includes {kind} {target}, whose documents are already selected",
                     subject=module.id,
                 )
+
+    def bound_inclusion(self, module, item) -> None:
+        """``CHK.includes.bound`` and the bound half of ``CHK.includes.redundant``: the path lies
+        within the Module's own realization and selects files no other bound inclusion selects."""
+        repository = self.repository
+        source = metadata_path(module.entry)
+        target = repository.modules[module.id]
+        entry = item["target"]
+        if not entry_exists(repository.root, entry):
+            problem = "does not exist" + (
+                " as a directory" if is_directory_entry(entry) else " as a file"
+            )
+        elif not any(covers(own, entry) for own in target.files):
+            problem = "lies outside every entry of its own realizations"
+        else:
+            problem = None
+        selected = set(repository.bound_selection(target, entry))
+        if problem is None and not selected:
+            problem = "selects no file its realizations bind"
+        if problem is not None:
+            self.add(
+                "CHK.includes.bound",
+                source,
+                f"{module.id} includes bound {entry}, which {problem}",
+                subject=module.id,
+            )
+            return
+        others = set()
+        for other in module.includes:
+            if other is not item and other["kind"] == "bound":
+                others.update(repository.bound_selection(target, other["target"]))
+        if selected <= others:
+            self.add(
+                "CHK.includes.redundant",
+                source,
+                f"{module.id} includes bound {entry}, whose files another bound inclusion "
+                "already selects",
+                subject=module.id,
+            )
 
     # --- metadata relations ------------------------------------------------------------
 

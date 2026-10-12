@@ -88,12 +88,13 @@ global file.
 
   Without `relies_on` the whole target is selected.
 - `includes` entries have `kind`, `target` and a nonempty `reason`.
-  `kind` is `module`, `document` or `external`. The `target` is one of these:
-  - A Module identity.
-  - A document identity.
-  - A project-relative path.
+  `kind` is `module`, `document`, `bound` or `external`. The `target` is one of these:
+  - A Module identity, for kind `module`.
+  - A document identity, for kind `document`.
+  - A project-relative path, for kinds `bound` and `external`.
 
-  For a directory, the path ends in `/`.
+  For a directory, the path ends in `/`. The path of a `bound` inclusion lies at or below an entry
+  of one of the Module's own realizations.
 - `participates` entries have `contract`, `version`, `role` (`provided` or `required`), `peer` (a
   Module identity or `external`) and `meaning`.
 - `glossary` is optional. It appears only in the block of a Module without a parent.

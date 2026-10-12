@@ -1,6 +1,6 @@
 # Spec Protocol principles
 
-Concorde Spec Protocol 16.4.0 defines:
+Concorde Spec Protocol 16.5.0 defines:
 
 - How a project describes itself as a set of Modules.
 - What each Module promises.

@@ -43,6 +43,31 @@
         "kind": "document",
         "target": "document.distribution.contracts",
         "reason": "Distribution's build manifest and installation record (the install result's receipt), whose shapes validation and grant computation read"
+      },
+      {
+        "kind": "bound",
+        "target": "protocol/boundaries.md",
+        "reason": "the Protocol's Boundaries chapter: the boundary sets, task types and composition rules that grant computation implements"
+      },
+      {
+        "kind": "bound",
+        "target": "protocol/checks.md",
+        "reason": "the Protocol's Checks chapter: every structural check, its statement and strictness, which validation evaluates"
+      },
+      {
+        "kind": "bound",
+        "target": "protocol/context.md",
+        "reason": "the Protocol's Context chapter: Spec context selection, term selection, reconciliation and context identity"
+      },
+      {
+        "kind": "bound",
+        "target": "protocol/format.md",
+        "reason": "the Protocol's Required format chapter: the module block, metadata, glossary and reading syntax that loading accepts"
+      },
+      {
+        "kind": "bound",
+        "target": "protocol/model.yaml",
+        "reason": "the Protocol's machine-readable model: node types, relation types, context effects and the task-type table"
       }
     ],
     "participates": []

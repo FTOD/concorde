@@ -25,7 +25,7 @@ from .schema import validate as validate
 from .typed_data import canonical, checked_path, decode
 
 PROFILE_VERSION = 19
-PROTOCOL_VERSION = "16.4.0"
+PROTOCOL_VERSION = "16.5.0"
 REGISTRY_SCHEMA = 3
 METADATA_SCHEMA = 3
 # The installed Protocol copy the configuration binds; the installer places it there.
@@ -372,8 +372,8 @@ class Module:
 
 def reference_record(kind: str, value: str) -> dict:
     return (
-        {"kind": "external", "path": value}
-        if kind == "external"
+        {"kind": kind, "path": value}
+        if kind in {"bound", "external"}
         else {
             "kind": kind,
             "id": value,
@@ -404,8 +404,9 @@ class SpecContext:
     """A resolved ``SpecContext`` with its source records, canonical and immutable.
 
     Decoding cannot mutate the repository snapshot. ``paths`` is the Protocol set itself: both
-    members of every selected document; ``value["sources"]`` carries each member's identity,
-    digest and the relations that selected it.
+    members of every selected document and the files of the Module's bound inclusions;
+    ``value["sources"]`` carries each member's identity, digest and the relations that selected
+    it, and ``value["bound"]`` each bound file's digest and the inclusions that selected it.
     """
 
     serialized: str
@@ -416,7 +417,13 @@ class SpecContext:
 
     @property
     def paths(self) -> tuple[str, ...]:
-        return tuple(sorted(source["path"] for source in self.value["sources"]))
+        value = self.value
+        return tuple(
+            sorted(
+                {source["path"] for source in value["sources"]}
+                | {item["path"] for item in value["bound"]}
+            )
+        )
 
     def __getattr__(self, name):
         value = self.value
