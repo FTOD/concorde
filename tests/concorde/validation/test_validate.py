@@ -346,6 +346,30 @@ class ValidateTests(unittest.TestCase):
         self.assertEqual(was["digest"], now["digest"])
         self.assertNotEqual(before["digest"], after["digest"])
 
+    @verifies("scenario.validation.untrusted-mode")
+    def test_without_core_file_mode_the_mode_git_stages_is_measured(self):
+        git(self.worktree, "config", "core.fileMode", "false")
+        calc = self.worktree / "src/a/calc.py"
+        calc.write_text(FIXED)
+        extra = self.worktree / "src/a/extra.py"
+        extra.write_text("EXTRA = 1\n")
+        for path in (calc, extra):
+            path.chmod(path.stat().st_mode | 0o100)
+        base = git(self.worktree, "rev-parse", "HEAD")
+        before = measure(self.worktree, base)
+        modes = {item["path"]: item["mode"] for item in before["changed"]}
+        self.assertEqual({"src/a/calc.py": "100644", "src/a/extra.py": "100644"}, modes)
+        # Git stages exactly these modes.
+        git(self.worktree, "add", "-A")
+        staged = git(self.worktree, "ls-files", "-s", "src/a/calc.py", "src/a/extra.py")
+        self.assertEqual(2, staged.count("100644 "), staged)
+        git(self.worktree, "reset", "-q")
+        git(self.worktree, "update-index", "--chmod=+x", "src/a/calc.py")
+        after = measure(self.worktree, base)
+        modes = {item["path"]: item["mode"] for item in after["changed"]}
+        self.assertEqual("100755", modes["src/a/calc.py"])
+        self.assertNotEqual(before["digest"], after["digest"])
+
     def test_a_missing_input_of_a_module_not_checked_blocks_once(self):
         (self.worktree / "src/a/calc.py").write_text(FIXED)
         checks = read_checks(self.worktree)

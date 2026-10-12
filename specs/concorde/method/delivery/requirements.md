@@ -80,8 +80,10 @@ may rewrite a validated file while Git still sees the worktree as clean, as
 [scenario.delivery.staged-unvalidated](scenarios.md#scenario.delivery.staged-unvalidated) shows.
 A checkout passes the staged content through the smudge filters. So a filter that a checkout
 reverses, such as Git LFS or line-ending conversion, changes nothing, as
-[scenario.delivery.staged-filtered](scenarios.md#scenario.delivery.staged-filtered) shows. When
-`core.fileMode` is false, Git ignores the executable bit, and so does this comparison.
+[scenario.delivery.staged-filtered](scenarios.md#scenario.delivery.staged-filtered) shows. The
+comparison always compares modes. The readiness examined the mode Git stages, even when
+`core.fileMode` is false, as the [input measurement](../validation/contracts.md#input-measurement)
+defines it.
 
 ### req.delivery.bound-branch — Commits go on the bound branch
 

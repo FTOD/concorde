@@ -770,22 +770,14 @@ def _blobs(worktree: Path, objects: set[str]) -> dict[str, bytes]:
     return contents
 
 
-def _same_mode(examined: str | None, staged: str | None, file_mode: bool) -> bool:
-    """Whether two Git modes agree; without ``core.fileMode`` Git ignores the executable bit."""
-    regular = {"100644", "100755"}
-    if not file_mode and examined in regular and staged in regular:
-        return True
-    return examined == staged
-
-
 def staged_differences(worktree: Path, tree: str, inputs: dict) -> list[str]:
     """Each path at which a checkout of the staged ``tree`` would not give back what the
     readiness's ``inputs`` examined, with what differs; empty when staging preserved it.
 
-    A path the readiness examined must be staged with its mode and, once checked out through
-    the repository's filters, its digest: a clean filter that Git's smudge filter reverses, as
-    Git LFS does, changes nothing a checkout gives back, while one that rewrites the content
-    does. Any other path must be staged as the base holds it. ``_IndexRefused`` when Git cannot
+    A path the readiness examined must be staged with the mode it examined, the mode Git stages
+    whatever ``core.fileMode`` says, and, once checked out through the repository's filters,
+    with its digest: a clean filter that Git's smudge filter reverses, as Git LFS does, changes
+    nothing a checkout gives back, while one that rewrites the content does. Any other path must be staged as the base holds it. ``_IndexRefused`` when Git cannot
     show the staged tree.
     """
     examined = {real_path(item["path"]): item for item in inputs["changed"]}
@@ -809,8 +801,6 @@ def staged_differences(worktree: Path, tree: str, inputs: dict) -> list[str]:
                 f"{recorded_path(path)} is staged changed although the readiness examined it "
                 "as unchanged since the base"
             )
-    setting = _git(worktree, "config", "--type=bool", "--get", "core.fileMode")
-    file_mode = setting.stdout.strip() != "false"
     contents = _blobs(
         worktree,
         {
@@ -834,7 +824,7 @@ def staged_differences(worktree: Path, tree: str, inputs: dict) -> list[str]:
                 f"{shown} is staged although the readiness examined it as deleted"
             )
             continue
-        if not _same_mode(mode, entry[0], file_mode):
+        if mode != entry[0]:
             problems.append(
                 f"{shown} is staged with mode {entry[0]} although the readiness examined "
                 f"mode {mode}"

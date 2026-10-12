@@ -96,6 +96,14 @@ readiness is defined in the [contracts](contracts.md).
 - THEN the file's entry records the mode `100755` instead of `100644`, with the same content digest
 - AND the input digest differs from the one measured before
 
+### scenario.validation.untrusted-mode — Without core.fileMode, the mode Git stages is measured
+
+- GIVEN a repository whose `core.fileMode` is false
+- AND a workspace with a changed tracked file the index holds as `100644` and a new file, both executable in the worktree
+- WHEN the inputs are measured
+- THEN both entries record the mode `100644`, which Git stages
+- AND setting the tracked file's mode to `100755` in the index changes its entry and the input digest
+
 ### scenario.validation.checks-configuration — A changed check command changes the configuration digest
 
 - GIVEN a workspace whose Module A has a checks file `.concorde/checks/module.a.json`

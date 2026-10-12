@@ -55,7 +55,7 @@ The readiness records its inputs as one input digest:
 
 - The head.
 - The base.
-- Every changed path's Git file mode and digest.
+- Every changed path's digest and the Git file mode Git stages for it.
 - The configuration digest.
 
 The input digest proves exactly which inputs a readiness describes. A later change of the
