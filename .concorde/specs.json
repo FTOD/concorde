@@ -2030,7 +2030,8 @@
             "concept.run-result",
             "concept.run-progress-file",
             "concept.run-store",
-            "concept.run-lock"
+            "concept.run-lock",
+            "contract.execution.run-result"
           ]
         },
         {
@@ -2054,9 +2055,38 @@
           "relies_on": [
             "concept.registry"
           ]
+        },
+        {
+          "target": "module.workflows",
+          "meaning": "#uses-workflows",
+          "relies_on": [
+            "req.workflows.workflow-lock-leaf",
+            "req.workflows.workspace-retired"
+          ]
         }
       ],
-      "includes": [],
+      "includes": [
+        {
+          "kind": "document",
+          "target": "document.execution.runner",
+          "reason": "the runner's run progress file, whose fields Tasks reads to list a run still running or waiting in the lobby and to tell whom it waits for"
+        },
+        {
+          "kind": "document",
+          "target": "document.issues.interface",
+          "reason": "Issues' bookkeeping command, whose show, recover and close Tasks runs and whose answers and refusals it reads"
+        },
+        {
+          "kind": "document",
+          "target": "document.spec.contracts",
+          "reason": "Spec core's registry file `.concorde/specs.json`, which open reads for the registered Modules where the spec part is installed"
+        },
+        {
+          "kind": "document",
+          "target": "document.workflows.contracts",
+          "reason": "Workflows' workflow lock of a workspace, `locks/workflows/<task-id>.lock`, which every close takes last, and the `workspace_retired` refusal of a step that waited for it"
+        }
+      ],
       "participates": []
     },
     {

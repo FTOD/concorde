@@ -234,6 +234,8 @@ class Attempt:
             if parent.is_dir()
             else []
         )
+        # The refused writes of earlier attempts' nodes, which never stop this attempt.
+        self.earlier_failures: list[str] = []
         for folder in earlier:
             # An attempt whose process ended before it decided was interrupted.
             found = trace.read(folder)
@@ -241,7 +243,13 @@ class Attempt:
                 found.update(
                     ended_at=trace.now(), status="failed", outcome="interrupted"
                 )
-                trace.write(folder, found)
+                try:
+                    trace.write(folder, found)
+                except OSError as error:
+                    self.earlier_failures.append(
+                        f"the trace node {folder / 'trace.json'} of an interrupted earlier "
+                        f"attempt could not be ended: {type(error).__name__}: {error}"
+                    )
         number = int(reserved.name) if reserved is not None else 1 + len(earlier)
         self.task_id = task_id
         self.folder = parent / str(number)
@@ -277,7 +285,7 @@ class Attempt:
     @property
     def failures(self) -> list[str]:
         """Every write of the attempt's or its checks' ``trace.json`` the file system refused."""
-        return [*self.node.failures, *self.check_failures]
+        return [*self.earlier_failures, *self.node.failures, *self.check_failures]
 
     def check_folder(self) -> Path:
         self.checks += 1
@@ -523,10 +531,12 @@ def _elsewhere(primary: Path, task_id: str):
     the same name was opened again at the same path, is left to that task: the path is the live
     task's, not the ended one's.
     """
+    # Only a task that has not ended is live: a current record already stored closed or failed,
+    # as a close that stopped before moving its folder leaves it, accounts for nothing.
     live = {
         Path(os.path.realpath(record["worktree"]))
         for record in store._records(primary)
-        if record["id"] != task_id
+        if record["id"] != task_id and record["state"] not in store.ENDED
     }
     for record in store._records(primary, history=True):
         if record["id"] == task_id:
@@ -778,7 +788,15 @@ def merge_task(
     commands = parse_checks(list(checks or []))
     if wait < 0:
         raise TaskError("invalid_input", f"--wait {wait:g} is negative")
-    store.load_task(primary, task_id)
+    # A task whose close moved it to the history is known: it is refused for its state.
+    ended = store.closed_in_history(primary, task_id)
+    if ended is not None and (resume or abort):
+        raise TaskError(
+            "not_merging",
+            f"task {task_id} is {ended['state']} and its folder is in the history; only a task "
+            "stored merging is resumed or aborted",
+        )
+    store.refuse_closed(primary, task_id)
     started = time.monotonic()
     own = ExitStack()
     with own:
@@ -940,6 +958,9 @@ def _checked_close(
     for argv in merging["checks"]:
         result, problem = _check(primary, argv, attempt)
         results.append(result)
+        # Before anything is reset: a check that moved the branch or switched it leaves a primary
+        # worktree that the rollback and the close would act on blindly.
+        _still_placed(primary, task_id, merging, argv)
         if problem:
             left = _rollback(primary, task_id, before, problem)
             store.end_merge(primary, task_id)
@@ -1030,6 +1051,33 @@ def _checked_close(
     }
 
 
+def _placement(primary: Path) -> tuple[str | None, str]:
+    """The primary worktree's checked-out branch, None when ``HEAD`` is detached, and its head."""
+    branch = store._git(primary, "symbolic-ref", "-q", "--short", "HEAD", check=False)
+    name = branch.stdout.strip() if branch.returncode == 0 else None
+    return name, _head(primary)
+
+
+def _still_placed(primary: Path, task_id: str, merging: dict, argv: list[str]) -> None:
+    """Refuse as ``merge_diverged``, changing nothing, when the check ``argv`` left the primary
+    worktree off the recorded branch or its head off the merge commit."""
+    branch, before, after = merging["branch"], merging["before"], merging["after"]
+    name, head = _placement(primary)
+    if name == branch and head == after:
+        return
+    where = (
+        f"with a detached HEAD at {head}" if name is None else f"on {name} at {head}"
+    )
+    raise TaskError(
+        "merge_diverged",
+        f"after merging task {task_id} into {branch} of {primary} at {after}, the check "
+        f"{' '.join(argv)} left the primary worktree {where}; Tasks resets only a merge it made, "
+        f"so it reset nothing and the task stays merging; restore {branch} by hand, checked out "
+        f"at the merge commit {after}, and run `concorde task merge {task_id} --resume`, or at "
+        f"{before}, and run `concorde task merge {task_id} --abort`",
+    )
+
+
 def _ended(primary: Path, task_id: str) -> bool:
     """Whether the current record of the task is ended, as a close that wrote it left it."""
     try:
@@ -1053,9 +1101,14 @@ def _diverged(primary: Path, record: dict, where: str) -> TaskError:
 def _resume(primary: Path, record: dict, waited, reserved: Path | None = None) -> dict:
     """Rerun the recorded checks on the merge commit, then close or undo."""
     merging = record["merging"]
+    # The recorded branch first: a detached or other branch is the recovery's own refusal, never
+    # the fresh merge's primary_dirty.
+    name, head = _placement(primary)
+    if name is None:
+        raise _diverged(primary, record, f"has a detached HEAD at {head}")
+    if name != merging["branch"]:
+        raise _diverged(primary, record, f"is now on branch {name}")
     branch = _primary_branch(primary)
-    if branch != merging["branch"]:
-        raise _diverged(primary, record, f"is now on branch {branch}")
     after = store.merge_commit(primary, merging)
     if after is None:
         head = _head(primary)

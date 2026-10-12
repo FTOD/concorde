@@ -740,10 +740,33 @@ def _marker(task_id: str, merging: dict) -> dict:
     }
 
 
+def refuse_foreign_marker(primary: Path, what: str) -> None:
+    """Refuse ``what``, a change of the primary branch, while an unfinished-merge marker of another
+    part remains, as ``merge_incomplete`` with the marker's account, or a marker that cannot be
+    read, as ``unreadable_merge_marker``; the caller holds the merge lock and has made Tasks' own
+    marker agree with the task records, so a marker of Tasks is its own merge's."""
+    try:
+        found = merge_marker.read_marker(concorde(primary))
+    except KernelError as error:
+        raise TaskError(
+            "unreadable_merge_marker",
+            f"{what} was refused: {error.code}: {error}, so Tasks cannot tell whether another "
+            "part's merge into the primary branch is unfinished; nothing was changed",
+        ) from error
+    if found is not None and found["part"] != MARKER_PART:
+        raise TaskError(
+            "merge_incomplete",
+            f"{what} was refused: {merge_marker.describe(concorde(primary), found)}; Tasks "
+            "never replaces another part's marker, and nothing was changed",
+        )
+
+
 def mark_merge(primary: Path, task_id: str, merging: dict) -> None:
     """Write the Kernel's unfinished-merge marker for the task's merge, holding the merge lock:
     before the task is stored ``merging``, and again once the merge commit is known. Refused with
-    ``marker_unwritable``."""
+    ``marker_unwritable``, and as ``refuse_foreign_marker`` refuses while another part's marker or
+    one that cannot be read remains."""
+    refuse_foreign_marker(primary, f"the merge of task {task_id}")
     try:
         merge_marker.write_marker(concorde(primary), _marker(task_id, merging))
     except KernelError as error:
@@ -1065,7 +1088,12 @@ def record_session(primary: Path, task_id: str, session: dict) -> dict:
     with task_locked(primary, task_id):
         record = _current_open(primary, task_id)
         if session.get("main"):
-            record = _bind_main(primary, task_id, session["main"])
+            record = _bind_main(
+                primary,
+                task_id,
+                session["main"],
+                "a session works only in an open task",
+            )
         folder = session_folder(primary, task_id, session["id"])
         node = Node(
             folder,
@@ -1087,13 +1115,23 @@ def record_session(primary: Path, task_id: str, session: dict) -> dict:
         return record
 
 
-def _bind_main(primary: Path, task_id: str, main: str) -> dict:
+def _still_unended(record: dict, purpose: str) -> None:
+    """``task_closed`` for a record a retried update finds ended, saying ``purpose``: an update
+    applied again to what a concurrent change wrote checks again what it checked first."""
+    if record["state"] in ENDED:
+        raise TaskError(
+            "task_closed", f"task {record['id']} is {record['state']}; {purpose}"
+        )
+
+
+def _bind_main(primary: Path, task_id: str, main: str, purpose: str) -> dict:
     """Name ``main`` as the task's main agent's session in its record and, when it changes,
     append it to the names the record keeps; the caller holds the task's lock and checked that
-    the task has not ended."""
+    the task has not ended, which each attempt of the update checks again."""
     stamp = now()
 
     def change(record):
+        _still_unended(record, purpose)
         if record["main"] != main:
             record["main"] = main
             record["mains"] = [*record["mains"], {"main": main, "at": stamp}]
@@ -1114,7 +1152,7 @@ def rebind(primary: Path, task_id: str, main: str) -> dict:
     load_unended(primary, task_id, purpose)
     with task_locked(primary, task_id):
         former = load_unended(primary, task_id, purpose)["main"]
-        record = _bind_main(primary, task_id, main)
+        record = _bind_main(primary, task_id, main, purpose)
     return {"record": record, "former": former}
 
 
@@ -1159,6 +1197,7 @@ def report(primary: Path, task_id: str, text: str, escalated: list[int]) -> dict
             )
 
         def change(record):
+            _still_unended(record, purpose)
             entry.update(
                 number=len(record["reports"]) + 1,
                 at=stamp,
@@ -1208,6 +1247,7 @@ def answer(primary: Path, task_id: str, numbers: list[int], text: str) -> dict:
         load_unended(primary, task_id, purpose)
 
         def change(record):
+            _still_unended(record, purpose)
             known = record["reports"]
             wrong = [number for number in numbers if not 1 <= number <= len(known)]
             if wrong:
@@ -1287,6 +1327,8 @@ def open_task(
     Holds the merge lock, so the task is never based on a merge that may still be undone.
     ``resolves`` names the open Issues the task fixes, which its merge closes.
     """
+    if wait < 0:
+        raise TaskError("invalid_input", f"--wait {wait:g} is negative")
     primary = require_primary(primary)
     _prune(primary)
     with merge_lock(primary, "open", task_id, wait):
@@ -1764,7 +1806,9 @@ def _changes(worktree: Path) -> list[str]:
     task, and Delivery leaves them out as well. It only reads: without optional locks Git
     neither refreshes nor rewrites the worktree's index, so a reader never holds ``index.lock``
     while a close or merge removes the worktree. A worktree removed while it is read has no
-    changes."""
+    changes; a ``git status`` that fails on a worktree that still exists is ``git_failed``, never
+    a clean worktree, since a close removing a worktree with submodules forces the removal on the
+    strength of this answer."""
     if not worktree.exists():
         return []
     try:
@@ -1777,7 +1821,6 @@ def _changes(worktree: Path) -> list[str]:
             "--no-renames",
             "--untracked-files=all",
             "--ignore-submodules=none",
-            check=False,
         ).stdout
     except TaskError:
         if worktree.exists():
@@ -2072,6 +2115,9 @@ def _close_held(
     # Once the record is ended, only a close finishes the steps the task lacks: a merge's own
     # retry takes a task still merging.
     finish = again if by == "close" else f"`concorde task close {task_id} --{outcome}`"
+    # The close commits its decision log on the primary branch: never on another part's
+    # unfinished merge, and refused before it changes anything.
+    refuse_foreign_marker(primary, f"the close of task {task_id}")
     record = load_task(primary, task_id)
     worktree = Path(record["worktree"])
     if record["state"] in ENDED:

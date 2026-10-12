@@ -96,12 +96,15 @@ def folders(concorde: Path, workspace: Path, name: str) -> list[Path]:
     return [*reader.workspace_runs(workspace), *waiting(concorde, name)]
 
 
-def _status(concorde: Path, workspace: Path, run_id: str) -> str:
-    """``running`` or ``lost`` for a run without a result: the result is written before the run
-    lock is released, so one whose lock nobody holds ended without writing it."""
+def _status(concorde: Path, workspace: Path, run_id: str, result: dict | None) -> str:
+    """``running`` while the run's runner holds its run lock, even once its result is saved,
+    since the runner still finishes its run then; afterwards its result's status, or ``lost``
+    without one: the result is written before the run lock is released, so a run whose lock
+    nobody holds and that has no result ended without writing it."""
     if runner_alive(concorde, run_id):
         return "running"
-    result = load_result(concorde, workspace, run_id)
+    if result is None:
+        result = load_result(concorde, workspace, run_id)
     return result["status"] if result and "status" in result else "lost"
 
 
@@ -124,9 +127,7 @@ def workspace_runs(concorde: Path, workspace: Path, name: str) -> list[dict]:
                 "kind": source.get("kind"),
                 "name": source.get("name"),
                 "modules": list(source.get("modules") or []),
-                "status": result["status"]
-                if result
-                else _status(concorde, workspace, run_id),
+                "status": _status(concorde, workspace, run_id, result),
                 "started_at": source.get("started_at") or "",
                 "finished_at": (result or {}).get("finished_at"),
             }
