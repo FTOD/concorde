@@ -30,19 +30,20 @@ from ...execution.context import (
     Stop,
     evidence,
 )
-from ..specs import spec_cause, spec_finding
-from ..workers import operation, run_worker
+from ...spec.repository_base import SpecError
 from ..prompts import (
     load_prompt,
     protocol_guide,
     spec_repair_prompt,
 )
-from ...spec.repository_base import SpecError
+from ..specs import spec_cause, spec_finding
+from ..workers import operation, run_worker
 from .records import (
     DESCRIBE_WORKER_SCHEMA,
     SPEC_DESCRIPTION_SCHEMA,
     AnswersError,
     answer_problems,
+    check_provenance,
     evidence_problems,
     load_answers,
     repeated_ids,
@@ -90,6 +91,7 @@ def baseline(ctx: RunContext):
 
     try:
         ctx.state["answers"] = load_answers(ctx.arguments.answers)
+        check_provenance(ctx.state["answers"], ctx.inputs, ctx.arguments.answers)
     except AnswersError as error:
         return answers_failure(ctx, error)
     result = validate_repository(ctx.worktree)
@@ -602,8 +604,8 @@ def link_described_tests(ctx: RunContext, output: dict):
 
     Only the host edits the test files, and only by adding decorators and the no-op helper; a
     link it cannot make is reported, never a reason to fail the run."""
-    from ..checks import affected_modules
     from ...spec.repository import SpecRepository
+    from ..checks import affected_modules
 
     try:
         repository = SpecRepository(ctx.worktree)

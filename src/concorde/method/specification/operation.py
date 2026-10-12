@@ -20,9 +20,11 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import posixpath
+import re
 from dataclasses import dataclass, field
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 from ...execution.context import (
     Continue,
@@ -265,14 +267,34 @@ def instructions(ctx: RunContext) -> str:
 REPAIR_ROUNDS = 2
 
 
+def reconciled_registry(root: Path) -> bytes | None:
+    """The registry as step 6 would regenerate it from the entries now in the worktree, or None
+    when an entry cannot be read; validation then sees the registry on disk."""
+    from ...spec.registry import mirrored_registry, serialize
+    from ...spec.repository_base import SpecError
+
+    try:
+        value, _stale = mirrored_registry(root)
+    except (SpecError, OSError, ValueError):
+        return None
+    return serialize(value).encode("utf-8")
+
+
 def validation_repair(ctx: RunContext) -> str | None:
-    """After a round: the errors the baseline did not have, as a resume prompt, or None."""
+    """After a round: the errors the baseline did not have, as a resume prompt, or None.
+
+    The registry sits outside the worker's grant and step 6 regenerates its mirrored fields from
+    the entries, so the round is validated against that reconciled registry, held in memory: a
+    stale mirror is never an error the worker is asked to repair.
+    """
     from ...spec.validation import validate_repository
     from ..prompts import spec_repair_prompt
 
     errors = [
         finding
-        for finding in validate_repository(ctx.worktree).findings
+        for finding in validate_repository(
+            ctx.worktree, registry_bytes=reconciled_registry(ctx.worktree)
+        ).findings
         if finding.strictness == "error"
         and key(finding) not in state(ctx).baseline_errors
     ]
@@ -286,7 +308,14 @@ def title_of(path: str) -> str:
 
 
 def document_refusal(ctx: RunContext, proposal: dict) -> str | None:
-    """Why the host does not create a proposed document, or None when it may."""
+    """Why the host does not create a proposed document, or None when it may.
+
+    The path is checked as a path and as the filesystem holds it: a symbolic link, dangling or
+    not, at any component of the reading file's or its metadata's path is refused, so that no
+    write the host makes follows a link out of the entry's folder.
+    """
+    from ...spec.typed_data import TypedDataError, checked_path, safe_path
+
     repository = state(ctx).repository
     module, path = proposal["module"], proposal["path"]
     if (
@@ -296,15 +325,83 @@ def document_refusal(ctx: RunContext, proposal: dict) -> str | None:
     ):
         return f"{module} is not a Module this run is bound to"
     entry = repository.modules[module].primary_document
-    folder = Path(entry).parent
-    candidate = Path(path)
-    if candidate.is_absolute() or ".." in candidate.parts or candidate.suffix != ".md":
+    folder = PurePosixPath(entry).parent
+    try:
+        safe_path(path)
+    except TypedDataError:
+        return "the path is not a canonical project-relative path"
+    candidate = PurePosixPath(path)
+    if candidate.suffix != ".md":
         return "the path is not a project-relative Markdown file"
     if folder not in candidate.parents:
         return f"the path lies outside {folder.as_posix()}/, the folder of {module}'s entry"
-    if (ctx.worktree / path).exists() or (ctx.worktree / (path + ".json")).exists():
-        return "a file already exists at the path or its metadata path"
+    for each in (path, path + ".json"):
+        try:
+            target = checked_path(ctx.worktree, each)
+        except TypedDataError:
+            return f"a component of {each} is a symbolic link"
+        if os.path.lexists(target):
+            return "a file already exists at the path or its metadata path"
     return None
+
+
+def document_identity(module: str, path: str, taken: set[str]) -> str:
+    """A document identity for a created document, unique against ``taken``.
+
+    It is ``document.<module>.<name>``, the name made of the file's stem; when that is taken, by
+    an existing document or another created one, the folders below the entry's folder are added,
+    then a number, so that two files of the same name never share an identity.
+    """
+    local = module.split(".", 1)[1]
+
+    def slug(text: str) -> str:
+        words = re.sub(r"[^a-z0-9]+", "-", text.lower()).strip("-")
+        return words if words and words[0].isalpha() else f"d-{words or 'document'}"
+
+    stem = slug(PurePosixPath(path).stem)
+    folders = [slug(part) for part in PurePosixPath(path).parent.parts]
+    candidates = [f"document.{local}.{stem}"]
+    candidates += [
+        f"document.{local}.{'-'.join(folders[index:] + [stem])}"
+        for index in range(len(folders) - 1, -1, -1)
+    ]
+    for candidate in candidates:
+        if candidate not in taken:
+            return candidate
+    number = 2
+    while f"{candidates[0]}-{number}" in taken:
+        number += 1
+    return f"{candidates[0]}-{number}"
+
+
+def document_identities(ctx: RunContext) -> set[str]:
+    """Every document identity the Specs hold, before the change and, when they load, now."""
+    from ...spec.repository import SpecRepository
+    from ...spec.repository_base import SpecError
+
+    repositories = [state(ctx).repository]
+    try:
+        repositories.append(SpecRepository(ctx.worktree))
+    except (SpecError, OSError, ValueError):
+        pass
+    return {
+        unit.document_id
+        for repository in repositories
+        if repository is not None
+        for unit in repository.units.values()
+    }
+
+
+def refused(proposals: list[dict], reasons: dict[int, str]):
+    """No document created: ``document-refused`` evidence for each refused proposal."""
+    return (
+        [],
+        [],
+        [
+            evidence("document-refused", proposals[index]["path"], reason)
+            for index, reason in sorted(reasons.items())
+        ],
+    )
 
 
 def create_documents(ctx: RunContext, proposals: list[dict]):
@@ -312,52 +409,77 @@ def create_documents(ctx: RunContext, proposals: list[dict]):
 
     Returns the created reading files, every file written to create them and the evidence; a
     proposal the host refuses leaves every proposal uncreated, since the worker's change needs all
-    of them. A path proposed more than once is refused, every time it is proposed, before any
-    write, so that no document is created twice.
+    of them. Every content is computed and every proposal checked before the first write: a path
+    proposed more than once, a path the host may not create and an entry whose metadata cannot
+    take the document are refused before anything is written. The files are then written in one
+    Spec core file transaction, which restores every file it wrote when a write fails, and
+    which refuses a symbolic link at any path component.
     """
+    from ...spec.changes import apply_files, file_change
     from ...spec.registry import registry_command
+    from ...spec.repository_base import SpecError
+    from ...spec.typed_data import TypedDataError
 
-    paths = [Path(proposal["path"]).as_posix() for proposal in proposals]
-    refusals = [
-        (proposal, reason)
-        for proposal, path in zip(proposals, paths)
+    paths = [PurePosixPath(proposal["path"]).as_posix() for proposal in proposals]
+    reasons = {
+        index: reason
+        for index, (proposal, path) in enumerate(zip(proposals, paths))
         if (
             reason := "the path is proposed more than once"
             if paths.count(path) > 1
             else document_refusal(ctx, proposal)
         )
         is not None
-    ]
-    if refusals:
-        return (
-            [],
-            [],
-            [
-                evidence("document-refused", proposal["path"], reason)
-                for proposal, reason in refusals
-            ],
-        )
+    }
+    if reasons:
+        return refused(proposals, reasons)
     repository = state(ctx).repository
-    created, written, found = [], [], []
-    for proposal in proposals:
-        module, path = proposal["module"], proposal["path"]
+    taken = document_identities(ctx)
+    entries: dict[str, dict] = {}
+    for index, proposal in enumerate(proposals):
+        entry = repository.modules[proposal["module"]].primary_document
+        if entry in entries:
+            continue
+        try:
+            metadata = json.loads(
+                (ctx.worktree / (entry + ".json")).read_text(encoding="utf-8")
+            )
+            owns = metadata["module"]["owns"]
+            if not isinstance(owns, list):
+                raise TypeError("its module block's owns is not a list")
+        except (OSError, ValueError, KeyError, TypeError) as error:
+            reason = (
+                f"the metadata {entry}.json cannot register the document: "
+                f"{type(error).__name__}: {error}"
+            )
+            return refused(
+                proposals,
+                {
+                    other: reason
+                    for other, each in enumerate(proposals)
+                    if repository.modules[each["module"]].primary_document == entry
+                },
+            )
+        entries[entry] = metadata
+    contents: dict[str, str] = {}
+    found = []
+    for proposal, path in zip(proposals, paths):
+        module = proposal["module"]
         entry = repository.modules[module].primary_document
         # The created document may lie below the entry's folder, so the link may climb.
         link = posixpath.relpath(entry, posixpath.dirname(path))
         title = repository.modules[module].title
-        reading = ctx.worktree / path
-        reading.parent.mkdir(parents=True, exist_ok=True)
-        reading.write_text(
-            f"# {title_of(path)}\n\nPart of the Spec of [{title}]({link}).\n",
-            encoding="utf-8",
+        identity = document_identity(module, path, taken)
+        taken.add(identity)
+        contents[path] = (
+            f"# {title_of(path)}\n\nPart of the Spec of [{title}]({link}).\n"
         )
-        local = module.split(".", 1)[1]
-        (ctx.worktree / (path + ".json")).write_text(
+        contents[path + ".json"] = (
             json.dumps(
                 {
                     "schema_version": 3,
                     "document": {
-                        "id": f"document.{local}.{Path(path).stem}",
+                        "id": identity,
                         "owner": module,
                         "role": proposal["role"],
                     },
@@ -367,27 +489,36 @@ def create_documents(ctx: RunContext, proposals: list[dict]):
                 },
                 indent=2,
             )
-            + "\n",
-            encoding="utf-8",
+            + "\n"
         )
-        metadata_path = ctx.worktree / (entry + ".json")
-        metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
-        metadata["module"]["owns"].append(path)
-        metadata_path.write_text(
-            json.dumps(metadata, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
-        )
-        created.append(path)
-        written += [path, path + ".json", entry + ".json"]
+        entries[entry]["module"]["owns"].append(path)
         found.append(
             evidence(
                 "document-created",
                 path,
-                f"{proposal['role']} document of {module}: {proposal['reason']}",
+                f"{proposal['role']} document {identity} of {module}: "
+                f"{proposal['reason']}",
             )
         )
+    for entry, metadata in entries.items():
+        contents[entry + ".json"] = (
+            json.dumps(metadata, indent=2, ensure_ascii=False) + "\n"
+        )
+    try:
+        changes = [
+            file_change(ctx.worktree, path, text) for path, text in contents.items()
+        ]
+        written = apply_files(ctx.worktree, changes, set(contents))
+    except (SpecError, TypedDataError, OSError) as error:
+        detail = error.describe() if isinstance(error, SpecError) else str(error)
+        return (
+            [],
+            [],
+            [evidence("document-creation-failed", ", ".join(paths), detail)],
+        )
     registry = registry_command(ctx.worktree, write=True)
-    found.append(evidence("registry", registry.status, "after creating documents"))
-    return created, written, found
+    found.append(evidence("registry", registry.status, registry_detail(registry)))
+    return paths, written, found
 
 
 def launch(ctx: RunContext, created: list[str]):
@@ -463,17 +594,23 @@ def change(ctx: RunContext):
     return Continue(evidence=found)
 
 
+def registry_detail(result) -> str:
+    """What the registry command did: the regenerated Modules, or its refusal in full."""
+    if result.status in ("success", "unchanged"):
+        return ", ".join(result.result.get("regenerated", []))
+    if result.error is not None:
+        return result.error.describe()
+    return "; ".join(f.message for f in result.findings)
+
+
 def reconcile(ctx: RunContext):
     """Step 6: regenerate the registry's mirrored fields in the task worktree."""
     from ...spec.registry import registry_command
 
     result = registry_command(ctx.worktree, write=True)
-    detail = (
-        ", ".join(result.result.get("regenerated", []))
-        if result.status == "success"
-        else "; ".join(f.message for f in result.findings)
+    return Continue(
+        evidence=[evidence("registry", result.status, registry_detail(result))]
     )
-    return Continue(evidence=[evidence("registry", result.status, detail)])
 
 
 def revalidate(ctx: RunContext):
@@ -511,11 +648,24 @@ def affected_modules(
 
     affected: set[str] = set()
     notes = []
-    repositories = [("before", state(ctx).repository)]
+    before = state(ctx).repository
+    repositories = [("before", before)]
     try:
         repositories.append(("after", SpecRepository(ctx.worktree)))
     except (SpecError, OSError, ValueError) as error:
-        notes.append(evidence("spec-load", "after", str(error)))
+        detail = error.describe() if isinstance(error, SpecError) else str(error)
+        notes.append(evidence("spec-load", "after", detail))
+        # No Module's context after the change can be computed: name each one known.
+        notes += [
+            evidence(
+                "spec-context",
+                f"after {module}",
+                f"not computed, since the Specs after the change do not load: {detail}",
+            )
+            for module in sorted(
+                set(ctx.modules) | set(getattr(before, "modules", None) or ())
+            )
+        ]
     for label, repository in repositories:
         if repository is None:
             continue

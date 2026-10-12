@@ -103,9 +103,20 @@ The scaffold changes the parent and registry as follows:
 - Adds the children to the parent's `contains` with one explaining paragraph each at the end of the
   parent's `Parts` section. Each paragraph repeats the child's purpose from the survey. When the
   parent's entry has no `Parts` section, the scaffold adds one at the end of the entry and puts the
-  paragraphs there. It leaves the existing prose unchanged.
+  paragraphs there. It leaves the existing prose unchanged, with one exception, below.
 - Removes the children's paths from the parent's realization entries.
 - Adds the registry records.
+
+The one exception is the paragraph that Spec core's
+[initialization](../../spec-tooling/spec/contracts.md#initialization) writes into the root's
+`Parts` section. That paragraph says the parts are not specified yet and the root contains, uses and
+includes nothing. Once the root has children, that is false. So when the parent's `Parts` section
+holds that paragraph exactly, the scaffold replaces it there with a fixed one. The new paragraph
+says the parts below were proposed by a survey of the code, and their collaborations and the
+requirements and scenarios are not specified yet. The same text anywhere else in the entry stays as
+it is. Any other prose of the parent that the new structure makes obsolete also stays as it is. Its
+reconciliation is left to a later `code_to_spec` or `specify` run of the parent, since the scaffold
+writes by fixed rules and cannot tell what such prose means.
 
 Each paragraph and each explained `uses` has an anchor that names the Module by its identity after
 `module.`, dots kept, such as `contains-checkout.payment`. So two distinct identities, such as
@@ -157,11 +168,18 @@ the run also has this status and code. In either case, the result names every fi
 the scaffold's content, to be removed or restored by hand. It says every other file is as before.
 
 Rollback covers only the failures the file transaction observes, as Spec core's
-[file transactions](../../spec-tooling/spec/contracts.md#file-transactions) state. A killed or
-interrupted run restores nothing and produces no report. Each file already renamed into place keeps
-the scaffold's content. Temporary `.concorde-write-` files may remain beside them. Before running
-the scaffold again after a run that was lost or interrupted, inspect the workspace with Git and
-repair it.
+[file transactions](../../spec-tooling/spec/contracts.md#file-transactions) state. A run cancelled
+by `SIGINT` or `SIGTERM` is such a failure. The
+[runner](../../glossary.json#concept.execution-runner) turns the signal into a failure of the
+running step, so the transaction restores every file it wrote. The run then ends `failed` with
+`cancelled` evidence, as Execution's
+[req.execution.one-result](../../execution/requirements.md#req.execution.one-result) requires. A
+folder the scaffold created for a child may remain, empty.
+
+A run killed by a signal its runner cannot handle, such as `SIGKILL`, restores nothing and produces
+no run result, as Execution's exceptions to one result state. Each file already renamed into place
+keeps the scaffold's content. Temporary `.concorde-write-` files may remain beside them. Before
+running the scaffold again after such a lost run, inspect the workspace with Git and repair it.
 
 A stale proposal is `blocked` because what follows is the
 [main agent](../../glossary.json#concept.main-agent)'s decision: survey again, or undo the change

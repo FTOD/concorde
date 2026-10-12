@@ -11,8 +11,10 @@ from unittest import mock
 
 from concorde.method.adoption.records import (
     ANSWERS_SCHEMA,
+    DESCRIBE_WORKER_SCHEMA,
     DECOMPOSITION_SCHEMA,
     SPEC_DESCRIPTION_SCHEMA,
+    SURVEY_WORKER_SCHEMA,
 )
 from concorde.worker_harness import claude_backend
 from concorde.worker_harness.runs import read_record
@@ -44,6 +46,8 @@ class AdoptionTests(AdoptionCase):
             ("contract.adoption.decomposition", DECOMPOSITION_SCHEMA),
             ("contract.adoption.spec-description", SPEC_DESCRIPTION_SCHEMA),
             ("contract.adoption.answers", ANSWERS_SCHEMA),
+            ("contract.adoption.survey-claims", SURVEY_WORKER_SCHEMA),
+            ("contract.adoption.description-claims", DESCRIBE_WORKER_SCHEMA),
         ):
             with self.subTest(identity=identity):
                 self.assertEqual(contract(path, identity), schema)
@@ -254,7 +258,9 @@ class AdoptionTests(AdoptionCase):
         )
         # An answer whose decision the proposal leaves out fails the run.
         omitted = {**PROPOSAL, "decisions": []}
-        status, envelope = self.survey(omitted, "--answers", answers)
+        status, envelope = self.survey(
+            omitted, "--answers", answers, "--input", first["run_id"]
+        )
         self.assertEqual("failed", envelope["status"])
         self.assertEqual("inconsistent_proposal", envelope["error"]["code"])
         self.assertIn(
@@ -814,6 +820,46 @@ class AdoptionTests(AdoptionCase):
                     self.assertEqual([], envelope["worker_runs"])
         self.assertEqual("", git(worktree, "status", "--porcelain"))
 
+    @verifies("scenario.adoption.invalid-answers")
+    def test_answers_no_admitted_run_asked_stop_before_anything_runs(self):
+        worktree = self.open()
+        _, first = self.survey()
+        unasked = self.project.answers(
+            {
+                "id": "d.invented",
+                "question": "Is this asked?",
+                "answer": "no",
+                "answered_by": "developer",
+            }
+        )
+        asked = self.project.answers(
+            {
+                "id": "d.db-helper",
+                "question": DB_HELPER["question"],
+                "answer": "stay with the root",
+                "answered_by": "developer",
+            }
+        )
+        for path, inputs, detail in (
+            (asked, [], "admit the run that asked with --input"),
+            (unasked, ["--input", first["run_id"]], "d.invented"),
+        ):
+            for run in (
+                lambda path=path, inputs=inputs: self.survey(
+                    PROPOSAL, "--answers", path, *inputs
+                ),
+                lambda path=path, inputs=inputs: self.describe(
+                    [{}], "--answers", path, *inputs, modules="module.shop"
+                ),
+            ):
+                with self.subTest(path=path, inputs=inputs):
+                    _status, envelope = run()
+                    self.assertEqual("failed", envelope["status"])
+                    self.assertEqual("invalid_answers", envelope["error"]["code"])
+                    self.assertIn(detail, envelope["error"]["detail"])
+                    self.assertEqual([], envelope["worker_runs"])
+        self.assertEqual("", git(worktree, "status", "--porcelain"))
+
     # --- code_to_spec ----------------------------------------------------------------------
 
     def described_entry(self) -> str:
@@ -991,14 +1037,22 @@ class AdoptionTests(AdoptionCase):
         # A deviation never replaces the promise the answer states.
         claims["promises"] = []
         status, envelope = self.describe(
-            [{"result": {"output": claims}}], "--answers", answers
+            [{"result": {"output": claims}}],
+            "--answers",
+            answers,
+            "--input",
+            first["run_id"],
         )
         self.assertEqual("failed", envelope["status"])
         self.assertEqual("inconsistent_description", envelope["error"]["code"])
         self.assertIn("q.payment-retry", envelope["error"]["detail"])
         claims["deviations"] = []
         status, envelope = self.describe(
-            [{"result": {"output": claims}}], "--answers", answers
+            [{"result": {"output": claims}}],
+            "--answers",
+            answers,
+            "--input",
+            first["run_id"],
         )
         self.assertEqual("failed", envelope["status"])
         self.assertEqual("inconsistent_description", envelope["error"]["code"])

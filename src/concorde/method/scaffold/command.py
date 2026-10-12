@@ -65,8 +65,8 @@ SCAFFOLD_RECORD_SCHEMA = obj(
     }
 )
 
-# The sentence initialization writes into a root stub's Parts section, which stops being true
-# once the root contains children.
+# The paragraph initialization writes into a root stub's Parts section, which stops being true
+# once the root contains children: the one prose the scaffold replaces, and only in Parts.
 INIT_PARTS = (
     "The project's parts and their collaborations are not specified yet. This Module contains,\n"
     "uses and includes nothing, and no requirement or scenario has been written.\n"
@@ -326,14 +326,18 @@ def child_metadata(child: dict, entry: str, externals: list[dict] = ()) -> dict:
 
 
 def parent_reading(text: str, children: list[dict]) -> str:
-    """The parent entry with one explaining paragraph per child at the end of Parts."""
+    """The parent entry with one explaining paragraph per child at the end of Parts.
+
+    Every existing line is kept, except that the paragraph initialization wrote into Parts, which
+    says the Module contains nothing, becomes ``SCAFFOLDED_PARTS`` there; the same text anywhere
+    else stays as it is.
+    """
     paragraphs = "".join(
         f'<a id="contains-{anchor(child["id"])}"></a>\n\n'
         f"**{child['title']}**, proposed by a survey of the code: "
         f"{' '.join(child['purpose'].split())}\n\n"
         for child in children
     )
-    text = text.replace(INIT_PARTS, SCAFFOLDED_PARTS, 1)
     lines = text.splitlines(keepends=True)
     start = next(
         (index for index, line in enumerate(lines) if line.strip() == "## Parts"),
@@ -349,7 +353,8 @@ def parent_reading(text: str, children: list[dict]) -> str:
         ),
         len(lines),
     )
-    before = "".join(lines[:end]).rstrip("\n") + "\n\n"
+    section = "".join(lines[start:end]).replace(INIT_PARTS, SCAFFOLDED_PARTS, 1)
+    before = ("".join(lines[:start]) + section).rstrip("\n") + "\n\n"
     after = "".join(lines[end:])
     return before + paragraphs.rstrip("\n") + "\n" + ("\n" + after if after else "")
 

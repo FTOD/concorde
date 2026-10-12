@@ -1788,6 +1788,11 @@
           "kind": "document",
           "target": "document.tracing.contracts",
           "reason": "the Framework's error contract, which this Module's errors follow"
+        },
+        {
+          "kind": "document",
+          "target": "document.method.workers",
+          "reason": "Method's standard worker sequence and round validation, which compose what this Module's worker receives and audit its glossary edits"
         }
       ],
       "participates": []
