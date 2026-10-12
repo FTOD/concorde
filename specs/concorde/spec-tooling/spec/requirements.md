@@ -78,6 +78,10 @@ Listing a directory to expand its entries is allowed. Only paths are used.
 The two exceptions parse bound test files for their verification declarations.
 Neither feeds a boundary set or a grant.
 
+The files a bound inclusion selects are part of the Spec, not code read as code. Computing the
+Spec context digests their bytes, as it digests every selected document member. Nothing else of
+those files is read.
+
 ### req.spec.no-partial-repository — No partial repository
 
 When the project has a problem that makes a boundary untrustworthy, the loader SHALL NOT return a
@@ -185,6 +189,18 @@ Module's own `owns`, `contains`, `uses` and `includes` declarations and never th
 Modules and documents they select.
 
 Sharing a bound file with another Module adds nothing to either Module's Spec context.
+
+### req.spec.bound-inclusion — A bound inclusion adds only its Module's own files
+
+An `includes` of kind `bound` SHALL add to its Module's Spec context exactly the files that the
+Module's realizations bind at or below its path, and nothing to the Spec context of any other
+Module.
+
+The files add no document and no term.
+A grant gives them the highest level their boundary sets assign
+([req.spec.grant-highest-level](#req.spec.grant-highest-level)).
+They are therefore `ro` for every task type that does not write the Module's implementation scope,
+and stay `rw` for one that does.
 
 ### req.spec.term-selection — A context holds the definitions its documents use
 
@@ -344,12 +360,13 @@ cases:
 - A byte of a selecting declaration changes.
 - A byte of a document's owner changes.
 - A byte of pinned external material changes.
+- A byte of a file a bound inclusion of a bound Module selects changes.
 - For a `review-architecture` grant, a byte of any file of ProjectSpecification changes. Such a
-  file is a member of any registered Module's document or the glossary, whichever Modules the
-  grant binds.
+  file is a member of any registered Module's document, a file of its bound inclusions or the
+  glossary, whichever Modules the grant binds.
 
-The context identity covers no implementation file contents.
-A worker's writes to implementation files therefore never change it.
+The context identity covers no implementation file contents except the files of bound inclusions.
+A worker's writes to other implementation files therefore never change it.
 A task that writes Specs changes the context identity with its own writes to the Module's documents
 or glossary entries.
 An identity computed after those writes therefore differs from the one frozen before.

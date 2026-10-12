@@ -20,13 +20,15 @@ selection is also what a human reader of the Module needs open beside it.
 
 | Channel | Granted by | Contains | Authority conveyed |
 | --- | --- | --- | --- |
-| `spec` | `owns`, `contains`, `uses`, `includes` of kind `module` or `document` | both members of each selected document | read only |
+| `spec` | `owns`, `contains`, `uses`, `includes` of kind `module`, `document` or `bound` | both members of each selected document, and the contents of the files each bound inclusion selects | read only |
 | `term` | the concepts a Module owns, `mentions`, `narrows`, `supersedes`, concept-targeted `relates` and `relies_on` | the glossary entries of the selected concepts | read only |
 | `implementation` | `binds` | the **names** of bound paths | none |
 | `external` | `includes` of kind `external` | pinned third-party material | read only |
 
 The channels stay separate so that "may read this Module's promises" never implies "may read or
-change its code". Knowing what a word means never implies reading how its owner works.
+change its code". Knowing what a word means never implies reading how its owner works. A bound
+inclusion is the one declaration that puts the contents of a bound file into the spec channel. It
+names files of the Module's own realization only, and only that Module's readers receive them.
 Whether a task receives implementation contents, read-only or writable, is part of its task
 boundary. See [Boundaries](boundaries.md).
 
@@ -42,6 +44,8 @@ spec(selection)          for a contains or uses with relies_on: the target's ent
 spec(definer(target))    the document that defines the target node; for a Module target,
                          that Module
 term(target)             the glossary entry of the target concept
+bound(target)            the contents of the files the declaring Module's realizations bind
+                         at or below the target path
 external(target)         the pinned material at the target path
 implementation(target)   the name of the target path
 none                     nothing
@@ -53,12 +57,13 @@ requirement `spec(N)` naming a Module N is satisfied when at least one document 
 ## Spec context selection
 
 Let `D(M)` be the documents Module M owns, and `members(U)` the reading and metadata members of a
-document U.
+document U. Let `files(M, p)` be the files M's realizations bind at or below the path p.
 
 ```text
 Spec(M)        = D(M)
                ∪ ⋃ { selection(r) : r a contains, uses or spec includes declared by M }
-SpecContext(M) = ⋃ { members(U) : U ∈ Spec(M) }
+Bound(M)       = ⋃ { files(M, i.target) : i an includes of kind bound declared by M }
+SpecContext(M) = ⋃ { members(U) : U ∈ Spec(M) } ∪ Bound(M)
 
 selection(r to Module N) = { entry(N) } ∪ { definer(x) : x ∈ r.relies_on }  if relies_on present
                          = D(N)                                               otherwise
@@ -80,6 +85,12 @@ own relations select. None of the following adds a document:
 
 Because expansion is not recursive, cycles among Modules are harmless. Every member of a read set
 is explained by the one declaration that selected it.
+
+`Bound(M)` holds files, not documents. It adds nothing to `Spec(M)`. A selection of M by another
+Module therefore never brings M's bound inclusions. A bound file mentions no concept in the
+Protocol's sense, so it adds no term. It satisfies no requirement of
+[Reconciliation](#reconciliation). Its contents are read only, whatever the file's level in the
+Module's write sets.
 
 A scenario query resolves the scenario's owner and selects that owner's whole context. It never
 trims to the scenario. A scenario query never selects the consumer that happened to read it.
@@ -162,7 +173,9 @@ ProjectImplementation = ⋃ { ImplementationContext(M) ∪ ExternalContext(M) : 
 Exact entries and files below directory prefixes resolve under an explicit deterministic exclusion
 rule. Every entry exists, so implementation context never names missing content.
 
-Document members never belong to implementation context. When another Module binds the same file,
+Document members never belong to implementation context. A bound inclusion leaves implementation
+context unchanged: the file is still named there, and its contents are in the spec channel as
+well. When another Module binds the same file,
 a change to it concerns that Module too. This adds neither that Module's Specs nor its code to this
 reader's context. A Module with no bindings has an empty implementation context. This does not
 prove it has no realization.
@@ -196,11 +209,13 @@ Every source record carries:
 - Every relation that selected it.
 
 Every term record carries the concept's whole entry and every declaration that selected it.
-External entries carry one tree digest each.
+Every file of `Bound(M)` carries its path, an exact-byte SHA-256 digest and every bound inclusion
+that selected it. External entries carry one tree digest each.
 
 The identity changes, even when the set of paths is unchanged, on:
 
 - Any byte change in either member of a selected document, including whitespace.
+- Any byte change in a file of `Bound(M)`, or a change of which files it holds.
 - Any change to a selected glossary entry, or a change of which entries are selected.
 - A change to the declarations that selected the context, including removing a redundant inclusion.
 - An ownership transfer.

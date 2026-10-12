@@ -1,6 +1,6 @@
 # Spec Protocol principles
 
-Concorde Spec Protocol 16.4.0 defines:
+Concorde Spec Protocol 16.5.0 defines:
 
 - How a project describes itself as a set of Modules.
 - What each Module promises.
@@ -583,7 +583,7 @@ These appear as relation targets or attributes but are not nodes.
 
 | Value | Where it appears | Why it is not a node |
 | --- | --- | --- |
-| **path literal** | `binds`, external `includes`, `verifies` | A path carries no promise and has no owner in the Spec's sense. |
+| **path literal** | `binds`, bound and external `includes`, `verifies` | A path carries no promise and has no owner in the Spec's sense. |
 | **anchor** | `meaning` of realizations and reified relations, `explanation` of concepts | It has no identity of its own; only its declaration refers to it. |
 | **digest** | context identity | It is a measurement of a source member, not a declared thing. |
 
@@ -757,23 +757,30 @@ cardinality: "0..N; unique per (kind, target)"
 declared_in: entry
 mirrored_in: registry
 reified: [kind, reason]
-context_grants: spec(selection) | external(target)
+context_grants: spec(selection) | bound(target) | external(target)
 context_requires: []
 ```
 
-This Module reads something it neither owns nor depends on. `kind` is one of these:
+This Module reads something that no other declaration gives it to read. `kind` is one of these:
 
 - `module` (that Module's owned documents).
 - `document` (one document).
+- `bound` (a directory or file of this Module's own realization, read as its Spec).
 - `external` (a directory or file of pinned third-party material).
 
 Because removing an inclusion changes provenance and context identity, `reason` records why.
 
-Specification inclusions and external inclusions are one relation because both answer the same
-question, *what else does this Module read*. They differ only in the channel they fill.
+A `bound` inclusion serves a Module whose promises defer to text in its own realization. An
+example is a Module that realizes a written standard and states its rules by reference to it. The
+Module binds that text, so a task bound to the Module may only know its name. The inclusion makes
+the contents of those files part of the Module's Spec context, read only. It makes nothing
+writable. What a task may write stays what its task type grants on the Module's scopes.
+
+Specification inclusions, bound inclusions and external inclusions are one relation because they
+answer the same question, *what else does this Module read*. They differ only in what they select.
 
 **Checks.** `CHK.includes.no-self`, `CHK.includes.unique`, `CHK.includes.reason`,
-`CHK.includes.redundant`, `CHK.external.exists`, `CHK.external.no-overlap`.
+`CHK.includes.redundant`, `CHK.includes.bound`, `CHK.external.exists`, `CHK.external.no-overlap`.
 
 ---
 
@@ -993,13 +1000,15 @@ selection is also what a human reader of the Module needs open beside it.
 
 | Channel | Granted by | Contains | Authority conveyed |
 | --- | --- | --- | --- |
-| `spec` | `owns`, `contains`, `uses`, `includes` of kind `module` or `document` | both members of each selected document | read only |
+| `spec` | `owns`, `contains`, `uses`, `includes` of kind `module`, `document` or `bound` | both members of each selected document, and the contents of the files each bound inclusion selects | read only |
 | `term` | the concepts a Module owns, `mentions`, `narrows`, `supersedes`, concept-targeted `relates` and `relies_on` | the glossary entries of the selected concepts | read only |
 | `implementation` | `binds` | the **names** of bound paths | none |
 | `external` | `includes` of kind `external` | pinned third-party material | read only |
 
 The channels stay separate so that "may read this Module's promises" never implies "may read or
-change its code". Knowing what a word means never implies reading how its owner works.
+change its code". Knowing what a word means never implies reading how its owner works. A bound
+inclusion is the one declaration that puts the contents of a bound file into the spec channel. It
+names files of the Module's own realization only, and only that Module's readers receive them.
 Whether a task receives implementation contents, read-only or writable, is part of its task
 boundary. See [Boundaries](boundaries.md).
 
@@ -1015,6 +1024,8 @@ spec(selection)          for a contains or uses with relies_on: the target's ent
 spec(definer(target))    the document that defines the target node; for a Module target,
                          that Module
 term(target)             the glossary entry of the target concept
+bound(target)            the contents of the files the declaring Module's realizations bind
+                         at or below the target path
 external(target)         the pinned material at the target path
 implementation(target)   the name of the target path
 none                     nothing
@@ -1026,12 +1037,13 @@ requirement `spec(N)` naming a Module N is satisfied when at least one document 
 ## Spec context selection
 
 Let `D(M)` be the documents Module M owns, and `members(U)` the reading and metadata members of a
-document U.
+document U. Let `files(M, p)` be the files M's realizations bind at or below the path p.
 
 ```text
 Spec(M)        = D(M)
                ∪ ⋃ { selection(r) : r a contains, uses or spec includes declared by M }
-SpecContext(M) = ⋃ { members(U) : U ∈ Spec(M) }
+Bound(M)       = ⋃ { files(M, i.target) : i an includes of kind bound declared by M }
+SpecContext(M) = ⋃ { members(U) : U ∈ Spec(M) } ∪ Bound(M)
 
 selection(r to Module N) = { entry(N) } ∪ { definer(x) : x ∈ r.relies_on }  if relies_on present
                          = D(N)                                               otherwise
@@ -1053,6 +1065,12 @@ own relations select. None of the following adds a document:
 
 Because expansion is not recursive, cycles among Modules are harmless. Every member of a read set
 is explained by the one declaration that selected it.
+
+`Bound(M)` holds files, not documents. It adds nothing to `Spec(M)`. A selection of M by another
+Module therefore never brings M's bound inclusions. A bound file mentions no concept in the
+Protocol's sense, so it adds no term. It satisfies no requirement of
+[Reconciliation](#reconciliation). Its contents are read only, whatever the file's level in the
+Module's write sets.
 
 A scenario query resolves the scenario's owner and selects that owner's whole context. It never
 trims to the scenario. A scenario query never selects the consumer that happened to read it.
@@ -1135,7 +1153,9 @@ ProjectImplementation = ⋃ { ImplementationContext(M) ∪ ExternalContext(M) : 
 Exact entries and files below directory prefixes resolve under an explicit deterministic exclusion
 rule. Every entry exists, so implementation context never names missing content.
 
-Document members never belong to implementation context. When another Module binds the same file,
+Document members never belong to implementation context. A bound inclusion leaves implementation
+context unchanged: the file is still named there, and its contents are in the spec channel as
+well. When another Module binds the same file,
 a change to it concerns that Module too. This adds neither that Module's Specs nor its code to this
 reader's context. A Module with no bindings has an empty implementation context. This does not
 prove it has no realization.
@@ -1169,11 +1189,13 @@ Every source record carries:
 - Every relation that selected it.
 
 Every term record carries the concept's whole entry and every declaration that selected it.
-External entries carry one tree digest each.
+Every file of `Bound(M)` carries its path, an exact-byte SHA-256 digest and every bound inclusion
+that selected it. External entries carry one tree digest each.
 
 The identity changes, even when the set of paths is unchanged, on:
 
 - Any byte change in either member of a selected document, including whitespace.
+- Any byte change in a file of `Bound(M)`, or a change of which files it holds.
 - Any change to a selected glossary entry, or a change of which entries are selected.
 - A change to the declarations that selected the context, including removing a redundant inclusion.
 - An ownership transfer.
@@ -1226,19 +1248,20 @@ same checkout get the same answer.
 
 | Set | Definition | Derived from |
 | --- | --- | --- |
-| `SpecContext(M)` | both members of every document M owns or selects, and the glossary entries of `Terms(M)` | `owns`, `contains`, `uses`, `includes`; term selection |
+| `SpecContext(M)` | both members of every document M owns or selects, the files of `Bound(M)`, and the glossary entries of `Terms(M)` | `owns`, `contains`, `uses`, `includes`, `binds`; term selection |
 | `ExternalContext(M)` | pinned material M includes | `includes` of kind `external` |
 | `ImplementationContext(M)` | the names of every file M's realizations bind | `binds` |
 | `SpecScope(M)` | both members of every document M owns, including the entry and its `module` block, and the glossary entries M owns | `owns`, glossary `owner` |
 | `ImplementationScope(M)` | every file covered by M's realization entries | `binds` |
 | `ProjectImplementation` | every file any Module's realizations bind and all external material any Module includes; the same for every Module | `binds`, `includes` of kind `external` |
-| `ProjectSpecification` | both members of every document any Module owns, and the whole glossary; the same for every Module | `owns`, the glossary |
+| `ProjectSpecification` | both members of every document any Module owns, the files of every Module's `Bound`, and the whole glossary; the same for every Module | `owns`, `includes` of kind `bound`, the glossary |
 
 `SpecContext`, `ExternalContext`, `ImplementationContext`, `ProjectImplementation` and
 `ProjectSpecification` are **read** sets. `SpecScope` and `ImplementationScope` are **write** sets.
 They are deliberately different. Because M `uses` a provider, M may read the provider's documents.
 Those documents stay in the provider's `SpecScope`, never in M's. Reading never widens what may be
-written.
+written. A bound inclusion follows the same rule. `Bound(M)` lies inside `ImplementationScope(M)`,
+and its read access adds nothing to what the task type lets a task write there.
 
 Every declaration a Module makes lies in its own documents or in its own glossary entries. The
 documents make `SpecScope(M)` a plain set of files that a harness can enforce with file
@@ -1361,7 +1384,8 @@ A harness MUST keep every boundary within these limits:
    - Specification contents come from the bound Modules' `SpecContext` or, for the task type that
      assigns it, from `ProjectSpecification`.
    - Implementation contents come from their `ImplementationScope` or, for the task types that
-     assign it, from `ProjectImplementation`.
+     assign it, from `ProjectImplementation`. The files of a bound inclusion are the exception.
+     Their contents come from `SpecContext`.
    - External material comes from their `ExternalContext` or `ProjectImplementation`.
 
    A provider's code may be read and run, never changed. The code never replaces the provider's
@@ -1393,7 +1417,8 @@ The task types that read code, `implement`, `test`, `review-code` and `code-to-s
 whole `ProjectImplementation`. Code is read and run together with the code it uses and the code
 that uses it. A package can only be imported whole. What they may change stays within the bound
 Modules' scopes. Thus, a Module's `uses` limits what a task changes, not what it reads. The task
-types that work on Specs alone never see code contents.
+types that work on Specs alone see no code contents beyond the files of their Modules' bound
+inclusions. Those files are part of the Spec by declaration.
 
 - **`understand`** learns what a Module promises and how it is realized, without reading code.
   Its uses include:
@@ -1431,14 +1456,15 @@ relation to each other. Only when every Module's Specs are read together is an o
 responsibilities or a promise two Modules state differently visible.
 
 The task sees the names of the whole project's files. Those names show where each Module's
-realization lies. The task sees no code contents. Architecture is judged from what the Modules
+realization lies. The task sees no code contents beyond the files of bound inclusions. Architecture is judged from what the Modules
 promise and how they rely on each other, not from how their code happens to work.
 A [context identity](context.md#context-identity) of such a task covers every member of
 `ProjectSpecification`. Thus, a change to any Module's Specs changes what the task judged.
 
 A `none` in the `SpecScope` column does not hide the Module's own documents. They are in
-`SpecContext`, which every type reads. `ProjectSpecification` holds every Module's documents and
-the whole glossary. It therefore contains every `SpecContext`. Each row stays inside rules 1 to 4.
+`SpecContext`, which every type reads. `ProjectSpecification` holds every Module's documents, the
+files of every Module's bound inclusions and the whole glossary. It therefore contains every
+`SpecContext`. Each row stays inside rules 1 to 4.
 Every level can be computed exactly from declarations. A harness MUST NOT give a task a level its
 type does not assign. A harness MAY give less, for example by withholding external material a task
 does not need.
@@ -1446,7 +1472,8 @@ does not need.
 A scenario-scoped task is bound to the scenario's owner. A task bound to several Modules receives,
 for each bound Module, that Module's sets at the levels its type assigns. When a path falls into
 several sets, it receives the highest level any of them assigns. The levels are ordered `none`,
-`names`, `read`, `write`.
+`names`, `read`, `write`. A file of a bound inclusion is thus readable for every task type. It is
+writable only where its type assigns `write` to `ImplementationScope`.
 
 # Required format
 
@@ -1538,12 +1565,13 @@ global file.
 
   Without `relies_on` the whole target is selected.
 - `includes` entries have `kind`, `target` and a nonempty `reason`.
-  `kind` is `module`, `document` or `external`. The `target` is one of these:
-  - A Module identity.
-  - A document identity.
-  - A project-relative path.
+  `kind` is `module`, `document`, `bound` or `external`. The `target` is one of these:
+  - A Module identity, for kind `module`.
+  - A document identity, for kind `document`.
+  - A project-relative path, for kinds `bound` and `external`.
 
-  For a directory, the path ends in `/`.
+  For a directory, the path ends in `/`. The path of a `bound` inclusion lies at or below an entry
+  of one of the Module's own realizations.
 - `participates` entries have `contract`, `version`, `role` (`provided` or `required`), `peer` (a
   Module identity or `external`) and `meaning`.
 - `glossary` is optional. It appears only in the block of a Module without a parent.
@@ -1918,7 +1946,8 @@ Strictness: a violation of an **error** check blocks structural conformance. A v
 | `CHK.includes.no-self` | A Module does not include itself or a document it owns. | error |
 | `CHK.includes.unique` | No duplicate `(kind, target)` pairs. | error |
 | `CHK.includes.reason` | Each `includes` has a nonempty `reason`. | error |
-| `CHK.includes.redundant` | A spec inclusion whose documents are all already selected by `owns`, `contains`, `uses` or another inclusion is reported. | warning |
+| `CHK.includes.redundant` | A spec inclusion whose documents are all already selected by `owns`, `contains`, `uses` or another inclusion is reported, and so is a bound inclusion whose files another bound inclusion of the same Module already selects. | warning |
+| `CHK.includes.bound` | The path of a bound inclusion exists, is a directory exactly when it ends in `/`, lies at or below an entry of one of the declaring Module's own realizations, and selects at least one file that Module binds. | error |
 | `CHK.external.exists` | External material exists at the declared path and is tracked by the project's version control. | error |
 | `CHK.external.no-overlap` | External paths overlap no document member and no realization entry. | error |
 | `CHK.binds.exists` | Every entry exists; exact entries are files and `/` entries are directories. | error |

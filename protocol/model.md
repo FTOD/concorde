@@ -318,6 +318,6 @@ These appear as relation targets or attributes but are not nodes.
 
 | Value | Where it appears | Why it is not a node |
 | --- | --- | --- |
-| **path literal** | `binds`, external `includes`, `verifies` | A path carries no promise and has no owner in the Spec's sense. |
+| **path literal** | `binds`, bound and external `includes`, `verifies` | A path carries no promise and has no owner in the Spec's sense. |
 | **anchor** | `meaning` of realizations and reified relations, `explanation` of concepts | It has no identity of its own; only its declaration refers to it. |
 | **digest** | context identity | It is a measurement of a source member, not a declared thing. |

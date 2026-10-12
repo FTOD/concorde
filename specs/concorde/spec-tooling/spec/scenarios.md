@@ -535,6 +535,29 @@ to it.
 - AND those files are identified by one digest over their paths and bytes
 - AND the material enters neither the Spec context nor the implementation context
 
+### scenario.spec.bound-inclusion — A Module reads its own realization as Spec
+
+- GIVEN Module A that binds `src/a/` and includes, as kind `bound`, `src/a/one.py`
+- AND Module C that uses Module A
+- WHEN A's Spec context is resolved
+- THEN it lists `src/a/one.py` with the digest of its bytes and the inclusion that selected it
+- BUT it adds no document and no term
+- AND C's Spec context does not list `src/a/one.py`
+- AND a grant for A lists `src/a/one.py` as `ro` for task types `understand`, `specify` and
+  `review-spec`
+- AND a grant for A and task type `implement` keeps `src/a/` as `rw`
+- AND a byte change of `src/a/one.py` changes A's context identity
+- BUT it leaves C's context identity unchanged
+
+### scenario.spec.bound-inclusion-invalid — A bound inclusion outside the Module's realization
+
+- GIVEN a Module with a bound inclusion of a path that does not exist
+- AND a bound inclusion of a file that only another Module binds
+- AND a bound inclusion of a file that another of its bound inclusions already selects
+- WHEN the validator runs
+- THEN it reports `CHK.includes.bound` for the first two
+- AND it reports a `CHK.includes.redundant` warning for the third
+
 ### scenario.spec.external-reference-invalid — Missing or overlapping external material
 
 - GIVEN an external inclusion whose path is missing or untracked, and another whose path overlaps a

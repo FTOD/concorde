@@ -168,23 +168,30 @@ cardinality: "0..N; unique per (kind, target)"
 declared_in: entry
 mirrored_in: registry
 reified: [kind, reason]
-context_grants: spec(selection) | external(target)
+context_grants: spec(selection) | bound(target) | external(target)
 context_requires: []
 ```
 
-This Module reads something it neither owns nor depends on. `kind` is one of these:
+This Module reads something that no other declaration gives it to read. `kind` is one of these:
 
 - `module` (that Module's owned documents).
 - `document` (one document).
+- `bound` (a directory or file of this Module's own realization, read as its Spec).
 - `external` (a directory or file of pinned third-party material).
 
 Because removing an inclusion changes provenance and context identity, `reason` records why.
 
-Specification inclusions and external inclusions are one relation because both answer the same
-question, *what else does this Module read*. They differ only in the channel they fill.
+A `bound` inclusion serves a Module whose promises defer to text in its own realization. An
+example is a Module that realizes a written standard and states its rules by reference to it. The
+Module binds that text, so a task bound to the Module may only know its name. The inclusion makes
+the contents of those files part of the Module's Spec context, read only. It makes nothing
+writable. What a task may write stays what its task type grants on the Module's scopes.
+
+Specification inclusions, bound inclusions and external inclusions are one relation because they
+answer the same question, *what else does this Module read*. They differ only in what they select.
 
 **Checks.** `CHK.includes.no-self`, `CHK.includes.unique`, `CHK.includes.reason`,
-`CHK.includes.redundant`, `CHK.external.exists`, `CHK.external.no-overlap`.
+`CHK.includes.redundant`, `CHK.includes.bound`, `CHK.external.exists`, `CHK.external.no-overlap`.
 
 ---
 

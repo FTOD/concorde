@@ -15,12 +15,14 @@
 # CHK.registry.mirror requires to be equal; the registry is never a
 # declaration site.
 
-protocol: "16.4.0"
+protocol: "16.5.0"
 model_version: 1
 
 context_channels:
   - id: spec
-    statement: Both members of each selected document, read only.
+    statement: >
+      Both members of each selected document, and the contents of the files
+      each bound inclusion selects, read only.
   - id: term
     statement: The glossary entries of the selected concepts, read only.
   - id: implementation
@@ -40,6 +42,9 @@ expressions:
     satisfied by any document it owns; for a concept, the document its entry
     names as its explanation
   term(target): the glossary entry of the target concept
+  bound(target): >
+    the contents of the files the declaring Module's realizations bind at or
+    below the target path
   external(target): the pinned material at the target path
   implementation(target): the name of the target path
 
@@ -234,6 +239,7 @@ relation_types:
     context_grants:
       module: spec(selection)
       document: spec(selection)
+      bound: bound(target)
       external: external(target)
     context_requires: []
     checks:
@@ -241,6 +247,7 @@ relation_types:
       - CHK.includes.unique
       - CHK.includes.reason
       - CHK.includes.redundant
+      - CHK.includes.bound
       - CHK.external.exists
       - CHK.external.no-overlap
 
@@ -370,10 +377,10 @@ derived_indexes:
 boundary_sets:
   - id: SpecContext
     side: read
-    derived_from: [owns, contains, uses, includes, mentions, narrows, supersedes, relates]
+    derived_from: [owns, contains, uses, includes, binds, mentions, narrows, supersedes, relates]
     contents: >
-      both members of every document the Module owns or selects, and the
-      glossary entries term selection chooses
+      both members of every document the Module owns or selects, the files its
+      bound inclusions select, and the glossary entries term selection chooses
   - id: ExternalContext
     side: read
     derived_from: [includes]
@@ -388,10 +395,10 @@ boundary_sets:
     contents: every file any Module's realizations bind and all external material any Module includes
   - id: ProjectSpecification
     side: read
-    derived_from: [owns, glossary owner]
+    derived_from: [owns, includes, glossary owner]
     contents: >
-      both members of every document any Module owns, and the whole glossary;
-      the same for every Module
+      both members of every document any Module owns, the files every Module's
+      bound inclusions select, and the whole glossary; the same for every Module
   - id: SpecScope
     side: write
     derived_from: [owns, glossary owner]

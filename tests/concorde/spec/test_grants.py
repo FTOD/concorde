@@ -11,7 +11,7 @@ from pathlib import Path
 
 from concorde.spec.grants import LEVELS, TASK_TYPES, Grant, context_identity, grant
 from concorde.spec.repository import SpecRepository
-from concorde.spec.repository_base import SpecError
+from concorde.spec.repository_base import SpecError, digest
 from concorde.spec.verification import verifies
 from tests.concorde.support.paths import REPOSITORY_ROOT
 from tests.concorde.support.spec_project import (
@@ -478,6 +478,128 @@ class GrantTests(unittest.TestCase):
         )
         redundant = identity()
         self.assertNotEqual(changed, redundant)
+
+    def include_bound(self, *targets):
+        self.project.update(
+            "module.a",
+            includes=[
+                {
+                    "kind": "external",
+                    "target": "references/lib/",
+                    "reason": "the library's API reference",
+                },
+                *(
+                    {
+                        "kind": "bound",
+                        "target": target,
+                        "reason": "the text A defers to",
+                    }
+                    for target in targets
+                ),
+            ],
+        )
+
+    @verifies("scenario.spec.bound-inclusion")
+    def test_a_bound_inclusion_reads_the_modules_own_files_as_spec(self):
+        (self.root / "src/c.py").write_text("value = 1\n")
+        self.project.module(
+            "module.c",
+            "specs/c/module.md",
+            document(
+                "c", "C", [realization("realization.c.code", ["src/c.py"])], ("a",)
+            ),
+        )
+        sync_registry(self.root)
+        before = self.project.repository().spec_context("module.a").value
+        self.include_bound("src/a/one.py")
+        sync_registry(self.root)
+        self.assertEqual(set(), self.project.rules(), self.project.validate().findings)
+        repository = self.project.repository()
+        context = repository.spec_context("module.a")
+        self.assertEqual(
+            [
+                {
+                    "path": "src/a/one.py",
+                    "owner": "module.a",
+                    "digest": digest(b"value = 1\n"),
+                    "reasons": [
+                        {
+                            "relation": "includes",
+                            "kind": "bound",
+                            "path": "src/a/one.py",
+                        }
+                    ],
+                }
+            ],
+            context.value["bound"],
+        )
+        self.assertIn("src/a/one.py", context.paths)
+        # No document and no term: only the bound file is added.
+        self.assertEqual(
+            [source["path"] for source in before["sources"]],
+            [source["path"] for source in context.value["sources"]],
+        )
+        self.assertEqual(before["terms"], context.value["terms"])
+        self.assertEqual(
+            b"value = 1\n", repository.context_bytes(context)["src/a/one.py"]
+        )
+        self.assertNotIn("src/a/one.py", repository.spec_context("module.c").paths)
+        self.assertIn("src/a/one.py", repository.project_specification())
+        for task_type in (
+            "understand",
+            "specify",
+            "review-spec",
+            "review-architecture",
+        ):
+            with self.subTest(task_type=task_type):
+                levels = self.levels(self.grant(["module.a"], task_type))
+                self.assertEqual("ro", levels["src/a/one.py"])
+                self.assertEqual("names", levels["src/a/two.py"])
+        implement = self.levels(self.grant(["module.a"], "implement"))
+        self.assertEqual("rw", implement["src/a/"])
+        self.assertNotIn("src/a/one.py", implement)
+        for task_type in ("test", "review-code", "code-to-spec"):
+            with self.subTest(task_type=task_type):
+                levels = self.levels(self.grant(["module.a"], task_type))
+                self.assertEqual("ro", levels["src/a/"])
+                self.assertNotIn("rw", {levels.get("src/a/one.py"), levels["src/a/"]})
+        own, other = (
+            context_identity(self.project.repository(), [module])
+            for module in ("module.a", "module.c")
+        )
+        (self.root / "src/a/one.py").write_text("value = 2\n")
+        self.assertNotEqual(
+            own, context_identity(self.project.repository(), ["module.a"])
+        )
+        self.assertEqual(
+            other, context_identity(self.project.repository(), ["module.c"])
+        )
+        with self.assertRaises(SpecError) as raised:
+            repository.recheck_context(context)
+        self.assertEqual("stale_context", raised.exception.code)
+        self.assertIn("src/a/one.py", str(raised.exception))
+
+    @verifies("scenario.spec.bound-inclusion-invalid")
+    def test_a_bound_inclusion_lies_within_the_modules_own_realization(self):
+        self.include_bound(
+            "src/a/missing.py", "src/bmod/b.py", "src/a/", "src/a/one.py"
+        )
+        sync_registry(self.root)
+        messages = [
+            finding.message for finding in self.project.findings("CHK.includes.bound")
+        ]
+        self.assertEqual(2, len(messages), messages)
+        self.assertIn("src/a/missing.py", messages[0] + messages[1])
+        self.assertIn("src/bmod/b.py", messages[0] + messages[1])
+        redundant = [
+            finding.message
+            for finding in self.project.findings("CHK.includes.redundant")
+        ]
+        self.assertEqual(1, len(redundant), redundant)
+        self.assertIn("src/a/one.py", redundant[0])
+        self.assertEqual(
+            "warning", self.project.findings("CHK.includes.redundant")[0].strictness
+        )
 
     @verifies(
         "scenario.spec.grant-understand",

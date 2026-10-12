@@ -142,12 +142,13 @@ global file.
 
   Without `relies_on` the whole target is selected.
 - `includes` entries have `kind`, `target` and a nonempty `reason`.
-  `kind` is `module`, `document` or `external`. The `target` is one of these:
-  - A Module identity.
-  - A document identity.
-  - A project-relative path.
+  `kind` is `module`, `document`, `bound` or `external`. The `target` is one of these:
+  - A Module identity, for kind `module`.
+  - A document identity, for kind `document`.
+  - A project-relative path, for kinds `bound` and `external`.
 
-  For a directory, the path ends in `/`.
+  For a directory, the path ends in `/`. The path of a `bound` inclusion lies at or below an entry
+  of one of the Module's own realizations.
 - `participates` entries have `contract`, `version`, `role` (`provided` or `required`), `peer` (a
   Module identity or `external`) and `meaning`.
 - `glossary` is optional. It appears only in the block of a Module without a parent.
@@ -841,7 +842,9 @@ a schema alone. In selected readable context, these MUST be explained, never inf
 
   Dependencies may cross hierarchy levels. Two Modules may use each other.
 - `includes` states what else this Module reads, with a reason. It implies no ownership and no
-  dependency.
+  dependency. An inclusion of kind `bound` names a file of the Module's own realization whose text
+  its promises defer to, such as a standard it realizes. Its readers then read that file as part
+  of the Spec.
 
 When a Module relies on a few promises of a large provider, list them in the relation's
 `relies_on` and link them from the explanation of the collaboration.
@@ -1112,7 +1115,8 @@ Evaluation happens at two levels, each read from its own boundary:
 | [Module quality](#module-quality) | one Module's own documents, for the reader of that Module | the Module's `SpecContext` and external context, as a `review-spec` task receives them |
 | [Architecture quality](#architecture-quality) | how the project is divided into Modules and how they rely on each other | every Module's Specs, `ProjectSpecification`, as a `review-architecture` task receives them |
 
-Neither level reads code contents (see [Task types](boundaries.md#task-types)). A Spec is judged by
+Neither level reads code contents beyond the files of bound inclusions (see
+[Task types](boundaries.md#task-types)). A Spec is judged by
 what it tells its reader. Whether the code does what the Spec says is implementation conformance,
 established by evidence. Code never repairs a Spec's missing meaning.
 

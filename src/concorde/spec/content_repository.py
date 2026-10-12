@@ -44,6 +44,7 @@ from .repository_base import (
     SpecDocument,
     SpecError,
     bound_by,
+    covers,
     unbindable,
     digest,
     entry_exists,
@@ -92,8 +93,9 @@ def strictness(check: str) -> str:
     return "warning" if check in WARNING_CHECKS else "error"
 
 
-# Version of a resolved Spec context record; 4 adds the selected glossary entries (``terms``).
-CONTEXT_SCHEMA = 4
+# Version of a resolved Spec context record; 4 adds the selected glossary entries (``terms``), 5
+# the files of the Module's bound inclusions (``bound``).
+CONTEXT_SCHEMA = 5
 NULLABLE_ID = {"anyOf": [STRING, {"type": "null"}]}
 LISTING_ENTRY = {**STRING, "pattern": r"^[^/](?:[^/]*/)*[^/]*$"}
 # One relation that selected a context source: ``owns``, ``contains`` and ``uses`` name a Module;
@@ -130,9 +132,17 @@ TERM_REASON = obj(
 REFERENCE = {
     "anyOf": [
         obj({"kind": {"enum": ["module", "document"]}, "id": STRING}),
-        obj({"kind": {"const": "external"}, "path": LISTING_ENTRY}),
+        obj({"kind": {"enum": ["bound", "external"]}, "path": LISTING_ENTRY}),
     ]
 }
+# The bound inclusion that selected a file of the Module's own realization into its Spec context.
+BOUND_REASON = obj(
+    {
+        "relation": {"const": "includes"},
+        "kind": {"const": "bound"},
+        "path": LISTING_ENTRY,
+    }
+)
 # A Module's descriptor, as ``SpecRepository.module`` returns it.
 TARGET_DESCRIPTOR = obj(
     {
@@ -160,6 +170,14 @@ def context_record_schema() -> dict:
             "reasons": array(SELECTION_REASON, unique=True),
         }
     )
+    bound = obj(
+        {
+            "path": PATH,
+            "owner": STRING,
+            "digest": DIGEST,
+            "reasons": {**array(BOUND_REASON, unique=True), "minItems": 1},
+        }
+    )
     term = obj(
         {
             # The glossary entry exactly as written; its shape is CHK.glossary.schema's.
@@ -178,6 +196,7 @@ def context_record_schema() -> dict:
             "references": array(REFERENCE, unique=True),
             "registration": TARGET_DESCRIPTOR,
             "sources": array(source, unique=True),
+            "bound": array(bound, unique=True),
             "terms": array(term, unique=True),
         }
     )
@@ -961,7 +980,7 @@ class DocumentUnitRepository:
                     dict.fromkeys(
                         (item["kind"], item["target"])
                         for item in module.includes
-                        if item["kind"] in {"module", "document", "external"}
+                        if item["kind"] in {"module", "document", "bound", "external"}
                     )
                 ),
                 module.entry,
@@ -1321,7 +1340,7 @@ class DocumentUnitRepository:
         if kind == "document":
             path = self._identity_paths.get(target)
             return (path,) if path else ()
-        if kind == "external" or target not in self.declarations:
+        if kind in {"bound", "external"} or target not in self.declarations:
             return ()
         module = self.declarations[target]
         if kind == "module" and "relies_on" in relation:
@@ -1506,12 +1525,33 @@ class DocumentUnitRepository:
                     "references": descriptor["references"],
                     "registration": descriptor,
                     "sources": sorted(sources, key=lambda s: s["path"]),
+                    "bound": self.bound_records(target),
                     "terms": self.term_records(target),
                 }
             )
         )
         check_schema(context.value, context_record_schema())
         return context
+
+    def bound_records(self, module: ModuleRef) -> list[dict]:
+        """The files of ``Bound(M)``, sorted by path, each with the digest of its current bytes and
+        every bound inclusion that selected it. They are read when asked, like every bound file."""
+        target = self._resolve(module)
+        selected: dict[str, list[dict]] = {}
+        for entry in self.bound_inclusions(target):
+            for path in self.bound_selection(target, entry):
+                reason = {"relation": "includes", "kind": "bound", "path": entry}
+                if reason not in selected.setdefault(path, []):
+                    selected[path].append(reason)
+        return [
+            {
+                "path": path,
+                "owner": target.id,
+                "digest": digest(read_file(self.root, path)),
+                "reasons": sorted(selected[path], key=lambda reason: reason["path"]),
+            }
+            for path in sorted(selected)
+        ]
 
     def context_identities(self) -> dict[str, str]:
         return {
@@ -1541,9 +1581,13 @@ class DocumentUnitRepository:
         try:
             current = self.fresh().spec_context(value["query_id"])
             if current.serialized != context.serialized:
-                before = {item["path"]: item["digest"] for item in value["sources"]}
+                before = {
+                    item["path"]: item["digest"]
+                    for item in (*value["sources"], *value.get("bound", ()))
+                }
                 after = {
-                    item["path"]: item["digest"] for item in current.value["sources"]
+                    item["path"]: item["digest"]
+                    for item in (*current.value["sources"], *current.value["bound"])
                 }
                 changed = sorted(
                     path
@@ -1602,6 +1646,13 @@ class DocumentUnitRepository:
                     "source changed during materialization", "stale_context"
                 )
             result[record["path"]] = raw
+        for record in context.value["bound"]:
+            raw = read_file(self.root, record["path"])
+            if digest(raw) != record["digest"]:
+                raise SpecError(
+                    "bound file changed during materialization", "stale_context"
+                )
+            result[record["path"]] = raw
         return result
 
     # --- read sets: ImplementationContext and ExternalContext ----------------------------
@@ -1621,6 +1672,16 @@ class DocumentUnitRepository:
                 }
             )
         )
+
+    def bound_inclusions(self, module: ModuleRef) -> tuple[str, ...]:
+        """The Module's ``includes`` of kind ``bound``, in declaration order."""
+        return tuple(
+            value for kind, value in self._resolve(module).references if kind == "bound"
+        )
+
+    def bound_selection(self, module: ModuleRef, entry: str) -> tuple[str, ...]:
+        """``files(M, p)``: the files the Module's realizations bind at or below one path."""
+        return tuple(path for path in self.bound_files(module) if covers(entry, path))
 
     def external_inclusions(self, module: ModuleRef) -> tuple[str, ...]:
         """The Module's ``includes`` of kind ``external``, in declaration order."""
@@ -1725,10 +1786,14 @@ class DocumentUnitRepository:
         return tuple(paths)
 
     def project_specification(self) -> tuple[str, ...]:
-        """ProjectSpecification: both members of every Module's documents, and the glossary."""
+        """ProjectSpecification: both members of every Module's documents, the files of every
+        Module's bound inclusions, and the glossary."""
         paths = {
             path for identity in self.modules for path in self.spec_scope(identity)
         }
+        for identity in self.modules:
+            for entry in self.bound_inclusions(identity):
+                paths.update(self.bound_selection(identity, entry))
         return tuple(sorted(paths))
 
     def missing_entries(self, module: ModuleRef) -> tuple[str, ...]:
