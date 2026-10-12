@@ -527,6 +527,17 @@
           "relies_on": [
             "concept.issue-report"
           ]
+        },
+        {
+          "target": "module.workers",
+          "meaning": "#uses-workers",
+          "relies_on": [
+            "concept.worker-configuration",
+            "concept.model-map",
+            "contract.workers.worker-configuration",
+            "contract.workers.model-map",
+            "req.workers.model-map-entry"
+          ]
         }
       ],
       "includes": [
@@ -567,7 +578,8 @@
             "concept.issue",
             "concept.issue-report",
             "concept.issue-tier",
-            "concept.issue-severity"
+            "concept.issue-severity",
+            "contract.issues.report"
           ]
         },
         {
@@ -583,6 +595,14 @@
           "meaning": "#uses-spec",
           "relies_on": [
             "concept.grant"
+          ]
+        },
+        {
+          "target": "module.tracing",
+          "meaning": "#uses-tracing",
+          "relies_on": [
+            "concept.error-chain",
+            "contract.tracing.error"
           ]
         }
       ],
@@ -863,18 +883,42 @@
             "concept.run",
             "concept.run-progress-file",
             "concept.run-result",
-            "concept.run-store"
+            "concept.run-store",
+            "contract.execution.run-result"
           ]
         },
         {
           "target": "module.kernel",
           "meaning": "#uses-kernel",
           "relies_on": [
-            "concept.workspace-binding"
+            "concept.workspace-binding",
+            "contract.kernel.workspace-binding"
+          ]
+        },
+        {
+          "target": "module.tasks",
+          "meaning": "#uses-tasks",
+          "relies_on": [
+            "concept.task"
+          ]
+        },
+        {
+          "target": "module.main-session",
+          "meaning": "#uses-main-session",
+          "relies_on": [
+            "concept.main-session-guidance",
+            "req.main-session.every-task-delegated",
+            "req.main-session.no-work-in-task-worktree"
           ]
         }
       ],
-      "includes": [],
+      "includes": [
+        {
+          "kind": "document",
+          "target": "document.execution.runner",
+          "reason": "the runner's account of the run progress file's fields, the lobby and detached runs, which the wake loop reads"
+        }
+      ],
       "participates": []
     },
     {
@@ -1767,7 +1811,8 @@
           "target": "module.specification",
           "meaning": "#uses-specification",
           "relies_on": [
-            "req.specification.audit"
+            "req.specification.audit",
+            "req.specification.no-code"
           ]
         },
         {
@@ -1776,6 +1821,32 @@
           "relies_on": [
             "concept.review-verdict"
           ]
+        },
+        {
+          "target": "module.tasks",
+          "meaning": "#uses-tasks",
+          "relies_on": [
+            "concept.task",
+            "req.tasks.binding",
+            "req.tasks.merge-verified"
+          ]
+        },
+        {
+          "target": "module.validation",
+          "meaning": "#uses-validation",
+          "relies_on": [
+            "concept.readiness",
+            "req.validation.ready-definition",
+            "contract.validation.readiness"
+          ]
+        },
+        {
+          "target": "module.delivery",
+          "meaning": "#uses-delivery",
+          "relies_on": [
+            "req.delivery.own-readiness",
+            "contract.delivery.output"
+          ]
         }
       ],
       "includes": [
@@ -1783,6 +1854,16 @@
           "kind": "document",
           "target": "document.e2e.module",
           "reason": "the test project a case is worked in"
+        },
+        {
+          "kind": "external",
+          "target": "references/swe-bench/swebench/harness/",
+          "reason": "SWE-bench's evaluation harness, whose pytest log parser and grading rules define the statuses and the verdict that grading copies"
+        },
+        {
+          "kind": "external",
+          "target": "references/swe-bench/docs/guides/datasets.md",
+          "reason": "SWE-bench's dataset guide, which defines the fields of an instance"
         }
       ],
       "participates": []

@@ -147,8 +147,8 @@ concorde: Concorde repository {
   session: Concorde-repository session {
     record: Open a task for the Module at fault, record the report as an Issue
     assign: Append a report naming the Module at fault
-    fix: Fix the defect generally, close the Issue with the fix
-    merge: Deliver and merge the task
+    fix: Fix the defect generally
+    merge: "Deliver and merge the task;\nthe merge closes the Issue"
     record -> assign -> fix -> merge
   }
   primary: Primary worktree
@@ -286,8 +286,10 @@ So an incomplete report is repaired where it was written rather than refused aft
 For a defect seen outside a task, the main agent opens no task for Concorde's sake
 ([requirements](requirements.md#req.dogfooding.defect-outside-task)).
 Such a defect can occur in an [unbound run](../glossary.json#concept.unbound-run) or a refused command.
-The main agent keeps its report only under `.concorde/runs/defects/`.
-It names the report to the developer. For example:
+The main agent keeps its report only under `.concorde/runs/defects/`
+([requirements](requirements.md#req.dogfooding.defect-outside-task-kept)).
+It names the report to the developer
+([requirements](requirements.md#req.dogfooding.defect-outside-task-named)). For example:
 
 ```json
 {
@@ -339,8 +341,10 @@ these options:
 - `--error-file` names the failing command's `{"error": ...}` output.
 
 Outside a task, the main agent writes its link by hand.
-It writes that chain to `.concorde/runs/defects/<name>.error.json`.
-It names the file to the developer. A refusal whose reason is `environment`, such as a busy merge
+It writes that chain to `.concorde/runs/defects/<name>.error.json`
+([requirements](requirements.md#req.dogfooding.issue-system-defect-kept)).
+It names the file to the developer
+([requirements](requirements.md#req.dogfooding.issue-system-defect-named)). A refusal whose reason is `environment`, such as a busy merge
 lock, is no defect. For such a refusal, the main agent waits and writes again.
 The developer hands the chain to the Concorde repository as a failure.
 The main agent there takes it up as any error chain the developer shows it.
@@ -443,7 +447,16 @@ It never changes what a normal install's main agent is told.
 
 When an incomplete defect report reaches the Concorde repository, these checks ensure that the
 command refuses it.
-The refusal names the field that is wrong.
+The refusal names the field that is wrong. The fields the guidance lists are those of the
+[Issue report contract](../issues/interface.md#contract.issues.report).
+
+<a id="uses-tracing"></a>
+
+**Tracing** defines the [error chain](../glossary.json#concept.error-chain) and its
+[error contract](../kernel/tracing/contracts.md#contract.tracing.error). A defect report's
+`error_chain` is such a chain. Outside a task, the main agent writes its own link by hand in that
+contract's shape, so the guidance takes the link's fields from that contract. The example in the
+guidance shows only the start of a link.
 
 <a id="uses-tasks"></a>
 

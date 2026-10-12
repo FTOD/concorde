@@ -182,6 +182,42 @@ class DevelopInstallTests(unittest.TestCase):
             develop_source(linked)
         self.assertIn(f"primary worktree is {work.resolve()};", str(raised.exception))
 
+    @verifies("scenario.dogfooding.refused-unreadable")
+    def test_a_failed_git_query_is_refused_as_unreadable(self):
+        from unittest import mock
+
+        from concorde.dogfooding import develop
+
+        source = Path(self.enterContext(tempfile.TemporaryDirectory())) / "concorde"
+        source.mkdir()
+        git(source, "init", "-q", "-b", "main")
+        git(source, "commit", "-q", "--allow-empty", "-m", "concorde")
+        real = develop._git
+        for query in ("symbolic-ref", "status", "rev-parse --verify"):
+            with self.subTest(query=query):
+
+                def failing(package, *argv, query=query):
+                    if " ".join(argv).startswith(query):
+                        return subprocess.CompletedProcess(
+                            ["git", *argv], 128, "", "fatal: index file corrupt"
+                        )
+                    return real(package, *argv)
+
+                with (
+                    mock.patch.object(develop, "_git", failing),
+                    self.assertRaises(DevelopError) as raised,
+                ):
+                    develop_source(source)
+                # Neither a detached HEAD, nor uncommitted changes, nor an empty commit: Git's
+                # own failure, with its message.
+                self.assertEqual("develop_source_unreadable", raised.exception.code)
+                self.assertIn("fatal: index file corrupt", str(raised.exception))
+        # A detached HEAD is still told apart from a failed query.
+        git(source, "checkout", "-q", "--detach")
+        with self.assertRaises(DevelopError) as raised:
+            develop_source(source)
+        self.assertEqual("develop_source_detached", raised.exception.code)
+
     @verifies("scenario.dogfooding.refused-not-root")
     def test_a_checkout_that_is_no_worktree_root_is_not_installed_from(self):
         # A built package copy outside any Git repository.

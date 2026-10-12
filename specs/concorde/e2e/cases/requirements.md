@@ -21,6 +21,11 @@ The repair of an adopted case's Specs SHALL change the project's Specs and never
 The tool SHALL grade a case in a throwaway worktree of the project, applying the case's test patch
 only there.
 
+### req.swe-bench-cases.graded-like-swe-bench — Listed tests are graded under their complete identities
+
+The tool SHALL count a listed test as passed by SWE-bench's rules for its list, applied to the status
+pytest reports under the test's complete node identity.
+
 ### req.swe-bench-cases.grading-worktree-removed — The grading worktree does not outlive grading
 
 The tool SHALL remove a case's grading worktree afterwards, whether grading ends with a verdict or

@@ -104,6 +104,105 @@ class CaseTests(unittest.TestCase):
             )
             self.assertEqual(1, git(project, "worktree", "list").count("\n"))
 
+    def _graded(self, directory: str, test: str, listed: dict, **options) -> dict:
+        """Grade a one-commit project whose case adds ``test`` as ``test_calc.py``."""
+        project = Path(directory) / "project"
+        project.mkdir()
+        git(project, "init", "-q", "-b", "main")
+        (project / "calc.py").write_text("def add(a, b):\n    return a + b\n")
+        git(project, "add", "-A")
+        git(project, "commit", "-q", "-m", "base")
+        lines = test.splitlines()
+        patch = (
+            "diff --git a/test_calc.py b/test_calc.py\nnew file mode 100644\n"
+            "--- /dev/null\n+++ b/test_calc.py\n"
+            f"@@ -0,0 +1,{len(lines)} @@\n" + "".join(f"+{line}\n" for line in lines)
+        )
+        case = {
+            "instance_id": "toy__calc-3",
+            "base_commit": git(project, "rev-parse", "HEAD").strip(),
+            "test_patch": patch,
+            "FAIL_TO_PASS": json.dumps(listed["FAIL_TO_PASS"]),
+            "PASS_TO_PASS": json.dumps(listed.get("PASS_TO_PASS", [])),
+        }
+        return cases.grade(project, case, Path(sys.executable), **options)
+
+    @verifies("scenario.swe-bench-cases.grade-statuses")
+    def test_statuses_are_read_under_complete_test_identities(self):
+        test = (
+            "import pytest\n"
+            "from calc import add\n\n\n"
+            '@pytest.mark.parametrize("a", ["a b", "c d"])\n'
+            "def test_add(a):\n    assert add(1, 1) == 2\n\n\n"
+            '@pytest.mark.skip(reason="not here")\n'
+            "def test_skipped():\n    pass\n\n\n"
+            "@pytest.mark.xfail\n"
+            "def test_expected():\n    assert False\n\n\n"
+            "def test_broken():\n    assert False\n"
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            graded = self._graded(
+                directory,
+                test,
+                {
+                    "FAIL_TO_PASS": [
+                        "test_calc.py::test_add[a b]",
+                        # SWE-bench's datasets cut an identity at its first space.
+                        "test_calc.py::test_add[c",
+                        "test_calc.py::test_expected",
+                    ],
+                    "PASS_TO_PASS": ["test_calc.py::test_skipped"],
+                },
+            )
+            self.assertTrue(graded["resolved"], graded)
+            self.assertEqual(3, graded["fail_to_pass"]["passed"])
+            self.assertEqual(1, graded["pass_to_pass"]["passed"])
+        with tempfile.TemporaryDirectory() as directory:
+            graded = self._graded(
+                directory,
+                test,
+                {
+                    "FAIL_TO_PASS": [
+                        "test_calc.py::test_skipped",
+                        "test_calc.py::test_broken",
+                        "test_calc.py::test_missing",
+                    ]
+                },
+            )
+            self.assertFalse(graded["resolved"])
+            # A skipped FAIL_TO_PASS test is no resolution, and is named as skipped.
+            self.assertEqual(
+                {
+                    "test_calc.py::test_skipped": "SKIPPED",
+                    "test_calc.py::test_broken": "FAILED",
+                    "test_calc.py::test_missing": "not run",
+                },
+                graded["fail_to_pass"]["not_passed"],
+            )
+
+    @verifies("scenario.swe-bench-cases.grade")
+    def test_pythonpath_directories_come_before_the_callers_own(self):
+        from unittest.mock import patch
+
+        test = (
+            "import helper\nfrom calc import add\n\n\n"
+            "def test_add():\n    assert add(1, 1) == helper.TWO\n"
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            auxiliary = Path(directory) / "auxiliary"
+            auxiliary.mkdir()
+            (auxiliary / "helper.py").write_text("TWO = 2\n")
+            # The project's own calc.py must win over one the caller's path also holds.
+            (auxiliary / "calc.py").write_text("def add(a, b):\n    return 0\n")
+            with patch.dict(cases.os.environ, {"PYTHONPATH": str(auxiliary)}):
+                graded = self._graded(
+                    directory,
+                    test,
+                    {"FAIL_TO_PASS": ["test_calc.py::test_add"]},
+                    pythonpath=(".",),
+                )
+            self.assertTrue(graded["resolved"], graded)
+
     def test_a_test_run_over_the_grading_limit_is_a_detailed_error(self):
         from unittest.mock import patch
 
@@ -130,19 +229,33 @@ class CaseTests(unittest.TestCase):
             def slow_pytest(command, *arguments, **options):
                 if "pytest" in command:
                     raise subprocess.TimeoutExpired(
-                        command, options["timeout"], output=b"collected 1 item"
+                        command,
+                        options["timeout"],
+                        output=b"collected 1 item" + b"." * 5000,
+                        stderr=b"warning",
                     )
                 return real_run(command, *arguments, **options)
 
-            with patch.object(cases.subprocess, "run", slow_pytest):
-                with self.assertRaises(cases.E2EError) as raised:
-                    cases.grade(project, case, Path(sys.executable))
+            log = Path(directory) / "runs/grade.log"
+            log.parent.mkdir()
+            log.write_text("an earlier run's output")
+            with (
+                patch.object(cases.subprocess, "run", slow_pytest),
+                self.assertRaises(cases.E2EError) as raised,
+            ):
+                cases.grade(project, case, Path(sys.executable), log=log)
             error = raised.exception
             self.assertEqual("grade_timeout", error.code)
             self.assertIn("toy__calc-2", error.detail)
             self.assertIn(f"{cases.GRADE_TIMEOUT} seconds", error.detail)
             self.assertIn("pytest", error.detail)
-            self.assertEqual("collected 1 item", error.evidence["stdout"])
+            self.assertEqual("." * 3000, error.evidence["stdout"])
+            # The whole output is kept in the log, which replaces an earlier run's.
+            self.assertEqual(
+                "collected 1 item" + "." * 5000 + "\nwarning", log.read_text()
+            )
+            self.assertEqual(str(log), error.evidence["log"])
+            self.assertIn(str(log), error.detail)
             # The grading worktree is removed even so.
             self.assertEqual(1, git(project, "worktree", "list").count("\n"))
 
