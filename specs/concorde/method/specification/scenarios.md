@@ -63,6 +63,29 @@ Concrete situations that show the [requirements](requirements.md) at work. The
 - THEN it creates no document and launches no second worker
 - AND the result has status `blocked` with `document-refused` evidence naming the reason
 
+### scenario.specification.document-symlink — A proposal through a symbolic link creates nothing
+
+- GIVEN a bound Module whose entry is `specs/a/module.md`, and a symbolic link `specs/a/details` to a directory outside the Module, or a dangling symbolic link at `specs/a/dangling.md`
+- WHEN the worker ends `blocked` proposing `specs/a/rules.md` together with `specs/a/details/rules.md` or `specs/a/dangling.md`
+- THEN the Operation creates no document, writes nothing through the link and launches no second worker
+- AND the result has status `blocked` with `document-refused` evidence naming the proposal through the link
+
+### scenario.specification.unreadable-entry — A malformed entry refuses creation and the change is still observed
+
+- GIVEN a worker that leaves the metadata of its Module's entry `specs/a/module.md.json` unreadable as JSON
+- WHEN it ends `blocked` proposing `specs/a/rules.md`
+- THEN the Operation creates no file and launches no second worker, with `document-refused` evidence saying the entry metadata cannot register the document
+- AND the `registry` evidence holds the registry command's refusal naming the entry metadata
+- AND validation still runs, and `spec-context` evidence names every Module whose context after the change could not be computed
+- AND the result has status `blocked` with the worker's own link and the entry metadata among the changed documents
+
+### scenario.specification.document-identities — Documents of the same name get distinct identities
+
+- GIVEN a bound Module whose entry is `specs/a/module.md`
+- WHEN the worker ends `blocked` proposing both `specs/a/rules.md` and `specs/a/details/rules.md`
+- THEN the Operation creates both, with the document identities `document.a.rules` and `document.a.details-rules`
+- AND the second worker runs and the result has no new structural error
+
 ### scenario.specification.code-write — A write to code fails the run
 
 - GIVEN a specify run whose [write audit](../../glossary.json#concept.write-audit) finds a changed implementation file

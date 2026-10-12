@@ -204,6 +204,16 @@ class PiRunTests(unittest.TestCase):
         self.assertEqual([], record["rounds"])
         self.assertTrue((Path(record["run_directory"]) / "trace.json").is_file())
 
+    @verifies("scenario.workers.cleanup-failed")
+    def test_a_pi_session_without_its_session_file_fails_the_run(self):
+        record = self.project.run([{"no_transcript": True}])
+        self.assertEqual("cleanup_failed", record["error"]["code"])
+        self.assertIn(
+            f"session {record['run_id']} could not be kept", record["error"]["detail"]
+        )
+        self.assertIsNone(record["transcript"])
+        self.assertFalse(Path(record["runtime_directory"]).exists())
+
     @verifies("scenario.workers.pi-settings-independent")
     def test_a_pi_worker_reads_nothing_of_the_users_pi_settings(self):
         settings = self.project.pi_config / "settings.json"

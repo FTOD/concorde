@@ -15,6 +15,7 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
+import re
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 
@@ -464,12 +465,72 @@ def check_build(project_root: str | Path) -> tuple[bool, tuple[str, ...]]:
     return (not diffs, tuple(sorted(diffs)))
 
 
+# The fields of the tracked Protocol manifest, Spec core's "Protocol manifest and binding".
+_PROTOCOL_MANIFEST_FIELDS = (
+    "schema_version",
+    "version",
+    "source_profile",
+    "workspace_protocol",
+    "assets",
+)
+_DIGEST = re.compile(r"^sha256:[0-9a-f]{64}$")
+
+
+def _protocol_manifest_problem(manifest: object) -> str | None:
+    """What makes ``manifest`` not of the Protocol manifest's shape, or None when it is."""
+    if not isinstance(manifest, dict):
+        return "it is not a JSON object"
+    fields = set(manifest)
+    if fields != set(_PROTOCOL_MANIFEST_FIELDS):
+        missing = sorted(set(_PROTOCOL_MANIFEST_FIELDS) - fields)
+        unknown = sorted(fields - set(_PROTOCOL_MANIFEST_FIELDS))
+        return (
+            "its fields are not "
+            + ", ".join(_PROTOCOL_MANIFEST_FIELDS)
+            + (f" (missing {', '.join(missing)})" if missing else "")
+            + (f" (unknown {', '.join(unknown)})" if unknown else "")
+        )
+    if manifest["schema_version"] != 1 or isinstance(manifest["schema_version"], bool):
+        return "its schema_version is not 1"
+    if not isinstance(manifest["version"], str) or not manifest["version"]:
+        return "its version is not a non-empty string"
+    for field in ("source_profile", "workspace_protocol"):
+        if not isinstance(manifest[field], int) or isinstance(manifest[field], bool):
+            return f"its {field} is not an integer"
+    assets = manifest["assets"]
+    if not isinstance(assets, list) or not assets:
+        return "its assets is not a non-empty list"
+    seen = set()
+    for item in assets:
+        if (
+            not isinstance(item, dict)
+            or set(item) != {"path", "digest"}
+            or not isinstance(item["path"], str)
+            or not isinstance(item["digest"], str)
+        ):
+            return "an asset is not an object of exactly a string path and digest"
+        parts = PurePosixPath(item["path"]).parts
+        if (
+            not item["path"].startswith("generated/protocol/")
+            or item["path"].startswith("/")
+            or any(part in ("", ".", "..") for part in parts)
+        ):
+            return f"the asset path {item['path']!r} is not a safe path under generated/protocol/"
+        if not _DIGEST.match(item["digest"]):
+            return f"the asset {item['path']} has a digest that is not sha256:<64 hex digits>"
+        if item["path"] in seen:
+            return f"the asset {item['path']} is listed twice"
+        seen.add(item["path"])
+    return None
+
+
 def recompute_protocol_manifest(project_root: str | Path) -> dict:
     """Recompute {path: sha256} for every tracked Protocol asset from the current build.
 
     Reads the already-rendered ``generated/protocol/...`` files on disk (call ``verify_fresh``
     first) and the tracked ``protocol/manifest.json``, returning an updated copy with fresh
-    digests. Does not write anything.
+    digests. It refuses a manifest that is not of the Protocol manifest's shape and an asset that
+    is not a recorded output of the build. Does not write anything.
     """
 
     root = Path(project_root)
@@ -480,21 +541,17 @@ def recompute_protocol_manifest(project_root: str | Path) -> dict:
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     except (OSError, UnicodeError, json.JSONDecodeError) as error:
         raise BuildError(f"cannot read {manifest_path}: {error}") from error
-    assets = manifest.get("assets") if isinstance(manifest, dict) else None
-    if not isinstance(assets, list) or not all(
-        isinstance(item, dict)
-        and isinstance(item.get("path"), str)
-        and isinstance(item.get("digest"), str)
-        for item in assets
-    ):
+    problem = _protocol_manifest_problem(manifest)
+    if problem is not None:
         raise BuildError(
-            f"{manifest_path} is not a Protocol manifest: it must be an object whose assets is a "
-            "list of objects, each with a string path and digest"
+            f"{manifest_path} is not a Protocol manifest: {problem}; Spec core's contract "
+            "'Protocol manifest and binding' gives its shape"
         )
+    outputs = _recorded_outputs(root)
     updated = copy.deepcopy(manifest)
     for item in updated["assets"]:
         path = root / item["path"]
-        if path.is_symlink() or not path.is_file():
+        if item["path"] not in outputs or path.is_symlink() or not path.is_file():
             raise BuildError(
                 f"Protocol asset is missing from the current build: {item['path']}"
             )
@@ -503,11 +560,12 @@ def recompute_protocol_manifest(project_root: str | Path) -> dict:
 
 
 def verify_fresh(project_root: str | Path) -> None:
-    """Fail closed with BuildError(code=stale_build) when sources drifted since the last build.
+    """Fail closed with BuildError(code=stale_build) when a recorded source or output is missing
+    or changed since the last build.
 
     This is a cheap freshness check: it reads ``generated/build-manifest.json`` and recomputes the
-    sha256 of every recorded source. It never rebuilds or writes anything, and it never compares
-    rendered output bytes (``check_build`` does that, more expensively, for CI).
+    sha256 of every recorded source and every recorded output. It never rebuilds or writes
+    anything; ``check_build`` renders afresh, more expensively, for CI.
     """
 
     root = Path(project_root)
@@ -538,4 +596,23 @@ def verify_fresh(project_root: str | Path) -> None:
         if _sha256_file(root, relative) != expected:
             raise BuildError(
                 f"build source changed since the last build: {relative}", "stale_build"
+            )
+    outputs = manifest.get("outputs")
+    if not isinstance(outputs, dict) or not all(
+        isinstance(entry, dict) and isinstance(entry.get("sha256"), str)
+        for entry in outputs.values()
+    ):
+        raise BuildError(
+            f"build manifest has no recorded outputs: {manifest_path}", "stale_build"
+        )
+    for relative, entry in outputs.items():
+        path = root / relative
+        if path.is_symlink() or not path.is_file():
+            raise BuildError(
+                f"build output is missing since the last build: {relative}",
+                "stale_build",
+            )
+        if _sha256_file(root, relative) != entry["sha256"]:
+            raise BuildError(
+                f"build output changed since the last build: {relative}", "stale_build"
             )

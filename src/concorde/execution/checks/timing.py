@@ -202,9 +202,11 @@ def diagnostic_sink(directory):
         raise ValueError(
             "diagnostic directory must be existing, canonical and absolute"
         )
-    lifecycle = ".concorde" in root.parts and any(
-        part in {"tasks", "history", "unbound", "locks"}
-        for part in root.parts[root.parts.index(".concorde") + 1 :]
+    # Lifecycle storage is a directory named so directly below a .concorde directory, wherever
+    # such a pair occurs in the path.
+    lifecycle = any(
+        parent == ".concorde" and part in {"tasks", "history", "unbound", "locks"}
+        for parent, part in zip(root.parts, root.parts[1:])
     )
     if root.is_relative_to(Path.cwd().resolve()) or lifecycle:
         raise ValueError("diagnostic scratch cannot be project or lifecycle storage")
@@ -276,8 +278,11 @@ def interval_record(
 
 def summarize(spans):
     """Union intervals per process; summed span time is explicitly not elapsed wall time."""
+    spans = list(spans)
     groups = {}
     summed = 0
+    # Unknown, never zero, when spans were given but none reported a duration.
+    known = not spans
     complete = True
     for s in spans:
         duration = s.get("duration_ns")
@@ -285,6 +290,7 @@ def summarize(spans):
             complete = False
             continue
         summed += duration
+        known = True
         complete &= s.get("status") != "incomplete"
         groups.setdefault(s.get("process_id"), []).append(
             (s["start_ns"], s["start_ns"] + duration)
@@ -299,6 +305,6 @@ def summarize(spans):
         unions[str(process)] = total / 1e9
     return {
         "complete": complete,
-        "summed_span_seconds": summed / 1e9,
+        "summed_span_seconds": summed / 1e9 if known else None,
         "covered_seconds_by_process": unions,
     }

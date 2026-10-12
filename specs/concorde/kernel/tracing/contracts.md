@@ -486,7 +486,8 @@ A node lists in `metadata` only the dimensions its row names. A producer's own
   The producer may rewrite `trace.json` in between, such as a worker run after each round. Every
   write replaces the file atomically. Because of this atomic replacement, a reader never finds half
   a record. When the operating system
-  refuses a write, that refusal never changes the work the node records. The library keeps an
+  refuses a write, that refusal never changes the work the node records. A refusal while the
+  library inspects the node's artifacts for that write is such a refusal too. The library keeps an
   account of each such failure. Each account names the following:
   - The file.
   - The moment: start, update or end.
@@ -852,8 +853,95 @@ concorde trace prune [--dry-run]
   each path the operating system did not let it remove wholly, with the error. The next prune
   tries each such path again. With `--dry-run`, `prune` prints what it would remove without
   removing anything.
-- Output is one JSON value as the view contract defines. With `--format tree`, output is instead
-  a summary of that value as an indented text tree. Each node occupies one line with:
+- Output is one JSON value:
+  - `show` prints one view object of the [view contract](#contract.tracing.view): the node with
+    its children.
+  - `list` prints one JSON array. It holds one view object per top node it lists, in the order
+    above, each with `children` empty. When it lists nothing, the array is empty: `[]`.
+  - `prune` prints the object given above.
+
+  For example, `concorde trace list --unbound` in a project with one current task and one unbound
+  run prints:
+
+  ```json
+  [
+    {
+      "id": "retry",
+      "kind": "task",
+      "path": "/home/dev/shop/.concorde/tasks/retry",
+      "status": "running",
+      "outcome": null,
+      "started_at": "2026-09-27T10:00:00Z",
+      "ended_at": null,
+      "duration_seconds": 1830.5,
+      "usage": {
+        "tokens_in": null,
+        "tokens_out": null,
+        "tokens_cache_read": null,
+        "tokens_cache_write": null,
+        "cost_usd": null,
+        "turns": null,
+        "duration_seconds": null
+      },
+      "rolled_up": {
+        "tokens_in": 182000,
+        "tokens_out": 21400,
+        "tokens_cache_read": 1400000,
+        "tokens_cache_write": 96000,
+        "cost_usd": 3.42,
+        "turns": 61
+      },
+      "metadata": {
+        "task": "retry",
+        "modules": [
+          "module.http"
+        ]
+      },
+      "references": [],
+      "error": null,
+      "children": []
+    },
+    {
+      "id": "r-20260927T090000-understand-00000001",
+      "kind": "run",
+      "path": "/home/dev/shop/.concorde/unbound/r-20260927T090000-understand-00000001",
+      "status": "ok",
+      "outcome": "ok",
+      "started_at": "2026-09-27T09:00:00Z",
+      "ended_at": "2026-09-27T09:04:10Z",
+      "duration_seconds": 250.0,
+      "usage": {
+        "tokens_in": null,
+        "tokens_out": null,
+        "tokens_cache_read": null,
+        "tokens_cache_write": null,
+        "cost_usd": null,
+        "turns": null,
+        "duration_seconds": 250.0
+      },
+      "rolled_up": {
+        "tokens_in": 41000,
+        "tokens_out": 3900,
+        "tokens_cache_read": 210000,
+        "tokens_cache_write": 18000,
+        "cost_usd": 0.61,
+        "turns": 12
+      },
+      "metadata": {
+        "operation": "understand",
+        "modules": [
+          "module.http"
+        ]
+      },
+      "references": [],
+      "error": null,
+      "children": []
+    }
+  ]
+  ```
+
+  With `--format tree`, output is instead a summary of that value as an indented text tree. For
+  `list`, the tree holds one top line per listed node, or `(no traces)` when it lists none. Each node occupies one line with:
   - Its kind.
   - Its identity.
   - Its status.
@@ -1341,3 +1429,58 @@ error's causes as nested links.
 | `exhausted` | it used up its allowed rounds, turns, time or budget |
 | `environment` | the environment failed and it cannot change it |
 | `input` | the input it received is invalid and only its sender can correct it |
+
+## Library
+
+The [tracing library](module.md#realization.tracing.library) gives every producer the same
+operations on these contracts. It is the Python package `concorde.kernel.tracing`. The error chain
+code is the module `concorde.kernel.errors`. Their callables are those of the installed Concorde,
+which installs every part from one checkout. They promise no compatibility with another version.
+A name that starts with `_` belongs to no promise.
+
+Each operation is one callable of a module of that package, named in the table as
+`<module>.<callable>` with its arguments. Arguments after `*` are passed by name. These
+conventions hold for every operation:
+
+- A path argument is a `pathlib.Path`. `concorde` is a `.concorde` directory. A record is a
+  `dict` holding JSON values.
+- Each module refuses with its own exception. The exception carries a stable `code`, except
+  `LockBusy` and `LockGone`, and `str()` of it is the whole message. The table names each.
+- A lock is held by a context manager. The `with` block holds it. The lock is released when the
+  block ends, however it ends. The block receives the seconds spent waiting. A `wait` of `None`
+  waits as long as the lock is held. An operating-system error of the lock file passes as
+  `OSError`.
+- A failed write of a node's `trace.json` is no refusal. `Node` keeps its account in the list
+  `failures`, as [Writing a node](#writing-a-node) says.
+
+| Operation | Call | Takes | Returns | Refuses with |
+| --- | --- | --- | --- | --- |
+| Register node kinds | `kinds.register(*kinds)`, each a `kinds.NodeKind(kind, content_type, metadata)` | each kind's name, its content type and the tuple of its metadata dimensions | nothing; an equal kind registered again changes nothing | `kinds.KindError`: `invalid_kind`, `duplicate_kind` (the first registration stays) |
+| Look a kind up | `kinds.lookup(kind)`, `kinds.registered()` | a kind's name, or nothing | its registration or `None`; every registered kind | nothing |
+| Register a trace root | `roots.register(root)`, with `roots.TraceRoot(name, folder, place, kind, state, listed, ...)` | the fields of [Trace roots](#trace-roots) | nothing; an equal root registered again changes nothing | `roots.RootError`: `invalid_root`, `duplicate_root` |
+| Find a folder or a lock file | `layout.run_folder(workspace, run_id)`, `layout.worker_folder(run, worker_run)`, `layout.round_folder(parent, number)`, `layout.checks_folder(parent)`, `layout.check_folder(checks, check_id)`, `layout.step_folder(workflow, number, key)`, `layout.lock_file(concorde, kind, name=None)` | the parent's folder or the `.concorde` and the names of [Layout](#layout) | the path, never created | `ValueError` for a lock that needs a name and has none or an unsafe one |
+| Make a node | `node.Node(folder, identity, kind, *, metadata=None, references=None, content_type=None, content=None, started_at=None)` | the folder its parent chose, its identity, its kind, and its content type when it records content | the node, not written yet, `running`, started now unless `started_at` says otherwise | `node.TraceError`: `node_invalid` (a metadata dimension that does not exist), `content_invalid` |
+| Name an artifact or a reference | `Node.keep(identity, relative, *, measured=True)`, `Node.refer(relation, target)` | a file of the folder, or a relation and its target | nothing; a repeated identity or reference is kept once | nothing; the next write refuses what breaks the node contract |
+| Write the node's start | `Node.start()` | nothing | the node | `TraceError`: `node_invalid`, `content_invalid` |
+| Write the node again while it runs | `Node.update(*, content=None, **metadata)` | new content or metadata | nothing | `TraceError`: `node_invalid`, `content_invalid` |
+| Write the node's end | `Node.finish(status, *, outcome=None, error=None, used=None, content=None, ended_at=None, **metadata)` | the status, the finer outcome, the error link, the node's own usage fields | the record as written | `TraceError`: `node_invalid`, `content_invalid` |
+| Check, write or read a record | `node.check(record)`, `node.write(folder, record)`, `node.read(folder)` | a whole record, or a folder | the record; the path of the `trace.json` written; the record or `None` when none can be read | `TraceError`; `write` passes an operating-system error as `OSError` |
+| Take a lock | `with locks.hold(path, holder, *, wait=0, waiting=None, task=None, retake=True) as waited:` | the lock file, the holder's name, how long to wait, a callable told the holder once when the wait begins, the task, and whether to take a file its holder replaced meanwhile | holds it for the block | `locks.LockBusy` (`holder`, `entry`, `waited`), `locks.LockGone` (with `retake` false) |
+| Hand held locks on | `with locks.handed_on(*paths) as (environment, descriptors):` | lock files this process holds through `hold` | the variables to add to the started process's environment and the descriptors it must inherit, as [Handing a lock on](#handing-a-lock-on) says | `ValueError` for a lock this process does not hold |
+| Read a lock's holder | `locks.holder(path)`, `locks.entry(path)` | a lock file | its holder line as text, or as an object; `None` when nobody holds it | nothing |
+| Wait for a lock's release | `locks.wait_released(path, timeout=None)` | a lock file and the longest wait in seconds | `True` once nobody holds it, `False` when the timeout passed first | nothing |
+| Wait for files to change | `watch.Changes(directory, names=None)`, then `.wait(timeout=None)` and `.close()` | a directory and the file names to watch | `True` once one changed since the last call, `False` when the timeout passed first | `watch.WatchError` |
+| Tell a run lost | `reader.run_alive(concorde, run_id)` | the `.concorde` whose `locks/` holds the run lock, and the run's identity | whether its runner still runs | nothing |
+| Find, show or list nodes | `reader.concorde_directories(here)`, `reader.locate(address, searched, extra=None)`, `reader.view(folder, concorde, *, depth=None)`, `reader.listing(concorde, *, history=False, unbound=False)` | as [Reading traces](#reading-traces) says | the directories searched; the node's folder and its `.concorde`; one view; the list of views | `reader.ReadError`: `unknown_node`, `node_unreadable` |
+| Prune | `retention.prune(concorde, *, dry_run=False)` | a `.concorde` | `{"removed": [...], "failed": [...]}` | `retention.ConfigError`: `config_invalid` |
+| Build an error link | `errors.link(level, actor, code, detail, *, reason, explanation, evidence=(), attempts=(), options=(), recommendation="", causes=())`, `errors.from_exception(actor, error, *, code="unexpected_error", reason="capability", explanation="", trace=None)` | the fields of the [error contract](#contract.tracing.error) | the link | `ValueError` for a level or reason the contract does not name |
+| Check or render a chain | `concorde.kernel.schema.validate(link, errors.ERROR_SCHEMA)`, `errors.render(link)` | a link | nothing; the chain as indented text | `KernelError` `invalid_field` |
+
+For example, the check service registers its node kind `check` when its code loads. The kind's
+content type is the check's own typed value, and its metadata dimensions are `check` and
+`module`. Registering it again changes nothing. For one check of a run, the service asks
+`layout.checks_folder` and `layout.check_folder` for the folder below the run's node. It makes a
+`Node` of kind `check` there. It names its log with `keep` and writes the start with `start`.
+When the check ends, it writes the end with `finish("ok", outcome="passed", used=...)`. When
+the operating system refused a write, the work goes on. The service then reads the node's
+`failures` and reports each in its own result.

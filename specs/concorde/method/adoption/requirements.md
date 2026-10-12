@@ -64,6 +64,10 @@ conditions and exceptions:
     - An import of Concorde's `verifies` decorator from `concorde.spec.verification`.
   - While the file binds the name, no such helper or import stands at the file's top level before
     the test.
+  - At module level, the file deletes the name `verifies` with `del`, or anywhere it declares the
+    name `global`.
+  - For a test defined in a class body, that class body binds the name `verifies`. Only the links
+    to that class's tests are left undone then.
 
 As the coverage check finds it, a test is found in the module or a class body, but never inside a
 function. This includes tests under a control-flow statement such as a top-level `if` or `try`.
@@ -79,8 +83,9 @@ A module-level binding is any of these that binds the name outside a function or
 - An assignment expression.
 - A match pattern.
 
-A test that already declares the scenario gets no second decorator. A link named more than once
-gets one.
+A decorator of a method is evaluated in its class body, which a binding there shadows. A test that
+already declares the scenario gets no second decorator, once its name is found exactly once. A
+link named more than once gets one.
 
 ### req.adoption.test-edits-limited — Test files get decorators and one helper only
 
@@ -293,6 +298,8 @@ a file or launching a worker when either condition holds:
 
 - The run's answers file is unreadable.
 - The run's answers file breaks its contract.
+- An answer names a decision or open question that no admitted earlier survey or code_to_spec run
+  lists, as when no run that asked is admitted with `--input`.
 
 ### req.adoption.own-errors-count — Errors in the described documents always count
 

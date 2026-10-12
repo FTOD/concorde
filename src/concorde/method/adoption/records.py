@@ -331,6 +331,45 @@ def load_answers(path: str | None) -> list[dict]:
     return value["answers"]
 
 
+# The Operations whose outputs ask the decisions and open questions that answers settle.
+ASKING_OPERATIONS = ("survey", "code_to_spec")
+
+
+def check_provenance(
+    answers: list[dict], inputs: dict[str, dict], path: str | None
+) -> None:
+    """``AnswersError`` unless every answer names a decision or open question of an admitted
+    earlier survey or code_to_spec run, so that no answer from an unrelated run or an invented
+    identity is taken as settled intent."""
+    if not answers:
+        return
+    asked = {
+        item.get("id")
+        for value in inputs.values()
+        if value.get("name") in ASKING_OPERATIONS
+        for field in ("decisions", "open_questions")
+        for item in (value.get("output") or {}).get(field) or []
+        if isinstance(item, dict)
+    }
+    unknown = [item["id"] for item in answers if item["id"] not in asked]
+    if unknown:
+        runs = sorted(
+            identity
+            for identity, value in inputs.items()
+            if value.get("name") in ASKING_OPERATIONS
+        )
+        raise AnswersError(
+            path or "--answers",
+            f"answers {', '.join(unknown)}, which no admitted earlier survey or code_to_spec "
+            "run asked"
+            + (
+                f" (admitted: {', '.join(runs)})"
+                if runs
+                else "; admit the run that asked with --input"
+            ),
+        )
+
+
 def resolved_decisions(
     claimed: list[dict], answers: list[dict]
 ) -> tuple[list[dict], list[str]]:
@@ -744,7 +783,6 @@ __all__ = [
     "MODULE_ID",
     "SPEC_DESCRIPTION_SCHEMA",
     "SURVEY_WORKER_SCHEMA",
-    "workflow_object",
     "WORKER_DECISION",
     "AnswersError",
     "S",
@@ -757,5 +795,6 @@ __all__ = [
     "obj",
     "proposal_problems",
     "resolved_decisions",
+    "workflow_object",
     "worktree_relative",
 ]

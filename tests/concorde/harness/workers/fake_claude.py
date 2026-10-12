@@ -7,7 +7,8 @@ merged over a valid ``ok`` result), and optional ``early_session`` (name the ses
 transcript first, as Claude Code does, before any ``sleep``), ``sleep``, ``linger`` (seconds to
 sleep after printing the envelope), ``spawn`` (start a detached sleeper that records its PID),
 ``raw`` (print this instead of an envelope), ``envelope`` (fields merged over the result envelope,
-such as an error subtype), ``no_structured`` (omit the structured output) or ``actions``
+such as an error subtype), ``no_structured`` (omit the structured output), ``no_transcript``
+(write no transcript) or ``actions``
 (``[tool, input]`` pairs printed first as ``stream-json`` assistant tool uses). Like Claude Code it
 writes the session's transcript below ``CLAUDE_CONFIG_DIR/projects/``.
 The plan may instead be ``{"first": [...], "relaunch": [...]}``, whose relaunch rounds serve a
@@ -69,7 +70,7 @@ def main() -> int:
     step = state["plan"][min(number, len(state["plan"])) - 1]
     session = (step.get("envelope") or {}).get("session_id", f"fake-session-{number}")
     if step.get("early_session"):
-        transcribe(session, number)
+        transcribe(session, number, step)
         print(
             json.dumps({"type": "system", "subtype": "init", "session_id": session}),
             flush=True,
@@ -116,7 +117,7 @@ def main() -> int:
     }
     envelope.update(step.get("envelope", {}))
     if envelope.get("session_id"):
-        transcribe(envelope["session_id"], number)
+        transcribe(envelope["session_id"], number, step)
     if not step.get("no_structured"):
         result = {**BASE, **step.get("result", {})}
         if result["status"] in ("blocked", "failed") and "error" not in step.get(
@@ -130,10 +131,10 @@ def main() -> int:
     return 0
 
 
-def transcribe(session: str, number: int) -> None:
+def transcribe(session: str, number: int, step: dict) -> None:
     """Write the session's transcript where Claude Code keeps it."""
     config = os.environ.get("CLAUDE_CONFIG_DIR")
-    if config and session:
+    if config and session and not step.get("no_transcript"):
         transcript = Path(config) / "projects/fake" / f"{session}.jsonl"
         transcript.parent.mkdir(parents=True, exist_ok=True)
         transcript.write_text(json.dumps({"type": "user", "round": number}) + "\n")

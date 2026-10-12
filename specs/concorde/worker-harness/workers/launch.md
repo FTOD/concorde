@@ -45,7 +45,7 @@ A run is requested with:
 | parent | The [trace node](../../glossary.json#concept.trace-node) folder the caller gives, in Concorde the node of the run that asks for the worker, below which the worker run's node is created |
 | [task type](../../glossary.json#concept.task-type) | One of the eight Protocol task types; it selects the tool set, the read-only one for a task type that writes nothing, such as `review-architecture` |
 | grant | The frozen grant as data, in the worker harness's [grant input](contracts.md#grant-input): every path with its level `rw`, `ro` or `names`, relative to the worktree, and its [context identity](../../glossary.json#concept.context-identity); a grant with no `rw` path makes a worker that changes nothing, which is how a caller runs a reading worker |
-| instructions | The caller's task-specific part of the brief: in Concorde, an [Operation](../../glossary.json#concept.operation)'s prompt with the definitions of the glossary terms its grant carries and the rules for a [Spec gap](../../glossary.json#concept.spec-gap), which Method composes |
+| instructions | The caller's task-specific part of the brief: in Concorde, an [Operation](../../glossary.json#concept.operation)'s prompt with the definitions of the glossary terms the bound Modules link, which Method keeps apart from the grant, and the rules for a [Spec gap](../../glossary.json#concept.spec-gap), which Method composes |
 | round validation | Optionally the caller's callback, called after every round whose worker ended `ok` with a clean audit ([Round validation](#round-validation)) |
 | runtime paths | Extra absolute paths, outside the grant, that every tool of the worker may read and none may write, exactly as the caller lists them: the worker configuration's runtime paths that exist, such as `.venv` or `node_modules`, the directories the project interpreter needs, and the host material the caller admits for this run alone, such as the folder of the check logs its own run recorded ([Reading beside the grant](#reading-beside-the-grant)) |
 | project interpreter | Optionally the absolute path of the project's own Python interpreter, which the caller resolved from the project's configuration as its checks run it; its directory comes first on the worker's `PATH` and the brief names it |
@@ -54,6 +54,66 @@ A run is requested with:
 | local model, model map | The model's local id on the backend, which the [model map](../../glossary.json#concept.model-map) gives it and which is passed with `--model`, and the path of that map, recorded only |
 | operation, worker, modules | The Operation and the [worker id](../../glossary.json#concept.worker-id) the model was chosen for and the [Modules](../../glossary.json#concept.module) the job is about, labels the caller gives, recorded only |
 | reasoning | Optionally the reasoning level from the same configuration, passed with `--effort` on the Claude Code backend and `--thinking` on the pi backend |
+
+## Calling Workers
+
+A caller reaches Workers through two Python modules of the package `concorde.worker_harness`. The
+configuration reader is `models`. The runtime is `workers`. A caller uses these entry points:
+
+| Entry point | What it does |
+| --- | --- |
+| `models.load(worktree, declared)` | Reads and checks the worktree's [worker configuration](contracts.md#contract.workers.worker-configuration). `declared` maps each Operation the caller may launch workers for to its [worker ids](../../glossary.json#concept.worker-id) |
+| `models.check_mapped(config, declared, operation=name)` | Checks every worker of one Operation against the model map at once ([req.workers.model-map-whole-operation](#req.workers.model-map-whole-operation)) |
+| `models.worker_choice(config, declared, operation, worker)` | Resolves one worker's `backend`, `model`, `reasoning`, `local_model` and `model_map`, each with where it came from |
+| `models.limits(config)`, `models.runtime(config)` | Give the configured limits and runtime paths |
+| `workers.WorkerRequest` | Carries the inputs above, one field each |
+| `workers.run_worker(request)` | Runs the worker to its end and returns the [returned run record](contracts.md#contract.workers.worker-run-record) |
+
+`models.load`, `models.check_mapped` and `models.worker_choice` refuse with
+`models.ModelConfigError`, whose code is one of [Refusals before a run](#refusals-before-a-run). Three fields of the request carry what the caller
+contributes beyond plain data:
+
+- `output_schema` is the caller's schema for the result's `output`. The host embeds it in the
+  [worker result](contracts.md#contract.workers.worker-result) schema. `workers.result_schema`
+  composes that schema.
+- `started` is a callback. The host calls it with the run identity as soon as the run's node exists,
+  before the first round.
+- `round_validation` is the callback of [Round validation](#round-validation).
+
+A representative call, as a step of Method makes it:
+
+```python
+from concorde.worker_harness import models
+from concorde.worker_harness.workers import WorkerRequest, run_worker
+
+declared = {"implement": ["worker"]}
+config = models.load(worktree, declared)
+models.check_mapped(config, declared, operation="implement")
+model = models.worker_choice(config, declared, "implement", "worker")
+bounds = models.limits(config)
+record = run_worker(
+    WorkerRequest(
+        worktree=worktree,
+        trace_parent=run_node,
+        task_type="implement",
+        grant=grant,  # the grant input
+        instructions=instructions,
+        runtime=runtime_paths,
+        output_schema=output_schema,
+        backend=model["backend"],
+        model=model["model"],
+        local_model=model["local_model"],
+        model_map=model["model_map"],
+        reasoning=model["reasoning"],
+        rounds=bounds["rounds"],
+        timeout=float(bounds["timeout_seconds"]),
+        operation="implement",
+        worker="worker",
+        round_validation=validate_round,
+        started=remember_run,
+    )
+)
+```
 
 ## Placement
 
@@ -85,12 +145,30 @@ whole, except for the following:
 
 ## Reading beside the grant
 
-The grant is the whole of what a worker may read of the project. The runtime paths are the only
-other material it may read. Its caller alone decides the runtime paths. Workers hands them to the
-Harness exactly as given, adding none and widening none. On both backends, the Harness makes each
-readable, and none writable, to every tool ([Claude Code
-mechanics](../harness/claude-code.md#deny-rules), [pi mechanics](../harness/pi.md#read-table)). The
-runtime paths change neither the grant nor its context identity. They reach the generated worker
+The grant is the whole of what a worker may read of the project. Of the protected material, the
+runtime paths are the only other material it may read. The protected material is these paths:
+
+- the task worktree
+- the primary worktree
+- the user's home
+- every Git administrative path
+- the runtime directory's `control/` and `config/`
+
+Outside the protected material, a worker may also read two kinds of path. Neither carries the
+project's or the user's material:
+
+- its own `work/`, `home/` and `tmp/` in the runtime directory
+- the system's paths, such as the toolchain under `/usr`, which every tool needs to run anything
+
+The Harness's read tables state this boundary exactly ([Claude Code
+mechanics](../harness/claude-code.md#deny-rules), [pi mechanics](../harness/pi.md#read-table)).
+[Its known limits](../harness/module.md#known-limits-of-v1) explain why the system's paths stay
+readable.
+
+Its caller alone decides the runtime paths. Workers hands them to the Harness exactly as given,
+adding none and widening none. On both backends, the Harness makes each readable, and none writable,
+to every tool ([Claude Code mechanics](../harness/claude-code.md#deny-rules),
+[pi mechanics](../harness/pi.md#read-table)). The runtime paths change neither the grant nor its context identity. They reach the generated worker
 settings or permission extension. The run record keeps the digest of those settings or extension.
 
 When a caller lets a worker read host material, it lists the folder that holds only that material.
@@ -432,10 +510,10 @@ an entry naming that path. The host then takes each remaining entry in order:
 
 | The proposed path | Outcome | Recorded in |
 | --- | --- | --- |
-| outside the worktree, outside the `rw` list, or an existing entry that is not a file, such as a directory | refused, nothing changes | `deletions_refused`, as the worker gave it |
+| outside the worktree, outside the `rw` list, or an existing entry that is neither a file nor a symbolic link, such as a directory | refused, nothing changes | `deletions_refused`, as the worker gave it |
 | in the `rw` list and absent from the worktree | nothing to do | `deletions_absent`, relative to the worktree |
-| an existing file in the `rw` list | deleted | `deleted`, relative to the worktree |
-| an existing file in the `rw` list whose deletion fails | left in place; the host goes on with the next | `deletions_failed`, relative to the worktree |
+| an existing file or symbolic link in the `rw` list, the link dangling or naming a directory included | deleted; a link's target stays | `deleted`, relative to the worktree |
+| an existing file or symbolic link in the `rw` list whose deletion fails | left in place; the host goes on with the next | `deletions_failed`, relative to the worktree |
 
 When a deletion failed, the run ends `failed` with `deletion_failed` whatever status it would
 otherwise have had. Its error lists what was deleted and what was not. The link the run would
@@ -696,12 +774,12 @@ caller's link `worker_model_unavailable`.
 
 ### req.workers.frozen-grant — One grant for the whole run
 
-The host SHALL generate the following from one frozen grant for a run:
+The host SHALL generate all of these parts of a run's configuration from one frozen grant for the run:
 
-- settings
-- write hook
-- tool set
-- brief
+- on the Claude Code backend, the [worker settings](../../glossary.json#concept.worker-settings) and
+  the [write hook](../../glossary.json#concept.write-hook)
+- on the pi backend, the [permission extension](../../glossary.json#concept.permission-extension)
+- on either backend, the tool set and the [brief](../../glossary.json#concept.brief)
 
 ### req.workers.grant-as-data — The grant comes from the request alone
 
@@ -735,12 +813,11 @@ The refusal of a malformed grant SHALL name the first malformed entry and what i
 
 ### req.workers.unchanged-across-rounds — The run's configuration never changes between rounds
 
-For every round of the run, the host SHALL keep the following unchanged:
+For every round of the run, the host SHALL keep all of these parts of the run's configuration unchanged:
 
-- the run's settings
-- its write hook
-- its tool set
-- its brief
+- on the Claude Code backend, the run's worker settings and its write hook
+- on the pi backend, the run's permission extension
+- on either backend, its tool set and its brief
 
 ### req.workers.write-allowlist — Only `rw` paths are writable by file tools
 
@@ -858,7 +935,7 @@ The refusal of a worker whose model the map gives no id for its backend SHALL na
 
 ### req.workers.model-map-whole-operation — An Operation's workers are checked against the map at once
 
-When asked to check one Operation's workers against the model map, the configuration reader SHALL refuse with one `model_unmapped` that names all of these:
+When asked to check one Operation's workers against the model map and the map lacks an id for at least one model and backend of those workers, the configuration reader SHALL refuse with one `model_unmapped` that names all of these:
 
 - every model and backend the map lacks for those workers
 - the workers that would take each
@@ -979,9 +1056,13 @@ absolutely, as one proposed deletion.
 When a proposed deletion in the `rw` list has a path that does not exist, the host SHALL record
 that deletion as already absent.
 
-### req.workers.deletion-failure — A failed deletion fails the run without stopping the others
+### req.workers.deletion-failure — A failed deletion does not stop the others
 
-When a proposed deletion fails, the host SHALL still attempt every other proposed deletion and end the run `failed` with `deletion_failed`, naming what it deleted and what it did not.
+When a proposed deletion fails, the host SHALL still attempt every other proposed deletion.
+
+### req.workers.deletion-failure-reported — A failed deletion fails the run
+
+When a proposed deletion fails, the host SHALL end the run `failed` with `deletion_failed`, naming what it deleted and what it did not.
 
 ### req.workers.no-precreation — The host creates no file for the worker
 

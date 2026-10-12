@@ -92,6 +92,9 @@ class Settlement:
 
     carried: list[dict] = field(default_factory=list)
     resolved: list[dict] = field(default_factory=list)
+    # The revision of each resolved Issue as it was offered: a resolution holds only while the
+    # Issue still has that revision.
+    revisions: dict[str, str] = field(default_factory=dict)
 
 
 def check_title(check: str) -> str:
@@ -316,6 +319,7 @@ def settle_and_report(
             for item in earlier:
                 problem = titles.get(item["title"])
                 if problem is None:
+                    settlement.revisions[item["issue"]] = item["revision"]
                     settlement.resolved.append(
                         {
                             "issue": item["issue"],

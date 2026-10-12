@@ -731,7 +731,10 @@ class GuidanceTests(unittest.TestCase):
                 "A task session reaches the same Issues as the runs it starts do, through "
                 "these tools or the `concorde issues` command",
             ),
-            (session, "The `concorde issues` command does the same from your shell"),
+            (
+                session,
+                "The `concorde issues` command from your shell records the main agent instead",
+            ),
             (session, "Read and write them with these tools of the project MCP server"),
             (session, "append to that Issue rather than create another"),
             (session, "carries its `tier`"),

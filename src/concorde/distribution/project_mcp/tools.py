@@ -69,7 +69,7 @@ def presented(
     installed = parts.installed() if installed is None else installed
     return {
         tool["name"]: (registration, tool)
-        for registration in parts.ordered(installed)
+        for registration in parts.in_table_order(installed)
         for tool in registration.data["mcp_tools"]
         if all(name in installed for name in tool["requires"])
     }
@@ -103,7 +103,7 @@ def instructions(installed: dict | None = None) -> str:
         [INSTRUCTIONS]
         + [
             registration.data["mcp_instructions"]
-            for registration in parts.ordered(installed)
+            for registration in parts.in_table_order(installed)
             if registration.data["mcp_instructions"]
         ]
     )

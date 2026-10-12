@@ -342,7 +342,11 @@ names it for the merged finding. The Operation keeps what no worker may decide:
 - It records the Issues itself with the run's provenance.
 - It derives the outcome from the Issues that stand.
 
-Thus, until a review finds it resolved and a task closes it, a blocking Issue stands.
+Thus, an open blocking Issue stands in a review unless that review finds it resolved. An Issue
+the chair found resolved does not count for that review's verdict. A Module whose last blocking
+Issue is found resolved is therefore `accepted`
+([scenario.spec-review.last-blocker-resolved](scenarios.md#scenario.spec-review.last-blocker-resolved)).
+The Issue itself stays open until a task closes it, and a later review offers it again.
 
 The Operation appends to an earlier Issue at the revision it reads just before. Thus, a report
 made in between is never overwritten. The store refuses the append instead, as it refuses any
@@ -469,6 +473,7 @@ Spec review is part of Method, the part that composes the others. It has these r
 - Where the issues part is installed, it records its findings through Issues.
 - Like every Operation, it runs through the Execution runner.
 - Method registers its Operation with that runner.
+- Its result carries the step output that Workflows defines.
 
 ```d2
 review: Spec review
@@ -477,11 +482,13 @@ workers: Workers
 operations: Operations
 execution: Execution
 issues: Issues
+workflows: Workflows
 review -> spec
 review -> workers
 review -> operations
 review -> execution
 review -> issues
+review -> workflows
 ```
 
 <a id="uses-spec"></a>
@@ -578,3 +585,12 @@ Spec review relies on it for these things:
 
 Spec review's duty is to fill the envelope honestly. It keeps worker claims apart from its own
 evidence.
+
+<a id="uses-workflows"></a>
+
+**Workflows** owns the [step output convention](../../workflows/contracts.md#contract.workflows.step-output).
+A workflow reads the result of each of its steps through it, without knowing the step's own
+payload. The panel's payload carries one `workflow` object under that convention. Spec review fills
+it with one `review` note, which holds the verdict and each Module's outcome with its count of
+blocking findings that stand. Workflows defines the fields of the object. Spec review defines only
+what its note says.

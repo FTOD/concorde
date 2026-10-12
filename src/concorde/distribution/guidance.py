@@ -15,21 +15,12 @@ from __future__ import annotations
 import json
 from collections.abc import Callable
 
+from . import parts
 from .parts import GUIDANCE_FIELDS, Registration
 
 # The order of Distribution's parts table, after Coordination, whose working method comes first; a
 # part the table does not name follows by name.
-ORDER = (
-    "coordination",
-    "spec",
-    "kernel",
-    "worker harness",
-    "execution",
-    "workflow",
-    "issues",
-    "method",
-    "distribution",
-)
+ORDER = ("coordination", *(part for part in parts.TABLE if part != "coordination"))
 SKILL = "concorde"
 # Where the build places the task-session prompt it composes for every part, and the installer the
 # one it composes for the installed parts, in its Framework copy: Coordination reads it there.

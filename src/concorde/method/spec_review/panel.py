@@ -679,15 +679,23 @@ def run_panel(
             f"The panel of {subject.module} stopped on an unexpected error.",
         )
         found.extend(subject.stop.evidence)
+        _carry_all(subject)
         return found, None
     subject.context_identity = state["context_identity"]
     found.extend(state["evidence"])
     if state["stop"]:
         stop = state["stop"]
         subject.stop = Stop(stop["status"], stop["summary"], [], stop["error"])
+        _carry_all(subject)
         return found, state
     found.extend(_report(ctx, subject, state, phase))
     return found, state
+
+
+def _carry_all(subject: review.ModuleReview) -> None:
+    """A panel that stopped settled none of the earlier Issues it read: each is carried."""
+    if subject.earlier is not None and subject.summary is None:
+        subject.summary = reporting.settle(subject.earlier, [], [])
 
 
 def panel_modules(ctx: RunContext):

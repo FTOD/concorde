@@ -155,8 +155,18 @@ tools granted on the command line. These are a workflow's own list or the follow
 - ExitWorktree.
 
 The round also starts with `CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=0`, which keeps a background
-workflow alive. The tool appends the headless note to its system prompt. The note states these
-conditions:
+workflow alive.
+
+<a id="sandbox-off"></a>
+
+Every round runs with Claude Code's Bash sandbox off. The round's own `--settings` sets
+`sandbox.enabled` to `false`. The tool never changes the developer's settings files for it
+([requirement](requirements.md#req.headless-sessions.sandbox-off)). A runner detached from a
+sandboxed Bash call is killed with that call's PID namespace
+([Execution](../../execution/module.md#detached-namespace)). Without the sandbox, a
+[detached run](../../glossary.json#concept.detached-run) that a round starts can outlive the round.
+
+The tool appends the headless note to its system prompt. The note states these conditions:
 
 - Nobody answers questions.
 - When the turn ends, a command left in the background is stopped.
@@ -167,9 +177,10 @@ conditions:
 See [requirements](requirements.md#req.headless-sessions.conditions-in-tool) and
 [tools granted](requirements.md#req.headless-sessions.tools-granted). The turn's end stops Claude
 Code's own background command. A Concorde run that command was still running then ends with the
-error code `cancelled`. The session is woken for it as a run stopped by that end. A
-[detached run](../../glossary.json#concept.detached-run) outlives the round. When it ends, it wakes
-the session (see [Waking the session](#waking-the-session)).
+error code `cancelled`. The session is woken for it as a run stopped by that end. A detached run
+outlives the round, since the round runs with the sandbox off. When it ends, it wakes the session
+(see [Waking the session](#waking-the-session)). When its runner is gone without a result by the
+round's end, the next wake reports it as ended without a result.
 
 **The test-only exception.** The main agent hands every task to a task session. It never works
 inside a task worktree. A headless main session cannot do this because a task session sends the
@@ -196,8 +207,9 @@ It tells the session to record each such decision in the task's
 weighed.
 
 EnterWorktree and ExitWorktree are granted for it
-([requirements](requirements.md#req.headless-sessions.claude-works-tasks)). The exception holds
-for headless main sessions only. A headless workflow run works as a task session in the first
+([requirement](requirements.md#req.headless-sessions.worktree-tools-granted)). The procedure's
+contents are [their own requirement](requirements.md#req.headless-sessions.claude-works-tasks).
+The exception holds for headless main sessions only. A headless workflow run works as a task session in the first
 place and gets the note alone.
 
 ### Waking the session
@@ -226,6 +238,9 @@ When a run meets both conditions, it still runs:
 - Its [run progress file](../../glossary.json#concept.run-progress-file) is not finished.
 - Its runner lives.
 
+When a run's run progress file is not finished and its runner is gone, its runner went without
+a result. A runner killed with the call that started it is one example.
+
 When both conditions hold, the round's end stopped the run:
 
 - The run's result has the error code `cancelled`.
@@ -233,7 +248,8 @@ When both conditions hold, the round's end stopped the run:
 
 These runs are the round's unsettled ones. With no unsettled runs, the session is idle.
 When the session is idle, it ends.
-Otherwise, the tool waits until every running run finishes or its runner goes.
+Otherwise, the tool waits until every running run finishes or its runner goes. A run whose
+runner went without a result is unsettled too. The tool needs no wait for it.
 When a round is left, it then resumes the same session with a wake message. The message names these details:
 
 - Each run.
@@ -286,9 +302,13 @@ case](../module.md#owners-case) of End-to-end testing runs several live sessions
 
 ### Reading the logs
 
+The tool splits a round's `stream-json` output into its records at line feeds only. A string
+inside a record may hold a Unicode line or paragraph separator, which is no record's end. Each tool
+call is named with its whole target, never a shortened one.
+
 A resumed round first replays the stopped background command as a turn of its own with no model
 turn. Its `result` event is not the round's answer. The round's result is the last `result` event
-with a model turn. Its cost is the session's total so far.
+with a model turn. A round with no such event has no result. Its cost is the session's total so far.
 
 ## Why it is built this way
 
@@ -371,11 +391,17 @@ driver relies on these details:
   - The error code.
 - The workspace binding, which the Kernel defines, names the `.concorde` of its runs.
 
+The fields and values of the run progress file are those of
+[the runner's account](../../execution/runner.md#run-progress-file). The result is the [run
+result contract](../../execution/contracts.md#run-result). The error code `cancelled` and the
+[lobby](../../execution/runner.md#the-lobby) are also defined there.
+
 The driver never changes any of them.
 
 <a id="uses-kernel"></a>
 
-**Kernel** defines the [workspace binding](../../glossary.json#concept.workspace-binding).
+**Kernel** defines the [workspace binding](../../glossary.json#concept.workspace-binding), whose
+format is its [workspace binding contract](../../kernel/contracts.md#workspace-binding).
 The driver relies on its `.concorde` to name where a session's workspace keeps these files:
 
 - Its runs' locks.
@@ -386,6 +412,23 @@ Claude Code is external. The driver relies on `claude -p` with these options and
 - `--resume`.
 - `--append-system-prompt`.
 - `--allowedTools`.
+- `--settings` with an inline JSON value, whose `sandbox.enabled` turns the Bash sandbox off.
 - `stream-json` output, whose events carry the session identity.
 
 A live session also relies on `--input-format stream-json`.
+
+<a id="uses-tasks"></a>
+
+**Tasks** places each [task](../../glossary.json#concept.task)'s workspace folder at
+`.concorde/tasks/<task>/workspace/`. The driver looks there for the runs of the current tasks. The
+test procedure has the session open, deliver and merge its tasks with Tasks' commands. The driver
+never writes a task's records itself.
+
+<a id="uses-main-session"></a>
+
+**Main session** writes the [main-session
+guidance](../../glossary.json#concept.main-session-guidance). Its working method hands every task
+to a task session and keeps the main agent out of task worktrees
+([requirements](../../coordination/main-session/requirements.md#req.main-session.every-task-delegated)).
+The test procedure overrides that rule for a headless main session only. The tool never changes the
+guidance ([requirement](requirements.md#req.headless-sessions.guidance-untouched)).

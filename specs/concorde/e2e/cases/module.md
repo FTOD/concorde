@@ -98,8 +98,10 @@ named `repair-specs`. The command follows these steps
 
 - Review the Modules.
 - Run `specify` once with that review as input and an intent to change only what the Specs say.
-  The run keeps every promise true to the code. It turns a repair that needs a decision about
-  intent into an [open question](../../glossary.json#concept.open-question).
+  The intent asks the run to change only what the review's findings and the existing Specs
+  justify. A repair that needs a fact about the code that they do not state becomes an
+  [open question](../../glossary.json#concept.open-question). So does a repair that needs a
+  decision about intent.
 - Review the Modules once more.
 - Run `task-validation`.
 - Run `delivery`.
@@ -167,15 +169,36 @@ In a throwaway worktree of `--ref`, it follows these steps:
 - Report each one that did not.
 - Report whether the case is resolved.
 
-The test run puts `--pythonpath` directories of that worktree first on `PYTHONPATH`.
-Since pytest's summary lines supply the statuses, whatever the caller's environment asks for,
-colour is off. The test patch and the case's tests stay outside the project.
+The test run puts the `--pythonpath` directories of that worktree first on `PYTHONPATH`. The
+caller's own `PYTHONPATH` entries follow them. Colour is off, whatever the caller's environment
+asks for. The test patch and the case's tests stay outside the project.
 No worker sees them. The project is left as it was
-([requirements](requirements.md#req.swe-bench-cases.graded-apart)). The pytest output is kept
-under `.concorde/runs/e2e/`. When every FAIL_TO_PASS and every PASS_TO_PASS test passed, the case
-is resolved. Failing tests are a verdict, not an error. For each listed test that did not pass,
-grading names the test with its status. For a test pytest never reports, the status is `not run`.
-Pytest's exit code is kept. In the following cases, grading stops with an error instead:
+([requirements](requirements.md#req.swe-bench-cases.graded-apart)). The whole pytest output is
+kept under `.concorde/runs/e2e/`. It replaces the output of an earlier grading of the same case.
+
+**The statuses.** Grading reads each test's status under its complete pytest node identity.
+A small pytest plugin of grading records that identity from pytest's own reports. Pytest's short
+summary is not read: it cuts an identity at its first space, and a skipped test's line names no
+test. The statuses are the ones SWE-bench's pytest parser reads: `PASSED`, `FAILED`, `ERROR`,
+`SKIPPED`, `XFAIL` and `XPASS`. A setup or teardown failure, or a test file pytest cannot collect,
+is `ERROR`. A listed identity that pytest never reports is `not run`.
+
+**The verdict.** Grading counts the listed tests as SWE-bench's grading does
+([its harness](#external.swe-bench-harness),
+[requirement](requirements.md#req.swe-bench-cases.graded-like-swe-bench)):
+
+- A FAIL_TO_PASS test passed when its status is `PASSED` or `XFAIL`.
+- A PASS_TO_PASS test passed when its status is `PASSED`, `XFAIL` or `SKIPPED`. A skipped test is
+  no regression.
+- SWE-bench's datasets cut some parametrized identities at their first space, inside their
+  brackets. A listed identity with more `[` than `]` and no exact match stands for every reported
+  identity it begins. It takes their status when they agree on passing or not. Otherwise it is
+  `not run`.
+
+When every FAIL_TO_PASS and every PASS_TO_PASS test passed, the case is resolved. Failing tests
+are a verdict, not an error. For each listed test that did not pass, grading names the test with
+its status. Pytest's exit code is kept. In the following cases, grading stops with an error
+instead:
 
 - When the instance lacks any of the following, the error is `invalid_case`:
   - FAIL_TO_PASS tests.
@@ -191,7 +214,9 @@ Pytest's exit code is kept. In the following cases, grading stops with an error 
   - The ref.
   - The limit.
   - The command.
-  It includes the output the test run produced.
+  - The kept pytest output, when the caller names its place.
+  It includes the end of the output the test run produced. The whole output is kept as for a test
+  run that finished.
 
 However grading ends, the throwaway worktree is removed
 ([requirements](requirements.md#req.swe-bench-cases.grading-worktree-removed)).
@@ -205,7 +230,12 @@ That is why the exception lives here and not in the workflow users run.
 That is also why it is bounded to one round that changes Specs and never code
 ([requirements](requirements.md#req.swe-bench-cases.specs-not-code)).
 The `specify` [task type](../../glossary.json#concept.task-type), not the intent, keeps the code
-unchanged. It may write the bound Modules' documents and none of their code.
+unchanged. It may write the bound Modules' documents and none of their code. It cannot read the
+code either ([requirement](../../method/specification/requirements.md#req.specification.no-code)),
+and its validation is structural. The repair therefore cannot establish a fact about the code that
+the findings and the Specs do not state. It never claims to: such a gap stays an open question,
+which the round reports with the run and which does not stop it. A repair is faithful to the code
+only as far as the review's evidence is.
 When a specify run's [write
 audit](../../glossary.json#concept.write-audit) finds a changed code file, the run ends `failed`.
 This stops the repair before `delivery`.
@@ -262,6 +292,34 @@ The case steps never write the following themselves:
 - The project's [task records](../../glossary.json#concept.task-record).
 - The project's [workspace binding](../../glossary.json#concept.workspace-binding).
 
+<a id="uses-tasks"></a>
+
+**Tasks** opens the repair's [task](../../glossary.json#concept.task) with the Modules the command
+names. Opening writes the task worktree's workspace binding before its record
+([requirement](../../coordination/tasks/requirements.md#req.tasks.binding)), so every run of the
+round finds its workspace there. `task open` refuses a task name already taken, and the command
+fails with that refusal. Tasks also merges the delivered task. A merge closes the task only when
+its branch holds a [delivery commit](../../glossary.json#concept.delivery-commit) that verifies
+([requirement](../../coordination/tasks/requirements.md#req.tasks.merge-verified)). A step that
+does not end `ok` therefore leaves the task open and unmerged.
+
+<a id="uses-validation"></a>
+
+**Validation** decides the task's [readiness](../../glossary.json#concept.readiness) in
+`task-validation`. A readiness is ready exactly when it lists no blocking finding
+([requirement](../../method/validation/requirements.md#req.validation.ready-definition)). Its
+blocking findings come from the Specs' structure and the
+[configured checks](../../glossary.json#concept.configured-check). A
+[review finding](../../glossary.json#concept.review-finding) is none of them, so the findings the
+second review still reports never block the round's validation, delivery or merge.
+
+<a id="uses-delivery"></a>
+
+**Delivery** validates the whole workspace again in `delivery` and makes the delivery commit only
+when its own readiness is ready
+([requirement](../../method/delivery/requirements.md#req.delivery.own-readiness)). A blocked
+delivery stops the round before the merge.
+
 <a id="uses-specification"></a>
 
 **Specification** provides the `specify` Operation.
@@ -275,9 +333,20 @@ This keeps the repair from changing code.
 The round reads its [verdict](../../glossary.json#concept.review-verdict) to decide whether to repair.
 The run ends `ok` for `accepted` and `changes_required` alike.
 
-SWE-bench is external material, included by [End-to-end testing](../module.md).
+<a id="external.swe-bench-harness"></a>
+
+**SWE-bench** is pinned external material under `references/swe-bench/`. This Module selects two
+parts of it:
+
+- Its evaluation harness, `swebench/harness/`. Its pytest log parser and its grading rules define
+  the statuses and the verdict that grading copies.
+- Its dataset guide, `docs/guides/datasets.md`. It defines an instance's fields.
+
 Its instances supply the following for grading a case:
 
 - The base commit.
 - The test patch.
 - The test lists.
+
+Grading supports the instances whose tests run with pytest. It takes SWE-bench's rules only for
+those.

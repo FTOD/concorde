@@ -69,6 +69,9 @@ KINDS = ("operation", "command")
 DETACH_WAIT = 60.0
 # The environment variable through which a detaching parent hands the runner its run identity.
 RUN_ID_VARIABLE = "CONCORDE_RUN_ID"
+# The environment variable through which a detaching parent hands the runner the binding it read,
+# as JSON (null for none), so that both place the run's records alike.
+BINDING_VARIABLE = "CONCORDE_RUN_BINDING"
 SOURCE_ROOT = Path(__file__).resolve().parents[2]
 
 # How the runner treats a refusal before the steps begin: the reason it cannot handle it, the
@@ -273,6 +276,9 @@ def _checkout(chosen: Provider, context: RunContext) -> Checkout:
     def runtime_paths(root: Path):
         try:
             return resolver(root)
+        except Cancelled:
+            # A signal during the resolver cancels the run, as it does during a step.
+            raise
         except Exception as error:  # noqa: BLE001 -- a resolver error is a failed result
             raise DefinitionFailed("runtime-path resolver", error) from error
 
@@ -312,7 +318,7 @@ def _resolve(chosen: Provider, context: RunContext, arguments) -> Stop | None:
     if chosen.admit is not None:
         try:
             chosen.admit(context)
-        except (RunError, KernelError, Refused):
+        except (RunError, KernelError, Refused, Cancelled):
             raise
         except Exception as error:  # noqa: BLE001 -- an admission error is a failed result
             raise DefinitionFailed("admission", error) from error
@@ -521,11 +527,14 @@ def execute(
     words,
     cwd: Path | None = None,
     identity: str | None = None,
+    binding: str | None = None,
 ) -> tuple[int, dict]:
     """Run one Operation or execution command; the exit status and the run result.
 
     ``UsageError`` for a malformed command line. ``identity`` is the run identity a detaching
     parent chose and announced; its run directory may already hold the detached runner's output.
+    ``binding`` is the binding that parent read, as JSON: the run's records go where the parent
+    looks for them, and a bound run checks that binding again under the workspace lock.
     """
     arguments, chosen = parse(kind, name, words)
     here = Path(os.path.realpath(cwd or Path.cwd()))
@@ -535,6 +544,20 @@ def execute(
         broken = None
     except KernelError as error:
         bound, broken = None, error
+    if binding is not None:
+        try:
+            read = json.loads(binding)
+        except ValueError:
+            raise UsageError(f"invalid {BINDING_VARIABLE} {binding[:200]!r}") from None
+        if not isinstance(read, (dict, type(None))):
+            raise UsageError(f"invalid {BINDING_VARIABLE} {binding[:200]!r}")
+        if read is not None:
+            # A binding changed or gone since is refused under the workspace lock, in the lobby
+            # the parent watches.
+            bound, broken = read, None
+        elif bound is not None:
+            # The parent found no binding: the run is the unbound run it announced.
+            bound = None
     store = store_of(root, bound)
     if identity is not None and not RUN_ID.match(identity):
         raise UsageError(f"invalid run identity {identity!r}")
@@ -1008,11 +1031,14 @@ def _envelope(chosen: Provider, context: RunContext, stop: Stop | None, started:
             item for item in stop.evidence if item not in evidence_list
         )
     status = stop.status if stop is not None else "ok"
+    # The steps own the Modules: a malformed entry is left to the contract check below, which
+    # replaces the result, and never breaks composing the summary.
+    named = _names(context.modules)
     summary = (
         stop.summary
         if stop is not None
-        else f"{chosen.name} finished for {', '.join(context.modules)}."
-        if context.modules
+        else f"{chosen.name} finished for {', '.join(named)}."
+        if named
         else f"{chosen.name} finished."
     )
     error = None if status == "ok" else (stop.error if stop else None)
@@ -1044,7 +1070,7 @@ def _envelope(chosen: Provider, context: RunContext, stop: Stop | None, started:
     }
     try:
         validate(envelope, RESULT_SCHEMA)
-        _check_own_link(chosen, envelope["error"])
+        _check_own_link(chosen, context, envelope["error"])
         if status == "ok" and chosen.output_schema is not None:
             validate(envelope["output"], chosen.output_schema)
     except KernelError as problem:
@@ -1055,17 +1081,33 @@ def _envelope(chosen: Provider, context: RunContext, stop: Stop | None, started:
     return envelope
 
 
-def _check_own_link(chosen: Provider, error) -> None:
-    """``KernelError`` unless a result's error, when it has one, is the run's own link, of the
-    level of its definition's kind."""
+def _check_own_link(chosen: Provider, context: RunContext, error) -> None:
+    """``KernelError`` unless a result's error, when it has one, is the run's own link: of the
+    level of its definition's kind, and with the actor naming this run and its workspace."""
+    if error is None:
+        return
     level = "operation" if chosen.kind == "operation" else "command"
-    if error is not None and error.get("level") != level:
+    if error.get("level") != level:
         raise KernelError(
             "invalid_input",
             f"the result's error is a link of level {error.get('level')!r}, not the run's own "
             f"link of level {level!r}",
             field="/error/level",
         )
+    if error.get("actor") != context.actor:
+        raise KernelError(
+            "invalid_input",
+            f"the result's error is the link of {error.get('actor')!r}, not the run's own "
+            f"link of {context.actor!r}",
+            field="/error/actor",
+        )
+
+
+def _names(values) -> list[str]:
+    """The nonempty strings of ``values`` when it is a list; none otherwise."""
+    if not isinstance(values, list):
+        return []
+    return [item for item in values if isinstance(item, str) and item]
 
 
 def _valid(value, schema: dict) -> bool:
@@ -1096,7 +1138,9 @@ def _replaced(chosen: Provider, context: RunContext, envelope: dict, problem) ->
     )
     previous = envelope["error"]
     keep_cause = _valid(previous, {"$ref": "#/$defs/error"})
-    modules = [item for item in envelope["modules"] if isinstance(item, str) and item]
+    modules = _names(envelope["modules"])
+    # The replacing link names only the Modules that are names, as the result does.
+    context.modules = modules
     return {
         **envelope,
         "commit": envelope["commit"]
@@ -1109,9 +1153,7 @@ def _replaced(chosen: Provider, context: RunContext, envelope: dict, problem) ->
         "worker": envelope["worker"]
         if _valid(envelope["worker"], RESULT_SCHEMA["properties"]["worker"])
         else None,
-        "worker_runs": [
-            item for item in envelope["worker_runs"] if isinstance(item, str) and item
-        ],
+        "worker_runs": _names(envelope["worker_runs"]),
         "host_evidence": [*kept, invalid],
         "error": context.fail(
             "failed",
@@ -1155,7 +1197,12 @@ def detach(
     node_folder = _node_folder(arguments, store, identity, bound)
     lobby = store.lobby_folder(identity) if bound is not None else None
     run_dir = lobby or node_folder
-    environment = dict(os.environ, **{RUN_ID_VARIABLE: identity})
+    # The runner works with this reading of the binding, so its records go where this command
+    # looks for them, whatever happens to the binding meanwhile.
+    environment = dict(
+        os.environ,
+        **{RUN_ID_VARIABLE: identity, BINDING_VARIABLE: json.dumps(bound)},
+    )
     environment["PYTHONPATH"] = os.pathsep.join(
         [str(SOURCE_ROOT)]
         + ([environment["PYTHONPATH"]] if environment.get("PYTHONPATH") else [])
@@ -1325,7 +1372,11 @@ def run_main(kind: str, name: str | None, words) -> int:
         return status
     try:
         status, envelope = execute(
-            kind, name, words, identity=os.environ.pop(RUN_ID_VARIABLE, None)
+            kind,
+            name,
+            words,
+            identity=os.environ.pop(RUN_ID_VARIABLE, None),
+            binding=os.environ.pop(BINDING_VARIABLE, None),
         )
     except UsageError as error:
         sys.stderr.write(f"{label}: {error}\n{_usage(kind, name)}\n")

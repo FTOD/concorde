@@ -249,6 +249,28 @@ class ProjectMcpTests(unittest.TestCase):
         held, error = client.call("locks")
         self.assertEqual({"merge": None, "workspaces": {"t1": None}}, held)
 
+    @verifies("scenario.main-session.project-mcp-history-key")
+    def test_task_show_takes_a_history_key_as_the_command_does(self):
+        # A task identity used again: its earlier close keeps the history key t1, the later t1.2.
+        for goal in ("first", "second"):
+            store.open_task(self.root, "t1", goal, ["module.a"])
+            store.close_task(self.root, "t1", "completed", note=goal)
+            git(self.root, "branch", "-D", "concorde/t1")
+        client = self.client()
+        for key, goal in (("t1", "second"), ("t1.2", "second")):
+            shown, error = client.call("task_show", task=key)
+            self.assertFalse(error, shown)
+            self.assertEqual(goal, shown["record"]["goal"])
+            self.assertEqual(
+                json.loads(json.dumps(store.show_task(self.root, key))), shown
+            )
+        # A history key no close gave is refused as the command refuses it.
+        shown, error = client.call("task_show", task="t1.3")
+        self.refusal(shown, error, "unknown_task")
+        with self.assertRaises(store.TaskError) as refused:
+            store.show_task(self.root, "t1.3")
+        self.assertEqual("unknown_task", refused.exception.code)
+
     @verifies("scenario.main-session.project-mcp-run-result")
     def test_run_result_answers_running_finished_and_lost_runs_only(self):
         self.project.open_task("t1")
@@ -789,6 +811,16 @@ class ProjectMcpTests(unittest.TestCase):
             },
             answer["already"],
         )
+        # The former session is named as `concorde task wait --rebound` names it.
+        answer, error = client.call("register_wait", task="t1", rebound=" concorde-7d ")
+        self.assertFalse(error, answer)
+        self.assertNotIn("already", answer)
+        self.assertEqual(
+            "concorde task wait t1 --rebound concorde-7d", answer["command"]
+        )
+        refused, error = client.call("register_wait", task="t1", rebound="  ")
+        self.assertTrue(error, refused)
+        self.assertEqual("invalid_input", refused["error"]["code"])
 
 
 class WorkflowStepToolTests(unittest.TestCase):

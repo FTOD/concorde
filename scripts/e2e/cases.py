@@ -24,10 +24,10 @@ from common import E2EError, run
 # wait for a person" holds for end-to-end cases only, which is why it lives here.
 REPAIR_INTENT = (
     "Repair every blocking finding of the Spec panel given as input, in the documents of the "
-    "Modules it names. These Specs describe the project's existing code: change what the Specs "
-    "say, never the code, keep every promise true to what the code does, and where a repair "
-    "would need a decision about intended behaviour, write an open question instead of a "
-    "promise."
+    "Modules it names. These Specs describe the project's existing code, which you cannot read: "
+    "change what the Specs say, never the code, and change only what the findings and the "
+    "existing Specs justify. Where a repair would need a fact about the code that they do not "
+    "state, or a decision about intended behaviour, write an open question instead of a promise."
 )
 
 
@@ -138,7 +138,6 @@ def repair_specs(
     return {"task": task, "modules": modules, "steps": steps, "stopped_at": None}
 
 
-RESULT_LINE = re.compile(r"^(PASSED|FAILED|ERROR|SKIPPED|XFAIL|XPASS) (\S+)")
 PATCHED_FILE = re.compile(r"^diff --git a/(\S+) b/(\S+)$", re.MULTILINE)
 
 
@@ -161,14 +160,74 @@ def reset_patched_files(tree: Path, patch: str, base: str) -> list[str]:
     return paths
 
 
-def pytest_statuses(output: str) -> dict[str, str]:
-    """Each test's status from the short summary that ``pytest -rA`` prints."""
+# A pytest plugin that records every test's status under its complete node identity as one
+# JSON line per report, written as it goes: pytest's short summary cuts an identity at its first
+# space and names no test on a SKIPPED line, so statuses are never read from it.
+REPORT_PLUGIN = "concorde_grade_report"
+REPORT_VARIABLE = "CONCORDE_GRADE_REPORT"
+REPORT_PLUGIN_SOURCE = """\
+import json
+import os
+
+
+def _write(nodeid, status):
+    with open(os.environ["CONCORDE_GRADE_REPORT"], "a", encoding="utf-8") as stream:
+        stream.write(json.dumps({"test": nodeid, "status": status}) + "\\n")
+
+
+def pytest_runtest_logreport(report):
+    expected = hasattr(report, "wasxfail")
+    if report.when == "call":
+        if report.passed:
+            _write(report.nodeid, "XPASS" if expected else "PASSED")
+        elif report.failed:
+            _write(report.nodeid, "FAILED")
+        else:
+            _write(report.nodeid, "XFAIL" if expected else "SKIPPED")
+    elif report.failed:
+        _write(report.nodeid, "ERROR")
+    elif report.skipped and report.when == "setup":
+        _write(report.nodeid, "XFAIL" if expected else "SKIPPED")
+
+
+def pytest_collectreport(report):
+    if report.failed:
+        _write(report.nodeid, "ERROR")
+"""
+
+# How SWE-bench grades a listed test's status (references/swe-bench/swebench/harness/
+# grading.py): an expected failure counts as passed, and a skipped PASS_TO_PASS test is no
+# regression, while a skipped FAIL_TO_PASS test is no resolution.
+PASSING = ("PASSED", "XFAIL")
+MAINTAINED = ("PASSED", "XFAIL", "SKIPPED")
+
+
+def read_report(path: Path) -> dict[str, str]:
+    """Each test's status from the plugin's report; a later report of a test (its teardown's
+    error) replaces an earlier one, as the later summary line does in SWE-bench's parser."""
     statuses: dict[str, str] = {}
-    for line in output.splitlines():
-        match = RESULT_LINE.match(line)
-        if match:
-            statuses[match.group(2)] = match.group(1)
+    try:
+        lines = path.read_text(encoding="utf-8").split("\n")
+    except OSError:
+        return statuses
+    for line in lines:
+        if line.strip():
+            entry = json.loads(line)
+            statuses[entry["test"]] = entry["status"]
     return statuses
+
+
+def status_of(test: str, statuses: dict[str, str]) -> str:
+    """The status of a listed test. Like SWE-bench, a listed identity cut inside its parameters
+    (more ``[`` than ``]``, as SWE-bench's datasets cut identities at their first space) stands
+    for the tests it begins when they agree on passing or not; otherwise it was ``not run``."""
+    if test in statuses:
+        return statuses[test]
+    if test.count("[") > test.count("]"):
+        matches = [statuses[name] for name in statuses if name.startswith(test)]
+        if matches and len({status in PASSING for status in matches}) == 1:
+            return matches[0]
+    return "not run"
 
 
 def case_tests(instance: dict, field: str) -> list[str]:
@@ -185,6 +244,15 @@ def _text(output: str | bytes | None) -> str:
     if isinstance(output, bytes):
         return output.decode("utf-8", errors="replace")
     return output or ""
+
+
+def _keep(log: Path | None, output: str) -> Path | None:
+    """Write the test run's whole output to ``log``, when the caller names one."""
+    if log is None:
+        return None
+    log.parent.mkdir(parents=True, exist_ok=True)
+    log.write_text(output, encoding="utf-8")
+    return log
 
 
 def grade(
@@ -219,13 +287,28 @@ def grade(
         reset_patched_files(tree, instance["test_patch"], instance["base_commit"])
         run(["git", "apply", str(patch)], cwd=tree)
         files = sorted({test.split("::")[0] for test in fail_to_pass + pass_to_pass})
-        environment = {**os.environ}
-        if pythonpath:
-            environment["PYTHONPATH"] = os.pathsep.join(
-                str(tree / item) for item in pythonpath
-            )
-        # The summary lines are parsed, so colour is off whatever the caller's environment asks
-        # for (FORCE_COLOR would otherwise wrap every status in escapes).
+        plugin = scratch / "plugin"
+        plugin.mkdir()
+        (plugin / f"{REPORT_PLUGIN}.py").write_text(
+            REPORT_PLUGIN_SOURCE, encoding="utf-8"
+        )
+        report = scratch / "report.jsonl"
+        # The worktree's --pythonpath directories go first, the caller's own entries after them
+        # and the report plugin last, so that it shadows nothing of the project's.
+        inherited = os.environ.get("PYTHONPATH")
+        environment = {
+            **os.environ,
+            REPORT_VARIABLE: str(report),
+            "PYTHONPATH": os.pathsep.join(
+                [
+                    *(str(tree / item) for item in pythonpath),
+                    *([inherited] if inherited else []),
+                    str(plugin),
+                ]
+            ),
+        }
+        # Colour is off whatever the caller's environment asks for (FORCE_COLOR would otherwise
+        # wrap every status of the kept output in escapes).
         command = [
             str(python),
             "-m",
@@ -234,6 +317,8 @@ def grade(
             "--color=no",
             "-p",
             "no:cacheprovider",
+            "-p",
+            REPORT_PLUGIN,
             *files,
         ]
         try:
@@ -247,14 +332,19 @@ def grade(
                 timeout=GRADE_TIMEOUT,
             )
         except subprocess.TimeoutExpired as error:
+            stdout, stderr = _text(error.stdout), _text(error.stderr)
+            kept = _keep(log, stdout + "\n" + stderr)
             raise E2EError(
                 "grade_timeout",
                 f"the tests of case {instance.get('instance_id')} on {ref} did not finish "
                 f"within the grading limit of {GRADE_TIMEOUT} seconds: `{' '.join(command)}` "
-                f"in the grading worktree {tree} was stopped",
-                stdout=_text(error.stdout)[-3000:],
-                stderr=_text(error.stderr)[-3000:],
+                f"in the grading worktree {tree} was stopped"
+                + (f"; its whole output is kept in {kept}" if kept else ""),
+                stdout=stdout[-3000:],
+                stderr=stderr[-3000:],
+                **({"log": str(kept)} if kept else {}),
             ) from error
+        statuses = read_report(report)
     finally:
         subprocess.run(
             ["git", "worktree", "remove", "--force", str(tree)],
@@ -263,22 +353,19 @@ def grade(
             check=False,
         )
         shutil.rmtree(scratch, ignore_errors=True)
-    output = completed.stdout + "\n" + completed.stderr
-    if log is not None:
-        log.parent.mkdir(parents=True, exist_ok=True)
-        log.write_text(output, encoding="utf-8")
-    statuses = pytest_statuses(completed.stdout)
+    _keep(log, completed.stdout + "\n" + completed.stderr)
 
-    def split(tests: list[str]) -> dict:
-        passed = [test for test in tests if statuses.get(test) == "PASSED"]
-        others = {test: statuses.get(test, "not run") for test in tests}
+    def split(tests: list[str], counted: tuple[str, ...]) -> dict:
+        found = {test: status_of(test, statuses) for test in tests}
         return {
-            "passed": len(passed),
+            "passed": sum(status in counted for status in found.values()),
             "total": len(tests),
-            "not_passed": {k: v for k, v in others.items() if v != "PASSED"},
+            "not_passed": {
+                test: status for test, status in found.items() if status not in counted
+            },
         }
 
-    f2p, p2p = split(fail_to_pass), split(pass_to_pass)
+    f2p, p2p = split(fail_to_pass, PASSING), split(pass_to_pass, MAINTAINED)
     return {
         "instance": instance.get("instance_id"),
         "ref": ref,

@@ -919,9 +919,10 @@ busy: "workspace_busy or merge_busy: nothing changed"
 refused: "A refusal such as not_merged, delivery_unverified, dirty_worktree, primary_dirty, changed_outside or merge_incomplete: nothing changed"
 conflict: "merge_conflict: merge aborted, primary branch at its commit, task delivered"
 failed: "check_failed: primary branch at its commit, task delivered, left paths named"
-merged: "Task closed as merged on the checked merge commit"
+merged: "Task closed as merged on the checked merge commit, the primary branch at it or at the close's bookkeeping commits on it"
 unlogged: "decision_log_failed or record_unwritable after the record: task closed as merged, close --merged finishes"
 unchecked: "Task left merging: task commands refused with merge_incomplete"
+diverged: "merge_diverged: a check moved or switched the primary branch; nothing reset"
 aborted: "Primary branch at the commit before, task delivered"
 locks -> preflight: both held
 locks -> busy: still held after --wait
@@ -935,6 +936,8 @@ checks -> reset: a check failed or left paths
 reset -> failed
 close -> merged
 checks -> unchecked: the process ended
+checks -> diverged: a check moved the primary branch
+diverged -> unchecked
 reset -> unchecked: rollback_failed
 close -> unchecked: the record could not be closed
 close -> unlogged: the decision log refused the closing
@@ -956,7 +959,10 @@ record backs. So does a process killed after ending the merge and before removin
 Whenever Tasks takes the merge lock, it first makes the marker agree with its records. It removes a
 marker of its own part while no task is `merging`. It writes the marker of a `merging` task that
 has none. Such a task is a merge left by a Concorde that wrote no markers yet. It leaves another
-part's marker alone.
+part's marker alone, and it never builds on it. While another part's marker, or one it cannot read,
+remains, a merge and a close refuse before they change anything, with `merge_incomplete` carrying the
+marker's account, or with `unreadable_merge_marker`. Both would commit on the primary branch, and a
+merge would replace the marker.
 
 **An interrupted merge.** If a merge's process ends before its checks decided, killed or crashed, it
 leaves the task `merging` and the marker present. The process may also leave an unchecked merge
@@ -994,8 +1000,14 @@ recorded on that commit. It then closes the task as merged or undoes the merge a
 the merge commit, it resets the branch to the commit before the merge. When the head already is that
 commit before the merge, it leaves the branch alone. It returns the task to delivered. Both take the
 merge lock and the workspace lock like a merge. When the primary worktree is on another branch or
-its head is neither of those commits, both refuse with `merge_diverged`, touching nothing, since
-Tasks never resets commits it did not make.
+detached, or its head is neither of those commits, both refuse with `merge_diverged`, touching
+nothing, since Tasks never resets commits it did not make.
+
+A check can move the primary branch too, by committing on it or by checking out another branch or
+commit. After each check, the merge verifies that the primary worktree is still on its branch at the
+merge commit. Otherwise it refuses with `merge_diverged`, again resetting nothing, since a reset
+would act on whatever the check left. The task stays `merging` until the branch is restored by hand
+and `--resume` or `--abort` finishes the merge.
 
 A merge that is still running is not interrupted. Since its process holds the merge lock, these
 commands wait for it and answer `merge_busy`:
@@ -1275,12 +1287,13 @@ So the record holds only the facts the task level alone knows:
 - How it ended.
 
 Each time Tasks needs facts about what happened in the worktree, Tasks reads them where they were
-recorded. When its workspace has a run or a change, a task is active. A task is delivered when all
-these conditions hold:
+recorded. When its workspace has a run or a change, a task is active. As [Task state](#task-state)
+says, a task is delivered when all these conditions hold:
 
 - Git shows a delivery commit of the task's workspace at the branch head.
 - Nothing follows that commit.
 - That commit has exactly one parent.
+- Its worktree is clean.
 
 Only then is the task mergeable. The subject is a mark, not a proof. Only the task level and the
 delivering command commit on the branch. The task level has no reason to forge the mark. The
@@ -1504,3 +1517,23 @@ merge also runs Spec core's `concorde spec-validation` as the default check and 
 unvalidated update. Where the spec part is not installed, a task's Modules are plain labels, still
 in the form of a Module identity, which the workspace binding requires. In that case, a merge
 runs only the checks it is given.
+
+<a id="uses-workflows"></a>
+
+**Workflows** is an optional integration. Where the workflows part is installed, a workflow step of
+a task's workspace writes the workspace's [workflow record](../../glossary.json#concept.workflow-record)
+under Workflows' workflow lock, `locks/workflows/<task-id>.lock`. Every close, the close that ends a
+merge included, takes that lock last and waits for it as long as it takes
+([req.tasks.workflow-lock-last](requirements.md#req.tasks.workflow-lock-last)). Tasks relies on two
+promises of Workflows for that:
+
+- A step holds the workflow lock only for writes that wait for no other lock
+  ([req.workflows.workflow-lock-leaf](../../workflows/requirements.md#req.workflows.workflow-lock-leaf)).
+  So the close's wait is short, and no two processes wait for each other's locks.
+- A step that waited for the lock writes nothing into a workspace whose lock file was removed or
+  whose binding is gone, and refuses with `workspace_retired`
+  ([req.workflows.workspace-retired](../../workflows/requirements.md#req.workflows.workspace-retired)).
+  So no step writes into the task's folder once the close has moved it to the history.
+
+Where the workflows part is not installed, no step takes the workflow lock. The close still takes
+it, finds it free at once and removes its file with the workspace lock's.

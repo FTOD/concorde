@@ -213,8 +213,11 @@ that phase. Thus a Module's panel and code review never reuse each other's key.
 ### Outcomes and the verdict
 
 After every part, the Operation reads the open Issues that a review made: `spec_panel`,
-`code_review` or `project_review`. An Issue that a part of this run found resolved does not stand.
-Every other such Issue **stands** for the Module that owns it. A Module's outcome has these values:
+`code_review` or `project_review`. A part may have found such an Issue resolved. That part ran in
+this run, or it was skipped and its record entry lists the resolution. The Issue then does not
+stand while its revision equals the one offered to that part, as
+[the review record](#the-review-record) says. Every other such Issue **stands** for the Module that
+owns it. A Module's outcome has these values:
 
 - `incomplete`, when it failed structural validation, its Spec panel or code review stopped, or its
   Issues could not all be written.

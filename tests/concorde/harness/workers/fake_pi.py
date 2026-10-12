@@ -4,8 +4,8 @@ The test puts a plan in the worker instructions as ``FAKE-PLAN: <json>``: a list
 with ``writes`` (absolute path to content), ``actions`` (``[tool, arguments]`` pairs reported as
 tool executions), ``result`` (merged over a valid ``ok`` result and reported as the
 ``concorde_result`` tool), ``no_result`` (end without calling it), ``error`` (end with an
-assistant error message), ``limit`` (append a ``concorde-limit`` entry) and ``exit`` (the exit
-code). The fake records its argument list, environment and prompt per round in its working
+assistant error message), ``limit`` (append a ``concorde-limit`` entry), ``no_transcript`` (write no session file) and
+``exit`` (the exit code). The fake records its argument list, environment and prompt per round in its working
 directory and writes a session file where pi would. It enforces nothing: enforcement is the
 permission extension's and is covered by the live test.
 """
@@ -52,8 +52,9 @@ def main() -> int:
     directory = Path(option("--session-dir") or ".")
     directory.mkdir(parents=True, exist_ok=True)
     transcript = directory / f"2026-01-01T00-00-00-000Z_{session}.jsonl"
-    with transcript.open("a") as handle:
-        handle.write(json.dumps({"type": "session", "id": session}) + "\n")
+    if not step.get("no_transcript"):
+        with transcript.open("a") as handle:
+            handle.write(json.dumps({"type": "session", "id": session}) + "\n")
     emit({"type": "session", "version": 3, "id": session, "cwd": os.getcwd()})
     emit({"type": "agent_start"})
     for path, content in step.get("writes", {}).items():

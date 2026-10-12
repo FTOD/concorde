@@ -8,7 +8,8 @@ The host writes two things itself, so that no worker has to repeat text exactly:
 
 - A worker's decision names each option by a short identity of its own. It names its choice by
   that identity, or names no choice when an answer settles the decision. The host records the
-  options' texts and the chosen option's text, or the answer, with who decided it.
+  options' texts and the chosen option's text, or the answer, with who decided it. The
+  [worker claims](#worker-claims) give the worker's exact payload.
 - A worker gives its tools absolute paths. When a path it writes begins with the worktree's own
   absolute path, the host writes it relative to the worktree before anything checks it.
 
@@ -938,6 +939,635 @@ claims, checked for consistency only. The host writes each decision from the wor
 }
 ```
 
+## Worker claims
+
+What each worker ends with, before the host completes it into the outputs above. Workers validates
+a worker's result against the claims contract its
+[Operation](../../glossary.json#concept.operation) names. The host steps then add the fields only
+they supply. They write each decision's texts and `decided_by`, and the paths relative to the
+worktree. The host rejects a claim whose choice names none of its options, as the outputs' error
+codes say.
+
+```concorde-contract
+{
+  "id": "contract.adoption.survey-claims",
+  "version": 1,
+  "schema": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "summary",
+      "children",
+      "externals",
+      "checks",
+      "decisions",
+      "open_questions"
+    ],
+    "properties": {
+      "summary": {
+        "type": "string",
+        "minLength": 1
+      },
+      "children": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "id",
+            "title",
+            "purpose",
+            "entries",
+            "uses"
+          ],
+          "properties": {
+            "id": {
+              "type": "string",
+              "pattern": "^module\\.[a-z][a-z0-9-]*(?:\\.[a-z0-9-]+)*$"
+            },
+            "title": {
+              "type": "string",
+              "minLength": 1
+            },
+            "purpose": {
+              "type": "string",
+              "minLength": 1
+            },
+            "entries": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "uses": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "target",
+                  "reason"
+                ],
+                "properties": {
+                  "target": {
+                    "type": "string",
+                    "pattern": "^module\\.[a-z][a-z0-9-]*(?:\\.[a-z0-9-]+)*$"
+                  },
+                  "reason": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "externals": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "path",
+            "used_by",
+            "reason"
+          ],
+          "properties": {
+            "path": {
+              "type": "string",
+              "minLength": 1
+            },
+            "used_by": {
+              "type": "string",
+              "pattern": "^module\\.[a-z][a-z0-9-]*(?:\\.[a-z0-9-]+)*$"
+            },
+            "reason": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        }
+      },
+      "checks": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "id",
+            "module",
+            "argv",
+            "timeout_seconds",
+            "inputs",
+            "reason"
+          ],
+          "properties": {
+            "id": {
+              "type": "string",
+              "pattern": "^check\\.[a-z0-9-]+(?:\\.[a-z0-9-]+)*$"
+            },
+            "module": {
+              "type": "string",
+              "pattern": "^module\\.[a-z][a-z0-9-]*(?:\\.[a-z0-9-]+)*$"
+            },
+            "argv": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "env": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "when": {
+              "enum": [
+                "always",
+                "readiness"
+              ]
+            },
+            "timeout_seconds": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "inputs": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "reason": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        }
+      },
+      "decisions": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "id",
+            "module",
+            "question",
+            "options",
+            "chosen",
+            "reason"
+          ],
+          "properties": {
+            "id": {
+              "type": "string",
+              "pattern": "^d\\.[a-z0-9-]+$"
+            },
+            "module": {
+              "type": "string",
+              "pattern": "^module\\.[a-z][a-z0-9-]*(?:\\.[a-z0-9-]+)*$"
+            },
+            "question": {
+              "type": "string",
+              "minLength": 1
+            },
+            "options": {
+              "type": "array",
+              "minItems": 2,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "id",
+                  "text"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "pattern": "^[a-z0-9][a-z0-9-]*$"
+                  },
+                  "text": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              }
+            },
+            "chosen": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^[a-z0-9][a-z0-9-]*$"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "reason": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        }
+      },
+      "open_questions": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "id",
+            "module",
+            "subject",
+            "observed",
+            "evidence",
+            "why_uncertain",
+            "options",
+            "recommendation"
+          ],
+          "properties": {
+            "id": {
+              "type": "string",
+              "pattern": "^q\\.[a-z0-9-]+$"
+            },
+            "module": {
+              "type": "string",
+              "pattern": "^module\\.[a-z][a-z0-9-]*(?:\\.[a-z0-9-]+)*$"
+            },
+            "subject": {
+              "type": "string",
+              "minLength": 1
+            },
+            "observed": {
+              "type": "string",
+              "minLength": 1
+            },
+            "evidence": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "why_uncertain": {
+              "type": "string",
+              "minLength": 1
+            },
+            "options": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "recommendation": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        }
+      }
+    }
+  },
+  "semantics": "What the survey worker ends with, as the output of its worker result: the decomposition proposal's claims before the host completes them. The host alone adds module and remaining_entries, writes each decision's options' and chosen option's texts and decided_by, and writes worktree-absolute paths relative to the worktree, producing contract.adoption.decomposition. Each decision names every option by an identity of its own, a lowercase word of letters, digits and hyphens unique among its options, with the option's text, and names its choice by that identity. chosen is null only for a decision an admitted answer settles: the host then records the answer as the choice. Every other field has the shape the decomposition proposal gives it. A behaviour or field change increments the version.",
+  "example": {
+    "summary": "Checkout and inventory are separate; the database helper stays with the root.",
+    "children": [
+      {
+        "id": "module.checkout",
+        "title": "Checkout",
+        "purpose": "Turns a basket into an order.",
+        "entries": [
+          "src/checkout/"
+        ],
+        "uses": []
+      }
+    ],
+    "externals": [],
+    "checks": [],
+    "decisions": [
+      {
+        "id": "d.db-helper",
+        "module": "module.checkout",
+        "question": "Does the shared database helper get a Module of its own?",
+        "options": [
+          {
+            "id": "own",
+            "text": "a Module of its own"
+          },
+          {
+            "id": "root",
+            "text": "stay with the root"
+          }
+        ],
+        "chosen": "root",
+        "reason": "only the checkout code calls it"
+      }
+    ],
+    "open_questions": []
+  }
+}
+```
+
+```concorde-contract
+{
+  "id": "contract.adoption.description-claims",
+  "version": 1,
+  "schema": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "summary",
+      "promises",
+      "decisions",
+      "open_questions",
+      "deviations"
+    ],
+    "properties": {
+      "summary": {
+        "type": "string",
+        "minLength": 1
+      },
+      "promises": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "module",
+            "kind",
+            "id",
+            "description",
+            "source",
+            "question"
+          ],
+          "properties": {
+            "module": {
+              "type": "string",
+              "pattern": "^module\\.[a-z][a-z0-9-]*(?:\\.[a-z0-9-]+)*$"
+            },
+            "kind": {
+              "enum": [
+                "requirement",
+                "scenario",
+                "contract",
+                "concept",
+                "realization",
+                "relation",
+                "explanation"
+              ]
+            },
+            "id": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "description": {
+              "type": "string",
+              "minLength": 1
+            },
+            "source": {
+              "enum": [
+                "code",
+                "answer"
+              ]
+            },
+            "question": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^q\\.[a-z0-9-]+$"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "tests": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        }
+      },
+      "decisions": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "id",
+            "module",
+            "question",
+            "options",
+            "chosen",
+            "reason"
+          ],
+          "properties": {
+            "id": {
+              "type": "string",
+              "pattern": "^d\\.[a-z0-9-]+$"
+            },
+            "module": {
+              "type": "string",
+              "pattern": "^module\\.[a-z][a-z0-9-]*(?:\\.[a-z0-9-]+)*$"
+            },
+            "question": {
+              "type": "string",
+              "minLength": 1
+            },
+            "options": {
+              "type": "array",
+              "minItems": 2,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "id",
+                  "text"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "pattern": "^[a-z0-9][a-z0-9-]*$"
+                  },
+                  "text": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              }
+            },
+            "chosen": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^[a-z0-9][a-z0-9-]*$"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "reason": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        }
+      },
+      "open_questions": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "id",
+            "module",
+            "subject",
+            "observed",
+            "evidence",
+            "why_uncertain",
+            "options",
+            "recommendation"
+          ],
+          "properties": {
+            "id": {
+              "type": "string",
+              "pattern": "^q\\.[a-z0-9-]+$"
+            },
+            "module": {
+              "type": "string",
+              "pattern": "^module\\.[a-z][a-z0-9-]*(?:\\.[a-z0-9-]+)*$"
+            },
+            "subject": {
+              "type": "string",
+              "minLength": 1
+            },
+            "observed": {
+              "type": "string",
+              "minLength": 1
+            },
+            "evidence": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "why_uncertain": {
+              "type": "string",
+              "minLength": 1
+            },
+            "options": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "recommendation": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        }
+      },
+      "deviations": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "module",
+            "question",
+            "intended",
+            "observed"
+          ],
+          "properties": {
+            "module": {
+              "type": "string",
+              "pattern": "^module\\.[a-z][a-z0-9-]*(?:\\.[a-z0-9-]+)*$"
+            },
+            "question": {
+              "type": "string",
+              "pattern": "^q\\.[a-z0-9-]+$"
+            },
+            "intended": {
+              "type": "string",
+              "minLength": 1
+            },
+            "observed": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        }
+      }
+    }
+  },
+  "semantics": "What the code_to_spec worker ends with, as the output of its worker result: the claims of the Spec description before the host completes them. The host alone adds modules, the document lists, linked_tests, unlinked_tests and validation, writes each decision as it does for contract.adoption.survey-claims and writes worktree-absolute paths relative to the worktree, producing contract.adoption.spec-description. decisions have the shape contract.adoption.survey-claims gives them, a null chosen only for a decision an admitted answer settles. promises, open_questions and deviations have the shapes the Spec description gives them. A behaviour or field change increments the version.",
+  "example": {
+    "summary": "Described checkout's submit.",
+    "promises": [
+      {
+        "module": "module.checkout",
+        "kind": "scenario",
+        "id": "scenario.checkout.submit",
+        "description": "A basket in stock becomes one order.",
+        "source": "code",
+        "question": null,
+        "tests": [
+          "tests/test_checkout.py::test_submit"
+        ]
+      }
+    ],
+    "decisions": [
+      {
+        "id": "d.db-helper",
+        "module": "module.checkout",
+        "question": "Does the shared database helper get a Module of its own?",
+        "options": [
+          {
+            "id": "own",
+            "text": "a Module of its own"
+          },
+          {
+            "id": "root",
+            "text": "stay with the root"
+          }
+        ],
+        "chosen": null,
+        "reason": "only the checkout code calls it"
+      }
+    ],
+    "open_questions": [],
+    "deviations": []
+  }
+}
+```
+
 ## Answers
 
 The file `--answers` names. Every answer names a decision (`d.`) or
@@ -1018,13 +1648,13 @@ Worker, Workers and Spec core links below it keep their own codes.
 | Code | Run | Status | Reason | Raised when |
 | --- | --- | --- | --- | --- |
 | `invalid_request` | survey | `failed` | `input` | a survey is bound to other than one [Module](../../glossary.json#concept.module) |
-| `invalid_answers` | survey, code_to_spec | `failed` | `input` | the answers file cannot be read, breaks `contract.adoption.answers` or answers one identity twice |
+| `invalid_answers` | survey, code_to_spec | `failed` | `input` | the answers file cannot be read, breaks `contract.adoption.answers`, answers one identity twice or answers an identity that no admitted earlier survey or code_to_spec run asked |
 | `specs_unloadable` | both | `failed` | `scope` | the worktree's [Specs](../../glossary.json#concept.spec) cannot be loaded, or, for a bound survey, the surveyed Module's entry metadata at the workspace's base commit cannot be read; the cause is Spec core's error when it gave one |
 | `fresh_workspace_required` | survey | `failed` | `scope` | a bound survey's Module contains a Module, or has an external inclusion, that its entry metadata at the workspace's base commit did not name: a scaffold has written to it, and revising a survey after its scaffold needs a fresh workspace; each addition is evidence |
 | `grant_unavailable` | survey, code_to_spec | `failed` | `scope` | Spec core cannot compute the `code-to-spec` grant; the cause is its error |
 | `unknown_modules` | code_to_spec | `failed` | `input` | a bound Module is not registered, listed with the registered ones |
 | `inconsistent_proposal` | survey | `failed` | `capability` | the proposal does not fit the worktree, names an absolute path as an open question's evidence, has a decision whose choice names none of its options or that neither chooses nor follows an answer, or does not follow an answer; every problem is listed |
-| `new_structural_errors` | code_to_spec | `blocked` | `decision` | the description adds structural errors; one cause per finding |
+| `new_structural_errors` | code_to_spec | `blocked` | `decision` | structural errors the run counts as its own ([req.adoption.own-errors-count](requirements.md#req.adoption.own-errors-count)) remain after the last repair round ([req.adoption.errors-left-block](requirements.md#req.adoption.errors-left-block)), including an unchanged error already in a described Module's own document; one cause per finding |
 | `inconsistent_description` | code_to_spec | `failed` | `capability` | the description names another Module, repeats an identity, names an absolute path as an open question's evidence, has a decision whose choice names none of its options or that neither chooses nor follows an answer, or leaves out an answered decision or question; every problem is listed |
 
 These keep the codes of the [standard worker sequence](../workers.md#errors-of-the-worker-sequence):

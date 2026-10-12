@@ -71,7 +71,11 @@ say({"type": "result", "subtype": "success", "num_turns": 2, "total_cost_usd": 0
 
 
 def event(**value) -> str:
-    return json.dumps(value)
+    return json.dumps(value, ensure_ascii=False)
+
+
+# A command longer than any display would show, whose end only a whole target keeps.
+LONG = "concorde run general " + "x" * 600 + " --end"
 
 
 class HeadlessSessionTests(unittest.TestCase):
@@ -123,6 +127,13 @@ class HeadlessSessionTests(unittest.TestCase):
         self.assertEqual(
             sessions.NOTE, workflow[workflow.index("--append-system-prompt") + 1]
         )
+        # Every round runs with the Bash sandbox off, on its own command line, so that a detached
+        # runner outlives the call that started it.
+        for argv in (first, workflow):
+            self.assertEqual(
+                {"sandbox": {"enabled": False}},
+                json.loads(argv[argv.index("--settings") + 1]),
+            )
         self.assertNotIn("--resume", first)
         again = sessions.command("woken", resume="s-1")
         self.assertEqual("s-1", again[again.index("--resume") + 1])
@@ -145,7 +156,12 @@ class HeadlessSessionTests(unittest.TestCase):
                                     "name": "Write",
                                     "input": {"file_path": "/x/report.json"},
                                 },
-                                {"type": "text", "text": "reported"},
+                                {
+                                    "type": "tool_use",
+                                    "name": "Bash",
+                                    "input": {"command": LONG},
+                                },
+                                {"type": "text", "text": "reported\u2028line\u0085end"},
                             ]
                         },
                     ),
@@ -155,21 +171,47 @@ class HeadlessSessionTests(unittest.TestCase):
                         subtype="success",
                         num_turns=5,
                         total_cost_usd=1.5,
-                        result="the answer",
+                        result="the answer\u2029after",
                     ),
+                ]
+            ),
+            # stream-json writes these separators unescaped inside its strings.
+            encoding="utf-8",
+        )
+        self.assertIn("\u2028", log.read_text(encoding="utf-8"))
+        summary = sessions.read_log(log)
+        self.assertEqual("s-9", summary["session_id"])
+        # Every target is read whole.
+        self.assertEqual(
+            [
+                {"tool": "Write", "target": "/x/report.json"},
+                {"tool": "Bash", "target": LONG},
+            ],
+            summary["actions"],
+        )
+        self.assertEqual(["reported\u2028line\u0085end"], summary["texts"])
+        self.assertEqual(
+            {
+                "subtype": "success",
+                "turns": 5,
+                "cost_usd": 1.5,
+                "text": "the answer\u2029after",
+            },
+            summary["result"],
+        )
+
+    @verifies("scenario.headless-sessions.logs")
+    def test_a_round_of_replays_alone_has_no_answer(self):
+        log = self.base / "round.jsonl"
+        log.write_text(
+            "\n".join(
+                [
+                    event(type="system", subtype="init", session_id="s-9"),
+                    event(type="result", num_turns=0, result="", total_cost_usd=0.0),
                 ]
             )
         )
-        summary = sessions.read_log(log)
-        self.assertEqual("s-9", summary["session_id"])
-        self.assertEqual(
-            [{"tool": "Write", "target": "/x/report.json"}], summary["actions"]
-        )
-        self.assertEqual(["reported"], summary["texts"])
-        self.assertEqual(
-            {"subtype": "success", "turns": 5, "cost_usd": 1.5, "text": "the answer"},
-            summary["result"],
-        )
+        self.assertIsNone(sessions.read_log(log)["result"])
 
     @verifies("scenario.headless-sessions.unsettled")
     def test_running_runs_and_runs_stopped_with_the_turn_are_unsettled(self):
@@ -204,7 +246,7 @@ class HeadlessSessionTests(unittest.TestCase):
         make("r-failed", "2026-09-27T10:05:00Z", "finished", 0, "not_deliverable")
         make("r-earlier", "2026-09-27T09:00:00Z", "running", live.pid)
         # Its runner ran in a sandbox's PID namespace as process 1, a live process here; it no
-        # longer holds its run lock, whose file it left behind.
+        # longer holds its run lock, whose file it left behind, and never finished the run.
         make("r-gone", "2026-09-27T10:05:00Z", "running", 1)
         # A workflow step's run, and an unbound run started in the project itself.
         make(
@@ -241,6 +283,7 @@ class HeadlessSessionTests(unittest.TestCase):
         found = sessions.unsettled_runs(self.project, since, time.time())
         self.assertEqual(
             [
+                {"run": "r-gone", "why": "runner_gone"},
                 {"run": "r-running", "why": "running"},
                 {"run": "r-stopped", "why": "stopped_with_turn"},
                 {"run": "r-step", "why": "running"},
@@ -249,9 +292,16 @@ class HeadlessSessionTests(unittest.TestCase):
             ],
             found,
         )
+        # The wake names a run whose runner is gone as one that ended without a result.
+        self.assertIn(
+            "r-gone (None, workspace none) ended without writing a result",
+            sessions.wake_message(
+                self.project, [{"run": "r-gone", "why": "runner_gone"}]
+            ),
+        )
         # A cancellation long before the round ended was the session's own doing.
         self.assertEqual(
-            ["r-running", "r-step", "r-unbound", "r-queued"],
+            ["r-gone", "r-running", "r-step", "r-unbound", "r-queued"],
             [
                 item["run"]
                 for item in sessions.unsettled_runs(
@@ -265,7 +315,7 @@ class HeadlessSessionTests(unittest.TestCase):
                 self.project,
                 since,
                 time.time(),
-                {"r-running", "r-stopped", "r-step", "r-unbound", "r-queued"},
+                {"r-gone", "r-running", "r-stopped", "r-step", "r-unbound", "r-queued"},
             ),
         )
 

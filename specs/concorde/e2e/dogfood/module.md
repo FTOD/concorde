@@ -370,6 +370,19 @@ When the guidance changes, the scenarios' expectations change with it.
 It also provides the receipt.
 The evaluation keeps digests of the receipt's installed files outside `.concorde/`.
 
+<a id="uses-workers"></a>
+
+**Workers** defines the [worker configuration](../../glossary.json#concept.worker-configuration)
+and the [model map](../../glossary.json#concept.model-map), each with its contract. `prepare`
+builds the scenario's project with the worker configuration that
+[End-to-end testing](../module.md#preparing-a-test-project) writes, and has Workers check it
+against the developer's model map. When the map lacks a model the configuration names, Workers
+refuses it with `model_unmapped`, naming each entry to add
+([requirement](../../worker-harness/workers/launch.md#req.workers.model-map-entry)). `prepare` passes
+that refusal on with Workers' own code before it injects the scenario's fault. No scenario
+directory is written then. End-to-end testing's own preparation policy reaches this Module through
+the inclusion of its entry.
+
 <a id="uses-issues"></a>
 
 **Issues** provides `issues report --check`, which the evaluation runs in the project.

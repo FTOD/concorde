@@ -293,6 +293,7 @@ workers: Workers {
 }
 validation: "6 Round validation (the step's):\nglossary ownership, configured checks\nwhen asked, the step's own validation"
 ownership: "9 Glossary ownership,\nafter the worker run"
+status: "The status table's\nfirst matching row"
 ok: ok {shape: oval}
 blocked: blocked {shape: oval}
 failed: failed {shape: oval}
@@ -306,10 +307,13 @@ workers.audit -> workers.record: "violation, timeout, limit reached, invalid res
 step.grant -> failed: Specs not loaded, Module unknown {style.stroke-dash: 3}
 workers.prepare -> failed: "configuration invalid, no model,\nbackend missing, model map missing,\nunreadable or without the model's id" {style.stroke-dash: 3}
 workers.record -> ownership
-ownership -> failed: "an entry outside the grant changed" {style.stroke-dash: 3}
-ownership -> ok: "worker ok, audit clean, no check failing"
-ownership -> blocked: worker blocked {style.stroke-dash: 3}
-ownership -> failed: "checks still failing, audit violation, launch error, timeout,\nlimit reached, invalid result, worker failed" {style.stroke-dash: 3}
+ownership -> failed: "an entry outside the grant changed,\nwhatever else happened" {style.stroke-dash: 3}
+ownership -> status: "no entry outside the grant changed"
+status -> failed: "1. the worker run's record ended failed: launch error,\ntimeout, limit reached, invalid result, audit or glossary\nownership violation, deletion_failed, validation_unavailable" {style.stroke-dash: 3}
+status -> failed: "2. otherwise, worker failed" {style.stroke-dash: 3}
+status -> blocked: "3. otherwise, worker blocked" {style.stroke-dash: 3}
+status -> failed: "4. otherwise, checks still failing" {style.stroke-dash: 3}
+status -> ok: "5. worker ok, audit clean, every check\npassed, the worker run's record ok"
 ```
 
 As the Protocol lets a harness give less than a type assigns, a provider may withhold every writable

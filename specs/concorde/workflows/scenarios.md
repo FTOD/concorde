@@ -77,8 +77,21 @@ shapes are in the [contracts](contracts.md).
 - AND the step command started no run
 - AND the history the close moved holds nothing of the step
 - AND no workspace folder is created again where the moved one was
-- AND when a step takes the workflow lock after the close and finds the binding gone or changed, it is refused with `workspace_retired` the same way
-- AND that refusal's cause is `binding_gone` or `binding_changed`
+
+### scenario.workflows.step-binding-gone — A step after its task's close is refused
+
+- GIVEN a task worktree of the workspace `adopt` whose task was closed, so that its binding is gone
+- WHEN the step command runs there for `validate` and takes the workflow lock
+- THEN the step prints an outcome with state `refused` and a `workspace_retired` link whose cause is `binding_gone`
+- AND the step command starts and records nothing
+- AND `concorde workflow report` there is refused with a `component` link `workspace_retired` of reason `environment`
+
+### scenario.workflows.step-binding-changed — A step whose binding changed is refused
+
+- GIVEN a task worktree of the workspace `adopt` whose binding's goal changed after the step command read it
+- WHEN the step command runs there for `survey` and takes the workflow lock
+- THEN the step prints an outcome with state `refused` and a `workspace_retired` link whose cause is `binding_changed`
+- AND the step command starts and records nothing
 - AND `concorde workflow report` there is refused with a `component` link `workspace_retired` of reason `environment`
 
 ### scenario.workflows.step-adopted — A run its step command did not record is adopted
@@ -92,9 +105,25 @@ shapes are in the [contracts](contracts.md).
 - AND once the run enters `run/` of the step's node, running the same command again starts no run
 - AND that repeated command records that run in the step
 - AND its outcome is printed
-- BUT when no run lies in the step's node and no run of the workspace runs, the step's run never started
-- AND in that case, the command ends the step's node lost
-- AND the command then starts the run anew under the key `survey`, superseding the starting step
+
+### scenario.workflows.step-unstarted — A step whose run never started is started anew
+
+- GIVEN a workspace whose step `survey` is recorded as starting because the step command that launched its run ended before it recorded the run
+- AND the starting step has its node `workflow/steps/1-survey/` and no run
+- AND no run of the workspace runs
+- WHEN the step command is run for `survey`
+- THEN the command ends the starting step's node lost, since its run never started
+- AND the command starts the run anew under the key `survey`
+- AND the new step supersedes the starting step
+
+### scenario.workflows.step-ends-later — A step's node ends later when the workflow lock stays busy
+
+- GIVEN a step command waiting for the run of step `survey` it started
+- AND a report command that takes the workflow lock while that run finishes and holds it past the step command's `--wait`
+- WHEN the step command sees the run finished
+- THEN it prints the finished outcome within its `--wait` and exits with status 0
+- BUT the step's node still says `running`
+- AND the next step or report command that sees the run finished ends the step's node
 
 ### scenario.workflows.step-cached — A finished step returns at once
 
@@ -128,6 +157,14 @@ shapes are in the [contracts](contracts.md).
 - AND the [workflow result](../glossary.json#concept.workflow-result) has status `awaiting_decision`
 - AND the workflow result lists `d.db-helper` as pending with its options
 - AND the workflow result's `workflow` link gives `decision` as the reason
+
+### scenario.workflows.mode-changed-replay — An interactive replay is reported where it stops
+
+- GIVEN a workspace whose brownfield workflow ran in no-ask mode to its `delivery`, its finished survey having declared the decision point `d.db-helper`
+- WHEN the workflow is started again in interactive mode without answers
+- THEN the script stops at the finished survey and starts no run
+- AND `concorde workflow report --mode interactive` has status `awaiting_decision`, listing `d.db-helper` of step `survey` as pending
+- BUT the same report without `--mode` is judged by the latest recorded step's mode and has status `ok`
 
 ### scenario.workflows.interactive-resume — The answered workflow goes on
 
@@ -205,10 +242,19 @@ shapes are in the [contracts](contracts.md).
 - GIVEN a Claude Code workflow run whose [step agent](../glossary.json#concept.step-agent) for `delivery` drops a field while copying the step request
 - AND because the step agent drops that field, the step command refuses the step request with `invalid_request`
 - WHEN the step function receives that refusal, which names no step
-- THEN the step function asks a step agent again with the same request
-- AND once an outcome for `delivery` comes back, the step function goes on with the procedure
-- AND after three refusals in a row, the step function reports `delivery` lost
-- AND the script's result carries the last refusal under `relayed`, with the key and the number of attempts
+- AND the next step agent relays the outcome of `delivery`
+- THEN the step function asked a step agent again with the same request
+- AND the step function goes on with the procedure with that outcome
+- AND the script's result carries no `relayed`
+
+### scenario.workflows.relay-exhausted — Three refused relays make the step lost
+
+- GIVEN a Claude Code workflow run whose step agents for `delivery` each drop a field while copying the step request
+- AND each time, the step command refuses the step request with `invalid_request`
+- WHEN the step function has received three such refusals in a row
+- THEN the step function asks no step agent again for `delivery`
+- AND the script reports `delivery` lost with `--lost delivery`
+- AND the script's result carries the last refusal under `relayed`, with the key `delivery` and 3 attempts
 
 ### scenario.workflows.superseded — A retried step supersedes later steps
 

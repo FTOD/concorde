@@ -1055,7 +1055,11 @@ def _resolved(ctx: RunContext, revisions: dict[str, str]) -> set[str]:
             for item in _resolutions(summary, earlier, revisions).get("resolved", [])
         )
     if state.settlement is not None:
-        found.update(item["issue"] for item in state.settlement.resolved)
+        found.update(
+            item["issue"]
+            for item in state.settlement.resolved
+            if revisions.get(item["issue"]) == state.settlement.revisions[item["issue"]]
+        )
     return found
 
 

@@ -21,18 +21,42 @@
           "concept.run",
           "concept.run-progress-file",
           "concept.run-result",
-          "concept.run-store"
+          "concept.run-store",
+          "contract.execution.run-result"
         ]
       },
       {
         "target": "module.kernel",
         "meaning": "#uses-kernel",
         "relies_on": [
-          "concept.workspace-binding"
+          "concept.workspace-binding",
+          "contract.kernel.workspace-binding"
+        ]
+      },
+      {
+        "target": "module.tasks",
+        "meaning": "#uses-tasks",
+        "relies_on": [
+          "concept.task"
+        ]
+      },
+      {
+        "target": "module.main-session",
+        "meaning": "#uses-main-session",
+        "relies_on": [
+          "concept.main-session-guidance",
+          "req.main-session.every-task-delegated",
+          "req.main-session.no-work-in-task-worktree"
         ]
       }
     ],
-    "includes": [],
+    "includes": [
+      {
+        "kind": "document",
+        "target": "document.execution.runner",
+        "reason": "the runner's account of the run progress file's fields, the lobby and detached runs, which the wake loop reads"
+      }
+    ],
     "participates": []
   },
   "defines": [

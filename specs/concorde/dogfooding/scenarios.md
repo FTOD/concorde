@@ -60,6 +60,14 @@ worktree whose `HEAD` is detached is refused as a linked worktree.
 - THEN the install is refused with `develop_source_dirty`, naming the changed paths
 - BUT nothing is written into the project
 
+### scenario.dogfooding.refused-unreadable — Refuse a source Git cannot query
+
+- GIVEN the built primary worktree of a Concorde repository, on a branch and fully committed
+- AND Git fails when the develop source check asks for its branch, its status or its commit
+- WHEN the source is checked
+- THEN it is refused with `develop_source_unreadable`, with Git's own message
+- BUT it is never refused as detached, as dirty or accepted without its commit
+
 ### scenario.dogfooding.update-keeps-develop — Update a develop install
 
 - GIVEN a [develop install](../glossary.json#concept.develop-install)

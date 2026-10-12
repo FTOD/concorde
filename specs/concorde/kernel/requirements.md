@@ -112,10 +112,17 @@ holds the lock of a workspace that was retired while it waited.
 
 ### req.kernel.marker-spans-merge — The marker spans the whole undecided merge
 
-A part that writes the [unfinished-merge marker](../glossary.json#concept.unfinished-merge-marker) SHALL keep it present from before it records a merge or changes the primary branch until after its own records say that the merge is decided, writing and removing it only while it holds the [merge lock](../glossary.json#concept.merge-lock).
+A part that writes the [unfinished-merge marker](../glossary.json#concept.unfinished-merge-marker) SHALL keep it present from before it records a merge or changes the primary branch until after its own records say that the merge is decided.
 
 Thus, from the first change to the decision, a crash at any point leaves the marker. A writer that
 cannot write the marker changes nothing. Only the part the marker names replaces or removes it.
+
+### req.kernel.marker-changed-under-lock — The marker changes only under the merge lock
+
+A part that writes, replaces or removes the [unfinished-merge marker](../glossary.json#concept.unfinished-merge-marker) SHALL do so only while it holds the [merge lock](../glossary.json#concept.merge-lock).
+
+The [marker contract](contracts.md#unfinished-merge-marker) gives how each of these changes is
+made. Thus, a reader that holds the merge lock finds the marker as its writer left it.
 
 ### req.kernel.marker-refuses-commits — A commit under the merge lock refuses while the marker is present
 

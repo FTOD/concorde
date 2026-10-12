@@ -13,13 +13,14 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 from pathlib import Path
 
 from ..kernel import errors
 from ..kernel.refusal import KernelError
 from .output import StepOutputError
-from .report import report
+from .report import KEY, report
 from .step import WAIT, StepError, check_request, run_step
 from .store import WorkflowError, WorkspaceRetired, workspace
 
@@ -134,6 +135,15 @@ def main(argv, cwd: Path | None = None) -> int:
         arguments = parser().parse_args(list(argv))
     except UsageError as error:
         return usage(str(error))
+    if arguments.command == "report":
+        # A lost key is checked before anything is read or written: a malformed one is the
+        # caller's command line, not a report that could not be built.
+        malformed = [key for key in arguments.lost if not re.match(KEY["pattern"], key)]
+        if malformed:
+            return usage(
+                f"--lost {', '.join(map(repr, malformed))} is no step key: a step key "
+                f"matches {KEY['pattern']}"
+            )
     try:
         space = workspace(here)
     except WorkflowError as error:

@@ -146,6 +146,106 @@ def _file_digest(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def _measured_file(root: Path, relative: str, what: str) -> Path:
+    """The regular file ``relative`` names in the worktree, reached through no symbolic link;
+    ``check_input_missing`` naming ``what`` it is otherwise, since its digest would not be the
+    worktree's own file."""
+    try:
+        path = checked_path(root, relative, relative)
+    except KernelError as error:
+        raise CheckError(
+            f"{what} {relative} is a symbolic link or passes through one: {error}",
+            "check_input_missing",
+            path=relative,
+            reason="a measured file is read only as the worktree's own regular file",
+        ) from error
+    if not path.is_file():
+        raise CheckError(
+            f"{what} {relative} is "
+            + ("not a regular file" if path.exists() else "missing"),
+            "check_input_missing",
+            path=relative,
+            reason="every file a check result is measured over must exist as a regular "
+            "file, because the result is bound to its digest",
+            remediation="restore the file or stop naming it",
+        )
+    return path
+
+
+def measurement(
+    measured: Mapping[str, Iterable[str]] | None, tests: Iterable[str] | None
+) -> tuple[dict[str, tuple[str, ...]], list[str]]:
+    """``measured`` and ``tests`` as the service uses them: each Module label with its distinct
+    files, and the test identities in order; ``invalid_check`` for an argument of another shape.
+    Omitted, either is empty."""
+    refused = "invalid_check"
+    why = (
+        "measured maps Module labels to canonical project-relative paths, and tests lists "
+        "test identities <path>[::<name>] with a canonical project-relative path"
+    )
+    files: dict[str, tuple[str, ...]] = {}
+    if measured is not None:
+        if not isinstance(measured, Mapping):
+            raise CheckError(
+                f"measured must be a mapping of Module labels to paths, not "
+                f"{type(measured).__name__}",
+                refused,
+                "measured",
+                reason=why,
+                remediation="pass the files each Module's results depend on by Module",
+            )
+        for module, paths in measured.items():
+            if not isinstance(module, str) or isinstance(paths, (str, bytes)):
+                raise CheckError(
+                    f"measured names {module!r} with {paths!r}"[:300],
+                    refused,
+                    "measured",
+                    reason=why,
+                    remediation="map each Module label to a list of paths",
+                )
+            try:
+                paths = tuple(dict.fromkeys(paths))
+                for path in paths:
+                    safe_path(path, f"measured/{module}")
+            except (TypeError, KernelError) as error:
+                raise CheckError(
+                    f"measured names for {module} what is no list of canonical "
+                    f"project-relative paths: {error}",
+                    refused,
+                    f"measured/{module}",
+                    reason=why,
+                    remediation="name each file by its canonical project-relative path",
+                ) from error
+            files[module] = paths
+    selected: list[str] = []
+    if tests is not None:
+        if isinstance(tests, (str, bytes)):
+            raise CheckError(
+                f"tests must be a list of test identities, not the string {tests!r}"[
+                    :300
+                ],
+                refused,
+                "tests",
+                reason=why,
+            )
+        try:
+            selected = list(tests)
+            for test in selected:
+                if not isinstance(test, str):
+                    raise TypeError(f"{test!r} is no string")
+                safe_path(test.split("::", 1)[0], "tests")
+        except (TypeError, KernelError) as error:
+            raise CheckError(
+                f"tests holds what is no test identity <path>[::<name>]: {error}",
+                refused,
+                "tests",
+                reason=why,
+                remediation="name each test by its file's canonical project-relative path, "
+                "with ::<name> for one test of it",
+            ) from error
+    return files, selected
+
+
 def _present_inputs(root: Path, check: dict) -> list[tuple[str, Path]]:
     """The check's declared inputs as ``(relative, path)``; ``check_input_missing`` for one that
     is missing, a symbolic link or neither a regular file nor a directory."""
@@ -354,11 +454,13 @@ def _entry(
 
 
 def validate_checks(worktree: Path) -> list[dict]:
-    """Judge every checks file of ``worktree`` and every declared input before any check runs;
-    the configured checks, or ``invalid_check`` and ``check_input_missing`` naming the file,
-    the entry and the path."""
+    """Judge every checks file of ``worktree``, every check's ``argv``, ``env``, ``when`` and
+    ``timeout_seconds`` and every declared input before any check runs, launching nothing; the
+    configured checks, or ``invalid_check`` and ``check_input_missing`` naming the file, the
+    entry and the path."""
     checks = configured_checks(worktree)
     for check in checks:
+        _command_fields(check)
         _inputs(Path(worktree), check)
     return checks
 
@@ -369,7 +471,10 @@ def check_revision(
     """The digest a stored check result of ``module`` is current against: the ``files`` its
     caller names for the Module, each of the Module's checks with its inputs, and the policy."""
     root = Path(worktree)
-    implementation = [(path, _file_digest(root / path)) for path in sorted(set(files))]
+    implementation = [
+        (path, _file_digest(_measured_file(root, path, f"measured file of {module}")))
+        for path in sorted(set(files))
+    ]
     own = [check for check in checks if check["module"] == module]
     value = {
         "implementation": implementation,
@@ -438,19 +543,22 @@ def measured_digest(
     it selected and the digest of every file holding one of them, since another selection runs
     other tests."""
     root = Path(worktree)
+    measured, tests = measurement(measured, tests)
     checks = configured_checks(root, [check["module"]]) if checks is None else checks
     revision = check_revision(
-        root, checks, check["module"], (measured or {}).get(check["module"], ())
+        root, checks, check["module"], measured.get(check["module"], ())
     )
     if not selective(check):
         return revision
-    tests = list(tests)
     files = sorted({test.split("::", 1)[0] for test in tests})
     value = {
         "check_revision": revision,
         "modules": sorted(set(modules)),
         "tests": tests,
-        "test_files": [(path, _file_digest(root / path)) for path in files],
+        "test_files": [
+            (path, _file_digest(_measured_file(root, path, "selected test file")))
+            for path in files
+        ],
     }
     return (
         "sha256:"
@@ -480,6 +588,28 @@ def _valid_argv(check: dict) -> list[str]:
             subject=check["id"],
         )
     return argv
+
+
+def _command_fields(check: dict) -> tuple[str, float, dict[str, str]]:
+    """The check's ``when``, timeout and environment, once its ``argv`` is valid too;
+    ``invalid_check`` for the first of these fields that breaks the format. Nothing is run and
+    ``{python}`` is not looked for."""
+    when = _when(check)
+    _valid_argv(check)
+    return when, _timeout(check), environment(check)
+
+
+def _when(check: dict) -> str:
+    """When the check runs; ``invalid_check`` for a value other than those of ``WHEN``."""
+    when = check.get("when", "always")
+    if when not in WHEN:
+        raise CheckError(
+            f"check {check['id']} has when {when!r}; expected one of "
+            + ", ".join(WHEN),
+            "invalid_check",
+            subject=check["id"],
+        )
+    return when
 
 
 def _argv(check: dict, python, tests=()) -> list[str]:
@@ -577,23 +707,14 @@ def run_checks(
     selected = list(dict.fromkeys(modules))
     # Each Module's own checks need only its own checks file.
     checks = configured_checks(worktree, selected if kinds == "module" else None)
-    tests = list(tests or ())
     # Each Module's files once, since every check is measured before and after it runs.
-    measured = {module: tuple(files) for module, files in (measured or {}).items()}
+    measured, tests = measurement(measured, tests)
     # A result names its log by an absolute path, whatever the caller passed.
     trace_directory = Path(os.path.abspath(trace_directory))
     # Every kept check is judged, and its declared inputs found, before any command runs.
     kept = []
     for check in checks:
-        when = check.get("when", "always")
-        if when not in WHEN:
-            raise CheckError(
-                f"check {check['id']} has when {when!r}; expected one of "
-                + ", ".join(WHEN),
-                "invalid_check",
-                subject=check["id"],
-            )
-        if when == "readiness" and stage != "readiness":
+        if _when(check) == "readiness" and stage != "readiness":
             continue
         _valid_argv(check)
         if selective(check):
@@ -609,6 +730,11 @@ def run_checks(
         kept.append((check, argv, _timeout(check), environment(check)))
     for check, *_ in kept:
         _present_inputs(worktree, check)
+        for path in measured.get(check["module"], ()):
+            _measured_file(worktree, path, f"measured file of {check['module']}")
+        if selective(check):
+            for path in dict.fromkeys(test.split("::", 1)[0] for test in tests):
+                _measured_file(worktree, path, "selected test file")
     trace_directory.mkdir(parents=True, exist_ok=True)
     results = []
     for check, argv, timeout, env in kept:
@@ -666,13 +792,18 @@ def _run_one(
     )
     node.keep("output", "output.log")
     node.start()
+    # A selective check's log begins with the tests it selected, however the check ends.
+    header = (
+        ("selected tests: " + " ".join(chosen) + "\n\n").encode() if chosen else b""
+    )
     logged = False
     try:
         try:
             outcome = execute_check(worktree, argv, timeout=timeout, environment=env)
         except CheckSandboxError as error:
             log.write_bytes(
-                (error.stdout or b"")
+                header
+                + (error.stdout or b"")
                 + b"\n"
                 + (error.stderr or b"")
                 + str(error).encode()
@@ -689,9 +820,6 @@ def _run_one(
             )
             refusal.trace_failures.extend(node.failures)
             raise refusal from error
-        header = (
-            ("selected tests: " + " ".join(chosen) + "\n\n").encode() if chosen else b""
-        )
         log.write_bytes(header + outcome.stdout + b"\n" + outcome.stderr)
         logged = True
         status = (
@@ -744,7 +872,7 @@ def _run_one(
             stdout, stderr = getattr(error, "check_output", (b"", b""))
             with contextlib.suppress(OSError, TraceError, KernelError):
                 if not logged:
-                    log.write_bytes(stdout + b"\n" + stderr)
+                    log.write_bytes(header + stdout + b"\n" + stderr)
                 node.finish(
                     "failed",
                     outcome="interrupted",

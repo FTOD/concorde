@@ -28,16 +28,17 @@ from ...execution.context import (
     RunContext,
     evidence,
 )
-from ..specs import spec_cause
-from ..workers import operation, run_worker
 from ..prompts import (
     load_prompt,
 )
+from ..specs import spec_cause
+from ..workers import operation, run_worker
 from .records import (
     DECOMPOSITION_SCHEMA,
     SURVEY_WORKER_SCHEMA,
     AnswersError,
     answer_problems,
+    check_provenance,
     evidence_problems,
     load_answers,
     narrowed_entries,
@@ -143,6 +144,7 @@ def inventory(ctx: RunContext):
 
     try:
         ctx.state["answers"] = load_answers(ctx.arguments.answers)
+        check_provenance(ctx.state["answers"], ctx.inputs, ctx.arguments.answers)
     except AnswersError as error:
         return answers_failure(ctx, error)
     if len(ctx.modules) != 1:

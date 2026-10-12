@@ -86,6 +86,13 @@ class BindingTests(unittest.TestCase):
         self.assertEqual(self.root, binding.toplevel(self.root / ".concorde"))
         self.assertIsNone(binding.load(repository()))
 
+    def test_a_binding_is_ignored_without_coordination(self):
+        from concorde.distribution import install, parts
+
+        alone = parts.closure(parts.package_parts(), ["kernel"])
+        self.assertNotIn("coordination", alone)
+        self.assertIn(binding.BINDING, install.ignored(alone))
+
     @verifies("scenario.kernel.binding-refused")
     def test_a_broken_binding_is_refused_whole(self):
         cases = (
@@ -133,6 +140,23 @@ class BindingTests(unittest.TestCase):
             ):
                 binding.write(self.root, broken)
             self.assertEqual("binding_invalid", refused.exception.code)
+        path = binding.path_of(self.root)
+        path.unlink()
+        path.symlink_to(self.root / "gone.json")
+        with self.assertRaises(KernelError) as refused:
+            binding.load(self.root)
+        self.assertEqual(
+            ("binding_unreadable", str(path)),
+            (refused.exception.code, refused.exception.field),
+        )
+        path.unlink()
+        failure = PermissionError(13, "Permission denied", str(path))
+        with (
+            patch.object(Path, "read_text", side_effect=failure),
+            self.assertRaises(KernelError) as refused,
+        ):
+            binding.load(self.root)
+        self.assertEqual("binding_unreadable", refused.exception.code)
 
     def test_a_binding_the_system_cannot_write_is_refused_with_a_code(self):
         failure = PermissionError(13, "Permission denied")
@@ -242,7 +266,23 @@ class TypedValueTests(unittest.TestCase):
                 self.assertRaises(KernelError) as refused,
             ):
                 schema.register("example-note", version, other)
-            self.assertEqual("duplicate_type", refused.exception.code)
+            self.assertEqual(
+                ("duplicate_type", "/type_id"),
+                (refused.exception.code, refused.exception.field),
+            )
+        for type_id, version, field in (
+            (" padded", 1, "/type_id"),
+            ("example-other", 0, "/schema_version"),
+        ):
+            with (
+                self.subTest(field=field),
+                self.assertRaises(KernelError) as refused,
+            ):
+                schema.register(type_id, version, NOTE)
+            self.assertEqual(
+                ("invalid_input", field),
+                (refused.exception.code, refused.exception.field),
+            )
         self.assertEqual(1, schema.type_version("example-note"))
         value = schema.typed("example-note", {"text": "kept"})
         self.assertEqual(
@@ -320,6 +360,10 @@ class TypedValueTests(unittest.TestCase):
             (
                 {"properties": {"x/y": {"items": {"type": "bogus"}}}},
                 "/properties/x~1y/items",
+            ),
+            (
+                {"properties": {"note": {"$ref": "example-note", "type": "object"}}},
+                "/properties/note",
             ),
         ):
             with self.subTest(field), self.assertRaises(KernelError) as refused:
@@ -433,6 +477,35 @@ class DialectTests(unittest.TestCase):
             ("invalid_field", "/data"),
             (refused.exception.code, refused.exception.field),
         )
+
+    def test_an_unconstrained_schema_still_checks_numbers_kinds_and_depth(self):
+        schema.register("example-any", 1, True)
+        schema.register(
+            "example-open",
+            1,
+            {"type": "object", "properties": {"x": {"type": "array"}}},
+        )
+        deep: object = 1
+        for _ in range(schema.MAX_DEPTH + 1):
+            deep = [deep]
+        for type_id, data, field in (
+            ("example-any", {"x": float("inf")}, "/data/x"),
+            ("example-any", {"x": [float("nan")]}, "/data/x/0"),
+            ("example-any", {"x": deep}, None),
+            ("example-any", {"x": {1, 2}}, "/data/x"),
+            ("example-any", {1: "a"}, "/data"),
+            ("example-open", {"y": {"z": float("-inf")}}, "/data/y/z"),
+            ("example-open", {"x": [float("inf")]}, "/data/x/0"),
+            ("example-open", {"y": deep}, None),
+        ):
+            with (
+                self.subTest(type_id=type_id, field=field),
+                self.assertRaises(KernelError) as refused,
+            ):
+                schema.typed(type_id, data)
+            self.assertEqual("invalid_field", refused.exception.code)
+            if field is not None:
+                self.assertEqual(field, refused.exception.field)
 
     def test_numbers_beyond_float_range(self):
         huge = 10**400
@@ -586,6 +659,43 @@ class TransactionTests(unittest.TestCase):
                 verify=lambda: sys.exit(3),
             )
         self.assertEqual({"a.txt": "a\n", "b.txt": "b\n"}, self.contents())
+
+    @verifies("scenario.kernel.transaction-restored")
+    def test_an_interruption_just_after_a_rename_restores_that_file(self):
+        replace = os.replace
+
+        def interrupted_after(target: str):
+            interrupted = []
+
+            def renamed(source, destination):
+                replace(source, destination)
+                if Path(destination).name == target and not interrupted:
+                    interrupted.append(destination)
+                    raise KeyboardInterrupt
+
+            return renamed
+
+        for target, changes in (
+            ("b.txt", self.changes()),
+            (
+                "c.txt",
+                [
+                    files.file_change(self.root, "a.txt", "A\n"),
+                    files.file_change(self.root, "new/c.txt", "C\n"),
+                ],
+            ),
+        ):
+            with (
+                self.subTest(target=target),
+                patch.object(files.os, "replace", interrupted_after(target)),
+                self.assertRaises(KeyboardInterrupt),
+            ):
+                files.apply_files(self.root, changes, {"a.txt", "b.txt", "new/c.txt"})
+            self.assertEqual({"a.txt": "a\n", "b.txt": "b\n"}, self.contents())
+            self.assertFalse((self.root / "new/c.txt").exists())
+            self.assertEqual(
+                [], list(self.root.rglob(".concorde-write-*")), "no temporary file"
+            )
 
     @verifies("scenario.kernel.transaction-unrestored")
     def test_a_refused_restoration_is_named(self):
@@ -807,6 +917,14 @@ class MarkerTests(unittest.TestCase):
             marker.write_marker(concorde, broken)
         self.assertEqual("marker_invalid", refused.exception.code)
         self.assertEqual(written, path.read_bytes())
+        path.unlink()
+        path.symlink_to(concorde / "gone.json")
+        with self.assertRaises(KernelError) as refused:
+            marker.read_marker(concorde)
+        self.assertEqual(
+            ("marker_unreadable", str(path)),
+            (refused.exception.code, refused.exception.field),
+        )
 
     def test_a_marker_the_system_cannot_write_is_refused_with_a_code(self):
         _, value = self.marked()

@@ -489,6 +489,9 @@ it allows. Optionally, the caller names a final check to run after the writes.
 4. When a write or the final check fails, the transaction restores every file written so far
    through the same temporary file and rename. When a file originally exists, the transaction
    restores its original bytes. When a file originally does not exist, the transaction removes it.
+   A file whose write was under way when the failure came counts as written, whether or not its
+   rename took place. When such a file still holds its original bytes, or is still absent, its
+   restoration changes nothing.
 
 What the caller then receives:
 
@@ -556,26 +559,45 @@ error as its cause. When a caller raises its own exception while it holds a lock
 passes unchanged. Tracing's operations on trace nodes and locks belong to the Kernel's child
 Tracing ([Tracing contracts](tracing/contracts.md)).
 
-| Operation | Takes | Returns | Refuses with |
-| --- | --- | --- | --- |
-| Find the worktree | a directory | the real root of the Git worktree it lies in | `not_a_worktree` |
-| Read a binding | a worktree | its workspace binding, or none when the worktree has no binding file | `binding_unreadable` (the file cannot be read or is no JSON), `binding_invalid` (it breaks the contract, names a `root` that is not an absolute real path, a relative folder or a workspace folder that does not exist), `binding_misplaced` (its `root` is another worktree) |
-| Write a binding | a worktree and a binding | the file's path, having checked the binding as reading it does and replaced any binding there in one rename | `binding_invalid` (reading it would refuse it, its `root` naming another worktree included), `system_error` |
-| Register a type | an identity, a version and a schema | nothing | `duplicate_type`, `invalid_input` |
-| Make or check a typed value | a type identity and data, or a value and the type expected | a checked copy | `unknown_type`, `unsupported_version`, `incompatible_handoff`, `invalid_field` |
-| Make an artifact | a root, an identity and a path below the root | `{id, path, digest}` of the file | `stale_reference` (the file does not exist), `invalid_field` (a path that is not canonical or passes through a symbolic link), `system_error` |
-| Verify artifacts | a root and a value | nothing | `stale_reference` (an artifact's file is missing or its bytes changed), `invalid_field` (an artifact's fields break the artifact format or its path passes through a symbolic link) |
-| Check a record | a value and its contract schema | nothing | `invalid_input` (the schema), `invalid_field` (the value), and the codes of an embedded typed value |
-| Apply a file transaction | a root, the changes, the allowed paths and an optional final check | the written paths | the outcomes of [File transactions](#file-transactions) |
-| Make a delivery message | a workspace's name and its goal | the message of a [delivery commit](#delivery-commit): the subject `concorde: deliver <workspace>`, a blank line and the goal without its surrounding whitespace, ending in one newline | nothing |
-| List deliveries | a worktree, its branch, its base commit and the workspace's name | the delivery commits on the first-parent history since the base, oldest first, each with how it fails to verify, nothing when it verifies | `git_failed`, naming the Git command and its output |
-| Take the [workspace lock](../glossary.json#concept.workspace-lock) | the `.concorde` a binding names, the workspace, the holder, how long to wait and whether to take a lock file its holder removed meanwhile | holds it until released | `workspace_busy` naming the holder, `workspace_retired` (its holder removed the file while the taker waited, as a close does), `system_error` |
-| Take the merge lock | the primary worktree's `.concorde`, the holder, the task when there is one and how long to wait, 300 seconds by default | holds it until released | `merge_busy` naming the holder, `system_error` |
-| Read a lock's holder | the workspace lock or the merge lock | its holder line, or none when nobody holds it | nothing |
-| Read the [unfinished-merge marker](#unfinished-merge-marker) | the primary worktree's `.concorde` | the marker, or none when there is none | `marker_unreadable` (the file cannot be read or is no JSON), `marker_invalid` (it breaks its contract) |
-| Write the unfinished-merge marker | the primary worktree's `.concorde` and a marker | the file's path, having checked the marker and replaced any marker there in one rename | `marker_invalid`, `system_error` |
-| Remove the unfinished-merge marker | the primary worktree's `.concorde` | whether there was a marker | `system_error` |
-| Describe an unfinished merge | the primary worktree's `.concorde` and its marker | the account a reader's refusal carries: the command, its process and start, the commit merged into which branch at which commit, where the primary worktree's head is now and the commands that finish the merge | nothing |
+The library is the Python package `concorde.kernel`. Its callables are those of the installed
+Concorde, which installs every part from one checkout, so they promise no compatibility with
+another version. Each operation is one function of a module of that package, named in the table
+as `<module>.<function>` with its arguments. Arguments after `*` are passed by name. These
+conventions hold for every operation:
+
+- A path argument is a `pathlib.Path`. `concorde` is the `.concorde` directory the operation's
+  row names. A record is a `dict` holding JSON values.
+- A refusal is the exception `concorde.kernel.refusal.KernelError`. Its `code` is the stable code,
+  its `field` the JSON pointer or path, `str()` of it the message and `causes` the failures that
+  led to it. Its `to_dict()` gives the refusal as JSON data, each cause as its own refusal.
+- A lock is taken by a context manager. The `with` block holds it. The lock is released when the
+  block ends, however it ends. The block receives the seconds spent waiting. A `wait` of `None`
+  waits as long as the lock is held. A refusal of a lock is `concorde.kernel.locking.LockRefused`,
+  a `KernelError` that also carries `holder`, the holder's line as `entry` and `waited`.
+- The final check of a file transaction is `verify`, a callable that takes no argument. Its return
+  value is ignored. Whatever it raises fails the transaction and reaches the caller unchanged once
+  the transaction restored its files.
+
+| Operation | Call | Takes | Returns | Refuses with |
+| --- | --- | --- | --- | --- |
+| Find the worktree | `binding.toplevel(here)` | a directory | the real root of the Git worktree it lies in | `not_a_worktree` |
+| Read a binding | `binding.load(root)` | a worktree | its workspace binding, or none when the worktree has no binding file | `binding_unreadable` (the file cannot be read, as a symbolic link to nothing cannot, or is no JSON), `binding_invalid` (it breaks the contract, names a `root` that is not an absolute real path, a relative folder or a workspace folder that does not exist), `binding_misplaced` (its `root` is another worktree) |
+| Write a binding | `binding.write(root, value)` | a worktree and a binding | the file's path, having checked the binding as reading it does and replaced any binding there in one rename | `binding_invalid` (reading it would refuse it, its `root` naming another worktree included), `system_error` |
+| Register a type | `schema.register(type_id, version, schema)` | an identity, a version and a schema | nothing | `duplicate_type`, `invalid_input` |
+| Make or check a typed value | `schema.typed(type_id, data)`, `schema.validate_typed(value, expected=None)` | a type identity and data, or a value and the type expected | a checked copy | `unknown_type`, `unsupported_version`, `incompatible_handoff`, `invalid_field` |
+| Make an artifact | `schema.artifact(root, identifier, relative)` | a root, an identity and a path below the root | `{id, path, digest}` of the file | `stale_reference` (the file does not exist), `invalid_field` (a path that is not canonical or passes through a symbolic link), `system_error` |
+| Verify artifacts | `schema.verify_artifacts(root, value)` | a root and a value | nothing | `stale_reference` (an artifact's file is missing or its bytes changed), `invalid_field` (an artifact's fields break the artifact format or its path passes through a symbolic link) |
+| Check a record | `schema.validate(value, schema)` | a value and its contract schema | nothing | `invalid_input` (the schema), `invalid_field` (the value), and the codes of an embedded typed value |
+| Apply a file transaction | `files.apply_files(root, changes, allowed, *, verify=None)`; `files.file_change(root, path, content)` makes one change bound to the file's current bytes | a root, the changes, the allowed paths and an optional final check | the written paths | the outcomes of [File transactions](#file-transactions) |
+| Make a delivery message | `delivery.message(workspace, goal)` | a workspace's name and its goal | the message of a [delivery commit](#delivery-commit): the subject `concorde: deliver <workspace>`, a blank line and the goal without its surrounding whitespace, ending in one newline | nothing |
+| List deliveries | `delivery.deliveries(worktree, branch, base, workspace)` | a worktree, its branch, its base commit and the workspace's name | the delivery commits on the first-parent history since the base, oldest first, each with how it fails to verify, nothing when it verifies | `git_failed`, naming the Git command and its output |
+| Take the [workspace lock](../glossary.json#concept.workspace-lock) | `with locking.workspace_lock(concorde, workspace, holder, *, wait=0, waiting=None, task=None, retake=True) as waited:` | the `.concorde` a binding names, the workspace, the holder, how long to wait and whether to take a lock file its holder removed meanwhile | holds it until released | `workspace_busy` naming the holder, `workspace_retired` (its holder removed the file while the taker waited, as a close does), `system_error` |
+| Take the merge lock | `with locking.merge_lock(concorde, holder, *, wait=300, task=None) as waited:` | the primary worktree's `.concorde`, the holder, the task when there is one and how long to wait, 300 seconds by default | holds it until released | `merge_busy` naming the holder, `system_error` |
+| Read a lock's holder | `locking.workspace_lock_holder(concorde, workspace)`, `locking.merge_lock_holder(concorde)` | the workspace lock or the merge lock | its holder line, or none when nobody holds it | nothing |
+| Read the [unfinished-merge marker](#unfinished-merge-marker) | `marker.read_marker(concorde)` | the primary worktree's `.concorde` | the marker, or none when there is none | `marker_unreadable` (the file cannot be read, as a symbolic link to nothing cannot, or is no JSON), `marker_invalid` (it breaks its contract) |
+| Write the unfinished-merge marker | `marker.write_marker(concorde, value)` | the primary worktree's `.concorde` and a marker | the file's path, having checked the marker and replaced any marker there in one rename | `marker_invalid`, `system_error` |
+| Remove the unfinished-merge marker | `marker.remove_marker(concorde)` | the primary worktree's `.concorde` | whether there was a marker | `system_error` |
+| Describe an unfinished merge | `marker.describe(concorde, value)` | the primary worktree's `.concorde` and its marker | the account a reader's refusal carries: the command, its process and start, the commit merged into which branch at which commit, where the primary worktree's head is now and the commands that finish the merge | nothing |
 
 A run of Execution, for example, reads the binding of the worktree it starts in. When the binding
 is copied from another workspace, the binding is refused with `binding_misplaced`. In that case,

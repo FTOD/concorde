@@ -8,8 +8,8 @@ together.
 
 ### req.concorde.part-dependencies — A part imports only the parts it depends on
 
-Except for Distribution, every [part](glossary.json#concept.part) SHALL import code only from these
-sources:
+Except for Distribution, every [part](glossary.json#concept.part) SHALL import Concorde code, the
+`concorde` package, only from these sources:
 
 - Itself.
 - The parts it depends on, as the table below gives them.
@@ -25,6 +25,11 @@ sources:
 | coordination | kernel |
 | method | spec, worker harness, execution, workflow, kernel |
 | distribution | nothing |
+
+This rule and the table concern only the dependencies between parts. Imports of the Python standard
+library and of third-party packages are outside the rule. Distribution installs the third-party
+packages that a part's code imports, such as Method's LangGraph, as
+[its explanation](distribution/module.md) says.
 
 The root's [parts](module.md#the-parts) explains what each part holds. It also explains why the
 directions are these. Distribution, the installation host, depends on no part. It is the one part that reaches
@@ -325,9 +330,10 @@ No actor SHALL make a delivery commit except one of these delivering commands:
 - Method's `delivery` execution command.
 - Only where the method part is not installed, Coordination's `task deliver`.
 
-A delivery commit is recognized by its subject alone
-([Kernel](kernel/contracts.md#delivery-commit)). Therefore, none of the following commits under
-that subject:
+The exact subject `concorde: deliver <workspace>` is reserved for the delivering commands.
+[Kernel's delivery commit contract](kernel/contracts.md#delivery-commit) says which commit under
+that subject marks a workspace delivered and how that is verified. That contract never asks who
+made the commit. Therefore, none of the following commits under that subject:
 
 - A task session.
 - The main agent.

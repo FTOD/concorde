@@ -181,6 +181,26 @@ class PytestTimingTests(unittest.TestCase):
             set(),
         )
 
+    @verifies("scenario.concorde.test-timing")
+    def test_an_input_that_cannot_be_inspected_makes_the_input_incomplete(self):
+        from tests.concorde.support import pytest_timing as runner
+
+        selected = ["checks/test_sample.py::SampleTests::test_one"]
+        denied = self.root / "protocol/boundaries.md"
+        lstat = Path.lstat
+
+        def refusing(path):
+            if path == denied:
+                raise PermissionError(13, "Permission denied", str(path))
+            return lstat(path)
+
+        with patch.object(Path, "lstat", refusing):
+            value = runner.fingerprint(selected, self.root)
+        self.assertEqual((False, None), (value["input_complete"], value["input"]))
+        # A tracked file deleted from the working tree is no input and leaves it complete.
+        denied.unlink()
+        self.assertTrue(runner.fingerprint(selected, self.root)["input_complete"])
+
     @verifies("scenario.concorde.test-prior-unchanged")
     def test_prior_with_unchanged_inputs(self):
         value = self.run_report("report.json")

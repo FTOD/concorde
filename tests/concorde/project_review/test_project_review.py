@@ -10,10 +10,10 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from concorde.issues.store import list_issues, read_issue
+from concorde.issues.store import list_issues, read_issue, report_issue
 from concorde.kernel.marker import write_marker
 from concorde.method import review_issues
-from concorde.method.project_review import record
+from concorde.method.project_review import findings, record
 from concorde.method.project_review.operation import PAYLOAD_SCHEMA, code_digest
 from concorde.worker_harness.runs import read_record
 from concorde.spec.repository import SpecRepository
@@ -471,6 +471,39 @@ class ProjectReviewTests(unittest.TestCase):
             [item["issue"] for item in self.module(envelope)["standing"]],
         )
         self.assertEqual("open", self.issues()[check["issue"]]["status"])
+
+    def test_a_resolved_checks_issue_changed_meanwhile_still_stands(self):
+        self.test_a_failed_check_is_an_issue()
+        issue = self.check_issue
+        (self.root / "src/a/flag").write_text("ok")
+        commit(self.root, "repair the check")
+        settle = findings.settle_and_report
+
+        def appending(*args, **kwargs):
+            # Another reporter appends to the Issue after this run settled it.
+            value = settle(*args, **kwargs)
+            record, revision = read_issue(self.root, issue)
+            latest = record["reports"][-1]
+            report_issue(
+                self.root,
+                {
+                    **latest["report"],
+                    "report_key": "meanwhile",
+                    "description": "The check fails again on another host.",
+                    "issue_id": issue,
+                    "expected_revision": revision,
+                },
+                {**latest["source"], "invocation_id": "r-meanwhile"},
+            )
+            return value
+
+        with patch.object(findings, "settle_and_report", side_effect=appending):
+            status, envelope = self.review()
+        self.assertEqual((0, "ok"), (status, envelope["status"]), envelope)
+        self.assertIn(
+            issue,
+            [item["issue"] for item in self.module(envelope)["standing"]],
+        )
 
     @verifies("scenario.project-review.without-issues")
     def test_without_the_issues_part_nothing_is_skipped_or_recorded(self):

@@ -245,9 +245,19 @@ Without the execution part, there are no runs to read. Only these count:
 - The branch head.
 - The worktree.
 
-Only by asking Tasks with `concorde task show` does a main session learn how the runs it did not
-start stand. A main session is woken only by the runs its own background Bash started and by the
-waits it registered with its own [project MCP server](../glossary.json#concept.project-mcp-server).
+No run a main session did not start wakes it by itself. A main session hears of the outcome of
+delegated work in these ways, which [Main session](main-session/module.md#owners) lists with their
+owners:
+
+- A task session's report, which `concorde task report` records first and the task session's
+  SendMessage then wakes the main session with. The report carries the task's delivery or its
+  escalations.
+- The end of a run its own background Bash started.
+- The end of a wait it registered with its own
+  [project MCP server](../glossary.json#concept.project-mcp-server), or of a merge it started
+  through that server.
+
+Besides these, `concorde task show` tells a main session at any time how the runs of a task stand.
 No record is written by both halves, so neither can leave the other with a state that disagrees with
 what happened.
 
@@ -310,8 +320,17 @@ Merges never interleave, because each is made from the primary worktree under th
 a task session that works it. While the task session runs beside others, its
 [session boundary](../glossary.json#concept.session-boundary) keeps its file-tool writes inside its
 task. Its shell is not restricted
-([req.task-session.no-sandbox](task-session/requirements.md#req.task-session.no-sandbox)). When
-anything outside the task worktree changed that nobody accounts for, the merge refuses the task.
+([req.task-session.no-sandbox](task-session/requirements.md#req.task-session.no-sandbox)). Before
+it merges, the merge audits what the filesystem shows outside the task worktree
+([Tasks](tasks/module.md#nothing-changed-outside-the-task)):
+
+- It refuses an uncommitted or untracked path that remains in the primary worktree after any Issue
+  recovery.
+- It refuses one in the surviving worktree of a task that has ended.
+- It only warns about one in the worktree of another task that has delivered and waits.
+
+The audit does not judge the worktrees of working tasks or of no task, nor commits. A merge that
+succeeds is therefore no proof that a task session's shell changed nothing outside its task.
 Concorde places no permission limits on the main agent, which works no task itself.
 
 ### Escalations

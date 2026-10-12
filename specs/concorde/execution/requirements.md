@@ -249,11 +249,20 @@ stay read-only for the command, at the system call
 
 ### req.execution.checkout-removed — The checkout does not outlive the run
 
-Whatever ended an unbound run's steps, the runner SHALL remove the run's checkout before it writes the run's result, and name in that result whatever of the checkout it could not remove.
+Whatever ended an unbound run's steps, the runner SHALL attempt to remove the run's checkout, as
+[Unbound checkout](runner.md#unbound-checkout) step 5 says, before it writes the run's result.
 
-When Git refuses to remove something, the runner removes it directly. The runner names what that
-leaves with `checkout-not-removed` evidence, as [Unbound checkout](runner.md#unbound-checkout)
-step 5 says.
+When Git refuses to remove something, the runner removes it directly. That removal can still leave
+something behind. [req.execution.checkout-leftovers-named](#req.execution.checkout-leftovers-named)
+covers that case.
+
+### req.execution.checkout-leftovers-named — The result names what of the checkout is left
+
+When Git refused to remove an unbound run's checkout, the runner SHALL name in the run's result,
+with `checkout-not-removed` evidence, whether the checkout's directory is gone or what of it is
+left, and how to remove what is left.
+
+That evidence never changes the result's status.
 
 ### req.execution.commit-named — The result names the commit examined
 

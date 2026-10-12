@@ -23,6 +23,11 @@ from concorde.spec.verification import verifies
 from concorde.method.review_issues import NOT_RECORDED
 from tests.concorde.support.operation_project import OperationProject
 from tests.concorde.support.paths import REPOSITORY_ROOT
+from tests.concorde.support.spec_project import (
+    read_glossary,
+    upsert_concepts,
+    write_glossary,
+)
 
 FIXED = "def add(a, b):\n    return a + b\n"
 FAKE_REVIEWER = Path(__file__).with_name("fake_reviewer.py")
@@ -137,7 +142,9 @@ class CodeReviewTests(unittest.TestCase):
             for row in list_issues(self.root)
         }
 
-    def earlier(self, title, tier="obvious-fix", operation="code_review"):
+    def earlier(
+        self, title, tier="obvious-fix", operation="code_review", phase="report"
+    ):
         """An open Issue of module.a an earlier review, or another reporter, made."""
         return report_issue(
             self.root,
@@ -158,7 +165,7 @@ class CodeReviewTests(unittest.TestCase):
                 "invocation_id": f"r-earlier-{title}",
                 "agent": "operation",
                 "operation": operation,
-                "phase": "report",
+                "phase": phase,
                 "target_id": "module.a",
                 "context_id": "sha256:" + "a" * 64,
                 "change_id": None,
@@ -605,6 +612,61 @@ class CodeReviewTests(unittest.TestCase):
             ],
         )
 
+    def test_a_change_review_judges_each_finding_against_its_own_module_context(self):
+        # Both Modules are reviewed together, but module.b does not use module.a: a finding of
+        # module.b citing only module.a's promise has no basis in module.b's context.
+        b = finding(
+            "scenario.a.answer", module="module.b", locations=["src/bmod/secret.py"]
+        )
+        _, envelope = self.review(
+            {"module.a": reviewer(finding(), b)}, modules=("module.a", "module.b")
+        )
+        [problem] = self.unresolved(envelope, "module.b")
+        self.assertEqual(
+            ("unresolved-basis", "scenario.a.answer"), (problem["kind"], problem["ref"])
+        )
+        self.assertEqual([], self.module_entry(envelope, "module.b")["findings"])
+        [reported] = self.module_entry(envelope, "module.a")["findings"]
+        self.assertEqual("scenario.a.answer", reported["basis"])
+
+    def test_a_concept_of_the_context_is_a_basis_without_an_explanation(self):
+        upsert_concepts(
+            self.worktree,
+            "specs/a/module.md",
+            [
+                {
+                    "id": "concept.a.sum",
+                    "title": "Sum",
+                    "owner": "module.a",
+                    "definition": "The value add returns.",
+                }
+            ],
+        )
+        glossary = read_glossary(self.worktree)
+        for entry in glossary["concepts"]:
+            entry.pop("explanation")
+        write_glossary(self.worktree, glossary)
+        entry = self.worktree / "specs/a/module.md"
+        entry.write_text(
+            entry.read_text()
+            + "\nThe [sum](../glossary.json#concept.a.sum) is what add returns.\n"
+        )
+        _, envelope = self.change(
+            finding("concept.a.sum"), finding("concept.a.nothing", title="unknown")
+        )
+        [problem] = self.unresolved(envelope)
+        self.assertEqual("concept.a.nothing", problem["ref"])
+        [reported] = self.module_entry(envelope)["findings"]
+        self.assertEqual("concept.a.sum", reported["basis"])
+        [report] = self.issues()[reported["issue"]]["reports"]
+        self.assertIn(
+            {
+                "path": "specs/glossary.json",
+                "description": "defines concept.a.sum, the finding's basis",
+            },
+            report["report"]["evidence"],
+        )
+
     @verifies("scenario.code-review.module-review-base")
     def test_a_module_review_refuses_a_base(self):
         status, envelope = self.review({}, "--scope", "module", "--base", "HEAD")
@@ -698,6 +760,30 @@ class CodeReviewTests(unittest.TestCase):
             {"I-" + "f" * 32, other}, {item["issue"] for item in summary["ignored"]}
         )
         self.assertEqual("open", self.issues()[gone]["status"])
+        self.assertEqual("changes_required", entry["outcome"])
+
+    @verifies("scenario.code-review.project-review-issues")
+    def test_project_reviews_code_review_issues_are_earlier_issues(self):
+        coded = self.earlier("coded", operation="project_review", phase="code-review")
+        standing = self.earlier(
+            "standing", operation="project_review", phase="code-review"
+        )
+        panel = self.earlier("panel", operation="project_review", phase="spec-panel")
+        _, envelope = self.change(finding(earlier=coded))
+        self.assertEqual("ok", envelope["status"], envelope)
+        _, prompt = self.worker(envelope)
+        offered = prompt.split("Earlier code reviews recorded these", 1)[1].split(
+            "## Your boundary"
+        )[0]
+        self.assertIn(coded, offered)
+        self.assertNotIn(panel, offered)
+        entry = self.module_entry(envelope)
+        [reported] = entry["findings"]
+        self.assertEqual((coded, coded), (reported["earlier"], reported["issue"]))
+        self.assertEqual(2, len(self.issues()[coded]["reports"]))
+        self.assertEqual(
+            [standing], [item["issue"] for item in entry["earlier_issues"]["carried"]]
+        )
         self.assertEqual("changes_required", entry["outcome"])
 
     @verifies("scenario.code-review.blank-earlier")

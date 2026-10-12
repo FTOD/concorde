@@ -52,6 +52,24 @@ def spec_contract(identity: str) -> dict:
     raise AssertionError(f"no contract {identity}")
 
 
+# A complete link of the error contract, as a run's producer reports it.
+LINK = {
+    "level": "operation",
+    "actor": "Operation implement r-1",
+    "code": "checks_failed",
+    "detail": "the configured check check.a failed in round 2",
+    "evidence": [],
+    "attempts": [],
+    "unhandled": {
+        "reason": "decision",
+        "explanation": "more rounds are not its to take",
+    },
+    "options": [],
+    "recommendation": "",
+    "causes": [],
+}
+
+
 def ended(
     folder: Path, identity: str, kind: str, *, status="ok", used=None, **extra
 ) -> dict:
@@ -233,6 +251,75 @@ class TracingTests(unittest.TestCase):
         record["artifacts"] = [{"id": "x", "path": "/etc/passwd", "digest": None}]
         with self.assertRaises(TraceError):
             trace.write(folder, record)
+
+    def test_a_node_refuses_an_incomplete_or_misplaced_error_and_an_absolute_reference(
+        self,
+    ):
+        folder = self.root / "node"
+        incomplete = {"code": "checks_failed"}
+        for name, status, error, references in (
+            ("incomplete", "failed", incomplete, []),
+            ("misplaced", "ok", LINK, []),
+            ("input", "ok", None, [{"relation": "input", "target": "/tmp/r-1"}]),
+            ("cites", "ok", None, [{"relation": "cites", "target": str(folder)}]),
+        ):
+            with self.subTest(name), self.assertRaises(TraceError) as refused:
+                ended(
+                    folder,
+                    "1",
+                    "run",
+                    status=status,
+                    error=error,
+                    references=references,
+                )
+            self.assertEqual("node_invalid", refused.exception.code)
+            self.assertFalse((folder / layout.TRACE).exists())
+        node = Node(folder, "1", "run").start()
+        node.refer("input", "r-20260927T100000-understand-00000001")
+        self.assertEqual("failed", node.finish("failed", error=LINK)["status"])
+        self.assertEqual(LINK, trace.read(folder)["error"])
+
+    def test_an_artifact_the_system_cannot_inspect_is_a_failed_write(self):
+        folder = self.root / "node"
+        node = Node(
+            folder, "7", "check", metadata={"check": "check.a", "module": "module.a"}
+        )
+        node.keep("output", "output.log")
+        failure = PermissionError(13, "Permission denied")
+        exists = Path.exists
+
+        def refusing(path: Path, *arguments, **options) -> bool:
+            if path.name == "output.log":
+                raise failure
+            return exists(path, *arguments, **options)
+
+        with patch.object(Path, "exists", refusing):
+            node.start()
+            node.finish("ok")
+        self.assertIs(failure, node.failure)
+        self.assertEqual(2, len(node.failures))
+        self.assertIn("at its start", node.failures[0])
+        self.assertIn("at its end", node.failures[1])
+        self.assertFalse((folder / layout.TRACE).exists())
+
+    def test_a_time_with_a_utc_offset_is_read_like_one_with_z(self):
+        self.assertEqual(
+            trace.parse_time("2026-01-01T00:00:00Z"),
+            trace.parse_time("2026-01-01T00:00:00+00:00"),
+        )
+        self.assertEqual(
+            90.5,
+            trace.seconds_between(
+                "2026-01-01T00:00:00+00:00", "2026-01-01T00:01:30.5+00:00"
+            ),
+        )
+        self.assertIsNone(trace.parse_time("2026-01-01"))
+        now = datetime(2026, 9, 29, tzinfo=UTC)
+        old = Path(self.concorde) / "unbound" / "r-20260920T000000-understand-00000001"
+        ended(old, old.name, "run", ended_at="2026-09-20T00:00:00+00:00")
+        self.assertEqual(
+            [str(old)], retention.prune(self.concorde, moment=now)["removed"]
+        )
 
     @verifies("scenario.tracing.kind-registered")
     def test_a_node_is_checked_against_the_registration_of_its_kind(self):
@@ -648,7 +735,7 @@ class TracingTests(unittest.TestCase):
             task.delivery.name,
             "run",
             status="failed",
-            error={"code": "checks_failed"},
+            error=LINK,
             started_at="2026-09-27T10:09:00.000000Z",
         )
         tree = reader.render(reader.view(task.folder, self.concorde))

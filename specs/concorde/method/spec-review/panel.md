@@ -49,7 +49,7 @@ the Operation launches any worker.
 | 3 | For each Module whose earlier Issues were read, run the [panel graph](#the-panel-graph). Every reviewer runs under the Module's `review-spec` grant, every architect under its `review-architecture` grant, and the chair under the `review-architecture` grant when the panel has an architect and the `review-spec` grant otherwise. Each grant is frozen with its [context identity](../../glossary.json#concept.context-identity). Each worker receives the Panel brief and the earlier Issues. It is resumed once only when a finding's path is not one of the workspace, with those paths to correct. An audit that nothing changed follows it | Operation (Workers) | a grant that cannot be computed, a worker that ends `blocked` or `failed`, times out, returns an invalid result or changes a file stops that Module's panel, and so does a chair report still unaccounted after its last attempt: the Module is `incomplete` |
 | 4 | For each Module whose panel completed, [settle](#earlier-issues) the earlier Issues the chair's findings name and resolve, and [report](#reporting-findings) every finding of the chair's report as an [Issue](../../glossary.json#concept.issue), in the order of the report | Operation (Issues) | a refusal of the Issue store: the Module is `incomplete` (`issues_unreported`) and its later findings are not reported |
 | 5 | Derive every Module's outcome and the verdict from the Issues that stand | Operation | none |
-| 6 | Write a [run record](../../glossary.json#concept.run-record) per worker | Operation (Workers) | the Operation fails |
+| 6 | Write a [run record](../../glossary.json#concept.run-record) per worker | Workers | a write of a worker run's or a round's trace that the operating system refuses changes neither the Module's outcome nor the result's status: the result reports it as `trace-write` host evidence ([req.method.trace-writes-reported](../requirements.md#req.method.trace-writes-reported)) |
 
 The Operation panels Modules one after another. The reviewers and architects of one Module run at
 the same time. A panel changes no file of the workspace. Its only writes are its
@@ -59,6 +59,8 @@ Because no worker changes a file, no step runs
 [resume round](../../glossary.json#concept.resume-round) is the one that asks a worker to correct
 the paths of its findings. When a Module's panel stops, the Module reports no Issue. It keeps the
 reviews it had. It also keeps its **stop**: the status, summary and error link that stopped it.
+When its earlier Issues were read, every one of them is `carried`, since no chair report settled
+it.
 
 ### Normalizing a finding
 
@@ -181,8 +183,9 @@ as from the Issues they would become. When one of a blocking tier stands, the ou
 
 Whether or not Issues are installed, the run's output also carries one `notes` item of kind
 `review`. It follows the [step output convention](../../workflows/contracts.md#contract.workflows.step-output).
-The item holds the verdict and each Module's outcome with its count of blocking findings. This
-lets a workflow report the review without knowing this payload.
+The item holds the verdict and each Module's outcome with its count of blocking findings that
+stand: those reported now and the blocking earlier Issues `carried`. This lets a workflow report the
+review without knowing this payload.
 
 ## The panel graph
 
@@ -324,9 +327,9 @@ changes can be compared with them.
 | `incomplete`, and some incomplete Module failed: a worker that failed, a launch error, a timeout, an invalid result, an audit violation, an unaccounted report, Issues that could not be read or written, an unknown Module or a grant that could not be computed | `failed` | `panel_incomplete`, one cause per incomplete Module |
 | `incomplete` otherwise: a structural error or a `blocked` reviewer, architect or chair | `blocked` | `panel_incomplete`, one cause per incomplete Module |
 
-A loading error in step 1 and `langgraph_unavailable` are `failed` with no output. The same applies
-to any other failure the step table calls a failure of the Operation. The Execution runner turns it
-into a `failed` result with `host-error` evidence. In every other case, the result's `output` is the
+A loading error in step 1 and `langgraph_unavailable` are `failed` with no output. The Execution
+runner turns each into a `failed` result with `host-error` evidence. A refused trace write is no
+such failure: it is only evidence. In every other case, the result's `output` is the
 panel payload, including for `blocked` and `failed`. It includes the reviews of a Module whose
 panel stopped. Thus, the findings of the Modules that were paneled are never lost. The result's
 error is the Operation's `panel_incomplete` link with the reason `decision`. Its causes are the

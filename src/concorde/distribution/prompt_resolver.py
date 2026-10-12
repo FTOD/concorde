@@ -339,7 +339,7 @@ def resolve_role_prompt(project_root: str | Path, relative_path: str) -> Resolve
         root,
         relative,
         body,
-        "worker",
+        audience,
         chain=(relative,),
         visited={relative: (relative,)},
         sources=sources,

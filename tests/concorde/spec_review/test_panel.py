@@ -138,6 +138,46 @@ class AccountingTests(unittest.TestCase):
         )
 
 
+class ParallelSeatTests(unittest.TestCase):
+    """Panel seats absorb their worker records in parallel on one run context."""
+
+    def test_each_seat_keeps_its_own_output_when_another_absorbs_meanwhile(self):
+        from types import SimpleNamespace
+
+        from concorde.method import workers
+
+        ctx = SimpleNamespace(
+            worker=None,
+            last_record=None,
+            evidence=[],
+            worker_runs=[],
+            worker_started=lambda run_id: None,
+        )
+
+        def record(run_id, title):
+            return {
+                "run_id": run_id,
+                "task_type": "review-spec",
+                "status": "ok",
+                "rounds": [],
+                "worker_result": {"output": {"findings": [finding(title=title)]}},
+            }
+
+        second = {}
+
+        def interleave(results):
+            # The first seat pauses after it set ctx.worker; the second absorbs meanwhile.
+            if not second:
+                second["started"] = True
+                second["outcome"] = workers.absorb(ctx, record("w-2", "second"))
+            return []
+
+        with patch("concorde.method.checks.trace_writes", side_effect=interleave):
+            first = workers.absorb(ctx, record("w-1", "first"))
+        self.assertEqual("first", first.output["findings"][0]["title"])
+        self.assertEqual("second", second["outcome"].output["findings"][0]["title"])
+
+
 class SpecPanelTests(unittest.TestCase):
     def setUp(self):
         self.project = OperationProject(self)
@@ -567,6 +607,43 @@ class SpecPanelTests(unittest.TestCase):
         self.assertIn("panel of module.a reviewer2", reviewer["actor"])
         worker_link = link_at(error, "worker")
         self.assertEqual("The entry of module.c is needed.", worker_link["detail"])
+
+    def test_a_stopped_panel_carries_every_earlier_issue_it_read(self):
+        standing = self.earlier("obvious-fix", "standing")
+        exit_status, envelope = self.panel(
+            {
+                "reviewer module.a 1": [
+                    {
+                        "result": {
+                            "status": "blocked",
+                            "output": {"findings": []},
+                            "error": worker_error("The entry of module.c is needed."),
+                        }
+                    }
+                ],
+                "reviewer module.a 2": worker(findings=[]),
+            },
+            "--reviewers",
+            "2",
+        )
+        self.assertEqual((1, "blocked"), (exit_status, envelope["status"]))
+        (module,) = envelope["output"]["modules"]
+        self.assertEqual("incomplete", module["outcome"])
+        self.assertEqual(
+            {
+                "carried": [
+                    {
+                        "issue": standing,
+                        "severity": "medium",
+                        "tier": "obvious-fix",
+                        "title": "standing",
+                    }
+                ],
+                "resolved": [],
+                "ignored": [],
+            },
+            module["earlier_issues"],
+        )
 
     def test_a_blocking_finding_outside_the_module_is_a_suggestion(self):
         exit_status, envelope = self.panel(
@@ -1043,6 +1120,12 @@ class SpecPanelTests(unittest.TestCase):
             self.resolved((third, "The Usage was rewritten.")), summary["resolved"]
         )
         self.assertEqual([unknown], [item["issue"] for item in summary["ignored"]])
+        # The workflow counts the carried blocker beside the one reported now.
+        [note] = envelope["output"]["workflow"]["notes"]
+        self.assertEqual(
+            [{"module": "module.a", "outcome": "changes_required", "blocking": 2}],
+            note["data"]["modules"],
+        )
         after = self.issues()
         self.assertEqual(2, len(after[second]["reports"]))
         self.assertIn(

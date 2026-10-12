@@ -59,11 +59,13 @@ def _statements(body: list[ast.stmt]):
                 )
 
 
-def _target(tree: ast.Module, qualified: list[str]):
-    """The function node named by ``qualified`` (classes, then the function) and None, or None and
-    why it cannot be told. A definition under a module-level or class-level ``if``, ``try`` or
-    other control-flow statement counts; one inside a function never does."""
+def _located(tree: ast.Module, qualified: list[str]):
+    """The function node named by ``qualified`` (classes, then the function), the class whose
+    body defines it (None for a module-level test) and None, or None, None and why it cannot be
+    told. A definition under a module-level or class-level ``if``, ``try`` or other control-flow
+    statement counts; one inside a function never does."""
     body = tree.body
+    enclosing = None
     for position, name in enumerate(qualified):
         last = position == len(qualified) - 1
         kinds = (ast.FunctionDef, ast.AsyncFunctionDef) if last else (ast.ClassDef,)
@@ -73,24 +75,30 @@ def _target(tree: ast.Module, qualified: list[str]):
             if isinstance(node, kinds) and node.name == name
         ]
         if not found:
-            return None, f"has no test {'.'.join(qualified)}"
+            return None, None, f"has no test {'.'.join(qualified)}"
         if len(found) > 1:
-            return None, (
-                f"defines {'.'.join(qualified[: position + 1])} {len(found)} times (lines "
-                f"{', '.join(str(node.lineno) for node in found)}), so which definition the "
-                f"test {'.'.join(qualified)} is cannot be told"
+            return (
+                None,
+                None,
+                (
+                    f"defines {'.'.join(qualified[: position + 1])} {len(found)} times (lines "
+                    f"{', '.join(str(node.lineno) for node in found)}), so which definition the "
+                    f"test {'.'.join(qualified)} is cannot be told"
+                ),
             )
         if last:
-            return found[0], None
+            return found[0], enclosing, None
+        enclosing = found[0]
         body = found[0].body
-    return None, f"has no test {'.'.join(qualified)}"
+    return None, None, f"has no test {'.'.join(qualified)}"
 
 
 def _bound_names(node: ast.AST) -> set[str]:
-    """The names ``node`` binds in the module's scope itself: a definition's or import's names, an
-    assignment's, loop's or ``with``'s targets, an ``except``'s name, an assignment expression's
-    target and a pattern's captures, but not those of the statements, handlers and match cases
-    nested in it, nor a lambda's or a comprehension's own variables."""
+    """The names ``node`` binds or unbinds in the module's scope itself: a definition's or
+    import's names, an assignment's, loop's or ``with``'s targets, a ``del``'s names, an
+    ``except``'s name, an assignment expression's target and a pattern's captures, but not those
+    of the statements, handlers and match cases nested in it, nor a lambda's or a comprehension's
+    own variables."""
     names: set[str] = set()
     if isinstance(node, SCOPES):
         names.add(node.name)
@@ -109,7 +117,7 @@ def _bound_names(node: ast.AST) -> set[str]:
         if isinstance(item, ast.comprehension):
             pending += [item.iter, *item.ifs]
             continue
-        if isinstance(item, ast.Name) and isinstance(item.ctx, ast.Store):
+        if isinstance(item, ast.Name) and isinstance(item.ctx, (ast.Store, ast.Del)):
             names.add(item.id)
         elif isinstance(item, (ast.MatchAs, ast.MatchStar)) and item.name:
             names.add(item.name)
@@ -199,8 +207,27 @@ def _allowed(node: ast.AST) -> bool:
 
 def _foreign_binding(tree: ast.Module) -> ast.AST | None:
     """The first module-level binding of ``verifies`` that is neither Concorde's helper nor an
-    import of its decorator, or None."""
-    return next((node for node in _bindings(tree.body) if not _allowed(node)), None)
+    import of its decorator, or None. A ``del verifies`` counts, since it removes the helper or
+    decorator a decorator after it would call, and so does a ``global verifies`` anywhere, since
+    the function declaring it may rebind the module's name."""
+    declared = next(
+        (
+            node
+            for node in ast.walk(tree)
+            if isinstance(node, ast.Global) and "verifies" in node.names
+        ),
+        None,
+    )
+    found = next((node for node in _bindings(tree.body) if not _allowed(node)), None)
+    if declared is None or (found is not None and found.lineno < declared.lineno):
+        return found
+    return declared
+
+
+def _class_binding(cls: ast.ClassDef) -> ast.AST | None:
+    """The first binding of ``verifies`` in the class's own body, where a decorator of one of its
+    methods would find it before the module's, or None."""
+    return next(_bindings(cls.body), None)
 
 
 def _usable_before(tree: ast.Module, line: int) -> bool:
@@ -304,7 +331,13 @@ def link_file(path: Path, relative: str, links: list[tuple[str, str]]):
     # A decorator would call the project's own `verifies`, whatever that does.
     foreign = _foreign_binding(tree)
     conflict = foreign and (
-        f"{relative} binds verifies at line {foreign.lineno} to something other than "
+        f"{relative} removes verifies at line {foreign.lineno} with del, so a decorator after it "
+        "could find no verifies"
+        if isinstance(foreign, ast.Delete)
+        else f"{relative} declares verifies global at line {foreign.lineno}, so a function may "
+        "rebind it to something other than Concorde's helper or its verifies decorator"
+        if isinstance(foreign, ast.Global)
+        else f"{relative} binds verifies at line {foreign.lineno} to something other than "
         "Concorde's helper or its verifies decorator"
     )
     bound = next(_bindings(tree.body), None)
@@ -314,15 +347,30 @@ def link_file(path: Path, relative: str, links: list[tuple[str, str]]):
     linked, scheduled, undone = [], [], []
     for scenario, name in links:
         pair = (scenario, name)
+        # A name defined more than once is reported even when one definition already declares
+        # the scenario, since which definition is the test cannot be told.
+        node, enclosing, problem = _located(tree, name.split("."))
+        if node is None:
+            undone.append((pair, f"{relative} {problem}"))
+            continue
         if pair in declared:
             linked.append(pair)
             continue
         if conflict:
             undone.append((pair, conflict))
             continue
-        node, problem = _target(tree, name.split("."))
-        if node is None:
-            undone.append((pair, f"{relative} {problem}"))
+        shadow = _class_binding(enclosing) if enclosing is not None else None
+        if shadow is not None:
+            undone.append(
+                (
+                    pair,
+                    (
+                        f"{relative} binds verifies at line {shadow.lineno} in the body of class "
+                        f"{enclosing.name}, so a decorator of {name} would find that binding "
+                        "instead of Concorde's helper or decorator"
+                    ),
+                )
+            )
             continue
         first = min([node.lineno, *(item.lineno for item in node.decorator_list)])
         if bound is not None and not _usable_before(tree, first):

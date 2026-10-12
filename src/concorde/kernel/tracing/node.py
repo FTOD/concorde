@@ -15,12 +15,14 @@ import copy
 import hashlib
 import json
 import os
+import re
 import subprocess
 import tempfile
 from datetime import UTC, datetime
 from functools import lru_cache
 from pathlib import Path
 
+from ..errors import ERROR_SCHEMA
 from ..refusal import KernelError
 from ..schema import typed, validate, validate_typed
 from . import kinds, layout
@@ -61,6 +63,8 @@ METADATA = (
     "protocol_version",
 )
 RELATIONS = ("input", "cites", "commit", "found_commit")
+# The statuses whose node may carry an error link; every other node's error is null.
+ERROR_STATUSES = ("blocked", "failed")
 _TEXT = {"$ref": "#/$defs/text"}
 _COUNT = {"anyOf": [{"type": "null"}, {"type": "integer", "minimum": 0}]}
 _AMOUNT = {"anyOf": [{"type": "null"}, {"type": "number", "minimum": 0}]}
@@ -180,15 +184,27 @@ def now() -> str:
     return datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
 
 
+_RFC3339 = re.compile(
+    r"(\d{4}-\d{2}-\d{2})[Tt](\d{2}:\d{2}:\d{2})(?:\.(\d+))?([Zz]|[+-]\d{2}:\d{2})"
+)
+
+
 def parse_time(text: str | None) -> datetime | None:
-    if not text:
+    """The RFC 3339 time ``text`` in UTC, ``Z`` or an offset such as ``+00:00`` alike; None for
+    anything else."""
+    match = _RFC3339.fullmatch(text) if isinstance(text, str) else None
+    if match is None:
         return None
-    for pattern in ("%Y-%m-%dT%H:%M:%S.%fZ", "%Y-%m-%dT%H:%M:%SZ"):
-        try:
-            return datetime.strptime(text, pattern).replace(tzinfo=UTC)
-        except ValueError:
-            continue
-    return None
+    day, clock, fraction, offset = match.groups()
+    # Python reads at most microseconds; a finer fraction is cut, never rounded up a second.
+    fraction = f".{fraction[:6]}" if fraction else ""
+    offset = "+00:00" if offset in ("Z", "z") else offset
+    try:
+        return datetime.fromisoformat(f"{day}T{clock}{fraction}{offset}").astimezone(
+            UTC
+        )
+    except ValueError:
+        return None
 
 
 def seconds_between(start: str | None, end: str | None) -> float | None:
@@ -245,6 +261,29 @@ def check(record: dict) -> dict:
             f"the trace node {record.get('kind')} {record.get('id')} breaks the node contract at "
             f"{error.field or 'the top'}: {error}",
         ) from error
+    if record["error"] is not None:
+        if record["status"] not in ERROR_STATUSES:
+            raise TraceError(
+                "node_invalid",
+                f"the trace node {record['kind']} {record['id']} is {record['status']} and "
+                "carries an error link; only a blocked or failed node carries one",
+            )
+        try:
+            validate(record["error"], ERROR_SCHEMA, "/error")
+        except KernelError as error:
+            raise TraceError(
+                "node_invalid",
+                f"the error of trace node {record['kind']} {record['id']} breaks the error "
+                f"contract at {error.field or '/error'}: {error}",
+            ) from error
+    for index, reference in enumerate(record["references"]):
+        if os.path.isabs(reference["target"]):
+            raise TraceError(
+                "node_invalid",
+                f"reference {index} of trace node {record['kind']} {record['id']} names the "
+                f"absolute path {reference['target']}; a node names another node by its "
+                "identity and a commit by its name",
+            )
     kind = kinds.lookup(record["kind"])
     if kind is None:
         raise TraceError(
@@ -380,12 +419,14 @@ class Node:
             self._artifacts.append((identity, relative, measured))
 
     def _write(self, moment: str, *, measured: bool) -> None:
-        self.record["artifacts"] = [
-            artifact(self.folder, identity, relative, measured=measured and own)
-            for identity, relative, own in self._artifacts
-            if (self.folder / relative).exists()
-        ]
+        # Inspecting the artifacts touches the file system too, so a refusal there is a failed
+        # write like any other; a record that breaks its contract still raises.
         try:
+            self.record["artifacts"] = [
+                artifact(self.folder, identity, relative, measured=measured and own)
+                for identity, relative, own in self._artifacts
+                if (self.folder / relative).exists()
+            ]
             write(self.folder, self.record)
             self.failure = None
         except OSError as error:

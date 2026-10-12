@@ -44,17 +44,24 @@ def _git(package: Path, *argv: str) -> subprocess.CompletedProcess:
         ) from error
 
 
+def _unreadable(
+    package: Path, argv: tuple[str, ...], done, missing: str
+) -> DevelopError:
+    """The refusal of a Git query that failed, with Git's own message."""
+    return DevelopError(
+        "develop_source_unreadable",
+        f"`git -C {package} {' '.join(argv)}` failed (exit {done.returncode}: "
+        f"{done.stderr.strip() or missing}); a develop install needs Git to check the Concorde "
+        "repository it installs from",
+    )
+
+
 def _git_path(package: Path, *argv: str) -> str:
-    """The one path a Git query prints, kept whole whatever characters it holds."""
+    """The one path or value a Git query prints, kept whole whatever characters it holds."""
     done = _git(package, *argv)
     path = done.stdout.rstrip("\n")
     if done.returncode != 0 or not path:
-        raise DevelopError(
-            "develop_source_unreadable",
-            f"`git -C {package} {' '.join(argv)}` failed "
-            f"({done.stderr.strip() or 'it printed no path'}); a develop install needs Git "
-            "to check the Concorde repository it installs from",
-        )
+        raise _unreadable(package, argv, done, "it printed nothing")
     return path
 
 
@@ -108,29 +115,34 @@ def develop_source(package: str | Path) -> dict:
             f"{_primary_worktree(package, common)}; a develop install is made from the "
             "primary worktree, since a task worktree disappears once its branch is merged",
         )
-    branch = _git(package, "symbolic-ref", "--quiet", "--short", "HEAD")
-    if branch.returncode != 0:
+    query = ("symbolic-ref", "--quiet", "--short", "HEAD")
+    branch = _git(package, *query)
+    # With --quiet, symbolic-ref exits 1 for a detached HEAD alone; any other failure is Git's.
+    if branch.returncode not in (0, 1) or (
+        branch.returncode == 0 and not branch.stdout.strip()
+    ):
+        raise _unreadable(package, query, branch, "it printed no branch")
+    if branch.returncode == 1:
         raise DevelopError(
             "develop_source_detached",
             f"the HEAD of {package} is detached; check out the branch tasks merge into "
             "before installing from it",
         )
-    status = _git(package, "status", "--porcelain", "--untracked-files=normal")
+    query = ("status", "--porcelain", "--untracked-files=normal")
+    status = _git(package, *query)
+    if status.returncode != 0:
+        raise _unreadable(package, query, status, "it printed no message")
     changed = [line[3:] for line in status.stdout.splitlines() if line.strip()]
-    if status.returncode != 0 or changed:
+    if changed:
         shown = ", ".join(changed[:SHOWN_CHANGES])
         more = len(changed) - SHOWN_CHANGES
-        detail = (
-            status.stderr.strip()
-            if status.returncode != 0
-            else f"{shown}{f' and {more} more' if more > 0 else ''}"
-        )
         raise DevelopError(
             "develop_source_dirty",
-            f"{package} has uncommitted changes ({detail}); a develop install runs only "
+            f"{package} has uncommitted changes ({shown}"
+            f"{f' and {more} more' if more > 0 else ''}); a develop install runs only "
             "committed Concorde, so commit or merge them first",
         )
-    commit = _git(package, "rev-parse", "--verify", "HEAD").stdout.strip()
+    commit = _git_path(package, "rev-parse", "--verify", "HEAD").strip()
     return {
         "repository": str(package),
         "branch": branch.stdout.strip(),

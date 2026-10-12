@@ -233,8 +233,17 @@ Each child's failure becomes something the caller sees in one of three ways. Wor
 - **In the run record, with the worker's own status**: a worker that ended `blocked` or `failed`.
   The worker's link becomes the cause of Workers' own.
 
-Only a clean `ok` round goes on to the round validation and may be resumed. Every other outcome
-ends the run at once ([Rounds](workers/launch.md#rounds)). An audit violation is never retried.
+A round may lead to another round in two ways only, each with its own limit:
+
+- **A resume with a repair.** Only a clean `ok` round goes on to the round validation. When that
+  validation reports something to repair, the host resumes the session with the repair, up to the
+  run's resume rounds ([Rounds](workers/launch.md#rounds)).
+- **A retry.** A transient error of the model service may end a round that left nothing a retry
+  could hide. The host then retries the round after a growing delay, in the same session when the
+  round named one, up to the run's retry rounds. The retry rounds are counted apart from the resume
+  rounds. The exact eligibility and delays are in [Retries](workers/launch.md#retries).
+
+Every outcome that fits neither way ends the run at once. An audit violation is never retried.
 Whatever the outcome, the host never reverts or commits what a worker wrote. What the run leaves
 in the worktree is the caller's to keep or discard. The grant stays frozen for the whole run.
 Before its validation, every round is audited ([Requirements](workers/launch.md#requirements)).

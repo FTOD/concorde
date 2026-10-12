@@ -166,7 +166,10 @@ function report(lost) {
     const result = { workflow: WORKFLOW, reported: value }
     // Unverified: what a step agent said, not what a host recorded, kept so that a refusal of
     // the step command (such as a mistyped request) is not lost from the error chain.
-    if (lost && relayed[lost]) result.relayed = { key: lost, attempts: RELAYS, outcome: relayed[lost] }
+    // The key is kept even when the last relay returned nothing, whose outcome is then null.
+    if (lost && Object.prototype.hasOwnProperty.call(relayed, lost)) {
+      result.relayed = { key: lost, attempts: RELAYS, outcome: relayed[lost] }
+    }
     return result
   })
 }

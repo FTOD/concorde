@@ -71,6 +71,13 @@
       "contains": [],
       "uses": [
         {
+          "target": "module.kernel",
+          "meaning": "#uses-kernel",
+          "relies_on": [
+            "concept.typed-value"
+          ]
+        },
+        {
           "target": "module.tracing",
           "meaning": "#uses-tracing",
           "relies_on": [
@@ -81,7 +88,13 @@
           ]
         }
       ],
-      "includes": [],
+      "includes": [
+        {
+          "kind": "document",
+          "target": "document.kernel.contracts",
+          "reason": "the Kernel's typed values, whose canonical project-relative POSIX path rule the checks files' inputs and the measured paths follow"
+        }
+      ],
       "participates": []
     },
     {
@@ -106,7 +119,8 @@
           "relies_on": [
             "concept.execution-runner",
             "concept.run-result",
-            "concept.unbound-run"
+            "concept.unbound-run",
+            "contract.execution.run-result"
           ]
         },
         {
@@ -129,7 +143,16 @@
             "concept.issue-report",
             "concept.issue-revision",
             "concept.issue-tier",
-            "concept.issue-severity"
+            "concept.issue-severity",
+            "contract.issues.report",
+            "contract.issues.receipt"
+          ]
+        },
+        {
+          "target": "module.workflows",
+          "meaning": "#uses-workflows",
+          "relies_on": [
+            "contract.workflows.step-output"
           ]
         }
       ],
@@ -138,6 +161,16 @@
           "kind": "document",
           "target": "document.tracing.contracts",
           "reason": "the Framework's error contract, which this Module's errors follow"
+        },
+        {
+          "kind": "document",
+          "target": "document.method.module",
+          "reason": "Method's account of the Operations it registers and of its review Issue helpers, which read, settle and report this Module's earlier Issues"
+        },
+        {
+          "kind": "document",
+          "target": "document.method.workers",
+          "reason": "Method's standard worker sequence, through which every worker of this Module is launched, with its round validation, worker settings and errors"
         }
       ],
       "participates": []
@@ -278,6 +311,11 @@
           "kind": "document",
           "target": "document.harness.module",
           "reason": "the Harness's known limits, which req.concorde.no-wider-than-type cites for what enforcement of a grant leaves out"
+        },
+        {
+          "kind": "document",
+          "target": "document.workers.launch",
+          "reason": "Workers' launch rules, whose req.workers.no-git the root's Boundaries cite for the promise that no worker can read or change Git metadata"
         },
         {
           "kind": "document",
@@ -514,6 +552,17 @@
           "relies_on": [
             "concept.issue-report"
           ]
+        },
+        {
+          "target": "module.workers",
+          "meaning": "#uses-workers",
+          "relies_on": [
+            "concept.worker-configuration",
+            "concept.model-map",
+            "contract.workers.worker-configuration",
+            "contract.workers.model-map",
+            "req.workers.model-map-entry"
+          ]
         }
       ],
       "includes": [
@@ -554,7 +603,8 @@
             "concept.issue",
             "concept.issue-report",
             "concept.issue-tier",
-            "concept.issue-severity"
+            "concept.issue-severity",
+            "contract.issues.report"
           ]
         },
         {
@@ -570,6 +620,14 @@
           "meaning": "#uses-spec",
           "relies_on": [
             "concept.grant"
+          ]
+        },
+        {
+          "target": "module.tracing",
+          "meaning": "#uses-tracing",
+          "relies_on": [
+            "concept.error-chain",
+            "contract.tracing.error"
           ]
         }
       ],
@@ -817,7 +875,30 @@
         "specs/concorde/worker-harness/harness/pi.md"
       ],
       "contains": [],
-      "uses": [],
+      "uses": [
+        {
+          "target": "module.workers",
+          "meaning": "#uses-workers",
+          "relies_on": [
+            "contract.workers.grant-input",
+            "contract.workers.worker-result",
+            "req.workers.frozen-grant",
+            "req.workers.unchanged-across-rounds",
+            "req.workers.malformed-grant",
+            "req.workers.write-allowlist",
+            "req.workers.read-denials",
+            "req.workers.bash-sandbox",
+            "req.workers.no-git",
+            "req.workers.git-paths-denied",
+            "req.workers.placement",
+            "req.workers.pi-same-grant",
+            "req.workers.pi-file-tools",
+            "req.workers.pi-sandbox",
+            "req.workers.pi-only-extension",
+            "req.workers.pi-limits"
+          ]
+        }
+      ],
       "includes": [
         {
           "kind": "external",
@@ -845,18 +926,42 @@
             "concept.run",
             "concept.run-progress-file",
             "concept.run-result",
-            "concept.run-store"
+            "concept.run-store",
+            "contract.execution.run-result"
           ]
         },
         {
           "target": "module.kernel",
           "meaning": "#uses-kernel",
           "relies_on": [
-            "concept.workspace-binding"
+            "concept.workspace-binding",
+            "contract.kernel.workspace-binding"
+          ]
+        },
+        {
+          "target": "module.tasks",
+          "meaning": "#uses-tasks",
+          "relies_on": [
+            "concept.task"
+          ]
+        },
+        {
+          "target": "module.main-session",
+          "meaning": "#uses-main-session",
+          "relies_on": [
+            "concept.main-session-guidance",
+            "req.main-session.every-task-delegated",
+            "req.main-session.no-work-in-task-worktree"
           ]
         }
       ],
-      "includes": [],
+      "includes": [
+        {
+          "kind": "document",
+          "target": "document.execution.runner",
+          "reason": "the runner's account of the run progress file's fields, the lobby and detached runs, which the wake loop reads"
+        }
+      ],
       "participates": []
     },
     {
@@ -1165,7 +1270,13 @@
           ]
         }
       ],
-      "includes": [],
+      "includes": [
+        {
+          "kind": "document",
+          "target": "document.distribution.contracts",
+          "reason": "the project MCP host's exact session, call, long-work handover and refusal protocol, on which Coordination's tools and their contracts rely"
+        }
+      ],
       "participates": [
         {
           "contract": "contract.main-session.channel-event",
@@ -1490,7 +1601,10 @@
           "relies_on": [
             "concept.brief",
             "concept.worker-result",
-            "concept.run-record"
+            "concept.run-record",
+            "contract.workers.grant-input",
+            "contract.workers.worker-result",
+            "contract.workers.worker-run-record"
           ]
         },
         {
@@ -1501,7 +1615,9 @@
             "concept.issue-report",
             "concept.issue-revision",
             "concept.issue-tier",
-            "concept.issue-severity"
+            "concept.issue-severity",
+            "contract.issues.report",
+            "contract.issues.receipt"
           ]
         },
         {
@@ -1517,7 +1633,15 @@
           "relies_on": [
             "concept.execution-runner",
             "concept.run-result",
-            "concept.unbound-run"
+            "concept.unbound-run",
+            "contract.execution.run-result"
+          ]
+        },
+        {
+          "target": "module.workflows",
+          "meaning": "#uses-workflows",
+          "relies_on": [
+            "contract.workflows.step-output"
           ]
         }
       ],
@@ -1526,6 +1650,26 @@
           "kind": "document",
           "target": "document.tracing.contracts",
           "reason": "the Framework's error contract, which this Module's errors follow"
+        },
+        {
+          "kind": "document",
+          "target": "document.spec.contracts",
+          "reason": "Spec core's library of grants, context identities and validation the host steps call"
+        },
+        {
+          "kind": "document",
+          "target": "document.method.module",
+          "reason": "Method's account of the Operations it registers and of its review Issue helpers, which read, settle and report this Module's earlier Issues"
+        },
+        {
+          "kind": "document",
+          "target": "document.method.workers",
+          "reason": "Method's standard worker sequence, through which every worker of this Module is launched, with its round validation, worker settings and errors"
+        },
+        {
+          "kind": "document",
+          "target": "document.method.requirements",
+          "reason": "Method's requirements for every review, which keep the findings in the result and state that they were not recorded where the issues part is not installed"
         },
         {
           "kind": "external",
@@ -1582,7 +1726,9 @@
           "meaning": "#uses-workers",
           "relies_on": [
             "concept.worker-id",
-            "concept.run-record"
+            "concept.run-record",
+            "contract.workers.worker-run-record",
+            "req.workers.transient-retried"
           ]
         },
         {
@@ -1607,7 +1753,9 @@
           "relies_on": [
             "concept.execution-runner",
             "concept.run-result",
-            "concept.unbound-run"
+            "concept.unbound-run",
+            "contract.execution.run-result",
+            "req.execution.unbound-origin-untouched"
           ]
         },
         {
@@ -1653,6 +1801,11 @@
           "kind": "document",
           "target": "document.tracing.contracts",
           "reason": "the Framework's error contract, which this Module's errors follow"
+        },
+        {
+          "kind": "document",
+          "target": "document.method.module",
+          "reason": "Method's account of the Operations it registers and of its review Issue helpers, which read, settle and report the earlier Issues of every part of the review"
         },
         {
           "kind": "document",
@@ -1744,6 +1897,11 @@
           "kind": "document",
           "target": "document.tracing.contracts",
           "reason": "the Framework's error contract, which this Module's errors follow"
+        },
+        {
+          "kind": "document",
+          "target": "document.method.workers",
+          "reason": "Method's standard worker sequence and round validation, which compose what this Module's worker receives and audit its glossary edits"
         }
       ],
       "participates": []
@@ -1767,7 +1925,8 @@
           "target": "module.specification",
           "meaning": "#uses-specification",
           "relies_on": [
-            "req.specification.audit"
+            "req.specification.audit",
+            "req.specification.no-code"
           ]
         },
         {
@@ -1776,6 +1935,32 @@
           "relies_on": [
             "concept.review-verdict"
           ]
+        },
+        {
+          "target": "module.tasks",
+          "meaning": "#uses-tasks",
+          "relies_on": [
+            "concept.task",
+            "req.tasks.binding",
+            "req.tasks.merge-verified"
+          ]
+        },
+        {
+          "target": "module.validation",
+          "meaning": "#uses-validation",
+          "relies_on": [
+            "concept.readiness",
+            "req.validation.ready-definition",
+            "contract.validation.readiness"
+          ]
+        },
+        {
+          "target": "module.delivery",
+          "meaning": "#uses-delivery",
+          "relies_on": [
+            "req.delivery.own-readiness",
+            "contract.delivery.output"
+          ]
         }
       ],
       "includes": [
@@ -1783,6 +1968,16 @@
           "kind": "document",
           "target": "document.e2e.module",
           "reason": "the test project a case is worked in"
+        },
+        {
+          "kind": "external",
+          "target": "references/swe-bench/swebench/harness/",
+          "reason": "SWE-bench's evaluation harness, whose pytest log parser and grading rules define the statuses and the verdict that grading copies"
+        },
+        {
+          "kind": "external",
+          "target": "references/swe-bench/docs/guides/datasets.md",
+          "reason": "SWE-bench's dataset guide, which defines the fields of an instance"
         }
       ],
       "participates": []
@@ -1908,6 +2103,7 @@
             "concept.unfinished-merge-marker",
             "contract.kernel.unfinished-merge",
             "req.kernel.marker-spans-merge",
+            "req.kernel.marker-changed-under-lock",
             "req.kernel.marker-refuses-commits"
           ]
         },
@@ -1943,7 +2139,8 @@
             "concept.run-result",
             "concept.run-progress-file",
             "concept.run-store",
-            "concept.run-lock"
+            "concept.run-lock",
+            "contract.execution.run-result"
           ]
         },
         {
@@ -1967,9 +2164,38 @@
           "relies_on": [
             "concept.registry"
           ]
+        },
+        {
+          "target": "module.workflows",
+          "meaning": "#uses-workflows",
+          "relies_on": [
+            "req.workflows.workflow-lock-leaf",
+            "req.workflows.workspace-retired"
+          ]
         }
       ],
-      "includes": [],
+      "includes": [
+        {
+          "kind": "document",
+          "target": "document.execution.runner",
+          "reason": "the runner's run progress file, whose fields Tasks reads to list a run still running or waiting in the lobby and to tell whom it waits for"
+        },
+        {
+          "kind": "document",
+          "target": "document.issues.interface",
+          "reason": "Issues' bookkeeping command, whose show, recover and close Tasks runs and whose answers and refusals it reads"
+        },
+        {
+          "kind": "document",
+          "target": "document.spec.contracts",
+          "reason": "Spec core's registry file `.concorde/specs.json`, which open reads for the registered Modules where the spec part is installed"
+        },
+        {
+          "kind": "document",
+          "target": "document.workflows.contracts",
+          "reason": "Workflows' workflow lock of a workspace, `locks/workflows/<task-id>.lock`, which every close takes last, and the `workspace_retired` refusal of a step that waited for it"
+        }
+      ],
       "participates": []
     },
     {

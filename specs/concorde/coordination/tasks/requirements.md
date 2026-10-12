@@ -69,8 +69,8 @@ Tasks.
 Where the spec part is installed, Tasks SHALL refuse to open a task that names a
 [Module](../../glossary.json#concept.module) absent from the primary worktree's registry.
 
-Where it is not, the Modules are plain labels that nothing checks. A record's Modules never change
-after the open. The Modules a run worked on are in its
+Where it is not, nothing checks that the Modules are registered. Their form, that of a Module
+identity `module.<name>`, is checked either way. A record's Modules never change after the open. The Modules a run worked on are in its
 [run result](../../glossary.json#concept.run-result).
 
 ### req.tasks.no-copies — Tasks keeps no copy of what the workspace records
@@ -159,14 +159,15 @@ its merge passed does the task become `closed`. Exactly while the state is `merg
 
 ### req.tasks.derived-state — Active and delivered are derived
 
-Each time a task that is not closed or failed is listed or shown, Tasks SHALL derive whether it is
-`open`, `active` or `delivered` from these sources:
+Each time a task stored `open` is listed or shown, Tasks SHALL derive whether it is `open`,
+`active` or `delivered` from these sources:
 
 - Where the execution part is installed, its workspace's runs in its workspace folder.
 - Its branch.
 - Its worktree.
 
-A `merging` task is shown as `merging`. Otherwise, the task's derived state follows these cases:
+A task stored `merging`, `closed` or `failed` is shown in its stored state. The derived state of a
+task stored `open` follows these cases:
 
 - When the branch head is a delivery commit of the task's workspace that verifies and the worktree
   is clean, the task is `delivered`.
@@ -179,8 +180,12 @@ A `merging` task is shown as `merging`. Otherwise, the task's derived state foll
 As for Delivery, a new path Git cannot version is no uncommitted change. One example is a path a
 sandbox hides behind a `/dev/null` mount.
 
-Deriving the state SHALL change no file, the worktree's Git index included. Thus a task shown,
-listed or waited for while it is closed or merged never makes that close or merge fail.
+### req.tasks.state-read-only — Deriving a state changes nothing
+
+Deriving a task's state SHALL change no file, the worktree's Git index included.
+
+Thus a task shown, listed or waited for while it is closed or merged never makes that close or
+merge fail.
 
 ### req.tasks.delivery-verified — Only a delivery commit that verifies counts
 
@@ -285,9 +290,10 @@ submodules stay registered for the primary worktree and every other task worktre
 
 ### req.tasks.refusal-inert — A refusal changes nothing
 
-A refused task command or record update SHALL leave every record, branch and worktree unchanged.
+A refused task command or record update SHALL leave every record, branch and worktree unchanged,
+except for the refusals below, each of which says what it left.
 
-The exceptions are refusals that say so themselves:
+These refusals leave something behind:
 
 - With `binding_failed`, `concorde task open` leaves the worktree and branch it had added. The
   refusal names them and how to remove them.
@@ -299,6 +305,13 @@ The exceptions are refusals that say so themselves:
     worktree, and the refusal names them.
   - When a close fails after the merge and its checks succeeded, the refusal leaves the checked
     merge in place and the task `merging`.
+- With `merge_diverged` after a check moved or switched the primary branch, `concorde task merge`
+  leaves the primary branch as the check left it, the merge and its marker in place and the task
+  `merging`.
+- With `decision_log_failed`, `concorde task report` and `concorde task answer` leave the report or
+  answer in the task record and not in the decision log. The refusal carries the entry to append by
+  hand and says that recording it again would record it twice, or, for an answer, refuse it as
+  `already_answered`.
 
 When `concorde task merge` refuses after its [Issue recovery](#req.tasks.merge-clean-primary), it
 leaves the Issue records that recovery put back as recovery put them back. That recovery changes
@@ -365,14 +378,15 @@ a warning of the close.
 `concorde task merge` SHALL merge, by its commit identity, the task branch's head that its checks
 before the merge accepted, never the branch by name, in a merge commit whose second parent is that
 head, whose trailer `Concorde-Task` names the task and which adds the task's decision log, even when
-the primary branch could fast-forward.
+the primary branch could fast-forward, unless the primary branch already contains that head, when it
+makes no merge commit.
 
 A commit added to the task branch after those checks is therefore never merged unchecked. Closing
 the task as merged then refuses with `not_merged`, since the branch's head is no longer its latest
 delivery commit.
 
 When the primary branch already contains the checked head, as after a merge made by hand, there is
-nothing to merge. No merge commit is made. The merge does the following:
+nothing to merge. The merge does the following:
 
 - Runs its checks on the primary branch's head as it is.
 - Records that head as its `after`.
@@ -391,13 +405,20 @@ Neither holds the merge lock while it waits for the workspace lock.
 
 ### req.tasks.merge-serialized — One merge into the primary at a time
 
-Tasks SHALL hold the [merge lock](../../glossary.json#concept.merge-lock) of the primary worktree
-for the whole of every command listed below, so none overlap or see a merge that may still be rolled
-back:
+Tasks SHALL hold the [merge lock](../../glossary.json#concept.merge-lock) of the primary worktree in
+each command below from before it reads the task records it acts on until the command ends, so none
+overlap or see a merge that may still be rolled back:
 
-- `concorde task merge`.
-- `open`.
-- `close`.
+- `concorde task open`, from its start.
+- `concorde task merge`, from when it holds the task's workspace lock.
+- `concorde task close`, from when it holds the task's workspace lock.
+
+What `merge` and `close` do before they hold the workspace lock is outside the merge lock, so that a
+wait for one task's runs never blocks the merges of other tasks
+([req.tasks.merge-workspace-locked](#req.tasks.merge-workspace-locked)). That is the wait for the
+workspace lock, a merge's wait for its attempt lock and a close's Tracing retention. For a close
+without a merge, it is also the refusals checked before anything is stopped and the stopping of the
+task's sessions and runs.
 
 ### req.tasks.merge-lock-released — The lock ends with its process
 
@@ -486,7 +507,10 @@ holds the lock for as long as the task is `merging`, so no wait sees that state.
 
 A `concorde task merge` that ran `git merge` SHALL end with one of these outcomes:
 
-- The primary branch is at the merge commit, all its checks passed and the task is closed as merged.
+- All its checks passed on the merge commit and the task is stored closed as merged. The primary
+  branch is at the merge commit or at a commit the merge's own bookkeeping made on it after the
+  checks. That bookkeeping is the close's commit of the decision log and the Issue store's commits
+  that close the task's Issues.
 - The primary branch is at the commit it started from, with the task delivered again.
 - Otherwise, the task is left `merging`.
 
@@ -495,9 +519,12 @@ reasons:
 
 - Its process was interrupted.
 - Git refused the reset.
-- The close failed.
+- A check moved the primary branch or switched it to another branch or commit.
+- The close failed before it stored the task closed.
 
-Then `--resume` or `--abort` brings the merge to one of the two ends.
+Then `--resume` or `--abort` brings the merge to one of the two ends. A close that failed after it
+stored the task closed leaves the task closed with steps of the close not done. Then
+`concorde task close <task-id> --merged` finishes those steps.
 
 A merge refused before `git merge` is governed by
 [req.tasks.merge-clean-primary](#req.tasks.merge-clean-primary) and
@@ -522,39 +549,69 @@ where the spec part is installed, and otherwise run no check and say so in its a
 ### req.tasks.merging-recorded — A merge is recorded before it touches the primary branch
 
 `concorde task merge` SHALL store the task as `merging` with these details before it runs
-`git merge`, and record the merge commit once it has made it:
+`git merge`:
 
 - The primary branch's name and commit before the merge.
 - The checked commit.
 - The history key the task will close under.
 - The checks the merge will run.
 
+### req.tasks.merge-commit-recorded — A merge records its merge commit
+
+Once it has made the merge commit, `concorde task merge` SHALL record that commit in the task's
+`merging` before it runs a check.
+
 ### req.tasks.merge-marked — A merge is marked for every part until it is decided
 
-`concorde task merge` SHALL write the Kernel's [unfinished-merge marker](../../glossary.json#concept.unfinished-merge-marker) of its merge before it stores the task as `merging`, write it again once it has made the merge commit, and remove it only after the task is no longer stored `merging`, whether closed as merged or returned to delivered.
+`concorde task merge` SHALL write the Kernel's [unfinished-merge marker](../../glossary.json#concept.unfinished-merge-marker) of its merge before it stores the task as `merging`.
 
 The marker names the part `coordination`, the merge and the `--resume` and `--abort` of the task.
-A merge that cannot write the marker refuses with `marker_unwritable` and changes nothing. A marker
-that cannot be written again or removed stays as it was. It refuses only commits of other parts,
-and the next Tasks command under the merge lock settles it.
+A merge that cannot write the marker refuses with `marker_unwritable` and changes nothing.
+
+### req.tasks.merge-marker-updated — The marker names the merge commit once it exists
+
+Once it has made the merge commit, `concorde task merge` SHALL write its marker again, naming that
+commit.
+
+A marker that cannot be written again stays as it was. It refuses only commits of other parts, and
+the next Tasks command under the merge lock settles it.
+
+### req.tasks.merge-marker-removed — The marker goes once the merge is decided
+
+`concorde task merge` SHALL remove its marker only after the task is no longer stored `merging`,
+whether closed as merged or returned to delivered.
+
+A marker that cannot be removed stays as it was, and the next Tasks command under the merge lock
+settles it.
 
 ### req.tasks.merge-marker-reconciled — Tasks makes the marker agree with its records
 
 Whenever Tasks takes the merge lock, it SHALL first remove a marker that names its part while no task is stored `merging`, and write the marker of a task stored `merging` when none exists.
 
 A marker Tasks wrote while no task is merging is one a process left when it ended right before
-recording a merge or right after ending one. A marker of another part is left alone. When a task
-record cannot be read, the marker stays as it is, and the command refuses as before.
+recording a merge or right after ending one. When a task record cannot be read, the marker stays as
+it is, and the command refuses as before.
+
+### req.tasks.foreign-marker-refused — Tasks never builds on another part's unfinished merge
+
+Once it has made the marker agree with its records, Tasks SHALL refuse with `merge_incomplete`,
+changing nothing and leaving the marker as it is, every change of the primary branch it would make
+while a marker of another part, or a marker it cannot read, remains.
+
+Such a change is a merge, which would replace the marker, and a decision log's commit. The refusal
+carries the marker's account of its merge and its recovery, as the
+[marker's contract](../../kernel/contracts.md#contract.kernel.unfinished-merge) requires of every
+part that commits on the primary branch.
 
 ### req.tasks.merge-incomplete-refused — Nothing builds on an unchecked merge
 
 While a task is stored as `merging` and no live process holds the merge lock, `concorde task open`,
-`merge`, `close`, `session` and `escalate` SHALL refuse with `merge_incomplete`, for every task and
-changing nothing, naming the merging task, the commit before its merge, its merge commit, the
-primary branch's head and the `--resume` and `--abort` recovery.
+`merge` other than `merge --resume` and `merge --abort` of the merging task itself, `close`,
+`session` and `escalate` SHALL refuse with `merge_incomplete`, for every task and changing nothing,
+naming the merging task, the commit before its merge, its merge commit, the primary branch's head
+and the `--resume` and `--abort` recovery.
 
-The exceptions are `merge --resume` and `merge --abort` of the merging task itself. These commands
-are never refused:
+These commands are never refused:
 
 - `list` and `show`, which read.
 - `rebind`
@@ -584,7 +641,7 @@ Tasks SHALL finish an interrupted merge only on the main agent's request, throug
 
 Under either of these conditions, both commands refuse with `merge_diverged`, touching nothing:
 
-- The primary worktree is on another branch.
+- The primary worktree is on another branch or its `HEAD` is detached.
 - Its head is neither the commit before the merge nor the merge commit.
 
 When a Git merge in progress there is not the task's, `--abort` also refuses with the same error,
@@ -662,8 +719,8 @@ back or left as no Issue write's.
 ### req.tasks.merge-nothing-outside — A merge refuses what changed outside every task's reach
 
 `concorde task merge` SHALL refuse, before merging, an uncommitted or untracked path in the
-worktree of a task that has ended, naming each such worktree with its task and its paths, and warn
-without refusing about one in the worktree of another task that has delivered and waits.
+worktree of a task that has ended, stored `closed` or `failed`, naming each such worktree with its
+task and its paths.
 
 A task changes nothing outside its own worktree. Its session's shell is held to that by its guidance
 alone ([req.task-session.no-sandbox](../task-session/requirements.md#req.task-session.no-sandbox)),
@@ -676,6 +733,15 @@ own session changes it. What is written there becomes that task's content, which
 and merge judge, refusing an uncommitted change as `dirty_worktree`. Worktrees of no task are not
 the project's to judge. The audit judges working trees and not commits, since the primary branch
 legitimately moves while a task runs.
+
+### req.tasks.merge-warns-delivered — A merge warns of changes in a waiting task's worktree
+
+`concorde task merge` SHALL warn, without refusing, about an uncommitted or untracked path in the
+worktree of another task that has delivered and waits, naming the worktree with its task and its
+paths.
+
+That change may be the waiting task's own session's, so refusing would block a task that has
+nothing to do with it ([req.tasks.merge-nothing-outside](#req.tasks.merge-nothing-outside)).
 
 ### req.tasks.refusal-detail — A refusal is an error link
 
@@ -723,11 +789,17 @@ checks.
 
 `concorde task deliver` SHALL commit every change of the task's worktree that Git does not ignore
 as one commit with the subject `concorde: deliver <task-id>`, the task's goal as body and the task
-branch's head as its only parent, and report a head that already is a delivery commit of the
-workspace that verifies, with a clean worktree, as delivered without committing.
+branch's head as its only parent.
 
 The commit follows the Kernel's [convention](../../kernel/contracts.md#delivery-commit), so Tasks
 derives `delivered` from it as from any delivery commit.
+
+### req.tasks.deliver-recovered — A delivery already made is reported, not repeated
+
+`concorde task deliver` SHALL report a head that already is a delivery commit of the workspace that
+verifies, with a clean worktree, as delivered without committing.
+
+A delivery whose answer was lost is thus run again safely.
 
 ## Reports and the main agent's session
 

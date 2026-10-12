@@ -108,16 +108,17 @@ answered step is taken as current.
 
 ### req.workflows.refused-recorded — A step that could not start is recorded
 
-When the runner rejected a step's command line or its detached runner did not start, the step SHALL be recorded without a run and with its error link.
+When the runner rejected a step's command line or its detached runner did not start, the step SHALL be recorded without a run and with its error link, unless the step was refused because its workspace was retired.
 
 A runner that did not start includes a launcher that could not be run at all, such as a
 workspace's `concorde` that cannot be executed. It also includes a launcher that gave no answer
-within 90 seconds. A step refused because its workspace was retired is the exception. That step
-is recorded nowhere. Its outcome alone carries the `workspace_retired` link.
+within 90 seconds. A step refused because its workspace was retired is recorded nowhere, since
+nothing writes into a retired workspace's folder. Its outcome alone carries the
+`workspace_retired` link.
 
 ### req.workflows.bounded-wait — A step call waits a bounded time
 
-`concorde workflow step` SHALL return within its `--wait` seconds, plus at most 90 seconds for the announcement of a run it starts, exiting with status 3 when the run has not finished.
+`concorde workflow step` SHALL return within its `--wait` seconds, plus at most 90 seconds for the announcement of a run it starts.
 
 It waits for the workflow lock, as for the workspace lock, only within the bound. When another
 step or report command still holds the workflow lock as the bound ends, the call does the
@@ -127,10 +128,21 @@ following:
 - Records nothing.
 - Prints the outcome `running` with no run.
 
+The same bound holds when the call has seen its step's run end and takes the workflow lock to end
+the step's node. When another step or report command still holds the workflow lock as the bound
+ends, the call leaves the node as it is and prints the outcome it saw. The next step or report
+command that sees the run ended ends the node.
+
 The launch of a run is the one wait not cut short at the bound. This is because a launcher ended
 halfway could leave a run its step cannot name. Execution waits at most 60 seconds for a detached
 runner's announcement. Execution ends a runner that stayed silent. When a launcher gives no answer
 within 90 seconds, the step command ends the launcher, recording the step refused.
+
+### req.workflows.running-exit — A step still running exits with status 3
+
+When the run of its step has not finished as it returns, `concorde workflow step` SHALL exit with status 3.
+
+A caller tells by that status alone that it may ask for the same step again.
 
 ### req.workflows.answers-new-key — Answers make a new step
 
@@ -161,7 +173,7 @@ When a key is already recorded for another [Operation](../glossary.json#concept.
 
 ### req.workflows.no-operation-knowledge — Workflows reads only the step output convention
 
-The step and report commands SHALL read of a run's output only its `workflow` object under the [step output convention](contracts.md#contract.workflows.step-output), passing its `data` to the script unchanged and uninterpreted.
+The step and report commands SHALL read of a run's output only its `workflow` object under the [step output convention](contracts.md#contract.workflows.step-output).
 
 So no Operation or command is known to Workflows by name. A run declares the following:
 
@@ -173,6 +185,12 @@ So no Operation or command is known to Workflows by name. A run declares the fol
 - The values its script reads.
 
 When a run's output carries no `workflow` object, the run declares none of them.
+
+### req.workflows.data-unchanged — A run's data reaches the script unchanged
+
+The step command SHALL pass the `data` of a run's `workflow` object to the script unchanged and uninterpreted.
+
+The script reads there the values its procedure needs, such as the Modules a scaffold created.
 
 ### req.workflows.no-task — Workflows knows no task
 
@@ -220,7 +238,23 @@ The step is still reported as a problem with its error chain.
 
 ### req.workflows.report-from-records — The result is built from what the runs recorded
 
-`concorde workflow report` SHALL build the [workflow result](../glossary.json#concept.workflow-result) only from the workspace's workflow record and the saved [run results](../glossary.json#concept.run-result), never from values a step agent returned.
+`concorde workflow report` SHALL build the [workflow result](../glossary.json#concept.workflow-result) only from the workspace's workflow record, the saved [run results](../glossary.json#concept.run-result) and its own `--workflow`, `--mode` and `--lost` values, never from values a step agent returned.
+
+The script gives those values from what it knows itself: its workflow, the mode it ran in and the
+keys whose step agents returned nothing. A key reported lost never overrides what the record
+shows for its base key
+([req.workflows.lost-step](#req.workflows.lost-step)), and `--workflow` names the workflow only
+of a workspace without a record ([req.workflows.lost-first](#req.workflows.lost-first)).
+
+### req.workflows.report-judges-stop — The result is judged where the script stopped
+
+`concorde workflow report` SHALL decide the result's status by the first current step that did not end `ok`, declared itself blocking or has decision points its answers did not settle when it judges in interactive mode, and by the latest current step otherwise or when there is no such step.
+
+It judges in the mode `--mode` gives, which the script passes as the mode it ran in. Without
+`--mode`, it judges in the latest recorded step's mode. An interactive relaunch of a workflow that
+ran in no-ask mode stops at the first such step, even one found finished. Its result then shows
+that step's unsettled decision points as pending instead of the earlier run's outcome
+([The record and the result](module.md#the-record-and-the-result)).
 
 ### req.workflows.complete-report — Nothing is left out of the report
 
@@ -290,9 +324,16 @@ into a task's log.
 
 ## Scripts
 
-### req.workflows.one-source — One procedure, rendered for Claude Code
+### req.workflows.one-source — One procedure, written once
 
-Each workflow's procedure SHALL be written once, apart from the step adapter, and rendered by the build into a Claude Code workflow without changes to:
+Each workflow's procedure SHALL be written once, apart from the step adapter.
+
+The part that owns the procedure contributes it as its
+[workflow script](../glossary.json#concept.workflow-script).
+
+### req.workflows.faithful-render — The build renders the procedure unchanged
+
+The build SHALL render each workflow's procedure into a Claude Code workflow without changes to:
 
 - Its steps.
 - Its run arguments.
@@ -325,7 +366,7 @@ Where the workflow part is not installed, neither tool exists.
 
 ### req.workflows.tool-step-command — `workflow_step` runs the worktree's own step command
 
-`workflow_step` SHALL run `concorde workflow step --json <request> --wait <wait>` and answer with the step outcome the command printed, with these execution details:
+`workflow_step` SHALL run `concorde workflow step --json <request> --wait <wait>` with these execution details:
 
 - The command uses the `concorde` of the session's worktree.
 - The command runs from that worktree's root.
@@ -336,6 +377,12 @@ The command is a process of the server's. Because of this, the
 agent's turn nor one of the session's background commands.
 For the same reason, the detached run lives until its run ends
 ([contracts](contracts.md#starting-a-workflow-step)).
+
+### req.workflows.tool-answers-outcome — `workflow_step` answers with the printed outcome
+
+`workflow_step` SHALL answer with the step outcome its step command printed, unchanged, unless it refuses as its [refusals](contracts.md#refusals-of-the-tools) say.
+
+A refusal of the step command reaches the caller as its own link, unchanged.
 
 ### req.workflows.tool-bound-only — `workflow_step` works only in a bound workspace
 

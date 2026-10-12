@@ -81,6 +81,10 @@ step on the task branch.
 Nobody answers questions during this session. Wherever you would ask the developer or escalate a \
 decision, decide it yourself and record it in the task's decision log with your reason and the \
 options you weighed, and give it in your final answer."""
+# Every round runs with Claude Code's Bash sandbox off, set on its own command line and never in
+# the developer's settings files: a runner detached from a sandboxed Bash call dies with that
+# call's PID namespace, so a detached run would never outlive the round it was started in.
+SETTINGS = json.dumps({"sandbox": {"enabled": False}})
 # A cancelled run whose result was written this close to the end of a round was stopped by that
 # end, not by the session.
 TURN_END_SECONDS = 30.0
@@ -106,7 +110,8 @@ def command(
     mcp_config: str | None = None,
 ) -> list[str]:
     """The ``claude -p`` argument list of one round; a main session's rounds carry the test
-    procedure after the note, a workflow run's (``procedure`` None) only the note. ``mcp_config``
+    procedure after the note, a workflow run's (``procedure`` None) only the note. Every round
+    runs with the Bash sandbox off (``SETTINGS``). ``mcp_config``
     is passed as ``--mcp-config``, for a session that needs an MCP server its untrusted project's
     ``.mcp.json`` would not give it."""
     appended = "\n\n".join(part for part in (note, procedure) if part)
@@ -119,6 +124,8 @@ def command(
         "--output-format",
         "stream-json",
         "--verbose",
+        "--settings",
+        SETTINGS,
         *(["--mcp-config", mcp_config] if mcp_config else []),
         "--allowedTools",
         *tools,
@@ -136,7 +143,9 @@ def read_log(path: Path) -> dict:
     texts: list[str] = []
     result = None
     try:
-        lines = path.read_text(encoding="utf-8").splitlines()
+        # stream-json separates its records by LF alone: ``splitlines`` would also split inside
+        # a string at U+2028, U+2029 or U+0085, which JSON lets a string hold unescaped.
+        lines = path.read_text(encoding="utf-8").split("\n")
     except OSError:
         lines = []
     for line in lines:
@@ -158,15 +167,14 @@ def read_log(path: Path) -> dict:
                         or data.get("skill")
                         or ""
                     )
-                    actions.append(
-                        {"tool": block.get("name"), "target": str(target)[:500]}
-                    )
+                    actions.append({"tool": block.get("name"), "target": str(target)})
                 elif block.get("type") == "text" and block.get("text", "").strip():
                     texts.append(block["text"])
         elif event.get("type") == "result":
             # A resume first replays a stopped background command as a turn of its own, with no
-            # model turn; the round's answer is the last result that has one.
-            if event.get("num_turns") or result is None:
+            # model turn; the round's answer is the last result that has one, and a round with
+            # only such replays has none.
+            if event.get("num_turns"):
                 result = event
     return {
         "session_id": session,
@@ -268,8 +276,9 @@ def unsettled_runs(
     round_end: float,
     known: set[str] = frozenset(),
 ) -> list[dict]:
-    """The runs started since ``since`` that the round left unsettled: still running, or
-    cancelled by the end of the round. ``known`` runs were reported already."""
+    """The runs started since ``since`` that the round left unsettled: still running, cancelled
+    by the end of the round, or unfinished with their runner gone, such as a detached runner
+    killed with the call that started it. ``known`` runs were reported already."""
     found = []
     for directory in run_folders(project):
         state = _state(directory)
@@ -281,7 +290,13 @@ def unsettled_runs(
         if state.get("phase") != "finished":
             if _alive(project, run_id):
                 found.append({"run": run_id, "why": "running"})
-            continue
+                continue
+            # A runner releases its run lock only after it finished the progress file: read it
+            # again, since the run may have finished between the two reads.
+            state = _state(directory) or {}
+            if state.get("phase") != "finished":
+                found.append({"run": run_id, "why": "runner_gone"})
+                continue
         result = _result(directory)
         code = ((result or {}).get("error") or {}).get("code")
         written = (directory / "result.json").stat().st_mtime if result else 0.0

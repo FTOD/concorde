@@ -626,6 +626,109 @@ assert result['status'] == 'passed', result
                     ),
                 )
 
+    def test_a_selective_log_begins_with_its_tests_however_the_check_ends(self):
+        from concorde.execution.checks import checks
+        from concorde.execution.checks.check_executor import (
+            CheckCancelled,
+            CheckSandboxError,
+        )
+
+        (self.root / "src/a/test_answer.py").write_text(
+            "def verifies(*scenarios):\n    return lambda test: test\n\n\n"
+            '@verifies("scenario.a.answer")\ndef test_answer():\n    pass\n'
+        )
+        write_checks(
+            self.root,
+            [
+                {
+                    "id": "check.a.selected",
+                    "module": "module.b",
+                    "argv": ["{python}", "-c", "pass", "{tests}"],
+                    "timeout_seconds": 60,
+                }
+            ],
+        )
+
+        def cancelled(*_arguments, **_options):
+            raise CheckCancelled(b"drained out", b"drained err")
+
+        def refused(*_arguments, **_options):
+            raise CheckSandboxError("bubblewrap is unavailable", stderr=b"why")
+
+        header = "selected tests: src/a/test_answer.py::test_answer\n\n"
+        for interrupt, expected, text in (
+            (cancelled, KeyboardInterrupt, "drained out"),
+            (refused, CheckError, "why"),
+        ):
+            with self.subTest(expected=expected.__name__):
+                with patch.object(checks, "execute_check", interrupt):
+                    with self.assertRaises(expected):
+                        self.run_checks(["module.a"])
+                log = (self.logs / "check.a.selected/output.log").read_text()
+                self.assertTrue(log.startswith(header), log)
+                self.assertIn(text, log)
+
+    def test_a_measured_file_that_is_a_symbolic_link_is_refused_or_stale(self):
+        from concorde.execution.checks import checks
+
+        calc = self.root / "src/a/calc.py"
+        copy = self.root / "calc-copy.py"
+        copy.write_bytes(calc.read_bytes())
+        saved = calc.read_bytes()
+        # Before the run: refused before any command, as an input it cannot measure.
+        calc.unlink()
+        calc.symlink_to(copy)
+        with self.assertRaises(CheckError) as raised:
+            run_checks(
+                self.root,
+                modules=["module.a"],
+                trace_directory=self.logs,
+                measured={"module.a": ["src/a/calc.py"]},
+                python=sys.executable,
+            )
+        self.assertEqual("check_input_missing", raised.exception.code)
+        self.assertIn("src/a/calc.py", str(raised.exception))
+        self.assertFalse((self.logs / "check.a").exists())
+        calc.unlink()
+        calc.write_bytes(saved)
+        # During the run: a link to the same bytes is no longer the measured file.
+        real = checks.execute_check
+
+        def linking(worktree, argv, **options):
+            outcome = real(worktree, argv, **options)
+            calc.unlink()
+            calc.symlink_to(copy)
+            return outcome
+
+        with patch.object(checks, "execute_check", linking):
+            with self.assertRaises(CheckError) as raised:
+                self.run_checks(["module.a"])
+        self.assertEqual("stale_evidence", raised.exception.code)
+        calc.unlink()
+        calc.write_bytes(saved)
+
+    @verifies("scenario.checks.service-between-checks")
+    def test_a_change_between_two_checks_is_no_stale_evidence(self):
+        from concorde.execution.checks import checks
+
+        first = read_checks(self.root)[0]
+        write_checks(self.root, [first, first | {"id": "check.a2"}])
+        real = checks._run_one
+        calls = []
+
+        def then_change(*arguments, **options):
+            result = real(*arguments, **options)
+            if not calls:
+                (self.root / "src/a/calc.py").write_text("changed = True\n")
+            calls.append(result)
+            return result
+
+        with patch.object(checks, "_run_one", then_change):
+            results = self.run_checks(["module.a"])
+        self.assertEqual(["check.a", "check.a2"], [r["check_id"] for r in results])
+        self.assertNotEqual(results[0]["source_digest"], results[1]["source_digest"])
+        self.assertEqual(self.digest(first, ["module.a"]), results[1]["source_digest"])
+
     @verifies("scenario.checks.service-refused")
     def test_a_refused_check_has_no_result(self):
         from concorde.execution.checks import checks
@@ -775,7 +878,12 @@ class ChecksFileTests(unittest.TestCase):
             "module.a.json",
             {
                 "checks": [
-                    {"id": "check.a", "argv": ["false"], "inputs": ["src/gone.py"]}
+                    {
+                        "id": "check.a",
+                        "argv": ["false"],
+                        "timeout_seconds": 60,
+                        "inputs": ["src/gone.py"],
+                    }
                 ]
             },
         )
@@ -787,6 +895,95 @@ class ChecksFileTests(unittest.TestCase):
         (self.root / "src").mkdir()
         (self.root / "src/gone.py").write_text("")
         self.assertEqual(["check.a"], [c["id"] for c in validate_checks(self.root)])
+
+    def test_validating_the_checks_judges_their_command_fields(self):
+        for name, fields in (
+            ("empty argv", {"argv": [], "timeout_seconds": 1}),
+            ("argv no list", {"argv": "true", "timeout_seconds": 1}),
+            ("env", {"argv": ["true"], "timeout_seconds": 1, "env": {"1X": "a"}}),
+            ("when", {"argv": ["true"], "timeout_seconds": 1, "when": "never"}),
+            ("timeout", {"argv": ["true"], "timeout_seconds": 0}),
+            ("no timeout", {"argv": ["true"]}),
+        ):
+            with self.subTest(name):
+                self.write("module.a.json", {"checks": [{"id": "check.a", **fields}]})
+                with self.assertRaises(CheckError) as raised:
+                    validate_checks(self.root)
+                self.assertEqual("invalid_check", raised.exception.code)
+                self.assertIn("check.a", str(raised.exception))
+        # {python} is not looked for: no interpreter is named, and the check is valid.
+        self.write(
+            "module.a.json",
+            {"checks": [{"id": "check.a", "argv": ["{python}"], "timeout_seconds": 1}]},
+        )
+        self.assertEqual(["check.a"], [c["id"] for c in validate_checks(self.root)])
+
+    def test_measured_files_and_tests_are_judged_before_any_command(self):
+        (self.root / "code.py").write_text("x = 1\n")
+        (self.root / "folder").mkdir()
+        marker = self.root.parent / f"{self.root.name}-ran"
+        self.write(
+            "module.a.json",
+            {
+                "checks": [
+                    {
+                        "id": "check.a",
+                        "argv": ["{python}", "-c", f"open({str(marker)!r}, 'w')"],
+                        "timeout_seconds": 60,
+                    },
+                    {
+                        "id": "check.s",
+                        "argv": ["{python}", "-c", "pass", "{tests}"],
+                        "timeout_seconds": 60,
+                    },
+                ]
+            },
+        )
+        logs = self.root.parent / f"{self.root.name}-logs"
+        for name, options, code in (
+            ("measured no mapping", {"measured": ["code.py"]}, "invalid_check"),
+            ("paths a string", {"measured": {"module.a": "code.py"}}, "invalid_check"),
+            ("path outside", {"measured": {"module.a": ["../x"]}}, "invalid_check"),
+            ("path absolute", {"measured": {"module.a": ["/x"]}}, "invalid_check"),
+            ("tests a string", {"tests": "code.py::t"}, "invalid_check"),
+            ("test no string", {"tests": [1]}, "invalid_check"),
+            ("test outside", {"tests": ["../t.py::t"]}, "invalid_check"),
+            (
+                "missing file",
+                {"measured": {"module.a": ["gone.py"]}},
+                "check_input_missing",
+            ),
+            (
+                "directory",
+                {"measured": {"module.a": ["folder"]}},
+                "check_input_missing",
+            ),
+            ("missing test", {"tests": ["gone.py::t"]}, "check_input_missing"),
+        ):
+            with self.subTest(name):
+                with self.assertRaises(CheckError) as raised:
+                    run_checks(
+                        self.root,
+                        modules=["module.a"],
+                        trace_directory=logs,
+                        python=sys.executable,
+                        **options,
+                    )
+                self.assertEqual(code, raised.exception.code)
+                self.assertFalse(marker.exists())
+        # A Module missing from measured measures no implementation file of it, as omitting
+        # measured does; a consumer recomputes the digest with the same arguments.
+        [result] = run_checks(
+            self.root,
+            modules=["module.a"],
+            trace_directory=logs,
+            python=sys.executable,
+            measured={"module.other": ["code.py"]},
+        )
+        [check] = [c for c in configured_checks(self.root) if c["id"] == "check.a"]
+        self.assertEqual(
+            measured_digest(self.root, check, ["module.a"]), result["source_digest"]
+        )
 
     def test_checks_run_in_a_worktree_without_specs(self):
         (self.root / "code.py").write_text("x = 1\n")

@@ -96,6 +96,11 @@
       },
       {
         "kind": "document",
+        "target": "document.workers.launch",
+        "reason": "Workers' launch rules, whose req.workers.no-git the root's Boundaries cite for the promise that no worker can read or change Git metadata"
+      },
+      {
+        "kind": "document",
         "target": "document.adoption.requirements",
         "reason": "Adoption's no-code-change and test-edit rules, which req.concorde.spec-first and the brownfield scenario rely on"
       },
