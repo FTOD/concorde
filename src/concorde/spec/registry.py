@@ -29,6 +29,22 @@ RECORD_FIELDS = (
 OPTIONAL_FIELDS = MODULE_OPTIONAL
 
 
+def _entry_member(root: Path, identity: str, path: str, member: str, parse=None):
+    """One member of a Module's entry as UTF-8 text, parsed by ``parse`` when given, or a
+    ``missing_source`` error naming the member and its cause."""
+    try:
+        text = read_file(root, path).decode("utf-8")
+        return parse(text) if parse else text
+    except (SpecError, ValueError, OSError) as error:
+        raise SpecError(
+            f"the {member} of {identity}'s entry cannot be read: {error}",
+            "missing_source",
+            path=path,
+            subject=identity,
+            causes=[error if isinstance(error, SpecError) else system_cause(error)],
+        ) from error
+
+
 def mirrored_registry(root: Path) -> tuple[dict, list[str]]:
     """The regenerated registry value and the identities of the records that differed."""
     root = Path(root)
@@ -65,16 +81,12 @@ def mirrored_registry(root: Path) -> tuple[dict, list[str]]:
                 reason="every registry record names its Module's id, title and entry",
             )
         entry = record["entry"]
-        try:
-            metadata = decode(read_file(root, metadata_path(entry)).decode("utf-8"))
-        except (SpecError, ValueError, OSError, UnicodeError) as error:
-            raise SpecError(
-                f"the metadata of {record['id']}'s entry cannot be read: {error}",
-                "missing_source",
-                path=metadata_path(entry),
-                subject=record["id"],
-                causes=[error if isinstance(error, SpecError) else system_cause(error)],
-            ) from error
+        # An entry is a paired document: its reading member must be readable UTF-8 text too,
+        # although only its metadata member's module block is mirrored.
+        _entry_member(root, record["id"], entry, "reading member")
+        metadata = _entry_member(
+            root, record["id"], metadata_path(entry), "metadata", decode
+        )
         block = metadata.get("module") if isinstance(metadata, dict) else None
         if not isinstance(block, dict) or not set(MIRRORED) <= block.keys():
             missing = sorted(set(MIRRORED) - set(block or {}))

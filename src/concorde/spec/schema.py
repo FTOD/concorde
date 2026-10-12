@@ -134,7 +134,8 @@ def admit(schema: Any, root: dict | None = None) -> None:
             raise ContractError(f"{key} must be a nonnegative integer")
     for key in ("minimum", "maximum"):
         if key in schema and (
-            type(schema[key]) not in {int, float} or not math.isfinite(schema[key])
+            type(schema[key]) not in {int, float}
+            or (type(schema[key]) is float and not math.isfinite(schema[key]))
         ):
             raise ContractError(f"{key} must be a finite number")
     if "uniqueItems" in schema and type(schema["uniqueItems"]) is not bool:
@@ -249,7 +250,8 @@ def validate(
         if "pattern" in schema and re.search(schema["pattern"], value) is None:
             raise ContractError("string does not match pattern", field)
     if actual in {"integer", "number"}:
-        if not math.isfinite(value) or not schema.get(
+        # Only a float can be infinite; an int of any size compares exactly with every bound.
+        if (actual == "number" and not math.isfinite(value)) or not schema.get(
             "minimum", -math.inf
         ) <= value <= schema.get("maximum", math.inf):
             raise ContractError("number is outside the admitted range", field)

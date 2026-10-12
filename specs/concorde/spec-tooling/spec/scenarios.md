@@ -625,6 +625,15 @@ A `review-spec` grant for the same Module is equal to it apart from its task typ
 - THEN each installed file is readable and not writable
 - AND the amended file and the Module's own file are writable
 
+### scenario.spec.grant-installed-directory — A writable directory never covers an installed file
+
+- GIVEN a Module whose realization binds a directory that holds an installed file
+- WHEN a grant is computed for it with a task type that writes its implementation
+- THEN the computation fails with `installed_file`, naming the directory entry and the installed
+  file
+- AND no grant is returned
+- BUT a grant for it with task type `understand` lists the directory as `names`
+
 ### scenario.spec.grant-code-to-spec — Describing code reads it and writes the Spec
 
 - GIVEN Module A with a realization binding `src/a/`
@@ -785,6 +794,7 @@ A `review-spec` grant for the same Module is equal to it apart from its task typ
 
 - GIVEN a [file transaction](../../glossary.json#concept.file-transaction) that wrote some of its
   files
+- AND every restore of a written file succeeds
 - WHEN a later write or the final check of the result fails
 - THEN every written file is restored to its original bytes
 - AND files that did not exist are removed
@@ -793,6 +803,7 @@ A `review-spec` grant for the same Module is equal to it apart from its task typ
 ### scenario.spec.transaction-write-refused — A refused write is a Spec error
 
 - GIVEN a file transaction of two files whose second write the operating system refuses
+- AND the restore of the first file succeeds
 - WHEN it is applied
 - THEN it fails with a `SpecError` of code `system_error` naming the second file
 - AND its cause is a `system_error` record of the operating system's error
@@ -801,16 +812,18 @@ A `review-spec` grant for the same Module is equal to it apart from its task typ
 ### scenario.spec.transaction-restore-refused — A refused restore is named
 
 - GIVEN a file transaction that wrote two files and whose final check fails
-- AND the operating system refuses to restore one of them
+- AND one of them cannot be restored, because the operating system refuses it or a symbolic link
+  now stands in its place
 - WHEN the failure is handled
 - THEN the transaction fails with `system_error` naming the file it could not restore
 - AND its causes are the final check's failure and the refused restore
-- AND the named file holds the new content
+- AND the named file holds the new content, or the symbolic link that replaced it
 - AND the other file holds its original bytes
 
 ### scenario.spec.transaction-check-error — The final check's own error propagates
 
 - GIVEN a file transaction whose final check raises its own exception
+- AND every restore of a written file succeeds
 - WHEN it is applied
 - THEN every written file is restored
 - AND the exception the caller receives is the one the final check raised
@@ -944,8 +957,8 @@ A `review-spec` grant for the same Module is equal to it apart from its task typ
 
 ### scenario.spec.reject-proposal-outside-files — A proposal that writes elsewhere
 
-- GIVEN a proposal that also lists a file that is neither the configuration, the registry nor a
-  member of a document its registry registers
+- GIVEN a proposal that also lists a file that is neither the configuration, the registry, the
+  glossary the proposed root Module declares nor a member of a document its registry registers
 - WHEN apply is requested
 - THEN it fails with `permission_denied`
 - AND no file is written

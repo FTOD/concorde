@@ -8,6 +8,7 @@ establishes that the Spec is sufficient or that the implementation conforms.
 from __future__ import annotations
 
 import json
+import os
 import posixpath
 import subprocess
 import unicodedata
@@ -23,6 +24,7 @@ from .repository import SpecRepository
 from .repository_base import (
     GENERATED_PREFIXES,
     INSTALL_RECORD,
+    REGISTRY_PATH,
     SpecError,
     bound_by,
     control_path,
@@ -1444,6 +1446,45 @@ def definition_ids(repository: DocumentUnitRepository) -> set[str]:
     return set(repository.modules) | set(repository.scenario_nodes)
 
 
+CONFIG_PATH = ".concorde/config.json"
+
+
+def assessed_inputs(
+    repository: SpecRepository, root: str | Path, registry_bytes: bytes | None
+) -> list[tuple[str, str]]:
+    """The inputs one assessment examined, each as (input, digest of its bytes or a marker).
+
+    ``repository`` may be one whose loading failed: it holds what loading read before the
+    failure. The configuration and the registry are always pinned, by their bytes or as
+    ``absent`` or ``unreadable``; every registered document member as read, admitted or not;
+    the glossary and the installed Protocol manifest the binding names, once read.
+    """
+
+    def pinned(raw: bytes | None, path: str) -> str:
+        if raw is not None:
+            return digest(raw)
+        try:
+            return digest(read_file(Path(root), path))
+        except (SpecError, OSError):
+            return "unreadable" if os.path.lexists(Path(root) / path) else "absent"
+
+    registry = getattr(repository, "registry_bytes", registry_bytes)
+    inputs = [
+        (
+            CONFIG_PATH,
+            pinned(getattr(repository, "config_bytes", None), CONFIG_PATH),
+        ),
+        (REGISTRY_PATH, pinned(registry, REGISTRY_PATH)),
+    ]
+    for member, raw in sorted(getattr(repository, "member_bytes", {}).items()):
+        inputs.append((member, digest(raw) if raw is not None else "absent"))
+    if getattr(repository, "glossary_bytes", None) is not None:
+        inputs.append((repository.glossary_path, digest(repository.glossary_bytes)))
+    if getattr(repository, "protocol_manifest_bytes", None) is not None:
+        inputs.append(("protocol", digest(repository.protocol_manifest_bytes)))
+    return inputs
+
+
 def validate_repository(
     root: str | Path,
     target_id: str | None = None,
@@ -1461,17 +1502,19 @@ def validate_repository(
     """
     findings: list[Finding] = []
     artifacts: list[str] = []
-    inputs: list[tuple[str, str]] = []
     load_error: SpecError | None = None
+    # Built in two steps so that what loading read before a load error stays readable: the
+    # digest of a refused assessment pins those inputs too.
+    loaded = SpecRepository.__new__(SpecRepository)
+    repository: SpecRepository | None = loaded
     try:
-        repository = SpecRepository(
+        loaded.__init__(
             root,
             package_root,
             registry_bytes=registry_bytes,
             document_overrides=document_overrides,
             _defer_document_admission=True,
         )
-        config_digest = digest(read_file(repository.root, ".concorde/config.json"))
     except (SpecError, TypedDataError, OSError, UnicodeError) as problem:
         repository = None
         load_error = (
@@ -1503,17 +1546,10 @@ def validate_repository(
                 for member in target.sources
                 if member in repository.source_documents
             )
-        # Every registered document member as read, admitted or not, so that an invalid result
-        # pins the bytes of the documents that failed admission too.
-        for member, raw in sorted(repository.member_bytes.items()):
-            inputs.append((member, digest(raw) if raw is not None else "absent"))
         if repository.glossary_bytes is not None:
             artifacts.append(repository.glossary_path)
-            inputs.append((repository.glossary_path, digest(repository.glossary_bytes)))
         findings.extend(spec_findings(repository))
-        inputs.append((".concorde/config.json", config_digest))
-        inputs.append((repository.registry_path, digest(repository.registry_bytes)))
-        inputs.append(("protocol", repository.config["protocol"]["digest"]))
+    inputs = assessed_inputs(loaded, root, registry_bytes)
     counts = Counter(f.strictness for f in findings)
     return ToolResult(
         "spec-validation",

@@ -69,7 +69,9 @@ class SpecRepository(DocumentUnitRepository):
             if package_root
             else Path(__file__).resolve().parents[3]
         )
-        self.config = decode(read_file(root, ".concorde/config.json").decode("utf-8"))
+        # The bytes as read, kept for the assessment digest even when they are refused.
+        self.config_bytes = read_file(root, ".concorde/config.json")
+        self.config = decode(self.config_bytes.decode("utf-8"))
         if not isinstance(self.config, dict):
             raise SpecError(
                 "the configuration must be a JSON object, not a JSON "
@@ -150,6 +152,7 @@ class SpecRepository(DocumentUnitRepository):
                 remediation="run the Concorde installer in this project",
                 causes=[error if isinstance(error, SpecError) else system_cause(error)],
             ) from error
+        self.protocol_manifest_bytes = raw
         manifest = decode(raw.decode())
         binding = {"version": manifest.get("version"), "digest": digest(raw)}
         if self.config["protocol"] != binding or binding["version"] != PROTOCOL_VERSION:

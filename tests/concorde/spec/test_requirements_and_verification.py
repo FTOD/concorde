@@ -8,7 +8,7 @@ import unittest
 import warnings
 from pathlib import Path
 
-from concorde.spec.verification import scan_declarations, verifies
+from concorde.spec.verification import DeclarationError, scan_declarations, verifies
 from tests.concorde.support.spec_project import (
     DocumentSource,
     SpecProject,
@@ -426,6 +426,37 @@ class RequirementsAndVerificationTests(unittest.TestCase):
             "// verifies: scenario.shop.submit\nconst unused = 1;\n",
         )
         self.assertIn("CONCORDE-COVERAGE-003", self.rules())
+
+    @verifies("scenario.spec.verification-declarations")
+    def test_a_typescript_call_in_a_comment_or_a_string_is_no_test(self):
+        inert = {
+            "line": "// verifies: scenario.shop.submit\n// it('disabled', () => {});\n",
+            "block": "// verifies: scenario.shop.submit\n"
+            "/* it('disabled', () => {});\n   test('also', () => {}); */\n",
+            "string": "// verifies: scenario.shop.submit\n"
+            "const source = \"it('disabled', () => {})\";\n"
+            "const template = `\n  test('also', () => {});\n`;\n",
+        }
+        for kind, source in inert.items():
+            with self.subTest(kind):
+                self.write("tests/shop/cart.test.ts", source)
+                with self.assertRaisesRegex(
+                    DeclarationError, "verifies: comment declares no test"
+                ):
+                    scan_declarations(self.root, ["tests/shop/cart.test.ts"])
+                self.assertIn("CONCORDE-COVERAGE-003", self.rules())
+        # Inert text before a real call neither names the test nor hides it.
+        self.write(
+            "tests/shop/cart.test.ts",
+            "// verifies: scenario.shop.submit\n"
+            "// it('disabled', () => {});\n"
+            "/* test('also') */ it(\n  'submits once', () => {});\n",
+        )
+        declarations = scan_declarations(self.root, ["tests/shop/cart.test.ts"])
+        self.assertEqual(
+            [("scenario.shop.submit", 1, "submits once")],
+            [(d.scenario_id, d.line, d.name) for d in declarations],
+        )
 
     @verifies(
         "scenario.spec.verification-declarations", "scenario.spec.coverage-uncovered"

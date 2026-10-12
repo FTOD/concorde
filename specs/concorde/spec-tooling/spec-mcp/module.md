@@ -198,6 +198,10 @@ The session is tested over a real stdio connection.
 The session is written by hand because its wire is small and fully specified.
 The wire is newline-delimited JSON-RPC carrying `initialize`, `ping`, `tools/list` and `tools/call`.
 The wire also carries one `roots/list` request to the client.
+The server supports three MCP revisions and answers the requested one when it can
+([session](contracts.md#session)).
+The server waits for the `roots/list` reply without a time limit. Claude Code answers it at once,
+and a timer would make a deterministic server depend on a clock.
 An MCP library would add a runtime dependency to every project that installs Concorde for that much
 protocol.
 

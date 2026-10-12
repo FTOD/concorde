@@ -8,7 +8,7 @@ import unittest
 from pathlib import Path
 
 from concorde.distribution.project_defaults import install_project_defaults
-from concorde.spec import initialize
+from concorde.spec import commands, initialize
 from concorde.spec.initialize import apply_project_proposal, project_proposal
 from concorde.spec.repository import SpecError, SpecRepository, digest
 from concorde.spec.validation import validate_repository
@@ -137,6 +137,21 @@ class InitialModuleTests(unittest.TestCase):
             self.assertEqual(
                 ".venv/bin/python",
                 json.loads((root / ".concorde/config.json").read_text())["python"],
+            )
+
+    def test_the_init_command_forwards_an_explicitly_empty_interpreter(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            install_project_defaults(root, PACKAGE)
+            # A found environment would stand in for an interpreter the command dropped.
+            (root / ".venv/bin").mkdir(parents=True)
+            (root / ".venv/bin/python").write_text("")
+            answer = commands.init(["--propose", "--name", "App", "--python", ""], root)
+            self.assertEqual("failed", answer["status"])
+            self.assertEqual("invalid_input", answer["error"]["code"])
+            self.assertEqual(
+                "success",
+                commands.init(["--propose", "--name", "App"], root)["status"],
             )
 
     @verifies("scenario.spec.init-installation")
@@ -557,6 +572,19 @@ class ProposalBindingTests(unittest.TestCase):
                 (
                     "file without content",
                     lambda p: p["data"]["files"][0].pop("content"),
+                ),
+                *(
+                    (
+                        f"{path} {kind}",
+                        lambda p, path=path, content=content: next(
+                            item for item in p["data"]["files"] if item["path"] == path
+                        ).update(content=content),
+                    )
+                    for path in (".concorde/config.json", ".concorde/specs.json")
+                    for kind, content in (
+                        ("not an object", "[]\n"),
+                        ("not JSON", "{not json\n"),
+                    )
                 ),
             ):
                 with self.subTest(label):

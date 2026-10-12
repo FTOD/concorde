@@ -50,6 +50,35 @@ class FrontMatterTests(unittest.TestCase):
         )
         self.assertEqual({"items": [{"a": 1, "b": {"a": 2}}]}, metadata)
 
+    def test_the_first_key_of_a_list_record_nests_below_its_own_column(self):
+        # The first key stands after "- ", so its nested map or list is indented below that key,
+        # while the record's following keys stay at the key's own level.
+        metadata, _ = parse_document(
+            document(
+                "items:",
+                "  - key:",
+                "      child: value",
+                "      other: 1",
+                "    next: 2",
+                "  - list:",
+                "      - x",
+                "      - y",
+                "    next: 3",
+                "  - empty:",
+                "    next: 4",
+            )
+        )
+        self.assertEqual(
+            {
+                "items": [
+                    {"key": {"child": "value", "other": 1}, "next": 2},
+                    {"list": ["x", "y"], "next": 3},
+                    {"empty": {}, "next": 4},
+                ]
+            },
+            metadata,
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

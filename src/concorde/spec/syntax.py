@@ -29,6 +29,8 @@ SCENARIO_HEADING = re.compile(
 REQUIREMENT_HEADING = re.compile(
     r"^(req\.[a-z0-9]+(?:[.-][a-z0-9-]+)*)[ \t]+[—–-][ \t]+(\S.*)$"
 )
+# The heading levels at which a requirement or scenario heading defines its node.
+DEFINITION_LEVELS = range(2, 6)
 LIST_ITEM = re.compile(r"^[ \t]*(?:[-*+]|\d+[.)])[ \t]+(.*)$")
 STEP = re.compile(r"^(GIVEN|WHEN|THEN|AND|BUT)[ \t]+(\S.*)$")
 REQUIREMENT_ITEM = re.compile(r"^req\.[a-z0-9]")
@@ -151,9 +153,11 @@ def _anchors(lines, found: list[Heading], reading: Reading) -> None:
         heading = heading_at.get(number)
         names: list[str] = []
         if heading is not None:
-            definition = REQUIREMENT_HEADING.match(
-                heading.text
-            ) or SCENARIO_HEADING.match(heading.text)
+            # Only a heading that defines its node supplies the node's identity as its anchor.
+            definition = heading.level in DEFINITION_LEVELS and (
+                REQUIREMENT_HEADING.match(heading.text)
+                or SCENARIO_HEADING.match(heading.text)
+            )
             if heading.anchor and definition and heading.anchor != definition.group(1):
                 reading.problems.append(
                     Problem(
@@ -370,17 +374,19 @@ def _definitions(lines, reading: Reading) -> None:
             text, _ = strip_heading_anchor(heading.group(2))
             scenario = SCENARIO_HEADING.match(text)
             requirement = REQUIREMENT_HEADING.match(text)
-            if (scenario or requirement) and not 2 <= level <= 5:
+            if (scenario or requirement) and level not in DEFINITION_LEVELS:
+                # A definition heading at another level is malformed: it defines nothing.
                 reading.problems.append(
                     Problem(
                         "CHK.scenario.steps"
                         if scenario
                         else "CHK.requirement.statement",
-                        "requirement and scenario headings use levels 2 to 5",
+                        f"malformed {'scenario' if scenario else 'requirement'} heading: "
+                        f"{text}; requirement and scenario headings use levels 2 to 5",
                         number,
                     )
                 )
-            if scenario:
+            elif scenario:
                 current = {
                     "kind": "scenario",
                     "id": scenario.group(1),

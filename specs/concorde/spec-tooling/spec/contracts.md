@@ -100,6 +100,10 @@ Construction performs these steps:
 `registry_bytes` and `document_overrides` replace the corresponding files in memory only.
 `document_overrides` is a map from member path to bytes. A caller can therefore load a state it
 has not written. The overrides are never written.
+Queries of the loaded Specs (the configuration, the registry, the documents and the glossary)
+answer from the sources as construction read them. Queries that list or read other files read them
+when they are asked: the files realization entries bind, pinned external material and the
+installation record. `recheck_context` reads the current files too.
 `fresh()` builds a new repository from the same root and overrides. Construction never consults a
 [build manifest](../../glossary.json#concept.build-manifest) or any other output of Distribution.
 
@@ -417,7 +421,9 @@ The computation runs in this order:
   `names`, `ro`, `rw`.
 - If an `rw` entry would then cover a file a Module outside the grant also binds, the computation
   fails with `shared_file` (below).
-- An installed file is then lowered from `rw` to `ro`.
+- If an `rw` directory entry would then cover an installed file, the computation fails with
+  `installed_file` (below).
+- An installed file's exact entry is then lowered from `rw` to `ro`.
 - Finally, an exact path that a directory entry of equal or higher level covers is dropped.
 
 An installed file meets all these conditions:
@@ -438,6 +444,7 @@ also names every registered Module:
 | `invalid_task_type` | the task type is none of the eight |
 | `unknown_module` | a Module identity is not registered |
 | `shared_file` | an `rw` entry covers a file that a Module outside `modules` also binds; the message names each such file and Module |
+| `installed_file` | an `rw` directory entry covers an installed file, which validation reports as `CHK.binds.installed`; the message names each such directory entry and the installed files it covers |
 
 A shared file is found with the binding-Modules index (`shared_files`). This detects all these
 cases:
@@ -629,9 +636,11 @@ The scanner reads its module-level functions and the methods of classes at any c
 A function nested inside another function is a helper.
 The scanner ignores such a function.
 Every argument must be a string literal beginning with `scenario.`.
-The scanner reads a TypeScript file line by line, as UTF-8 with undecodable bytes replaced.
+The scanner reads a TypeScript file as UTF-8 with undecodable bytes replaced.
 A TypeScript file therefore never fails to parse.
-In a TypeScript file, a declaration is an own-line comment whose text after the comment marker
+The scanner reads TypeScript lexically and never compiles or runs it.
+Text inside a comment or a string literal is never a call.
+In a TypeScript file, a declaration is an own-line `//` comment whose text after the comment marker
 begins with `verifies:`. The declaration applies to the next `it`, `test` or `describe` call.
 The call's title names the declaring test.
 These cases are `CONCORDE-COVERAGE-003` errors for that file:
@@ -845,10 +854,13 @@ A failure then propagates as follows:
   Its one cause is the `system_error` record of the operating system's error.
 - A `SpecError` of a write, such as `stale_proposal`, and any exception `verify` raises propagate
   unchanged. A caller's own check error therefore reaches the caller as the caller raised it.
-- When the operating system refuses a restore, the other restores are still attempted.
+- A restore is refused when the operating system refuses it or when its destination is no longer a
+  safe path, such as a symbolic link put in its place. A restore never follows a symbolic link.
+  When a restore is refused, the other restores are still attempted.
   The transaction fails with a `SpecError` of code `system_error` that names every file not restored.
-  The error says each still holds the new content.
-  Its causes are the first failure followed by one `system_error` record per refused restore.
+  The error says each still holds the new content, or what replaced its destination.
+  Its causes are the first failure followed by one record per refused restore: the
+  `system_error` record of the operating system's error, or the error that refused the path.
   When the first failure is a `SpecError`, it stays unchanged.
   Otherwise, the first cause is its `system_error` or `unexpected_error` record.
 

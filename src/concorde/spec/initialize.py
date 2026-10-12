@@ -514,8 +514,32 @@ def apply_project_proposal(root: Path, package: Path, proposal: dict) -> dict:
             "invalid_proposal",
             "/proposal/files",
         )
-    config = decode(proposed[".concorde/config.json"]["content"])
-    registry = decode(proposed[".concorde/specs.json"]["content"])
+    # A digest proves only that the caller holds this exact proposal, not that propose made it:
+    # both control files must be JSON objects before any field of theirs is read.
+    controls = {}
+    for path in (".concorde/config.json", ".concorde/specs.json"):
+        try:
+            controls[path] = decode(proposed[path]["content"])
+        except TypedDataError as error:
+            raise SpecError(
+                f"the proposed {path} is not JSON: {error}",
+                "invalid_proposal",
+                "/proposal/files",
+                path=path,
+                causes=[error],
+            ) from error
+        if not isinstance(controls[path], dict):
+            raise SpecError(
+                f"the proposed {path} is a JSON {type(controls[path]).__name__}, not an "
+                "object",
+                "invalid_proposal",
+                "/proposal/files",
+                path=path,
+            )
+    config, registry = (
+        controls[".concorde/config.json"],
+        controls[".concorde/specs.json"],
+    )
     if config.get("protocol") != installed_protocol_binding(root):
         raise SpecError(
             f"the proposed configuration names the Protocol {config.get('protocol')!r}, but "

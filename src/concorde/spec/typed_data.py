@@ -155,7 +155,8 @@ def register(type_id: str, version: int, schema: dict) -> None:
         ) from error
     existing = _TYPES.get(type_id)
     if existing is not None:
-        if existing == (version, schema):
+        # Schemas compare as JSON values, so ``true`` and ``1`` stay different.
+        if existing[0] == version and _subset.json_equal(existing[1], schema):
             return
         raise TypedDataError(
             "duplicate_type",
@@ -245,13 +246,17 @@ def check_schema(value: Any, schema: dict | bool, field: str = "") -> None:
         raise TypedDataError("invalid_field", field, "value is forbidden")
     if "anyOf" in schema:
         # A matching alternative satisfies anyOf only: the schema's other keywords still apply.
+        # Every alternative is checked, so a reference to an unregistered type fails with
+        # unknown_type whichever alternative matches.
+        matched = False
         for option in schema["anyOf"]:
             try:
                 check_schema(value, option, field)
-                break
-            except TypedDataError:
-                pass
-        else:
+                matched = True
+            except TypedDataError as error:
+                if error.code == "unknown_type":
+                    raise
+        if not matched:
             raise TypedDataError(
                 "invalid_field", field, "value does not match an admitted alternative"
             )
@@ -324,7 +329,8 @@ def check_schema(value: Any, schema: dict | bool, field: str = "") -> None:
         if schema.get("format") == "project-path":
             safe_path(value, field)
     elif type(value) in (int, float):
-        if not math.isfinite(value) or not schema.get(
+        # Only a float can be infinite; an int of any size compares exactly with every bound.
+        if (type(value) is float and not math.isfinite(value)) or not schema.get(
             "minimum", value
         ) <= value <= schema.get("maximum", value):
             raise TypedDataError(

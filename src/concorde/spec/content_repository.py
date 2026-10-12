@@ -521,24 +521,43 @@ class DocumentUnitRepository:
                 )
             owns.insert(0, entry)
 
-        def relations(name: str, required: set[str], optional: set[str] = frozenset()):
+        def relations(
+            name: str,
+            required: set[str],
+            optional: set[str] = frozenset(),
+            names: tuple[str, ...] = ("target",),
+        ):
             # A malformed item, which validation reports against the schema, declares nothing;
-            # an identity that is no string (``target``, ``kind``, ``contract``) is malformed.
+            # a field that later checks compare or look up as a name (``names``) and that is no
+            # string is malformed. A ``relies_on`` that is no array keeps only its strings, an
+            # empty list for null, so the item still selects no more than its entry.
             items = block.get(name) if block else None
             if not isinstance(items, list):
                 return ()
-            return tuple(
-                item
-                for item in items
-                if isinstance(item, dict)
-                and required <= item.keys()
-                and not item.keys() - required - optional
-                and all(
-                    isinstance(item[key], str)
-                    for key in ("target", "kind", "contract")
-                    if key in required
-                )
-            )
+            kept = []
+            for item in items:
+                if (
+                    not isinstance(item, dict)
+                    or not required <= item.keys()
+                    or item.keys() - required - optional
+                    or not all(isinstance(item[key], str) for key in names)
+                ):
+                    continue
+                relied = item.get("relies_on")
+                if "relies_on" in item and (
+                    not isinstance(relied, list)
+                    or not all(isinstance(identity, str) for identity in relied)
+                ):
+                    item = {
+                        **item,
+                        "relies_on": [
+                            identity
+                            for identity in (relied if isinstance(relied, list) else ())
+                            if isinstance(identity, str)
+                        ],
+                    }
+                kept.append(item)
+            return tuple(kept)
 
         declaration = ModuleDeclaration(
             module_id,
@@ -547,9 +566,13 @@ class DocumentUnitRepository:
             tuple(owns),
             relations("contains", {"target", "meaning"}, {"relies_on"}),
             relations("uses", {"target", "meaning"}, {"relies_on"}),
-            relations("includes", {"kind", "target", "reason"}),
             relations(
-                "participates", {"contract", "version", "role", "peer", "meaning"}
+                "includes", {"kind", "target", "reason"}, names=("kind", "target")
+            ),
+            relations(
+                "participates",
+                {"contract", "version", "role", "peer", "meaning"},
+                names=("contract", "role", "peer"),
             ),
             block,
             record,
@@ -658,11 +681,23 @@ class DocumentUnitRepository:
                     fatal=True,
                 )
             identity = document["id"]
-            if identity in self._identity_paths or identity in self.declarations:
+            # Identities are unique across every kind: a node an earlier document defined
+            # collides as a Module or another document does, whatever the path order.
+            previous = self.nodes.get(identity)
+            if (
+                identity in self._identity_paths
+                or identity in self.declarations
+                or previous is not None
+            ):
                 self._problem(
                     "CHK.node.id",
                     members[1],
-                    f"document identity {identity} is not unique",
+                    f"document identity {identity} is not unique"
+                    + (
+                        f": a {previous.type} in {previous.document} uses it"
+                        if previous is not None
+                        else ""
+                    ),
                     subject=identity,
                     fatal=True,
                 )
@@ -834,8 +869,15 @@ class DocumentUnitRepository:
                     "concept": target[1],
                 }
             )
+        # A relates without string endpoints, which validation reports against the schema,
+        # declares nothing: every later check names its source and target.
         for record in value.get("relations", []):
-            if isinstance(record, dict) and record.get("type") == "relates":
+            if (
+                isinstance(record, dict)
+                and record.get("type") == "relates"
+                and isinstance(record.get("source"), str)
+                and isinstance(record.get("target"), str)
+            ):
                 self.metadata_relations.append(
                     {**record, "document": path, "owner": owner}
                 )
@@ -1259,7 +1301,8 @@ class DocumentUnitRepository:
                 "unknown_target",
                 subject=module_id,
             )
-        return self.declarations[module_id]
+        # The caller gets its own copy: the declaration's records and block stay the snapshot's.
+        return copy.deepcopy(self.declarations[module_id])
 
     def contained(self, module: ModuleRef) -> tuple[Module, ...]:
         """The Modules this Module ``contains``, in registry order."""
@@ -1714,12 +1757,18 @@ class DocumentUnitRepository:
 
     def definitions(self, module: ModuleRef) -> ModuleDefinitions:
         owner = self._resolve(module).id
+        # Scenarios, requirements and realizations are immutable; a concept's relation records
+        # and a contract are dictionaries, so the caller gets its own copies of those.
         return ModuleDefinitions(
             tuple(x for x in self.scenario_nodes.values() if x.owner == owner),
             tuple(x for x in self.requirement_nodes.values() if x.owner == owner),
-            tuple(x for x in self.concept_nodes.values() if x.owner == owner),
+            copy.deepcopy(
+                tuple(x for x in self.concept_nodes.values() if x.owner == owner)
+            ),
             tuple(x for x in self.realization_nodes.values() if x.owner == owner),
-            tuple(x for x in self.contract_nodes.values() if x["owner"] == owner),
+            copy.deepcopy(
+                tuple(x for x in self.contract_nodes.values() if x["owner"] == owner)
+            ),
         )
 
     def scenarios(self, module: ModuleRef) -> tuple[Scenario, ...]:
@@ -1743,7 +1792,8 @@ class DocumentUnitRepository:
     def participations(self, module: ModuleRef) -> tuple[dict, ...]:
         owner = self._resolve(module).id
         return tuple(
-            {**item, "owner": owner} for item in self.declarations[owner].participates
+            {**copy.deepcopy(item), "owner": owner}
+            for item in self.declarations[owner].participates
         )
 
     def explanation_text(self, concept: Concept) -> str | None:

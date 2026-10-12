@@ -250,8 +250,23 @@ def grant(repository, modules: Sequence[str], task_type: str) -> Grant:
                 "modules",
             )
     # An installed file is the installer's: bound only by its exact path (CHK.binds.installed),
-    # it is at most readable, whatever the Module binding it is granted.
+    # it is at most readable, whatever the Module binding it is granted. A writable directory
+    # covering one would keep it writable below the directory, so the grant is refused.
     installed = installed_files(repository.root)
+    covering = [
+        f"{entry} (covers {', '.join(held)})"
+        for entry, level in sorted(levels.items())
+        if level == "rw" and is_directory_entry(entry)
+        for held in [sorted(path for path in installed if bound_by(entry, path))]
+        if held
+    ]
+    if covering:
+        raise SpecError(
+            f"the {task_type} grant for {', '.join(bound)} would make installed files writable "
+            "through directory entries: " + "; ".join(covering),
+            "installed_file",
+            "modules",
+        )
     for path, level in list(levels.items()):
         if level == "rw" and path in installed:
             levels[path] = "ro"

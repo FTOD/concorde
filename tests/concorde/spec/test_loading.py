@@ -14,6 +14,7 @@ from concorde.spec.validation import validate_repository
 from concorde.spec.verification import verifies
 from tests.concorde.support.spec_project import (
     PACKAGE,
+    block,
     entry_of,
     include_external,
     project,
@@ -23,6 +24,20 @@ from tests.concorde.support.spec_project import (
 )
 
 LEDGER = "specs/ledger/module.md"
+LEDGER_OBLIGATIONS = "specs/ledger/obligations.md"
+BANK = "specs/bank/module.md"
+BANK_OBLIGATIONS = "specs/bank/obligations.md"
+CONTRACT = {
+    "id": "contract.ledger.balance",
+    "version": 1,
+    "schema": {
+        "type": "object",
+        "properties": {"balance": {"type": "integer"}},
+        "required": ["balance"],
+    },
+    "semantics": "The stored balance of one account.",
+    "example": {"balance": 1},
+}
 
 
 class LoadingTests(unittest.TestCase):
@@ -143,6 +158,265 @@ class LoadingTests(unittest.TestCase):
         self.assertEqual(
             before, json.dumps(repository.glossary_entries, sort_keys=True)
         )
+
+    @verifies("scenario.spec.validate-structural-errors")
+    def test_a_document_identity_a_node_uses_is_refused_in_either_order(self):
+        # The document reusing scenario.ledger.read loads before (a.md) or after (z.md) the
+        # obligations document that defines the scenario.
+        for name in ("a.md", "z.md"):
+            with self.subTest(name), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                project(root)
+                path = f"specs/ledger/{name}"
+                (root / path).write_text("# Extra\n\nMore about the ledger.\n")
+                value = {
+                    "schema_version": 3,
+                    "document": {
+                        "id": "scenario.ledger.read",
+                        "owner": "module.ledger",
+                        "role": "implementation",
+                    },
+                    "defines": [],
+                    "relations": [],
+                }
+                (root / (path + ".json")).write_text(json.dumps(value))
+                owns = read_json(root, LEDGER + ".json")["module"]["owns"]
+                update_module(root, "module.ledger", owns=[*owns, path])
+                report = validate_repository(root, package_root=PACKAGE)
+                self.assertEqual("invalid", report.status)
+                self.assertIn(
+                    ("CHK.node.id", "scenario.ledger.read"),
+                    {(f.rule_id, f.subject_id) for f in report.findings},
+                )
+
+    def test_returned_definitions_and_declarations_do_not_share_the_repositorys_records(
+        self,
+    ):
+        with (self.root / LEDGER_OBLIGATIONS).open("a") as stream:
+            stream.write("\n## Contracts\n\n" + block("concorde-contract", CONTRACT))
+        update_glossary_entry(
+            self.root,
+            "concept.bank.request",
+            relates=[{"verb": "names", "target": "concept.ledger.account"}],
+        )
+        update_module(
+            self.root,
+            "module.ledger",
+            participates=[
+                {
+                    "contract": "contract.ledger.balance",
+                    "version": 1,
+                    "role": "provided",
+                    "peer": "external",
+                    "meaning": "#concept.ledger.account",
+                }
+            ],
+        )
+        repository = self.repository()
+        contract = repository.contracts("module.ledger")[0]
+        contract["version"] = 9
+        contract["schema"]["properties"]["balance"]["type"] = "string"
+        repository.definitions("module.ledger").contracts[0]["example"]["balance"] = 2
+        repository.definitions("scope.bank").concepts[0].relates[0]["verb"] = "changed"
+        repository.participations("module.ledger")[0]["version"] = 9
+        declaration = repository.module_declaration("scope.bank")
+        declaration.uses[0]["target"] = "module.none"
+        declaration.block["title"] = "Changed"
+        declaration.block["uses"].clear()
+        declaration.record["entry"] = "specs/none/module.md"
+        ledger = repository.module_declaration("module.ledger")
+        ledger.participates[0]["version"] = 9
+        # Asked again, the repository answers from its own records.
+        self.assertEqual(
+            {**CONTRACT, "source": LEDGER_OBLIGATIONS, "owner": "module.ledger"},
+            repository.contracts("module.ledger")[0],
+        )
+        self.assertEqual(
+            [{"verb": "names", "target": "concept.ledger.account"}],
+            list(repository.concepts("scope.bank")[0].relates),
+        )
+        again = repository.module_declaration("scope.bank")
+        self.assertEqual("service.transfer", again.uses[0]["target"])
+        self.assertEqual("Banking", again.block["title"])
+        self.assertEqual(3, len(again.block["uses"]))
+        self.assertEqual(BANK, again.record["entry"])
+        self.assertEqual(
+            1, repository.module_declaration("module.ledger").participates[0]["version"]
+        )
+        self.assertEqual(1, repository.participations("module.ledger")[0]["version"])
+
+    @verifies("scenario.spec.validate-structural-errors")
+    def test_malformed_declaration_fields_are_findings_beside_an_independent_one(self):
+        def ledger(change):
+            return {
+                LEDGER_OBLIGATIONS + ".json": self.metadata(LEDGER_OBLIGATIONS, change)
+            }
+
+        def bank(change):
+            return {BANK + ".json": self.metadata(BANK, change)}
+
+        def role(value):
+            value["document"]["role"] = []
+
+        def relies_on(value):
+            value["module"]["uses"][0]["relies_on"] = None
+
+        def relies_on_items(value):
+            value["module"]["uses"][0]["relies_on"] = [["scenario.transfer.debit"], 5]
+
+        def relates(value):
+            value["relations"].append(
+                {
+                    "type": "relates",
+                    "source": "realization.ledger.store",
+                    "verb": "keeps",
+                }
+            )
+
+        def relates_target(value):
+            value["relations"].append(
+                {
+                    "type": "relates",
+                    "source": "realization.ledger.store",
+                    "verb": "keeps",
+                    "target": ["concept.ledger.account"],
+                }
+            )
+
+        def participates(value):
+            value["module"]["participates"] = [
+                {
+                    "contract": "contract.bank.none",
+                    "version": None,
+                    "role": ["provided"],
+                    "peer": {"id": "module.ledger"},
+                    "meaning": None,
+                }
+            ]
+
+        def includes(value):
+            value["module"]["includes"] = [
+                {"kind": ["module"], "target": "module.ledger", "reason": "x"}
+            ]
+
+        # The independent violation: a scenario of another Module without a THEN step.
+        transfer = "specs/transfer/obligations.md"
+        independent = {
+            transfer: (self.root / transfer)
+            .read_text()
+            .replace("- THEN it returns 80\n", "")
+            .encode()
+        }
+        cases = {
+            "collection-valued role": (ledger(role), "CHK.document.role"),
+            "null relies_on": (bank(relies_on), "CHK.document.schema"),
+            "relies_on items": (bank(relies_on_items), "CHK.document.schema"),
+            "relates missing target": (ledger(relates), "CHK.document.schema"),
+            "relates collection target": (
+                ledger(relates_target),
+                "CHK.relation.endpoints",
+            ),
+            "participation fields": (bank(participates), "CHK.document.schema"),
+            "includes kind": (bank(includes), "CHK.document.schema"),
+        }
+        for label, (overrides, rule) in cases.items():
+            with self.subTest(label):
+                report = self.validate(**overrides, **independent)
+                rules = {f.rule_id for f in report.findings}
+                self.assertEqual("invalid", report.status)
+                self.assertIn(rule, rules)
+                self.assertIn(
+                    ("CHK.scenario.steps", transfer),
+                    {(f.rule_id, f.source) for f in report.findings},
+                )
+
+    def test_a_null_relies_on_selects_no_more_than_the_entry(self):
+        update_module(
+            self.root,
+            "scope.bank",
+            uses=[
+                {
+                    "target": "service.transfer",
+                    "meaning": "#uses-service-transfer",
+                    "relies_on": None,
+                }
+            ],
+        )
+        repository = self.repository()
+        self.assertEqual(
+            [], repository.module_declaration("scope.bank").uses[0]["relies_on"]
+        )
+        self.assertEqual(
+            ("specs/transfer/module.md",),
+            repository.selection(repository.module_declaration("scope.bank").uses[0]),
+        )
+
+    def test_a_failed_load_pins_the_inputs_it_read(self):
+        registries = {
+            self.validate_bytes(registry_bytes=text).result["source_digest"]
+            for text in (b"{", b"[", b'{"schema_version": 2, "modules": []}')
+        }
+        self.assertEqual(3, len(registries))
+        config = self.root / ".concorde/config.json"
+        configs = set()
+        for text in (b"{", b"[1]", None):
+            if text is None:
+                config.unlink()
+            else:
+                config.write_bytes(text)
+            report = self.validate()
+            self.assertEqual("invalid", report.status)
+            configs.add(report.result["source_digest"])
+        self.assertEqual(3, len(configs))
+
+    def validate_bytes(self, **options):
+        report = validate_repository(self.root, package_root=PACKAGE, **options)
+        self.assertEqual("invalid", report.status)
+        self.assertIn("CONCORDE-SOURCE-008", {f.rule_id for f in report.findings})
+        return report
+
+    def test_definition_headings_define_only_at_levels_two_to_five(self):
+        original = {
+            path: (self.root / path).read_text()
+            for path in (LEDGER_OBLIGATIONS, BANK_OBLIGATIONS)
+        }
+        for level in (1, 2, 5, 6):
+            with self.subTest(level):
+                marks = "#" * level
+                overrides = {
+                    LEDGER_OBLIGATIONS: original[LEDGER_OBLIGATIONS]
+                    .replace(
+                        "### scenario.ledger.read", f"{marks} scenario.ledger.read"
+                    )
+                    .encode(),
+                    BANK_OBLIGATIONS: original[BANK_OBLIGATIONS]
+                    .replace("### req.bank.retry", f"{marks} req.bank.retry")
+                    .encode(),
+                }
+                report = self.validate(**overrides)
+                malformed = {
+                    (f.rule_id, f.source)
+                    for f in report.findings
+                    if f.message.startswith("malformed ")
+                }
+                repository = self.repository(document_overrides=overrides)
+                defined = {
+                    "scenario.ledger.read" in repository.scenario_nodes,
+                    "req.bank.retry" in repository.requirement_nodes,
+                }
+                if level in (2, 5):
+                    self.assertEqual(set(), malformed)
+                    self.assertEqual({True}, defined)
+                else:
+                    self.assertEqual(
+                        {
+                            ("CHK.scenario.steps", LEDGER_OBLIGATIONS),
+                            ("CHK.requirement.statement", BANK_OBLIGATIONS),
+                        },
+                        malformed,
+                    )
+                    self.assertEqual({False}, defined)
+                    self.assertEqual("invalid", report.status)
 
 
 if __name__ == "__main__":
