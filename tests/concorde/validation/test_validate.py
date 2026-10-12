@@ -541,6 +541,37 @@ class ValidateTests(unittest.TestCase):
         config.symlink_to("two.json")
         self.assertNotEqual(first, measure(self.worktree, base)["config_digest"])
 
+    def test_a_malformed_check_of_a_module_not_checked_blocks(self):
+        # Step 6 judges every check's fields, not only those of the checks the run runs.
+        (self.worktree / "src/a/calc.py").write_text(FIXED)
+        for fields in ({"timeout_seconds": 0}, {"env": ["NOT", "AN", "OBJECT"]}):
+            (self.worktree / ".concorde/checks/module.other.json").write_text(
+                json.dumps(
+                    {
+                        "checks": [
+                            {
+                                "id": "check.other",
+                                "argv": ["true"],
+                                "timeout_seconds": 60,
+                                **fields,
+                            }
+                        ]
+                    }
+                )
+            )
+            readiness = self.project.validate()[1]["output"]
+            blocking = [
+                item for item in readiness["blocking"] if item["kind"] == "check"
+            ]
+            self.assertEqual(
+                ["configured checks"], [item["ref"] for item in blocking], fields
+            )
+            self.assertIn("invalid_check", blocking[0]["detail"])
+            self.assertEqual(
+                [("check.a", "passed")],
+                [(item["check"], item["status"]) for item in readiness["checks"]],
+            )
+
     def test_a_malformed_checks_file_blocks_only_once_and_other_checks_run(self):
         (self.worktree / "src/a/calc.py").write_text(FIXED)
         (self.worktree / ".concorde/checks/module.other.json").write_text(
