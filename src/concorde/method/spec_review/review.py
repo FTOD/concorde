@@ -536,14 +536,18 @@ def report_findings(
 
 
 def blocking_counts(modules: list[dict]) -> list[dict]:
-    """Each reviewed Module's outcome with the count of its blocking findings that stand."""
+    """Each reviewed Module's outcome with the count of its blocking findings that stand:
+    those reported now and the earlier Issues carried."""
     return [
         {
             "module": item["module"],
             "outcome": item["outcome"],
             "blocking": sum(
                 1
-                for finding in item["findings"]
+                for finding in [
+                    *item["findings"],
+                    *(item["earlier_issues"] or {}).get("carried", []),
+                ]
                 if reporting.is_blocking(finding["tier"])
             ),
         }

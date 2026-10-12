@@ -60,7 +60,8 @@ Before each reviewer judges, the code review Operation SHALL give it the
 severity, tier, title, description and evidence as its latest report states them:
 
 - The Issue is open and is an Issue of one of the reviewer's reviewed Modules.
-- A `code_review` run made one of its reports.
+- One of its reports was made by a `code_review` run, or by a
+  [Project review](../project-review/module.md) run with the provenance phase `code-review`.
 
 Where the issues part is not installed, there are no earlier Issues. In that case, the reviewer
 receives none.
@@ -83,22 +84,33 @@ A reviewer that judges a requirement, scenario or contract of its reviewed Modul
 unrealizable SHALL report it as a finding of kind `spec-challenge` whose basis is that promise and
 whose problem says why, rather than as a defect of the code.
 
-### req.code-review.evidence-resolves — Cited evidence exists
+### req.code-review.evidence-resolves — A finding whose evidence does not hold is not reported
 
 The code review Operation SHALL report no finding that, after the reviewer's one
 [resume round](../../glossary.json#concept.resume-round) to correct its citations, still has one of
-these faults, listing each such finding as rejected with the reason and still reporting every other
-finding of that reviewer:
+these faults:
 
 - It names a Module the reviewer did not review.
-- It cites a stable identity or document that the reviewed Modules' Spec context does not define.
+- It cites a stable identity or document that the Spec context of the Module it names does not
+  define.
 - It names a location whose file is neither in the worktree nor a changed path of the diff.
 - It names a location whose line lies beyond that file's end.
 
 A citation that does not hold is usually a slip of an otherwise sound finding, such as a line range
 a little past a file's end. The reviewer is therefore resumed once with every such citation to
-correct. What still does not hold afterwards costs only that finding. The reviewer's other findings
-stand. Its Modules' outcomes follow from them.
+correct. What still does not hold afterwards costs only that finding.
+
+### req.code-review.evidence-rejected-listed — A finding not reported for its evidence is listed
+
+The code review Operation SHALL list each finding that it does not report because of its evidence
+as rejected, with the reason naming every fault.
+
+### req.code-review.evidence-others-stand — The reviewer's other findings stand
+
+When the code review Operation rejects a finding of a reviewer because of its evidence, it SHALL
+still report every other finding of that reviewer.
+
+Its Modules' outcomes follow from the findings that stand.
 
 ## Issues and verdict
 
@@ -132,20 +144,39 @@ against the earlier Issues it offered.
 The code review Operation SHALL NOT close or reopen an Issue: it lists the earlier Issues the
 reviewer found resolved in its report.
 
-### req.code-review.store-refusal — A refusal of the Issue store is an error, not an Issue
+### req.code-review.store-refusal — A refusal of the Issue store makes the Module incomplete
 
-When the Issue store refuses a report, the code review Operation SHALL make that Module `incomplete`
-with `issues_unreported`, whose cause is the store's error, report none of that Module's later
-findings, and record no Issue about the refusal.
+When the Issue store refuses a report, the code review Operation SHALL make that Module
+`incomplete` with `issues_unreported`, whose cause is the store's error.
 
-### req.code-review.verdict-derived — The Operation derives the verdict
+### req.code-review.store-refusal-stops — No later finding of the Module is reported
 
-The code review Operation SHALL derive each reviewed Module's outcome as `incomplete` when it could
-not be reviewed or its Issues could not be read or all written, `changes_required` when an Issue of
-a blocking tier stands for it, reported by the run or an earlier Issue it carried — or, where the
-issues part is not installed, when the run reports a finding of a blocking tier — and `accepted`
-otherwise, and the verdict as `incomplete` when any Module is, else `changes_required` when any
-Module is, else `accepted`.
+After the Issue store refuses a report of a Module, the code review Operation SHALL report none of
+that Module's later findings.
+
+### req.code-review.store-refusal-not-issue — A refusal of the Issue store is not an Issue
+
+The code review Operation SHALL record no Issue about a refusal of the Issue store.
+
+The refusal is a failure of the Issue system, not a problem of the reviewed code. It travels in the
+result's [error chain](../../glossary.json#concept.error-chain).
+
+### req.code-review.verdict-derived — The Operation derives each Module's outcome
+
+The code review Operation SHALL derive each reviewed Module's outcome as follows:
+
+- `incomplete` when the Module could not be reviewed or its Issues could not be read or all
+  written.
+- Otherwise `changes_required` when an Issue of a blocking tier stands for it, reported by the run
+  or an earlier Issue it carried.
+- Otherwise, where the issues part is not installed, `changes_required` when the run reports a
+  finding of a blocking tier for it.
+- Otherwise `accepted`.
+
+### req.code-review.verdict-aggregate — The verdict is the highest outcome
+
+The code review Operation SHALL derive the verdict as `incomplete` when any Module is, else
+`changes_required` when any Module is, else `accepted`.
 
 ### req.code-review.no-resume — No resume but to correct citations
 

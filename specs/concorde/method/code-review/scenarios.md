@@ -86,6 +86,14 @@ in the [contracts](contracts.md).
 - AND lists the second under `resolved` in the report, without closing it
 - AND an earlier Issue the reviewer neither names nor resolves is listed as `carried` and, when of a blocking tier, makes the outcome `changes_required`
 
+### scenario.code-review.project-review-issues — Project review's code problems are earlier Issues
+
+- GIVEN a Module with two open Issues that a Project review run reported with the provenance phase `code-review`, and one it reported with another phase
+- WHEN its reviewer names the first in a finding
+- THEN the reviewer received the first two as earlier Issues and not the third
+- AND the Operation appends the finding to the first Issue instead of creating one
+- AND the second is listed as `carried` and makes the outcome `changes_required`
+
 ### scenario.code-review.blank-earlier — An empty earlier names no earlier Issue
 
 - GIVEN a reviewer that returns new findings, one with `earlier` empty and one with `earlier` blank

@@ -76,7 +76,10 @@ Its kind says which side the reviewer judges wrong:
 
 Every finding names its **basis** from the reviewed Module's
 [Spec context](../../glossary.json#concept.spec-context). This is a stable identity (requirement,
-scenario, contract or concept) or a Spec passage. The basis serves one of these roles:
+scenario, contract or concept) or a Spec passage. In a change review of several Modules, it is the
+context of the Module the finding concerns, never another reviewed Module's. A concept is in that
+context when its glossary entry is, wherever its explanation lies. The basis serves one of these
+roles:
 
 - The promise it is judged against.
 - The passage that would have to settle a Spec gap.
@@ -379,3 +382,9 @@ base, paths, check results, Issues, outcomes and verdict.
   It relies on its [severities](../../glossary.json#concept.issue-severity) for how much a finding
   matters. When the store refuses, the Module is `incomplete`, with the store's error as the cause.
   The Operation never retries it. It never records it as an Issue.
+- <a id="uses-workflows"></a>**Workflows** owns the
+  [step output convention](../../workflows/contracts.md#contract.workflows.step-output). A workflow
+  reads the result of each of its steps through it, without knowing the step's own payload. The
+  report carries one `workflow` object under that convention. Code review fills it with one
+  `review` note, which holds the verdict and each Module's outcome with its count of findings by
+  tier. Workflows defines the fields of the object. Code review defines only what its note says.

@@ -716,7 +716,10 @@ def absorb(ctx: RunContext, record: dict):
 
     ctx.worker_started(record["run_id"])
     ctx.last_record = record
-    ctx.worker = record.get("worker_result")
+    # The output comes from this record, never back from the context: panel seats absorb their
+    # records in parallel on one context, so ``ctx.worker`` may already be another seat's.
+    result = record.get("worker_result")
+    ctx.worker = result
     found = [
         evidence(
             "grant",
@@ -779,7 +782,7 @@ def absorb(ctx: RunContext, record: dict):
         )
     status = record["status"]
     if status == "ok":
-        return Continue(output=(ctx.worker or {}).get("output"), evidence=found)
+        return Continue(output=(result or {}).get("output"), evidence=found)
     cause = record.get("error")
     code = cause["code"] if cause else "worker_run_failed"
     reason, explanation, options = WORKER_HANDLING.get(code, ENVIRONMENT_HANDLING)

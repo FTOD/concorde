@@ -50,8 +50,10 @@ Method never does any of these on its own initiative:
 - Changes a Spec.
 
 The task level of the [levels of work](../module.md#the-levels-of-work), directly or through a
-workflow, orders its runs. When the Spec does not state a promise, that promise stops the run as a
-[Spec gap](../glossary.json#concept.spec-gap).
+workflow, orders its runs. When the Spec does not state a promise that the work a worker was given
+requires, the run stops `blocked` on that [Spec gap](../glossary.json#concept.spec-gap). Where
+reporting the gap is that work, as for an assessment or a review's finding, the run reports it and
+ends `ok` ([req.method.gaps-never-repaired](requirements.md#req.method.gaps-never-repaired)).
 
 ## Core concepts
 

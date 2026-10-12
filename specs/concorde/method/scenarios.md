@@ -83,7 +83,8 @@ run does, whatever its definition, is shown by the [Execution scenarios](../exec
 ### scenario.method.worker-blocked — A blocked worker escalates
 
 - GIVEN a worker that returns status `blocked` because the [Spec](../glossary.json#concept.spec) lacks a promise
-- AND changed no file outside its grant's writable paths
+- AND changed no file outside its grant's writable paths and no glossary entry that a Module outside its grant owns
+- AND its worker run's record ended `ok`, with no host failure such as a failed deletion or round validation
 - WHEN its Operation ends
 - THEN the result has status `blocked`
 - AND its error is a chain of the Operation's link, Workers' link and the worker's own link with its detail, options and recommendation unchanged
