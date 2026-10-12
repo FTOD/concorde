@@ -16,6 +16,8 @@ these inputs:
 - its instructions
 - a trace node folder
 
+[Calling Workers](launch.md#calling-workers) names the entry points and shows one call.
+
 Each run has its own resources:
 
 - session
@@ -354,7 +356,9 @@ worktree. The step calls Workers with these inputs:
 - the run limits
 
 Workers returns a run record (status `ok`/`blocked`/`failed`). The record keeps the worker result
-verbatim beside the host's own evidence.
+verbatim beside the host's own evidence. Before the call, the step resolves the worker's backend and
+model from the worker configuration. [Calling Workers](launch.md#calling-workers) shows that call
+from the configuration to the returned record.
 
 Take an `implement` run whose grant makes `src/shop/cart.py` and `src/shop/discounts.py` writable
 (`rw`). The task level created and bound both files for the run to fill. The grant makes the
@@ -393,8 +397,16 @@ The host performs these steps:
 - Then perform proposed deletions.
 - Write the run record.
 
-The cleared environment passes on only the proxy its model calls go through
-([the proxy](launch.md#proxy)). On pi, the default, the host uses `pi -p` with the permission
+The host clears the environment. It then sets only the selected backend's own list of variables.
+Each list holds these variables:
+
+- the host's `PATH` and `LANG`
+- the backend's authentication from the host, such as `ANTHROPIC_API_KEY` on Claude Code
+- the run's own directories and the backend's switches
+- the proxy its model calls go through ([the proxy](launch.md#proxy))
+
+The [Claude Code table](launch.md#launch) and the [pi table](pi.md#launch) give each list exactly.
+On pi, the default, the host uses `pi -p` with the permission
 extension as its only extension ([the pi run mechanics](pi.md#launch)). On Claude Code, the host
 uses `claude -p` with these controls ([the run mechanics](launch.md#launch)):
 
@@ -504,7 +516,8 @@ Everything about the job itself is the caller's instructions. In Concorde, Metho
 [standard worker sequence](../../glossary.json#concept.standard-worker-sequence) puts these details
 there:
 
-- the definitions of the glossary terms the grant carries
+- the definitions of the glossary terms the bound Modules link, which Method keeps apart from the
+  grant
 - when the glossary is writable, the rule that only the bound Modules' entries may change
 - the rule that a promise the [Spec](../../glossary.json#concept.spec) does not state is never
   inferred from code
@@ -883,7 +896,8 @@ taken as the local id. Nothing else of the user's environment chooses a model.
 The configuration reader also checks every worker one Operation may launch against the map at
 once. This prevents a run from stopping after its first workers run. Before its first worker
 launches, the caller asks for this check. In Concorde, the caller asks when the Operation's run is
-admitted. The reader resolves each worker's backend and model. It refuses with one
+admitted. The reader resolves each worker's backend and model. When the map gives each of them its
+id, the check passes. When the map lacks any of them, the reader refuses with one
 `model_unmapped`. That refusal names every model and backend the map lacks, with the workers that
 would take each. A worker whose entries set no model is left to its own resolution. When those
 entries set no model, that resolution refuses the worker with `model_unresolved`. Every refusal

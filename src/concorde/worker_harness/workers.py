@@ -712,9 +712,15 @@ def _run(
     def finish(status: str, error: dict | None = None) -> dict:
         problems: list[str] = []
         if backend is not None and source["session"]:
-            found = backend.transcript(paths, source["session"])
-            if found:
-                source["transcript"] = found
+            # The transcript kept is the latest session's alone: a session the worker's output
+            # named whose transcript cannot be found is a transcript the host cannot keep.
+            source["transcript"] = backend.transcript(paths, source["session"])
+            if not source["transcript"]:
+                record["transcript"] = None
+                problems.append(
+                    f"the transcript of the session {source['session']} could not be kept: "
+                    f"the {backend.process} configuration directory {paths.config} holds none"
+                )
         if source["transcript"]:
             problem = _keep_transcript(source["transcript"], trace)
             record["transcript"] = (
@@ -774,8 +780,12 @@ def _run(
             brief_digest=record["brief_digest"],
             settings_digest=record["settings_digest"],
         )
-        # The final write's own failure reaches only the returned record.
-        record["trace_failures"] = traced()
+        # The final write's own failure reaches only the returned record, in its trace_failures
+        # and, for a run that did not end ok, in its error's evidence.
+        final = [item for item in traced() if item not in record["trace_failures"]]
+        record["trace_failures"] += final
+        if error is not None:
+            error["evidence"] += [evidence("trace-write", "", item) for item in final]
         return record
 
     def traced() -> list[str]:
@@ -1358,7 +1368,10 @@ def _finalize(worktree: Path, record: dict, result: dict) -> list[str]:
             record["deletions_refused"].append(proposed)
             continue
         exists = os.path.lexists(absolute)
-        if view.level(relative) != "rw" or (exists and not absolute.is_file()):
+        # A final symbolic link is an entry of its own, whatever its target, even a missing one
+        # or a directory; is_file() would follow it.
+        entry = absolute.is_symlink() or absolute.is_file()
+        if view.level(relative) != "rw" or (exists and not entry):
             record["deletions_refused"].append(proposed)
         elif not exists:
             record["deletions_absent"].append(relative)

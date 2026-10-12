@@ -812,7 +812,30 @@
         "specs/concorde/worker-harness/harness/pi.md"
       ],
       "contains": [],
-      "uses": [],
+      "uses": [
+        {
+          "target": "module.workers",
+          "meaning": "#uses-workers",
+          "relies_on": [
+            "contract.workers.grant-input",
+            "contract.workers.worker-result",
+            "req.workers.frozen-grant",
+            "req.workers.unchanged-across-rounds",
+            "req.workers.malformed-grant",
+            "req.workers.write-allowlist",
+            "req.workers.read-denials",
+            "req.workers.bash-sandbox",
+            "req.workers.no-git",
+            "req.workers.git-paths-denied",
+            "req.workers.placement",
+            "req.workers.pi-same-grant",
+            "req.workers.pi-file-tools",
+            "req.workers.pi-sandbox",
+            "req.workers.pi-only-extension",
+            "req.workers.pi-limits"
+          ]
+        }
+      ],
       "includes": [
         {
           "kind": "external",

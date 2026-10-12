@@ -19,7 +19,7 @@ from unittest.mock import patch
 from concorde.kernel.errors import ERROR_SCHEMA
 from concorde.worker_harness import runs as worker_runs
 from concorde.worker_harness import write_hook
-from concorde.worker_harness.claude_backend import proxy_environment
+from concorde.worker_harness.claude_backend import ClaudeStream, proxy_environment
 from concorde.worker_harness.settings import (
     RunPaths,
     SettingsError,
@@ -709,7 +709,6 @@ class SpecRuleTests(unittest.TestCase):
     def test_a_code_to_spec_worker_describes_the_code(self):
         self.assertIn("Describing the code you read", spec_rule("code-to-spec"))
 
-    @verifies("scenario.workers.brief-review-gaps")
     def test_a_spec_reviewer_reports_a_gap_and_goes_on(self):
         for task_type in ("review-spec", "review-architecture"):
             with self.subTest(task_type=task_type):
@@ -719,6 +718,44 @@ class SpecRuleTests(unittest.TestCase):
                 self.assertIn("only when you cannot review at all", rule)
 
     @verifies("scenario.workers.brief-review-gaps")
+    def test_a_spec_reviewers_gap_rule_reaches_its_brief_unchanged(self):
+        worktree = Path("/w")
+        grant = {
+            "entries": [
+                {"path": "specs/a/module.md", "level": "ro"},
+                {"path": "src/a/calc.py", "level": "names"},
+            ],
+            "context_identity": "sha256:x",
+        }
+        for task_type in ("review-spec", "review-architecture"):
+            with self.subTest(task_type=task_type):
+                instructions = f"Review A.\n\n{spec_rule(task_type)}"
+                written = workers_module.brief(
+                    WorkerRequest(
+                        worktree=worktree,
+                        task_type=task_type,
+                        grant=grant,
+                        instructions=instructions,
+                    ),
+                    worktree,
+                )
+                task, boundary = written.split("## Your boundary", 1)
+                self.assertIn(instructions.strip(), task)
+                self.assertIn("- /w/specs/a/module.md", boundary)
+                self.assertIn("- /w/src/a/calc.py", boundary)
+                # The host adds no gap rule of its own.
+                bare = workers_module.brief(
+                    WorkerRequest(
+                        worktree=worktree,
+                        task_type=task_type,
+                        grant=grant,
+                        instructions="Review A.",
+                    ),
+                    worktree,
+                )
+                self.assertNotIn("go on reviewing", bare)
+                self.assertNotIn("does not state", bare)
+
     def test_other_workers_return_blocked(self):
         for task_type in ("specify", "implement", "test"):
             with self.subTest(task_type=task_type):
@@ -1068,6 +1105,7 @@ class WorkerRunTests(unittest.TestCase):
         (self.root / "src/a/to-specs").symlink_to(self.root / "specs/a")
         (self.root / "src/a/to-outside").symlink_to(outside)
         (self.root / "src/a/to-calc.py").symlink_to(self.root / "src/a/calc.py")
+        (self.root / "src/a/dangling.py").symlink_to(self.root / "src/a/never.py")
         record = self.project.run(
             [
                 {
@@ -1076,6 +1114,8 @@ class WorkerRunTests(unittest.TestCase):
                             "src/a/to-specs/module.md",
                             "src/a/to-outside/kept.txt",
                             "src/a/to-calc.py",
+                            "src/a/dangling.py",
+                            "src/a/to-outside",
                         ]
                     }
                 }
@@ -1089,10 +1129,15 @@ class WorkerRunTests(unittest.TestCase):
         )
         self.assertTrue((self.root / "specs/a/module.md").exists())
         self.assertTrue((outside / "kept.txt").exists())
-        # A final link is removed itself, never its target.
-        self.assertEqual(["src/a/to-calc.py"], record["deleted"])
-        self.assertFalse(os.path.lexists(self.root / "src/a/to-calc.py"))
+        # A final link is removed itself, never its target, dangling or a directory alike.
+        self.assertEqual(
+            ["src/a/to-calc.py", "src/a/dangling.py", "src/a/to-outside"],
+            record["deleted"],
+        )
+        for link in ("to-calc.py", "dangling.py", "to-outside"):
+            self.assertFalse(os.path.lexists(self.root / "src/a" / link))
         self.assertTrue((self.root / "src/a/calc.py").exists())
+        self.assertTrue((outside / "kept.txt").exists())
 
     @verifies("scenario.workers.deletions-whatever-the-outcome")
     def test_proposed_deletions_follow_a_clean_last_round_whatever_its_outcome(self):
@@ -1591,6 +1636,56 @@ class WorkerRunTests(unittest.TestCase):
         stored = worker_runs.read_record(self.project.trace, record["run_id"])
         self.assertIsNone(stored["transcript"])
 
+    @verifies("scenario.workers.cleanup-failed")
+    def test_a_session_without_its_transcript_fails_the_run(self):
+        ok = self.project.run([{"no_transcript": True}], check_modules=None)
+        blocked = self.project.run(
+            [{"no_transcript": True, "result": {"status": "blocked"}}],
+            check_modules=None,
+        )
+        self.assertEqual("failed", ok["status"])
+        self.assertEqual("cleanup_failed", ok["error"]["code"])
+        self.assertIn("fake-session-1 could not be kept", ok["error"]["detail"])
+        self.assertIsNone(ok["transcript"])
+        self.assertFalse(Path(ok["runtime_directory"]).exists())
+        # The link the run would otherwise have ended with is kept as its cause.
+        self.assertEqual("cleanup_failed", blocked["error"]["code"])
+        [cause] = blocked["error"]["causes"]
+        self.assertEqual("worker_blocked", cause["code"])
+
+    @verifies("scenario.workers.interrupted-run")
+    def test_a_resumed_round_without_its_envelope_keeps_its_own_session(self):
+        record = self.project.run(
+            [
+                {"writes": {f"{self.root}/src/a/flag": "broken"}},
+                {"early_session": True, "sleep": 60},
+            ],
+            timeout=5,
+        )
+        self.assertEqual("worker_timeout", record["error"]["code"])
+        self.assertEqual(
+            ["fake-session-1", "fake-session-2"],
+            [item["session"] for item in record["rounds"]],
+        )
+        self.assertIn('"round": 2', Path(record["transcript"]).read_text())
+
+    def test_a_round_without_its_envelope_names_the_session_its_output_announced(self):
+        stream = ClaudeStream()
+        lines = [
+            {"type": "system", "subtype": "init", "session_id": "later"},
+            {
+                "type": "assistant",
+                "message": {"content": [{"type": "tool_use", "name": "Read"}]},
+            },
+        ]
+        for line in lines:
+            stream.feed(json.dumps(line))
+        stdout = "\n".join(json.dumps(line) for line in lines).encode()
+        concluded = stream.conclude(
+            {"stdout": stdout, "stderr": b"", "exit": -9, "timed_out": True}
+        )
+        self.assertEqual("later", concluded.session)
+
     def test_the_runtime_directory_goes_even_when_the_worker_locked_it(self):
         _, paths = worker_runs.create_run(self.project.trace)
         cache = paths.home / ".cache/tool"
@@ -1658,6 +1753,37 @@ class WorkerRunTests(unittest.TestCase):
         self.assertEqual("blocked", blocked["status"])
         self.assertIn(
             "trace-write", [item["kind"] for item in blocked["error"]["evidence"]]
+        )
+
+    @verifies("scenario.workers.trace-failure-reported")
+    def test_a_refused_final_trace_write_reaches_the_error_evidence(self):
+        from concorde.kernel.tracing import node as trace_node
+
+        write = trace_node.write
+
+        def refusing(folder, record):
+            # Only the worker run's final write is refused.
+            if Path(folder).parent.name == "workers" and record.get("status") not in (
+                None,
+                "running",
+            ):
+                raise OSError(28, "No space left on device")
+            return write(folder, record)
+
+        with patch.object(trace_node, "write", refusing):
+            record = self.project.run(
+                [{"result": {"status": "blocked"}}], check_modules=None
+            )
+        self.assertEqual("blocked", record["status"])
+        [failure] = record["trace_failures"]
+        self.assertIn("No space left on device", failure)
+        self.assertIn(
+            failure,
+            [
+                item["detail"]
+                for item in record["error"]["evidence"]
+                if item["kind"] == "trace-write"
+            ],
         )
 
     def test_the_final_record_digests_the_final_progress_file(self):
@@ -2015,16 +2141,19 @@ class GlossaryTests(unittest.TestCase):
 
     @verifies("scenario.workers.brief-terms")
     def test_the_brief_carries_the_workers_terms(self):
+        instructions = compose("Specify A.\nFAKE-PLAN: [{}]", "specify", self.computed)
         record = self.project.run(
             [{}],
             task_type="specify",
             grant=self.grant,
             check_modules=None,
-            instructions=compose(
-                "Specify A.\nFAKE-PLAN: [{}]", "specify", self.computed
-            ),
+            instructions=instructions,
         )
         [call] = self.project.rounds(record)
+        # The caller's instructions reach the brief's task unchanged.
+        self.assertIn(
+            instructions.strip(), call["prompt"].split("## Your boundary", 1)[0]
+        )
         self.assertIn("## Terms", call["prompt"])
         self.assertIn(
             "- **A answer** (`concept.a.answer`, owned by module.a): What A returns for one "

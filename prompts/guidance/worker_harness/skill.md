@@ -27,12 +27,12 @@ The file names every model by a **project model name** that depends on no instal
 
 The id a program takes, such as pi's `local-openai/gpt-6-astra`, is a fact about one machine.
 The id never goes into the file. The **model map** gives each project model name its local id on
-`pi`, on `claude` or both. The map is never committed. The map is the developer's own file at one
-of these locations:
+`pi`, on `claude` or both. The map is never committed. The map is the developer's own file. The
+first of these locations that applies is the map:
 
+- the file that `CONCORDE_MODEL_MAP` names by an absolute path
+- `$XDG_CONFIG_HOME/concorde/models.json`, when `XDG_CONFIG_HOME` is an absolute path
 - `~/.config/concorde/models.json`
-- `$XDG_CONFIG_HOME/concorde/`
-- the file `CONCORDE_MODEL_MAP` names
 
 ```json
 {

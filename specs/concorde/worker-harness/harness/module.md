@@ -256,7 +256,10 @@ The [realizations](#the-realizations) below say which files carry each part.
 
 ### Around it
 
-Workers uses the Harness. The Harness knows no caller. It receives everything it needs as inputs.
+Workers uses the Harness. At run time, the Harness knows no caller. It receives everything it
+needs as inputs. Only its Specs rely on Workers, for the contracts of those inputs and the
+requirements its configuration must meet ([Where its promises are
+required](#where-its-promises-are-required)).
 
 **The grant** arrives as data in the worker harness's
 [grant input](../workers/contracts.md#grant-input), which its caller fills. In Concorde, the caller
@@ -416,9 +419,11 @@ The v1 harness has these known limits:
   below such a `ro` or `names` directory is writable to the file tools but not to Bash.
 - A path the grant lists apart at `names` below a `ro` or `rw` directory is in the Bash sandbox's
   `denyRead`. On both backends, `denyRead` wins inside the wider `allowRead`. So Bash cannot read
-  that path either. On pi, this is what hides that path from Bash. The pi permission extension
-  receives only the sandbox lists. A `ro` or `rw` path the grant lists below such a `names` directory
-  is in `allowRead`. The narrower entry wins again, so the `ro` or `rw` path stays readable.
+  that path either. On pi, this is what hides that path from Bash. On pi, the sandbox engine
+  receives only these lists, as its filesystem configuration. The permission extension's own checks
+  of the file tools use its whole embedded policy instead. That policy also holds the grant and the
+  other paths that [the pi mechanics](pi.md#permission-extension) list. A `ro` or `rw` path the
+  grant lists below such a `names` directory is in `allowRead`. The narrower entry wins again, so the `ro` or `rw` path stays readable.
 - Since a single `rw` file granted to Bash is bind-mounted, it can't be deleted or renamed from
   Bash. A file created outside `rw` appears to succeed. But the file lands on a throw-away filesystem,
   unseen by the audit. The brief warns of this.
@@ -463,6 +468,19 @@ decisions of its read and write tables (`pi_policy.ts`). Those decisions resolve
 pi does. Workers embeds the policy into these sources. Workers copies the sources into place.
 
 ### Where its promises are required
+
+<a id="uses-workers"></a>
+
+The Harness uses [Workers](../workers/module.md) for the canonical definitions of what it receives,
+what it generates for and what its configuration must achieve. This is a reliance on Workers'
+Specs, not on its code. The Harness never imports or calls Workers' launcher. It receives
+everything as inputs, as [Around it](#around-it) says. The Harness relies on these contracts of
+Workers:
+
+- the [grant input](../workers/contracts.md#contract.workers.grant-input), the shape of the grant
+  it compiles and refuses when malformed
+- the [worker result](../workers/contracts.md#contract.workers.worker-result), whose schema the
+  pi extension embeds and whose meaning and checks are Workers'
 
 The Harness holds no requirements or scenarios of its own. Only once Workers applies the generated
 configuration to a worker does what the Harness generates become observable. So each decidable
