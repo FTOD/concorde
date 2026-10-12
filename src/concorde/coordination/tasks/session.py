@@ -625,7 +625,8 @@ def transcript_figures(transcript: Path, subagents: list[Path]) -> dict:
     """What a session consumed and when it ended, from its transcript and the transcripts of its
     subagents, as Claude Code recorded them: each API message's tokens, counted once by its
     ``message.id`` since one message may span several records; the cost of the transcript's last
-    ``cost-state`` record, when no assistant record follows it; the times of the transcript's
+    ``cost-state`` record, when no assistant record follows it, and that record's per-model
+    account in any case; the times of the transcript's
     first and last records; the number of lines of them all that are no record. ``usage``,
     ``ended_at``, ``models``, ``model_usage`` and ``unreadable_lines``; ``OSError`` when one of
     them cannot be read."""
@@ -675,9 +676,10 @@ def transcript_figures(transcript: Path, subagents: list[Path]) -> dict:
         sums["tokens_cache_read"] += _count(used.get("cache_read_input_tokens"))
         sums["tokens_cache_write"] += _count(used.get("cache_creation_input_tokens"))
         sums["messages"] += 1
-    reported = cost_state if cost_state is not None and not stale else None
-    cost = (reported or {}).get("totalCostUSD")
-    model_usage = (reported or {}).get("modelUsage")
+    # An assistant record after the last account makes its total stale, while its per-model
+    # account stays Claude Code's own record of what that account covered.
+    cost = None if stale else (cost_state or {}).get("totalCostUSD")
+    model_usage = (cost_state or {}).get("modelUsage")
 
     def total(field: str) -> int | None:
         return sum(item[field] for item in models.values()) if models else None
@@ -731,35 +733,41 @@ def _keep(folder: Path, source: Path) -> dict:
     )
 
 
-def _discard(folder: Path) -> str:
+def _discard(folder: Path, shown: Path) -> str:
     """Remove what a failed keep left in a session's node; what could not be removed, said, or
-    nothing. It never raises, so a failed keep only warns."""
+    nothing, naming each path in ``shown``, where the node will be. It never raises, so a failed
+    keep only warns."""
     left = []
     try:
         (folder / TRANSCRIPT).unlink(missing_ok=True)
     except OSError as error:
-        left.append(f"{folder / TRANSCRIPT} could not be removed: {error}")
+        left.append(f"{shown / TRANSCRIPT} could not be removed: {error}")
     files = folder / TRANSCRIPT_FILES
     shutil.rmtree(files, ignore_errors=True)
     if files.exists() or files.is_symlink():
-        left.append(f"{files} could not be removed whole")
+        left.append(f"{shown / TRANSCRIPT_FILES} could not be removed whole")
     return "; ".join(left)
 
 
-def finish_sessions(primary: Path, task_id: str, run=None) -> list[str]:
+def finish_sessions(
+    primary: Path, task_id: str, history: Path | None = None, run=None
+) -> list[str]:
     """Finish the trace node of every Claude Code session of an ending task from Claude Code's
     own records, before the task's folder moves to the history: its full session id and state
     from ``claude agents --json --all``, asked once, and its transcript, found by that id, copied
     as ``transcript.jsonl`` with the folder beside it as ``transcript/``, from which its usage and
     end are derived. A warning for each session whose transcript cannot be kept; such a session
     is then not removed, so nothing of it is lost, and its node still receives what Claude Code
-    told of it."""
+    told of it. The warning names the node where it will be once the task's folder has moved to
+    ``history``, the task's history folder, when it is given."""
     worktree = store.load_task(primary, task_id)["worktree"]
+    current = store.task_folder(primary, task_id)
     warnings = []
     listed: dict | None = None
     unlisted = ""
     for found in store.sessions(primary, task_id):
         short, folder = _short(found), Path(found["directory"])
+        shown = history / folder.relative_to(current) if history else folder
         with store.task_locked(primary, task_id):
             record = trace.read(folder)
             if record is None or _kept(record):
@@ -800,7 +808,7 @@ def finish_sessions(primary: Path, task_id: str, run=None) -> list[str]:
                 data["model_usage"] = figures["model_usage"]
                 data["unreadable_lines"] = figures["unreadable_lines"]
             except (LookupError, OSError) as error:
-                problem = _failed(error, _discard(folder))
+                problem = _failed(error, _discard(folder, shown))
             record["content"] = {
                 "type_id": store.SESSION_TRACE,
                 "schema_version": type_version(store.SESSION_TRACE),
@@ -809,12 +817,12 @@ def finish_sessions(primary: Path, task_id: str, run=None) -> list[str]:
             try:
                 trace.write(folder, record)
             except trace.TraceError as error:
-                problem = _failed(error, _discard(folder))
+                problem = _failed(error, _discard(folder, shown))
             if problem is not None:
                 warnings.append(
                     f"the transcript of the Claude Code task session {short} "
                     f"({found['name']}) of task {task_id} could not be kept in its trace node "
-                    f"{folder}: {problem}; the session stays in Claude's session list so that "
+                    f"{shown}: {problem}; the session stays in Claude's session list so that "
                     f"its transcript is not lost: keep what you need of it, then remove it "
                     f"with `claude rm {short}`"
                 )

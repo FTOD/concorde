@@ -52,7 +52,7 @@ refusal codes are:
 | --- | --- | --- |
 | `invalid_input` | `input` | the tool is unknown, or its arguments do not satisfy its input schema or name a combination it does not take; the detail names the argument |
 | `workspace_busy`, `merge_busy` | `environment` | `task_merge` found the lock held; the detail names the lock file and the holder's command, process, start time, session and task, and the evidence of kind `lock` carries the holder line as JSON |
-| `start_failed` | `environment` | the operating system refused to start `concorde task merge`; both locks were released |
+| `start_failed` | `environment` | the operating system refused to start `concorde task merge`; the three locks were released |
 | `unknown_run` | `input` | `run_result` names no run of Execution: an identity no reader finds, or the node of something else, such as a task or a worker run, which has no [run result](../../glossary.json#concept.run-result) |
 | `part_missing` | `input` | `run_result`, or `register_wait` for a `run`, where the execution part is not installed; the detail names the part |
 | any Tasks or Tracing code | as there | the command the tool presents refused, such as `unknown_task`, `merge_busy` from `task_open` or `workspace_busy` from `task_close` |
@@ -63,7 +63,7 @@ refusal codes are:
 | Tool | Arguments | Result |
 | --- | --- | --- |
 | `task_list` | optional `state`, a nonempty array of task states, and `main`, a main agent's session | as `concorde task list [--state <state>,…] [--main]` |
-| `task_show` | `task` | as `concorde task show` |
+| `task_show` | `task`: a task or history key | as `concorde task show <task>` |
 | `trace_show` | `node`: a task, history key, run or worker run identity or a node's folder; optional `depth` ≥ 0 | as `concorde trace show <node> --depth <depth>` from the primary worktree |
 | `run_result` | `run`: a run identity; present where the execution part is installed | `{"run", "running": false, "result": <run result>}` when no runner holds the run's [run lock](../../glossary.json#concept.run-lock) and its result is saved; otherwise `{"run", "running", "result": null, "progress": <run progress file or null>}`, where `running` is `true` while its runner holds the run lock and `false` for a run whose runner ended without writing a result |
 | `locks` | none | `{"merge": <holder line or null>, "workspaces": {"<task>": <holder line or null>}}` for the merge lock and the workspace lock of every task that has not ended |

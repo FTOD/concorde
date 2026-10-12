@@ -184,7 +184,7 @@ Commands and the session's [trace node](../../glossary.json#concept.trace-node) 
   `assistant` record
 - WHEN the task is merged
 - THEN the session's node holds as usage the tokens of every assistant record and a null cost
-- AND the node's content holds no `modelUsage`
+- AND the node's content still holds that `cost-state` record's `modelUsage`
 - AND when a later `cost-state` record of 0.55 USD follows that `assistant` record instead, the cost
   is 0.55 USD
 - AND when the transcript has no `cost-state` record, the cost is null

@@ -145,16 +145,23 @@ def rebound(primary: Path, task_id: str, former: str) -> dict | None:
     return None
 
 
-def wait_rebound(
-    primary: Path, task_id: str, former: str, timeout: float | None = None
-) -> dict:
-    """Block until the task's record names a main agent's session other than ``former``."""
+def former_session(former: str | None) -> str:
+    """The main agent's session a rebound wait waits away from, as ``--rebound`` names it, without
+    surrounding blanks; ``invalid_input`` when nothing is left."""
     former = (former or "").strip()
     if not former:
         raise TaskError(
             "invalid_input",
             "--rebound names the main agent's session to wait away from",
         )
+    return former
+
+
+def wait_rebound(
+    primary: Path, task_id: str, former: str, timeout: float | None = None
+) -> dict:
+    """Block until the task's record names a main agent's session other than ``former``."""
+    former = former_session(former)
     deadline = _deadline(timeout)
     started = time.monotonic()
     # Answered before watching too, so that the watch never makes the folder of a task that

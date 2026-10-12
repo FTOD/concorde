@@ -65,6 +65,9 @@ def own(
 TEXT = {"type": "string", "minLength": 1}
 TEXTS = {"type": "array", "items": TEXT}
 TASK = {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,47}$"}
+# A task to look up, as `concorde task show` takes it: a task's identity or a history key, which
+# numbers a closed task whose identity was used again, such as `t1.2`.
+KEY = {"type": "string", "pattern": store.HISTORY_KEY.pattern}
 ISSUE = {"type": "string", "minLength": 1}
 
 
@@ -98,7 +101,7 @@ TOOLS: dict[str, dict] = {
         "and the task sessions' reports with their answers (null while unanswered), its "
         "workspace's runs, its delivery commits, task sessions, escalations, the holder of its "
         "workspace lock and the paths of its decision log and folder. As `concorde task show`.",
-        "inputSchema": schema({"task": TASK}, ["task"]),
+        "inputSchema": schema({"task": KEY}, ["task"]),
     },
     "trace_show": {
         "description": "A trace node with its subtree, each node's status, times and usage "
@@ -690,6 +693,8 @@ def register_wait(call: Call, arguments: dict):
             return _already(now)
         meta = {"kind": "task", "task": task}
     elif former:
+        # Named as `concorde task wait --rebound` names it, so that both answer alike.
+        former = wait.former_session(former)
         description = f"task {task} naming a main agent's session other than {former}"
         words = [task, "--rebound", former]
         now = wait.rebound(call.primary, task, former)

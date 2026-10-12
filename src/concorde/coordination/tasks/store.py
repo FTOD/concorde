@@ -2128,7 +2128,11 @@ def _close_held(
             )
         _finish_ending(primary, task_id, record, finish)
         commit_decision_log(primary, task_id, ended, finish)
-        warnings.extend(session.finish_sessions(primary, task_id))
+        warnings.extend(
+            session.finish_sessions(
+                primary, task_id, history_folder(primary, ended["history"])
+            )
+        )
         if before_move is not None:
             before_move()
         _move_to_history(primary, task_id, ended["history"], again)
@@ -2216,7 +2220,9 @@ def _close_held(
         unmark_merge(primary)
     _finish_ending(primary, task_id, closed, finish)
     commit_decision_log(primary, task_id, closed["closed"], finish)
-    warnings.extend(session.finish_sessions(primary, task_id))
+    warnings.extend(
+        session.finish_sessions(primary, task_id, history_folder(primary, key))
+    )
     if before_move is not None:
         before_move()
     _move_to_history(primary, task_id, key, finish)

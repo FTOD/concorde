@@ -472,7 +472,8 @@ design behind them is this:
 - **usage** sums the tokens of the session's own transcript and of its subagents' transcripts. One
   API message may span several records, so each message counts once. The cost is Claude Code's own
   account, never a price Concorde computes. An account that an assistant record follows is stale,
-  so the cost is then null. A background session's transcript often has no account at all.
+  so the cost is then null. The node still keeps that account's cost of each model as Claude Code
+  wrote it. A background session's transcript often has no account at all.
 - **end** is the latest time the transcript's records carry, since Concorde never sees a session
   end.
 - **status** comes from Claude Code's state of the session, `ok` for `done` and `failed` for

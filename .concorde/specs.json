@@ -1209,7 +1209,13 @@
           ]
         }
       ],
-      "includes": [],
+      "includes": [
+        {
+          "kind": "document",
+          "target": "document.distribution.contracts",
+          "reason": "the project MCP host's exact session, call, long-work handover and refusal protocol, on which Coordination's tools and their contracts rely"
+        }
+      ],
       "participates": [
         {
           "contract": "contract.main-session.channel-event",
