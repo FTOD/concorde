@@ -31,7 +31,7 @@ import threading
 from pathlib import Path
 
 from .. import formats
-from .tools import ACTOR, INSTRUCTIONS, Refusal
+from .tools import ACTOR, INSTRUCTIONS, Refusal, digest
 
 # How long an ordinary call's process may take before the call is refused.
 CALL_LIMIT = 300
@@ -99,19 +99,19 @@ def printed(stdout, stderr, keep: int = 2000) -> str:
 
 def last_answer(text: str) -> dict | None:
     """The last line of a call's output that is a JSON object with ``value``, ``error`` or
-    ``reroute``."""
+    ``reroute``; the lines after it, such as a diagnostic or another JSON value, are passed
+    over."""
     for line in reversed(text.splitlines()):
         if not line.strip():
             continue
         try:
             value = json.loads(line)
         except ValueError:
-            return None
+            continue
         if isinstance(value, dict) and (
             "value" in value or "error" in value or "reroute" in value
         ):
             return value
-        return None
     return None
 
 
@@ -208,7 +208,9 @@ class Calls:
         process gives none."""
         value = self.refresh()
         if value is None:
-            self.listed = None
+            # The session was given an empty listing: a later answer naming other tools tells it
+            # that its tools changed.
+            self.listed = digest([])
             return []
         self.listed = value["digest"]
         return value["tools"]
@@ -489,10 +491,11 @@ class Calls:
                 self.watched.remove(process)
             if self.closing:
                 return
+            # JSON null is an answer too: only output that is no JSON value is none.
             try:
-                answer = json.loads(out)
+                answer, answered = json.loads(out), True
             except ValueError:
-                answer = None
+                answer, answered = None, False
             if isinstance(answer, dict) and isinstance(answer.get("error"), dict):
                 link = answer["error"]
                 self.notify(
@@ -500,7 +503,7 @@ class Calls:
                     f"{formats.render(link)}",
                     {**meta, "event": "wait_failed", "code": str(link.get("code"))},
                 )
-            elif answer is not None and process.returncode == 0:
+            elif answered and process.returncode == 0:
                 self.notify(
                     f"Concorde: {description} happened (wait {identity}): "
                     f"{json.dumps(answer, ensure_ascii=False)}",

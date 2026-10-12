@@ -5,6 +5,7 @@ from __future__ import annotations
 import contextlib
 import hashlib
 import io
+import itertools
 import json
 import os
 import re
@@ -27,6 +28,7 @@ from concorde.distribution import guidance, parts
 from concorde.distribution.install import (
     InstallError,
     _amend,
+    _previous_parts,
     install,
     refusal,
     update,
@@ -388,6 +390,30 @@ class BuildTests(unittest.TestCase):
             write_build(root)
         self.assertEqual(before, (root / "generated/build-manifest.json").read_bytes())
 
+    @verifies("scenario.distribution.build-refuses-foreign-audience")
+    def test_a_root_takes_in_only_text_meant_for_its_audience(self):
+        root = package_copy(self)
+        before = (root / "generated/build-manifest.json").read_bytes()
+        skill = root / "prompts/development/skill.md"
+        self.assertIn("audience: shared", skill.read_text())
+        text = skill.read_text()
+        for audience in ("worker", "ambient"):
+            with self.subTest(audience=audience):
+                (root / "prompts/foreign.md").write_text(
+                    f"---\naudience: {audience}\n---\n\nForeign.\n"
+                )
+                skill.write_text(text + "\n@prompts/foreign.md\n")
+                with self.assertRaises(BuildError) as raised:
+                    write_build(root)
+                message = str(raised.exception)
+                self.assertIn("CONCORDE-PROMPT-AUDIENCE-001", message)
+                self.assertIn(
+                    f"cannot include prompts/foreign.md (audience: {audience})", message
+                )
+                self.assertEqual(
+                    before, (root / "generated/build-manifest.json").read_bytes()
+                )
+
     @verifies("scenario.distribution.build-refuses-repeated-include")
     def test_a_prompt_reached_twice_is_refused(self):
         root = package_copy(self)
@@ -544,23 +570,45 @@ class ProtocolTests(unittest.TestCase):
                 lambda: manifest.write_text('{"assets": [{}]}'),
                 "not a Protocol manifest",
             ),
+            "no version": (
+                lambda: manifest.write_text('{"assets": []}'),
+                "not a Protocol manifest",
+            ),
+            "asset outside the Protocol": (
+                lambda: manifest.write_text(
+                    tracked.replace(
+                        "generated/protocol/principles.md", "protocol/views.md"
+                    )
+                ),
+                "not a safe path under generated/protocol/",
+            ),
+            "asset the build lacks": (
+                lambda: (
+                    (root / "generated/protocol/extra.md").write_text("Extra.\n"),
+                    manifest.write_text(
+                        tracked.replace(
+                            "generated/protocol/principles.md",
+                            "generated/protocol/extra.md",
+                        )
+                    ),
+                ),
+                "missing from the current build: generated/protocol/extra.md",
+            ),
         }
-        for case, (damage, message) in cases.items():
-            with self.subTest(case=case):
+        flags = ([], ["--write"], ["--bind-project"], ["--write", "--bind-project"])
+        for (case, (damage, message)), given in itertools.product(cases.items(), flags):
+            with self.subTest(case=case, flags=given):
                 damage()
                 damaged = manifest.read_text()
                 try:
                     result = command(
-                        "--project-root",
-                        str(root),
-                        "protocol-manifest",
-                        "--write",
-                        "--bind-project",
+                        "--project-root", str(root), "protocol-manifest", *given
                     )
                 finally:
                     after = manifest.read_text()
                     chapter.write_text(source)
                     manifest.write_text(tracked)
+                    (root / "generated/protocol/extra.md").unlink(missing_ok=True)
                 self.assertEqual(1, result.returncode, result.stdout + result.stderr)
                 envelope = json.loads(result.stdout)
                 self.assertEqual("invalid", envelope["status"])
@@ -600,6 +648,71 @@ class CommandLineTests(unittest.TestCase):
                 self.assertNotEqual(0, result.returncode)
                 envelope = json.loads(result.stdout)
                 self.assertEqual("failed", envelope["status"])
+
+    @verifies("scenario.distribution.step-failed-envelope")
+    def test_a_failure_after_or_inside_the_command_answers_with_one_envelope(self):
+        from concorde.distribution import cli
+
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        root = Path(directory.name)
+        mark = root / ".concorde/update.json"
+        mark.parent.mkdir()
+        mark.write_text(json.dumps({"from": "1.0.0", "to": "2.0.0"}))
+        # The mark cannot be removed: its folder refuses every change.
+        mark.parent.chmod(0o555)
+        self.addCleanup(mark.parent.chmod, 0o755)
+        passed = cli.formats.envelope(
+            "spec-validation",
+            "success",
+            findings=[cli.formats.finding("X-1", "warning", "a.md", "kept", "none")],
+            result={"checked": 3},
+        )
+        entry = parts.Registration.entry
+
+        def patched(registration, name):
+            if name == "commands:spec_validation":
+                return lambda words, root: passed
+            if name == "commands:grant":
+
+                def broken(words, root):
+                    raise RuntimeError("the grant cannot be computed")
+
+                return broken
+            return entry(registration, name)
+
+        names = {
+            item["name"]: item["entry"]
+            for registration in parts.installed().values()
+            for item in registration.data["commands"]
+        }
+        self.assertEqual("commands:spec_validation", names["spec-validation"])
+        self.assertEqual("commands:grant", names["grant"])
+        for argv, code in (
+            (["spec-validation"], "distribution_step_failed"),
+            (["grant", "--type", "test"], "unexpected_error"),
+        ):
+            with self.subTest(argv=argv):
+                printed = io.StringIO()
+                with (
+                    patch.object(parts.Registration, "entry", patched),
+                    contextlib.redirect_stdout(printed),
+                ):
+                    status = cli.main(["--project-root", str(root), *argv])
+                self.assertNotEqual(0, status)
+                envelope = json.loads(printed.getvalue())
+                self.assertEqual("failed", envelope["status"])
+                self.assertEqual(code, envelope["error"]["code"])
+                if argv[0] == "spec-validation":
+                    self.assertEqual({"checked": 3}, envelope["result"])
+                    self.assertIn(
+                        "X-1", [item["rule_id"] for item in envelope["findings"]]
+                    )
+                    self.assertIn("update.json", envelope["error"]["location"]["path"])
+                    self.assertEqual(
+                        "system_error", envelope["error"]["causes"][0]["code"]
+                    )
+        self.assertTrue(mark.is_file())
 
 
 class RoutingTests(unittest.TestCase):
@@ -721,14 +834,25 @@ class PartsTests(unittest.TestCase):
 
     @verifies("scenario.distribution.composed-from-installed-parts")
     def test_a_receipt_naming_no_parts_installs_every_part(self):
-        project = framework(self, None)
-        usage = framework_command(project, "--help")
-        offered = set(usage.stdout.split("\n", 3)[3].split())
         index = json.loads((REPOSITORY_ROOT / "generated/parts.json").read_text())
-        self.assertEqual(
-            {name for entry in index["parts"].values() for name in entry["commands"]},
-            offered,
-        )
+        # A receipt without parts and one whose parts are empty both name none.
+        for named in (None, []):
+            with self.subTest(parts=named):
+                project = framework(self, named)
+                usage = framework_command(project, "--help")
+                offered = set(usage.stdout.split("\n", 3)[3].split())
+                self.assertEqual(
+                    {
+                        name
+                        for entry in index["parts"].values()
+                        for name in entry["commands"]
+                    },
+                    offered,
+                )
+        # An update of such a receipt installs every part as well.
+        everything = parts.package_parts(REPOSITORY_ROOT)
+        for receipt in ({"version": "9.0.0"}, {"version": "9.0.0", "parts": {}}):
+            self.assertEqual(set(everything), _previous_parts(receipt, everything))
 
     @verifies("scenario.distribution.build-refuses-name-conflict")
     def test_two_parts_registering_one_name_fail_the_build(self):
@@ -745,6 +869,33 @@ class PartsTests(unittest.TestCase):
             "command task is registered by coordination and issues",
             str(raised.exception),
         )
+
+    def test_tools_and_instructions_follow_the_parts_table(self):
+        from concorde.distribution.project_mcp import tools
+
+        text = (REPOSITORY_ROOT / "specs/concorde/distribution/module.md").read_text()
+        section = text.split("\n### Parts and their registrations\n", 1)[1]
+        section = section.split("\n### ", 1)[0]
+        table = re.findall(
+            r"^\| ([a-z ]+) \| (?:\[|this Module)", section, re.MULTILINE
+        )
+        self.assertEqual(list(parts.TABLE), table)
+        installed = parts.installed()
+        owner = {
+            tool["name"]: registration.part
+            for registration in installed.values()
+            for tool in registration.data["mcp_tools"]
+        }
+        listed = [owner[tool["name"]] for tool in tools.listing(installed)]
+        self.assertEqual(sorted(listed, key=parts.TABLE.index), listed)
+        self.assertLess(listed.index("issues"), listed.index("coordination"))
+        sentences = tools.instructions(installed)
+        contributed = [
+            registration.data["mcp_instructions"]
+            for registration in parts.in_table_order(installed)
+            if registration.data["mcp_instructions"]
+        ]
+        self.assertTrue(sentences.endswith(" ".join(contributed)))
 
     def test_every_registration_satisfies_the_registration_contract(self):
         schema = contract_schema("contract.distribution.part-registration")
@@ -790,6 +941,26 @@ class InstallTests(unittest.TestCase):
         self.assertEqual(
             text.replace("\nold\n", "\nnew\n"), (project / "CLAUDE.md").read_text()
         )
+
+    def test_the_first_block_keeps_the_project_text_as_it_is(self):
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        project = Path(directory.name)
+        section = "<!-- concorde:start -->\nnew\n<!-- concorde:end -->\n"
+        for text, separator in (
+            ("# Mine\n\n\n\n", ""),
+            ("# Mine  \n\n", ""),
+            ("# Mine\n", "\n"),
+            ("# Mine", "\n\n"),
+            ("\n", "\n"),
+            ("", ""),
+        ):
+            with self.subTest(text=text):
+                (project / "CLAUDE.md").write_text(text)
+                _amend(project, "CLAUDE.md", "new")
+                self.assertEqual(
+                    text + separator + section, (project / "CLAUDE.md").read_text()
+                )
 
     @verifies(
         "scenario.distribution.install",
@@ -1029,8 +1200,20 @@ class InstallTests(unittest.TestCase):
 
             return patch.object(parts.Registration, "entry", patched)
 
-        for answer in (RuntimeError("the run store cannot be read"), "busy", [3]):
-            with self.subTest(answer=answer), failing("idle_check", answer):
+        # The installed copy's idle check is asked, since the work runs on that copy.
+        idle = project / ".concorde/framework/src/concorde/execution/idle.py"
+        original = idle.read_text()
+        self.addCleanup(idle.write_text, original)
+        for answer, body in (
+            (
+                RuntimeError("the run store cannot be read"),
+                "raise RuntimeError('the run store cannot be read')",
+            ),
+            ("busy", "return 'busy'"),
+            ([3], "return [3]"),
+        ):
+            idle.write_text(f"def active_runs(project):\n    {body}\n")
+            with self.subTest(answer=answer):
                 with self.assertRaises(InstallError) as raised:
                     install(
                         project, package, pi_runtime=False, d2=False, dependencies=False
@@ -1050,6 +1233,21 @@ class InstallTests(unittest.TestCase):
                 self.assertEqual(
                     receipt, (project / ".concorde/install.json").read_bytes()
                 )
+        idle.write_text(original)
+        # When the installed copy cannot be run, the package's own check is asked instead.
+        interpreter = project / ".concorde/framework/python/bin/python"
+        hidden = interpreter.with_name("python.hidden")
+        interpreter.rename(hidden)
+        try:
+            with failing("idle_check", RuntimeError("the run store cannot be read")):
+                with self.assertRaises(InstallError) as raised:
+                    install(
+                        project, package, pi_runtime=False, d2=False, dependencies=False
+                    )
+        finally:
+            hidden.rename(interpreter)
+        self.assertEqual("part_failed", raised.exception.code)
+        self.assertIn("the execution part's idle_check entry", str(raised.exception))
         with failing("after_update", RuntimeError("no task records")), which():
             with self.assertRaises(InstallError) as raised:
                 update(project, package)
@@ -1168,6 +1366,60 @@ class InstallTests(unittest.TestCase):
         live.kill()
         live.wait()
         install(project, package, pi_runtime=False, d2=False, dependencies=False)
+
+    @verifies("scenario.distribution.install-busy-dropped-part")
+    def test_an_install_asks_the_installed_copy_for_a_part_the_package_dropped(self):
+        package = package_copy(self)
+        project = package.parent / "project"
+        project.mkdir()
+        subprocess.run(["git", "init", "-q", str(project)], check=True)
+        install(project, package, pi_runtime=False, d2=False, dependencies=False)
+        # The installed copy has a part the package no longer builds, whose work still runs.
+        retired = project / ".concorde/framework/src/concorde/retired"
+        retired.mkdir()
+        (retired / "__init__.py").write_text("")
+        (retired / "idle.py").write_text(
+            "def busy(project):\n    return ['retired work w-9']\n"
+        )
+        registration = json.loads(
+            (package / "src/concorde/kernel/registration.json").read_text()
+        )
+        registration.update(
+            part="retired",
+            module="module.retired",
+            commands=[],
+            guidance=None,
+            idle_check="idle:busy",
+        )
+        registration["install"]["gitignore"] = []
+        (retired / "registration.json").write_text(json.dumps(registration))
+        path = project / ".concorde/install.json"
+        receipt = json.loads(path.read_text())
+        receipt["parts"]["retired"] = receipt["version"]
+        path.write_text(json.dumps(receipt))
+        before = path.read_bytes()
+        with self.assertRaises(InstallError) as raised:
+            install(project, package, pi_runtime=False, d2=False, dependencies=False)
+        self.assertEqual("concorde_busy", raised.exception.code)
+        self.assertIn("retired work w-9", str(raised.exception))
+        self.assertEqual(before, path.read_bytes())
+        self.assertTrue(retired.is_dir())
+        # A failing check of the installed copy refuses the install as well.
+        (retired / "idle.py").write_text(
+            "def busy(project):\n    raise OSError('gone')\n"
+        )
+        with self.assertRaises(InstallError) as raised:
+            install(project, package, pi_runtime=False, d2=False, dependencies=False)
+        self.assertEqual("part_failed", raised.exception.code)
+        self.assertIn("retired", str(raised.exception))
+        self.assertIn("OSError: gone", str(raised.exception))
+        # Once its work has ended, the install replaces the copy and drops the part.
+        (retired / "idle.py").write_text("def busy(project):\n    return []\n")
+        receipt = install(
+            project, package, pi_runtime=False, d2=False, dependencies=False
+        )
+        self.assertNotIn("retired", receipt["parts"])
+        self.assertFalse(retired.exists())
 
     @verifies(
         "scenario.distribution.own-python",
@@ -2265,6 +2517,7 @@ class InstallTests(unittest.TestCase):
         )
         self.assertEqual([], list(project.iterdir()))
 
+    @verifies("scenario.distribution.install-stale-build")
     def test_install_refuses_stale_guidance(self):
         package = package_copy(self)
         project = package.parent / "project"
@@ -2275,7 +2528,33 @@ class InstallTests(unittest.TestCase):
         with self.assertRaises(InstallError) as raised:
             install(project, package, pi_runtime=False, dependencies=False)
         self.assertEqual("stale_build", raised.exception.code)
-        self.assertFalse((project / ".claude").exists())
+        self.assertIn("prompts/main-session/skill.md", str(raised.exception))
+        self.assertEqual([], list(project.iterdir()))
+
+    @verifies("scenario.distribution.install-stale-build")
+    def test_install_refuses_a_changed_or_missing_render(self):
+        # The sources are unchanged: only a recorded output differs from its digest.
+        for output, change in (
+            ("generated/main-session/skill.md", "edited"),
+            ("generated/workflows/claude/concorde-brownfield.js", "removed"),
+        ):
+            with self.subTest(output=output):
+                package = package_copy(self)
+                project = package.parent / "project"
+                project.mkdir()
+                if change == "removed":
+                    (package / output).unlink()
+                else:
+                    (package / output).write_text(
+                        (package / output).read_text() + "\nEdited.\n"
+                    )
+                with self.assertRaises(InstallError) as raised:
+                    install(
+                        project, package, pi_runtime=False, d2=False, dependencies=False
+                    )
+                self.assertEqual("stale_build", raised.exception.code)
+                self.assertIn(output, str(raised.exception))
+                self.assertEqual([], list(project.iterdir()))
 
 
 class D2InstallTests(unittest.TestCase):

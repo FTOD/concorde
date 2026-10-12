@@ -17,7 +17,7 @@ from unittest.mock import patch
 
 from concorde.distribution.project_mcp import server as server_module
 from concorde.distribution.project_mcp import tools
-from concorde.distribution.project_mcp.calls import Calls, Rethread
+from concorde.distribution.project_mcp.calls import Calls, Rethread, last_answer
 from concorde.spec.verification import verifies
 
 PLAIN = {"worktree": "primary", "long_work": False, "threaded": False}
@@ -105,6 +105,49 @@ class FailedCallTests(unittest.TestCase):
         self.assertIn("exited with status 4", detail)
         self.assertIn("on standard error: said on stderr", detail)
         self.assertIn("on standard output: said on stdout", detail)
+
+
+class AnswerTests(unittest.TestCase):
+    def test_the_last_answer_is_found_past_trailing_output(self):
+        answer = json.dumps({"value": {"done": True}})
+        for after in ("a diagnostic", '{"progress": 3}', "[1, 2]", "a\n{}\n"):
+            with self.subTest(after=after):
+                self.assertEqual(
+                    {"value": {"done": True}}, last_answer(f"{answer}\n{after}\n")
+                )
+        self.assertIsNone(last_answer('a diagnostic\n{"progress": 3}\n'))
+        # The last answer wins over an earlier one.
+        self.assertEqual(
+            {"error": {"code": "x"}},
+            last_answer(f'{answer}\n{{"error": {{"code": "x"}}}}\nend\n'),
+        )
+
+    def test_a_wait_answering_null_is_done(self):
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        events = []
+        ended = threading.Event()
+        cases = {
+            "null": ("print('null')", "wait_done"),
+            "no JSON": ("print('not json')", "wait_failed"),
+            "null, failing": ("import sys; print('null'); sys.exit(1)", "wait_failed"),
+        }
+        for case, (script, event) in cases.items():
+            with self.subTest(case=case):
+                calls = Scripted(Path(directory.name), script)
+
+                def notify(content, meta):
+                    events.append(meta["event"])
+                    ended.set()
+
+                calls.notify = notify
+                ended.clear()
+                events.clear()
+                calls.start_wait(
+                    "register_wait", {}, {"description": "x", "words": [], "meta": {}}
+                )
+                self.assertTrue(ended.wait(30))
+                self.assertEqual([event], events)
 
 
 def listing(digest: str, **serving) -> dict:
@@ -235,6 +278,20 @@ class RoutingTests(unittest.TestCase):
         calls.tools()
         # The session calls a tool its listing lacks: the server learns how it is served.
         calls.call("late", {})
+        self.assertEqual(["tools changed"], calls.notices)
+        self.assertEqual("sha256:new", calls.listed)
+
+    @verifies("scenario.distribution.mcp-tools-changed-after-failed-listing")
+    def test_a_failed_listing_is_followed_by_a_tools_change(self):
+        calls = StoodIn(
+            self.primary,
+            self.primary,
+            [None, listing("sha256:new", task_list=PLAIN)],
+            [{"value": {}, "tools": "sha256:new"}],
+        )
+        # The listing fails: the session is given no tools.
+        self.assertEqual([], calls.tools())
+        calls.call("task_list", {})
         self.assertEqual(["tools changed"], calls.notices)
         self.assertEqual("sha256:new", calls.listed)
 

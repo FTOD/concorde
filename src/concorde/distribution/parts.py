@@ -322,6 +322,33 @@ def ordered(parts: dict[str, Registration]) -> list[Registration]:
     return [parts[name] for name in done]
 
 
+# The order of Distribution's parts table, in which the parts' MCP tools and instructions are
+# presented; a part the table does not name follows by name.
+TABLE = (
+    "spec",
+    "kernel",
+    "worker harness",
+    "execution",
+    "workflow",
+    "issues",
+    "coordination",
+    "method",
+    "distribution",
+)
+
+
+def in_table_order(parts: dict[str, Registration]) -> list[Registration]:
+    """The parts in the order of the parts table, those it does not name after them by name;
+    ``ordered`` gives the order in which they load."""
+    return sorted(
+        parts.values(),
+        key=lambda item: (
+            TABLE.index(item.part) if item.part in TABLE else len(TABLE),
+            item.part,
+        ),
+    )
+
+
 def receipt_path(package: Path = PACKAGE) -> Path | None:
     """The receipt beside an installed Framework copy, or None for a source checkout."""
     if package.name == "framework" and package.parent.name == ".concorde":
@@ -331,7 +358,7 @@ def receipt_path(package: Path = PACKAGE) -> Path | None:
 
 def installed_names(package: Path = PACKAGE) -> set[str] | None:
     """The parts the receipt names under ``parts``, or None when every part is installed: in a
-    source checkout, and in a project whose receipt names none."""
+    source checkout, and in a project whose receipt names none (no ``parts`` or an empty one)."""
     path = receipt_path(package)
     if path is None:
         return None
@@ -340,7 +367,7 @@ def installed_names(package: Path = PACKAGE) -> set[str] | None:
     except (OSError, UnicodeError, ValueError):
         return None
     parts = receipt.get("parts") if isinstance(receipt, dict) else None
-    if not isinstance(parts, dict):
+    if not isinstance(parts, dict) or not parts:
         return None
     return set(parts)
 
@@ -453,11 +480,13 @@ __all__ = [
     "PACKAGE",
     "Registration",
     "RegistrationError",
+    "TABLE",
     "check",
     "closure",
     "conflicts",
     "index",
     "index_of",
+    "in_table_order",
     "installed",
     "installed_names",
     "load",

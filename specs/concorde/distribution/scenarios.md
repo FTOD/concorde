@@ -81,6 +81,13 @@ This illustrates [a guidance section standing without the parts it may lack](req
 - THEN the result is `invalid` with a finding naming the problem
 - BUT no output is written or removed
 
+### scenario.distribution.build-refuses-foreign-audience — Refuse text meant for another audience
+
+- GIVEN a `shared` prompt root that includes a `worker` prompt, or a `worker` root that includes an `ambient` prompt
+- WHEN the developer runs `build`
+- THEN the build is refused with `CONCORDE-PROMPT-AUDIENCE-001`, naming the included prompt and its audience
+- BUT no output is written or removed
+
 ### scenario.distribution.build-refuses-repeated-include — Refuse a prompt reached twice
 
 - GIVEN a prompt root that includes two prompts, each of which includes the same third prompt with its own values
@@ -167,9 +174,18 @@ This illustrates [the precondition of `protocol-manifest`](requirements.md#req.d
 - THEN exactly one `failed` result envelope is printed
 - AND the exit status is nonzero
 
+### scenario.distribution.step-failed-envelope — A failure after the command still answers with one envelope
+
+- GIVEN a project marked Concorde unvalidated whose `.concorde/` refuses the removal of the mark
+- AND an envelope command whose code raises while it runs
+- WHEN the developer runs a `concorde spec-validation` that finds no error, and that command
+- THEN each prints exactly one `failed` result envelope and exits nonzero
+- AND the validation's envelope keeps its findings, with `distribution_step_failed` naming the mark
+- AND the other's envelope carries `unexpected_error`
+
 ### scenario.distribution.composed-from-installed-parts — The command offers the installed parts
 
-- GIVEN a project whose receipt names the parts installed, and one whose receipt names none
+- GIVEN a project whose receipt names the parts installed, and one whose receipt names none, with no `parts` or an empty one
 - WHEN the developer asks `concorde --help` for its commands, or the [project MCP server](../glossary.json#concept.project-mcp-server) lists its tools
 - THEN the first offers exactly the distribution commands and the commands of the parts its receipt names
 - AND the first offers exactly the tools those parts register whose required parts are installed
@@ -397,6 +413,14 @@ This illustrates [refusing a call without an answer](requirements.md#req.distrib
 
 This illustrates [the session hearing that its tools changed](requirements.md#req.distribution.mcp-tools-changed).
 
+### scenario.distribution.mcp-tools-changed-after-failed-listing — A failed listing is followed by a tools change
+
+- GIVEN a server whose fetch of the tools failed when its session listed them, so that the session was given no tools
+- WHEN a later call's answer names the current code's tools
+- THEN the server tells its session that its tools changed
+
+This illustrates [the session hearing that its tools changed](requirements.md#req.distribution.mcp-tools-changed).
+
 ### scenario.distribution.mcp-channel-override — `CONCORDE_CHANNEL` decides the channel
 
 - GIVEN a server below an interactive `claude` started with `server:concorde` as a channel
@@ -459,6 +483,13 @@ This illustrates [the environment deciding the channel](requirements.md#req.dist
 - THEN the result is `success` and reports `CONCORDE-UPDATE-002`
 - AND `.concorde/update.json` is removed
 
+### scenario.distribution.install-stale-build — A stale build is never installed
+
+- GIVEN a package whose guidance source changed after its last build, one whose rendered guidance was edited after it, and one whose rendered workflow was removed after it
+- WHEN the developer runs the installer from each of them
+- THEN each install is refused with `stale_build`, naming the changed or missing file
+- AND nothing is written into the project
+
 ### scenario.distribution.install-busy — An install is refused while a run holds its run lock
 
 - GIVEN an installed project in which the runner of an [Operation](../glossary.json#concept.operation) or [execution command](../glossary.json#concept.execution-command) run still holds its [run lock](../glossary.json#concept.run-lock)
@@ -468,6 +499,15 @@ This illustrates [the environment deciding the channel](requirements.md#req.dist
 - THEN the install is refused with `concorde_busy`, naming each running run with its run lock, the process holding it and its progress file
 - BUT neither the worker's progress file nor the run whose run lock nobody holds is named, whatever process its recorded identifier names
 - AND nothing in the project changes
+
+### scenario.distribution.install-busy-dropped-part — The installed copy is asked for a part the package dropped
+
+- GIVEN an installed project whose installed copy has a part the new package no longer builds
+- AND that part's idle check, in the installed copy, reports work running
+- WHEN the developer installs Concorde again without that part
+- THEN the install is refused with `concorde_busy`, naming that work
+- AND nothing in the project changes
+- AND once the installed copy's check reports no work, the install replaces the copy and leaves the part out
 
 ### scenario.distribution.install-after-runs-end — Concorde is replaced once no run holds its run lock
 

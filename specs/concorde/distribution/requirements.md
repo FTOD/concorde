@@ -27,8 +27,11 @@ those locations. Each new prompt root adds its own owned location in the same ch
 
 The build SHALL render each skill, `concorde` composed of every part's skill section and `concorde-development` from `prompts/development/skill.md`, as `generated/skills/<name>/SKILL.md`: front matter with the skill's `name` and a double-quoted `description`, followed by that composition or the render of its prompt root.
 
-The installer places the `concorde` skill from its rendered file, so an installed project and Concorde's
-own source checkout load the same text.
+The installer does not copy that rendered file. It composes the `concorde` skill again from the
+installed parts' rendered sections ([composed guidance](#req.distribution.composed-guidance)). Its
+description presents the session as the [main agent](../glossary.json#concept.main-agent) only where the coordination part is installed.
+So only an installation of every part, not in develop mode, loads the same text as Concorde's own
+source checkout.
 
 ### req.distribution.build-check-read-only — Checking the build writes nothing
 
@@ -89,6 +92,7 @@ from a package when any of these conditions holds:
 
 - Its [build manifest](../glossary.json#concept.build-manifest) records a source that is missing.
 - Its build manifest records a source that is changed.
+- Its build manifest records an output that is missing or changed.
 - Its rendered asset differs from the tracked manifest.
 
 ### req.distribution.protocol-manifest-precondition — protocol-manifest acts only on a fresh build and a readable manifest
@@ -139,11 +143,11 @@ the installer's result or [error link](#req.distribution.installer-error-links) 
 
 ### req.distribution.parts-installable — Any set of parts installs with its dependencies
 
-The installer SHALL install exactly the [parts](../glossary.json#concept.part) it is asked for
-together with every part they depend on, transitively, and no other part.
+A first install SHALL install exactly the selected [parts](../glossary.json#concept.part), Distribution and every part these depend on, transitively, and no other part.
 
-Distribution itself is installed with any part. Left without a choice, the installer installs every
-part.
+The selected parts are those `--parts` names. Without `--parts`, they are every part the package
+builds. An update selects its parts by
+[its own rule](#req.distribution.update-installed-parts) and then installs them the same way.
 
 ### req.distribution.unknown-part-refused — A part the package does not build is refused first
 
@@ -160,9 +164,13 @@ The installer's receipt SHALL name every installed part, each with the version i
 
 `concorde update` SHALL install exactly these parts:
 
-- The parts the receipt names.
-- Every part the new Concorde makes one of those parts depend on.
+- The parts the receipt names, or every part the new Concorde builds when the receipt names none.
 - Every part the update is asked to add.
+- Distribution.
+- Every part the new Concorde makes one of the parts above depend on, transitively.
+
+A receipt names no part when it has no `parts`, or when its `parts` is empty. Such a receipt was
+written before parts were recorded.
 
 ### req.distribution.one-version — Every part carries the package's version
 
@@ -183,9 +191,13 @@ It loads no registration of a part that is not installed.
 No part imports Distribution's code. Distribution imports a part's code only through the entries
 its registration names.
 
-### req.distribution.composed-from-registrations — The command and the server offer only installed parts
+### req.distribution.composed-from-registrations — The command offers only installed parts
 
-The installed `concorde` command SHALL offer exactly the distribution commands and the commands the installed parts register, and the [project MCP server](../glossary.json#concept.project-mcp-server) exactly the MCP tools they register whose required parts are all installed.
+The installed `concorde` command SHALL offer exactly the distribution commands and the commands the installed parts register.
+
+### req.distribution.mcp-tools-from-registrations — The server presents only installed parts' tools
+
+The [project MCP server](../glossary.json#concept.project-mcp-server) SHALL present exactly the MCP tools the installed parts register whose required parts are all installed.
 
 ### req.distribution.absent-part-named — A command of an absent part names the part
 
@@ -321,16 +333,20 @@ configuration.
 
 ### req.distribution.installer-keeps-installation-bound — Installed files stay bound
 
-Where the spec part is installed, in an initialized project, the installer SHALL, after writing the receipt, bring the Concorde installation realization in step with the receipt through Spec core, so that every file the receipt names outside `.concorde/`, other than the amended ones, is bound whether it was installed before or after initialization.
+Where the spec part is installed, in an initialized project, the installer SHALL, after writing the receipt, ask Spec core to bring the Concorde installation realization in step with the receipt, so that every file the receipt names outside `.concorde/`, other than the amended ones, is bound whether it was installed before or after initialization.
+
+The binding ends with one of these outcomes, and none of them fails the installer:
+
+- Spec core binds the files, and the installer's result carries no `binding_error`.
+- The project's Specs cannot be read, and the installer binds nothing.
+- Spec core refuses the binding, and the installer's result carries Spec core's error under
+  `binding_error`.
 
 The binding is [Spec core's](../spec-tooling/spec/requirements.md#req.spec.installation-follows-record).
 When an installed file exists and no realization binds it by its exact path, the file is added.
-When an entry's file no longer exists, the entry is removed. When the project's Specs
-cannot be read, the installer binds nothing and does not fail, since everything else was already
-written.
-`spec-validation` reports why the project's Specs cannot be read. When Spec core refuses the
-binding, the installer does not fail either. In that case, the installer's result carries Spec
-core's error under `binding_error`.
+When an entry's file no longer exists, the entry is removed. The installer does not fail on the
+last two outcomes, since everything else was already written. `spec-validation` reports why the
+project's Specs cannot be read.
 
 ### req.distribution.update-unvalidated — An update marks the project Concorde unvalidated
 
@@ -438,12 +454,15 @@ never decides Concorde's.
 
 ### req.distribution.locked-python-dependencies — Only the locked Python dependencies are installed
 
-Where an installed part names a Python dependency, the installer SHALL install exactly the runtime part of the package's `uv.lock` with these details:
+Where an installed part names a Python dependency and the dependencies are not left out, the installer SHALL install exactly the runtime part of the package's `uv.lock` with these details:
 
 - The installation is into Concorde's own environment.
 - The runtime part is exported with `uv export` to `.concorde/framework/requirements.txt`.
 - The runtime part is installed with `uv pip install --require-hashes`.
 
+The dependencies are left out by `--without-dependencies`. An update leaves them out when the
+previous install had a part that names a Python dependency and placed none
+([Updating](module.md#updating-an-installed-concorde)).
 A package whose hash differs from the lock is therefore never installed. The
 [install result](contracts.md#contract.distribution.install-result) names the requirements file and
 the lock's digest.
