@@ -206,30 +206,32 @@ A caller names these:
 - the Modules to run
 - a log directory
 
-For each Module, the service performs these steps:
+For each check it keeps, one after the other, the service performs these steps:
 
-- measures the inputs
-- runs each check in the boundary
-- measures again
+- measures the check's inputs
+- runs the check in the boundary
+- measures the same inputs again and compares
 
 If the service cannot establish a boundary, it starts no command. If a measurement changed, the
-call fails with `stale_evidence`.
+call fails with `stale_evidence`. Each check's freshness covers only its own run. The checks of one
+call share no common revision. A change between two checks is no change during either of them, so
+each result names, as `source_digest`, the input it measured
+([Running checks](service.md#running-checks)).
 
 ```d2 illustrative
 direction: down
-select: "For each Module the caller names:\nselect its checks"
-before: "Digest the Module's inputs"
+select: "Select the checks of\nthe Modules the caller names"
+before: "Digest the check's inputs"
 boundary: "Set up the read-only boundary\nwith a fresh scratch"
 run: "Run the check's command\nwithin its time limit"
-logs: "Save its log and\nits check result"
-after: "Digest the Module's inputs again"
+logs: "Save its log"
+after: "Digest the check's inputs again"
 result: "Return one check result\nper check"
 refused: "Refused with a sandbox error:\nno command starts"
 stale: "Fails with stale_evidence"
-select -> before -> boundary -> run -> logs
-logs -> boundary: "next check"
-logs -> after: "last check of the Module"
-after -> result: "digests match"
+select -> before -> boundary -> run -> logs -> after
+after -> before: "digests match:\nnext check"
+after -> result: "digests match:\nlast check"
 after -> stale: "digests differ" {style.stroke-dash: 3}
 boundary -> refused: "cannot be established" {style.stroke-dash: 3}
 ```
@@ -307,6 +309,13 @@ blocks, not that checks are adequate. The tests exercise the timing recorder and
 
 ## What Check execution relies on
 
+<a id="uses-kernel"></a>
+
+**The Kernel** gives the paths of Check execution their form. A checks file's inputs, the measured
+files and the selected tests' files are canonical project-relative POSIX paths, as the Kernel's
+[typed values](../../kernel/contracts.md#typed-values) define them. Check execution checks every
+such path with the Kernel's library and refuses one reached through a symbolic link.
+
 <a id="uses-tracing"></a>
 
 **Tracing** gives every check the shape of a [trace node](../../glossary.json#concept.trace-node).
@@ -321,6 +330,3 @@ these:
 - the Modules it checks
 - the files their results depend on
 - the tests a selective check runs
-
-Its paths follow the canonical project-relative form of the Kernel's
-[typed values](../../kernel/contracts.md#typed-values).

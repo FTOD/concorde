@@ -71,6 +71,13 @@
       "contains": [],
       "uses": [
         {
+          "target": "module.kernel",
+          "meaning": "#uses-kernel",
+          "relies_on": [
+            "concept.typed-value"
+          ]
+        },
+        {
           "target": "module.tracing",
           "meaning": "#uses-tracing",
           "relies_on": [
@@ -81,7 +88,13 @@
           ]
         }
       ],
-      "includes": [],
+      "includes": [
+        {
+          "kind": "document",
+          "target": "document.kernel.contracts",
+          "reason": "the Kernel's typed values, whose canonical project-relative POSIX path rule the checks files' inputs and the measured paths follow"
+        }
+      ],
       "participates": []
     },
     {

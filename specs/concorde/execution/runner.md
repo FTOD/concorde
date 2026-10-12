@@ -455,7 +455,10 @@ runner's `missing_error` link ([Errors](#errors)).
 When a result or an `ok` output breaks its contract, the result becomes `failed` with output null
 and the runner's `invalid_result` link. When the earlier error is a well-formed link, that error
 becomes the cause. A result whose error is not the run's own link breaks the contract. That link
-has level `operation` for an Operation and `command` for an execution command. The replacement
+has level `operation` for an Operation and `command` for an execution command. Its actor names this
+run as [Errors](#errors) says. A link of the right level whose actor names another run is no own
+link, so it becomes the cause. The runner composes the summary only from the Modules that are names,
+so a malformed Module never stops the result from being composed and replaced. The replacement
 keeps only what satisfies the contract of what the steps left. The replacement leaves out these
 items:
 
@@ -656,8 +659,12 @@ With `--detach`, the command follows these steps:
 4. The command creates the run's folder, in the [lobby](#the-lobby) for a bound run and its unbound
   node otherwise.
 5. The command starts the runner as a process of its own, in a new session, handing it the
-  identity. The runner therefore records in that folder and writes its output to `host.out`
-  there.
+  identity and the binding it read. The runner works with that binding, not with its own reading.
+  The runner therefore records in that folder and writes its output to `host.out` there. When the
+  command read a binding, the runner checks it again under the workspace lock, as every bound run
+  does. A binding changed or gone since is refused with `workspace_retired` in the lobby the
+  command watches. When the command read no binding, the run is unbound, even if a binding has
+  appeared since.
 
 That process is the host's `concorde` command run again with the same command line. Before it
 looks the definition up, the process loads the definitions the installed parts register, as the

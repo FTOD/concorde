@@ -134,12 +134,10 @@ labels.
 
 When a definition allows it, the definition may also run
 **[unbound](../glossary.json#concept.unbound-run)**, in a worktree without a binding such as the
-primary worktree. In Concorde, these are Method's reading Operations:
-
-- `understand`
-- `survey`
-- `spec_panel`
-- `code_review`
+primary worktree. The definition decides this by its binding
+([What a definition gives the runner](runner.md#what-a-definition-gives-the-runner)). In Concorde,
+Method's reading Operations allow it, such as `understand`, `survey`, `spec_panel`, `code_review`
+and `project_review`. `general` allows it only for work that writes nothing.
 
 An unbound run has these properties:
 
@@ -159,7 +157,8 @@ branch as a commit of its own under the [merge lock](../glossary.json#concept.me
 [Project review](../method/project-review/module.md) says. The run never publishes through the
 checkout it examines
 ([req.execution.unbound-origin-untouched](requirements.md#req.execution.unbound-origin-untouched)).
-Every other definition is refused unbound with `binding_required`.
+A definition that requires a binding is refused unbound with `binding_required`
+([req.execution.unbound-read-only](requirements.md#req.execution.unbound-read-only)).
 
 <a id="concept.unbound-checkout"></a>
 

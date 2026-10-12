@@ -4,6 +4,7 @@ standing in for real ones, the workspace binding it reads and the run store it w
 from __future__ import annotations
 
 import contextlib
+import dataclasses
 import errno
 import io
 import json
@@ -21,6 +22,7 @@ from unittest.mock import patch
 
 from concorde.execution.commands import catalog as commands
 from concorde.kernel.errors import ERROR_SCHEMA, LINK_SCHEMA, codes
+from concorde.kernel.errors import link as errors_link
 from concorde.kernel import binding as binding_file
 from concorde.execution import runs
 from concorde.execution.checkout import PREFIX
@@ -1322,6 +1324,37 @@ class RunnerTests(unittest.TestCase):
         with self.assertRaises(UsageError):
             detach("operation", "frobnicate", ["--detach"], cwd=self.worktree)
 
+    @verifies("scenario.execution.detached")
+    def test_a_binding_gone_before_the_detached_runner_starts_is_refused_where_announced(
+        self,
+    ):
+        binding = binding_file.path_of(self.worktree)
+        saved = binding.read_bytes()
+        real = subprocess.Popen
+
+        def unbinding(argv, *arguments, **options):
+            # The binding is removed after the parent read it, before the runner reads it.
+            if "concorde" in argv:
+                binding.unlink()
+            return real(argv, *arguments, **options)
+
+        try:
+            with patch("concorde.execution.runner.subprocess.Popen", unbinding):
+                status, announced = detach(
+                    "command", "task-validation", [], cwd=self.worktree
+                )
+            self.assertEqual(0, status, announced)
+            refused = self.wait_for(Path(announced["lobby"]) / "result.json")
+            self.wait_ended(announced["run_id"])
+        finally:
+            binding.write_bytes(saved)
+        self.assertEqual("failed", refused["status"])
+        self.assertIn(
+            "workspace_retired", [item["ref"] for item in refused["host_evidence"]]
+        )
+        # Nothing of the run went to the unbound records the parent never watched.
+        self.assertFalse((self.records / "unbound" / announced["run_id"]).exists())
+
     @verifies("scenario.execution.detached-busy")
     def test_a_detached_run_of_a_busy_workspace_is_refused_in_the_lobby(self):
         # A workspace already running something still gets its refusal as the result.
@@ -1944,6 +1977,85 @@ class RunnerTests(unittest.TestCase):
             json.loads((self.lobby(envelope["run_id"]) / "result.json").read_text()),
         )
 
+    @verifies("scenario.execution.cancelled")
+    def test_a_signal_during_admission_cancels_the_run(self):
+        ran = []
+
+        def step(ctx):
+            ran.append(ctx.run_id)
+            return Continue()
+
+        def signalled(ctx):
+            os.kill(os.getpid(), signal.SIGTERM)
+
+        with patch.dict(
+            commands.COMMANDS.definitions,
+            {
+                "task-validation": command(
+                    "task-validation", (step,), writes=False, admit=signalled
+                )
+            },
+        ):
+            status, envelope = self.project.run("task-validation", "--task", "t1")
+        self.assertEqual(
+            (1, "cancelled"), (status, envelope["error"]["code"]), envelope
+        )
+        self.assertEqual([], ran)
+        self.assertEqual(envelope, self.saved(envelope))
+
+    def test_malformed_modules_of_a_step_are_replaced_not_lost(self):
+        def malformed(ctx):
+            ctx.modules = ["module.a", 1]
+            return Continue()
+
+        with patch.dict(
+            commands.COMMANDS.definitions,
+            {"task-validation": command("task-validation", (malformed,), writes=False)},
+        ):
+            status, envelope = self.project.run("task-validation", "--task", "t1")
+        self.assertEqual((1, "invalid_result"), (status, envelope["error"]["code"]))
+        validate(envelope, RESULT_SCHEMA)
+        self.assertEqual(envelope, self.saved(envelope))
+        self.assertEqual(["module.a"], envelope["modules"])
+        self.assertTrue(
+            envelope["error"]["detail"].endswith("(Modules: module.a)"),
+            envelope["error"]["detail"],
+        )
+
+    def test_an_error_of_the_same_level_naming_another_run_is_no_own_link(self):
+        def foreign(ctx):
+            other = ctx.actor.replace(ctx.run_id, "r-20260101T000000-other-0000abcd")
+            return Stop(
+                "failed",
+                "Failed.",
+                error=errors_link(
+                    "command",
+                    other,
+                    "boom",
+                    "another run's failure",
+                    reason="input",
+                    explanation="only that run can",
+                ),
+            )
+
+        with patch.dict(
+            commands.COMMANDS.definitions,
+            {"task-validation": command("task-validation", (foreign,), writes=False)},
+        ):
+            status, envelope = self.project.run("task-validation", "--task", "t1")
+        self.assertEqual((1, "invalid_result"), (status, envelope["error"]["code"]))
+        [invalid] = [
+            item
+            for item in envelope["host_evidence"]
+            if item["kind"] == "invalid-output"
+        ]
+        self.assertEqual("/error/actor", invalid["ref"])
+        self.assertIn(envelope["run_id"], envelope["error"]["actor"])
+        # The foreign link is kept only as a cause of the run's own link.
+        self.assertEqual(
+            ["boom"], [cause["code"] for cause in envelope["error"]["causes"]]
+        )
+
     def test_an_invalid_result_is_replaced_by_one_that_keeps_the_contract(self):
         def malformed(ctx):
             ctx.worker = ["not", "an", "object"]
@@ -2550,6 +2662,23 @@ class UnboundCheckoutTests(unittest.TestCase):
             self.assertEqual([], opened.close())
         self.assertFalse(opened.path.exists())
         self.assertTrue((self.root / ".cache/tools/venv/bin").is_dir())
+
+    @verifies("scenario.execution.cancelled")
+    def test_a_signal_during_the_runtime_path_resolver_cancels_the_run(self):
+        def signalled(root):
+            os.kill(os.getpid(), signal.SIGTERM)
+            return []
+
+        with patch.dict(
+            catalog.OPERATIONS.definitions,
+            {"understand": dataclasses.replace(PROBE, runtime_paths=signalled)},
+        ):
+            status, envelope = self.probe()
+        self.assertEqual(
+            (1, "cancelled"), (status, envelope["error"]["code"]), envelope
+        )
+        self.assertEqual([], envelope["worker_runs"])
+        self.assertEqual([self.root], worktrees(self.root))
 
     @verifies("scenario.execution.unbound-checkout-removed")
     def test_a_checkout_the_fallback_cannot_remove_is_named_with_what_is_left(self):

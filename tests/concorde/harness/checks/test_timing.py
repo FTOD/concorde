@@ -118,6 +118,36 @@ class TimingTests(unittest.TestCase):
         )
         self.assertNotIn("SECRET", json.dumps(result))
 
+    @verifies("scenario.checks.timing-summary")
+    def test_no_known_duration_sums_to_null_never_zero(self):
+        unknown = [
+            {
+                "process_id": 1,
+                "start_ns": 0,
+                "duration_ns": None,
+                "status": "incomplete",
+            },
+            {
+                "process_id": 2,
+                "start_ns": 5,
+                "duration_ns": None,
+                "status": "incomplete",
+            },
+        ]
+        result = summarize(unknown)
+        self.assertIsNone(result["summed_span_seconds"])
+        self.assertFalse(result["complete"])
+        self.assertEqual({}, result["covered_seconds_by_process"])
+        # Nothing given is nothing measured, which is zero and complete.
+        self.assertEqual(
+            {
+                "complete": True,
+                "summed_span_seconds": 0,
+                "covered_seconds_by_process": {},
+            },
+            summarize(iter([])),
+        )
+
     @verifies("scenario.checks.timing-spans")
     def test_concurrency_sink_failure_and_cap(self):
         def worker(index):
@@ -231,6 +261,23 @@ class ObservationScenarioTests(unittest.TestCase):
                 with self.assertRaises(OSError):
                     sink({"spans": []})
             self.assertFalse(target.exists())
+
+            # A directory merely named like lifecycle storage, not directly below .concorde, is
+            # accepted.
+            diagnostics = base / "project/.concorde/diagnostics/tasks"
+            diagnostics.mkdir(parents=True)
+            with patch.dict(
+                os.environ, {"CONCORDE_DIAGNOSTIC_TIMING_DIR": str(diagnostics)}
+            ):
+                stderr = io.StringIO()
+                with contextlib.redirect_stderr(stderr):
+                    self.assertEqual("done", work())
+                    # A Span used directly opens no trace, even with the variable set.
+                    with Span("fixture.bare") as bare:
+                        pass
+            self.assertEqual("", stderr.getvalue())
+            self.assertEqual(1, len(list(diagnostics.iterdir())))
+            self.assertIsNone(bare.record)
 
             link = base / "link"
             link.symlink_to(good)
