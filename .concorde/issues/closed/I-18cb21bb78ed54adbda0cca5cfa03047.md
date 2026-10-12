@@ -4,7 +4,7 @@
 {
   "schema_version": 4,
   "id": "I-18cb21bb78ed54adbda0cca5cfa03047",
-  "status": "open",
+  "status": "closed",
   "reports": [
     {
       "id": "sha256:3e3bed3ba559c4289e03cd022669b22c950fa4497f0b57912d791ce1f7549df3",
@@ -39,6 +39,18 @@
       }
     }
   ],
-  "dispositions": []
+  "dispositions": [
+    {
+      "reason": "resolved",
+      "note": "Fixed by task r2-kernel-tracing, merged into the primary branch at 6b3d9e95a35eb93f9ca08335d49ebd6ba5a5e7fd.",
+      "evidence": [
+        "merge commit 6b3d9e95a35eb93f9ca08335d49ebd6ba5a5e7fd",
+        "task r2-kernel-tracing"
+      ],
+      "duplicate_of": null,
+      "actor": "main-agent",
+      "created_at": "2026-10-12T14:27:37.580673+00:00"
+    }
+  ]
 }
 ```
