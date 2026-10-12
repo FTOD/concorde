@@ -42,7 +42,7 @@ has one kind:
 | Kind | Blocking when |
 | --- | --- |
 | `load` | the Specs fail to load at all |
-| `structural` | a [structural check](../../glossary.json#concept.structural-check) error, e.g. a broken link or stale registry mirror, or one of the run's [Modules](../../glossary.json#concept.module) that the workspace's registry no longer registers |
+| `structural` | a [structural check](../../glossary.json#concept.structural-check) error, e.g. a broken link or stale registry mirror, or one of the run's [Modules](../../glossary.json#concept.module) that the workspace's registry does not register |
 | `unbound` | a changed path is not a Spec document, the glossary, control record, generated/build output, external material (including a submodule a Module includes), or Module-bound |
 | `check` | a [configured check](../../glossary.json#concept.configured-check) of a Module whose checks run failed or timed out, or Check execution could not run a Module's checks (see step 6) |
 
@@ -55,7 +55,7 @@ The readiness records its inputs as one input digest:
 
 - The head.
 - The base.
-- Every changed path's Git file mode and digest.
+- Every changed path's digest and the Git file mode Git stages for it.
 - The configuration digest.
 
 The input digest proves exactly which inputs a readiness describes. A later change of the
@@ -117,6 +117,13 @@ can find it. Without a binding in the worktree, the runner refuses the command w
 command takes no arguments of its own.
 It accepts the runner's `--input` like any run, but no step reads an admitted input.
 The **run's Modules** (`--modules`, the binding's by default) never narrow what is validated.
+A workspace may remove or rename a Module it works on. So, as
+[Execution's runner](../../execution/runner.md#runner) lets Method's definitions do, the command
+leaves out each Module of the binding that the workspace's registry no longer registers. The run's
+host evidence names each such Module with the kind `removed-module`. When the binding names no
+Module the registry still registers, the runner refuses the run with `modules_removed`. The caller
+then names the run's Modules with `--modules`. A Module that `--modules` names stays among the
+run's Modules. When the registry does not register it, it blocks as a `structural` finding.
 Readiness concerns the whole workspace. The run's Modules add their checks to the changed Modules'.
 The checks of every Module that uses one of these, directly or through further uses, run too.
 A change can therefore bring check results from Modules the workspace did not touch.
@@ -212,7 +219,7 @@ anywhere, structural validation always covers the whole workspace.
 
 | # | Step | Actor | Stops when |
 | --- | --- | --- | --- |
-| 1 | Require the workspace's head to be on the branch its binding names | host | wrong or detached branch (`failed`) |
+| 1 | Require the workspace's head to be on the branch its binding names | host | wrong or detached branch (`failed`); Git cannot be started (`failed`, `measurement_failed`) |
 | 2 | Measure inputs: head, base, changed paths' modes and digests, config digest, combined | host, read-only Git | Git can't report the changes, or a changed path or the configuration can't be read (`failed`) |
 | 3 | Validate the workspace's Spec structure: errors block, warnings are kept | Spec core | — (Specs that fail to load skip steps 4–6) |
 | 4 | Require every changed path be accounted for, as the `unbound` kind lists | host, Spec core | — |
@@ -234,8 +241,22 @@ checks is a blocking `check` finding naming the Modules whose checks could not r
 - An invalid check.
 - An operating-system error, which Check execution's link names `system_error`.
 
-The other Modules' checks still run. Each Module's own checks are run apart, reading only that
-Module's checks file. Each of these keeps Check execution's own error link as its cause. The
+The other Modules' checks still run. Step 6 calls Check execution in two phases, as its
+[running of checks](../../execution/checks/service.md) lets a caller do:
+
+1. For each selected Module, in identity order, one call runs that Module's ordinary checks apart.
+   The call reads only that Module's checks file.
+2. One more call runs the selective checks once for the whole selection. The selection is the
+   changed Modules, the run's Modules and every Module that uses one of them. Validation computes
+   the tests of that call through Spec core: every test whose
+   [verification declaration](../../glossary.json#concept.verification-declaration) names a
+   scenario of a selected Module. A selective check runs in this call whichever Module owns it,
+   selected or not. When no test verifies a scenario of the selection, the call keeps no selective
+   check and runs nothing.
+
+The readiness lists the check results in that order. When the second call fails, its blocking
+finding names the whole selection, its identities joined by commas. Each failed call keeps Check
+execution's own error link as its cause. The
 checks such a failed call finished before the error keep their results. Since the call itself
 returns none, Validation reads those results back from the checks' trace nodes.
 

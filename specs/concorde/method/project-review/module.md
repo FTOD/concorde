@@ -369,6 +369,28 @@ or not.
 
 ## What it relies on
 
+<a id="uses-method"></a>
+
+**Method**, this Module's parent, owns the
+[standard worker sequence](../../glossary.json#concept.standard-worker-sequence) through which
+`project_review` launches its reviewers, architects and chairs. Project review relies on these promises of Method for that sequence:
+
+- Grants come from the Specs of the worktree the run works on
+  ([req.method.workspace-specs](../requirements.md#req.method.workspace-specs)).
+- Every worker is placed before the first launches
+  ([req.method.models-placed-first](../requirements.md#req.method.models-placed-first)).
+- The worker harness receives the effective grant as data
+  ([req.method.grant-as-data](../requirements.md#req.method.grant-as-data)).
+- A refused trace write below the run is in its result
+  ([req.method.trace-writes-reported](../requirements.md#req.method.trace-writes-reported)).
+- The glossary is audited by entry
+  ([req.method.glossary-by-entry](../requirements.md#req.method.glossary-by-entry)).
+- [Spec gaps](../../glossary.json#concept.spec-gap) and grant denials are never repaired
+  ([req.method.gaps-never-repaired](../requirements.md#req.method.gaps-never-repaired)).
+
+[How an Operation runs its workers](../workers.md) gives the sequence's steps and the
+[errors](../workers.md#errors-of-the-worker-sequence) that Project review's results pass on.
+
 <a id="uses-spec-review"></a>
 
 **Spec review** provides the Spec panel that `project_review` runs for each Module and, without

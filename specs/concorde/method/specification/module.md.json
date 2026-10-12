@@ -16,6 +16,19 @@
     "contains": [],
     "uses": [
       {
+        "target": "module.method",
+        "meaning": "#uses-method",
+        "relies_on": [
+          "concept.standard-worker-sequence",
+          "req.method.workspace-specs",
+          "req.method.models-placed-first",
+          "req.method.grant-as-data",
+          "req.method.trace-writes-reported",
+          "req.method.glossary-by-entry",
+          "req.method.gaps-never-repaired"
+        ]
+      },
+      {
         "target": "module.operations",
         "meaning": "#uses-operations"
       },

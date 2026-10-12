@@ -207,7 +207,10 @@ def block(state: State, kind: str, ref: str, detail: str, cause: dict | None = N
 def require_bound_branch(ctx: RunContext):
     """Stop unless the workspace's head is on the branch its binding names (shared with
     Delivery)."""
-    branch = current_branch(ctx.worktree)
+    try:
+        branch = current_branch(ctx.worktree)
+    except MeasurementError as error:
+        return measurement_failed(ctx, error)
     expected = ctx.branch
     if branch != expected:
         found = branch or "a detached head"
@@ -371,8 +374,12 @@ def require_accounted(ctx: RunContext):
             or generated(path, outputs)
             or build_path(path)
             or any(covers(entry, path) for entry in external)
-            # A submodule's gitlink is accounted when a Module includes it or part of it.
-            or any(covers(path + "/", entry) for entry in external)
+            # A submodule's gitlink is accounted when a Module includes it or part of it; a
+            # file or symbolic link at its place is not.
+            or (
+                item["mode"] == "160000"
+                and any(covers(path + "/", entry) for entry in external)
+            )
             or any(bound_by(entry, path) for entry in entries)
         ):
             continue

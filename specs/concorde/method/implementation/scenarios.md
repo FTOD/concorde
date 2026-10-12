@@ -17,8 +17,8 @@ change and the test report are in the
 
 ### scenario.implementation.checks-of-users — A change runs the checks of the Modules that use it
 
-- GIVEN [Module](../../glossary.json#concept.module) A, which uses Module B and has a [configured check](../../glossary.json#concept.configured-check), and Module B, which has none
-- WHEN an implement run bound to Module B changes B's code
+- GIVEN [Module](../../glossary.json#concept.module) A, which uses Module B and has an ordinary [configured check](../../glossary.json#concept.configured-check) that runs at every stage, and Module B, which has none
+- WHEN an implement run bound to Module B changes B's code in a round whose worker ends `ok` with a clean audit
 - THEN the [Operation](../../glossary.json#concept.operation) runs A's check as well, and its result is among the run's checks
 
 ### scenario.implementation.implement-pass — A change passes its checks
@@ -68,6 +68,7 @@ change and the test report are in the
 ### scenario.implementation.deletion — A proposed deletion is performed by the Operation
 
 - GIVEN a worker whose result proposes deleting one file inside its writable paths and one outside
+- AND a write audit of its round that found no change outside the writable paths
 - WHEN the Operation processes the result after the audit
 - THEN it deletes the file inside the writable paths
 - BUT it refuses the other deletion and reports it as host evidence

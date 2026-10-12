@@ -58,14 +58,21 @@ input measurement the readiness is bound to.
 
   When the path no longer exists or is measured as deleted, its digest is `null`. A changed path that exists but cannot be
   read, or whose Git file mode cannot be determined, fails the measurement (`path_unreadable`).
-- A changed path's **mode** is its Git file mode in the worktree, as six octal digits:
+- A changed path's **mode** is the Git file mode that Git stages for it from the worktree, as six
+  octal digits:
   - `100755` for a regular file whose owner may execute it.
   - `100644` for any other regular file.
   - `120000` for a symbolic link.
   - `160000` for a directory, which is a submodule.
 
-  When the path no longer exists or is measured as deleted, its mode is `null`. Setting or clearing a file's execute bit
-  therefore changes the input digest even when its bytes stay the same.
+  When the repository sets `core.fileMode` to false, Git does not trust the execute bit, and the
+  measurement follows Git's own rule for a regular file instead:
+  - A file the worktree's index holds as a regular file keeps the index's mode.
+  - Any other regular file, such as a new one, is `100644`.
+
+  When the path no longer exists or is measured as deleted, its mode is `null`. Setting or
+  clearing a file's execute bit therefore changes the input digest even when its bytes stay the
+  same, unless `core.fileMode` is false. Changing the mode the index records then changes it.
 - The **configuration digest** is the digest of a canonical JSON object. The object maps
   `.concorde/config.json` and every entry of `.concorde/checks/` in the workspace to the digest of
   its bytes. Each is named as a changed path is recorded. For a symbolic link, the object uses
@@ -99,7 +106,7 @@ not this contract, defines the object.
 ```concorde-contract
 {
   "id": "contract.validation.readiness",
-  "version": 9,
+  "version": 10,
   "schema": {
     "type": "object",
     "additionalProperties": false,

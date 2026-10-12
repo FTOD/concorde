@@ -43,12 +43,21 @@ readiness is defined in the [contracts](contracts.md).
 - WHEN `task-validation` runs
 - THEN the configured checks of both Modules are run
 
+### scenario.validation.selective-check — A selective check outside the selection runs once
+
+- GIVEN a changed file of `module.a`, a test that declares it verifies a scenario of `module.a`, and a selective check of `module.b`, which the run does not select
+- WHEN `task-validation` runs
+- THEN `module.a`'s own checks run first
+- AND the selective check runs once, after them, with that test
+- AND without such a test the selective check does not run and blocks nothing
+
 ### scenario.validation.submodule-reference — A vendored reference is accounted for
 
 - GIVEN a workspace that adds two submodules, one of which a Module includes a directory of as `external`
 - WHEN `task-validation` runs
 - THEN the included submodule's gitlink is no blocking finding
 - BUT the other submodule's gitlink is reported as `unbound`
+- AND a regular file or a symbolic link in the included submodule's place is reported as `unbound`
 
 ### scenario.validation.submodule-content — A file changed inside a submodule is not measured
 
@@ -86,6 +95,14 @@ readiness is defined in the [contracts](contracts.md).
 - WHEN only the file's execute bit is set and the inputs are measured again
 - THEN the file's entry records the mode `100755` instead of `100644`, with the same content digest
 - AND the input digest differs from the one measured before
+
+### scenario.validation.untrusted-mode — Without core.fileMode, the mode Git stages is measured
+
+- GIVEN a repository whose `core.fileMode` is false
+- AND a workspace with a changed tracked file the index holds as `100644` and a new file, both executable in the worktree
+- WHEN the inputs are measured
+- THEN both entries record the mode `100644`, which Git stages
+- AND setting the tracked file's mode to `100755` in the index changes its entry and the input digest
 
 ### scenario.validation.checks-configuration — A changed check command changes the configuration digest
 

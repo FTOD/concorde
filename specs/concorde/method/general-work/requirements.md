@@ -57,13 +57,22 @@ reviewer as a separate worker, which shares no session with the worker.
 
 ### req.general-work.reviewer-reads-only — The reviewer changes nothing
 
-The `general` Operation SHALL launch the reviewer under the same task type's grant with every
-writable level lowered to read.
+The `general` Operation SHALL launch the reviewer under the grant the worker received, with the
+same [context identity](../../glossary.json#concept.context-identity) and every writable level
+lowered to read, not under a grant computed from the changed Specs.
 
 ### req.general-work.review-material — The reviewer sees the instruction and the change
 
-The `general` Operation SHALL give the reviewer the instruction, the observed change, the earlier
-content of every changed file and the worker's answer, marked as a claim to check.
+The `general` Operation SHALL give the reviewer all of these:
+
+- The instruction.
+- The workspace's goal, in a bound run.
+- The material of every admitted input, as the worker received it.
+- The observed change.
+- The earlier content of every modified or deleted file.
+- The worker's answer, marked as a claim to check.
+
+An added file has no earlier content. The reviewer reads it in the diff and in the worktree.
 
 ### req.general-work.verdict — The verdict follows the findings
 

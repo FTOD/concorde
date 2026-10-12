@@ -39,9 +39,19 @@ The implement Operation SHALL delete a file only when all of these conditions ho
 
 ### req.implementation.checks-follow-uses — The checks of users run too
 
-The Operation SHALL run the [configured checks](../../glossary.json#concept.configured-check) of the
-bound Modules and of every [Module](../../glossary.json#concept.module) that uses one of them,
+When the implement or test Operation runs [configured
+checks](../../glossary.json#concept.configured-check), it SHALL run them for the checked Modules:
+the bound Modules and every [Module](../../glossary.json#concept.module) that uses one of them,
 directly or through further uses.
+
+The implement Operation runs checks only after a round as
+[req.implementation.checks-outside](#req.implementation.checks-outside) says. Check execution's
+work stage decides which checks of the checked Modules run
+([Running checks](../../execution/checks/service.md#running-checks)):
+
+- Every ordinary check of a checked Module runs.
+- A selective check runs only when some test verifies a scenario of a checked Module.
+- A readiness check never runs.
 
 ### req.implementation.checks-outside — Checks run outside the worker
 

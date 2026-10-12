@@ -4,8 +4,8 @@ The changed paths are everything Git reports as different between the base commi
 tree, staged or not, plus the untracked paths Git does not ignore. A submodule counts as changed
 when its checked-out commit differs, never for changes inside its own worktree: the task commits
 only the submodule's commit, and looking inside may need objects a partial clone has to fetch
-over a network the caller may not have. Each gets its Git file mode and the SHA-256 digest of
-its bytes, both ``None`` when it no longer exists or when Git would not commit it (see
+over a network the caller may not have. Each gets the file mode Git stages for it and the SHA-256
+digest of its bytes, both ``None`` when it no longer exists or when Git would not commit it (see
 ``ignored_paths``), which Delivery commits as deleted although its file stays on disk. The input
 digest covers the head and base commits, the changed paths and the digest of
 ``.concorde/config.json`` with the configured checks under ``.concorde/checks/``. Delivery
@@ -40,9 +40,16 @@ def sha256(data: bytes) -> str:
 
 
 def git(worktree: Path, *arguments: str) -> subprocess.CompletedProcess:
-    return subprocess.run(
-        ["git", *arguments], cwd=worktree, capture_output=True, check=False
-    )
+    """Run Git in ``worktree``; ``git_failed`` when the operating system cannot start it."""
+    try:
+        return subprocess.run(
+            ["git", *arguments], cwd=worktree, capture_output=True, check=False
+        )
+    except OSError as error:
+        raise MeasurementError(
+            "git_failed",
+            f"git {' '.join(arguments)} could not be started in {worktree}: {error}",
+        ) from error
 
 
 def _output(worktree: Path, *arguments: str) -> bytes:
@@ -240,35 +247,79 @@ def gitlink_commit(worktree: Path, relative: str) -> bytes:
     return b""
 
 
-def path_mode(worktree: Path, relative: str) -> str | None:
-    """Git's file mode of one changed path in the worktree; ``None`` when it is gone.
+def trusts_executable_bit(worktree: Path) -> bool:
+    """Whether Git takes a file's executable bit from the worktree: ``core.fileMode``, true
+    unless the repository sets it false."""
+    setting = git(worktree, "config", "--type=bool", "--get", "core.fileMode")
+    return setting.stdout.strip() != b"false"
 
-    A regular file is ``100755`` when its owner may execute it, Git's own rule, else ``100644``.
+
+def staged_regular_modes(worktree: Path, paths: list[str]) -> dict[str, str]:
+    """The mode the worktree's index records for each of ``paths`` it holds as a regular file."""
+    if not paths:
+        return {}
+    wanted = set(paths)
+    modes = {}
+    for entry in _output(worktree, "ls-files", "--stage", "-z").split(b"\0"):
+        fields, _, raw = entry.partition(b"\t")
+        mode, name = (
+            fields.partition(b" ")[0].decode(),
+            raw.decode("utf-8", "surrogateescape"),
+        )
+        if name in wanted and mode in ("100644", "100755"):
+            modes[name] = mode
+    return modes
+
+
+def path_mode(
+    worktree: Path, relative: str, staged: dict[str, str] | None = None
+) -> str | None:
+    """The file mode Git stages for one changed path of the worktree; ``None`` when it is gone.
+
+    A regular file is ``100755`` when its owner may execute it, else ``100644``. When the
+    repository does not trust the executable bit (``staged`` is given, see
+    ``staged_regular_modes``), Git's own rule applies instead: a file the index holds as a regular
+    file keeps the index's mode, and any other file is ``100644``.
     """
     path = worktree / relative
     if path.is_symlink():
         return "120000"
     if path.is_file():
+        if staged is not None:
+            return staged.get(relative, "100644")
         return "100755" if path.stat().st_mode & stat.S_IXUSR else "100644"
     if path.is_dir():  # a submodule
         return "160000"
     return None
 
 
-def _measured(worktree: Path, relative: str, ignored: set[str]) -> dict:
+def _measured(
+    worktree: Path, relative: str, ignored: set[str], staged: dict[str, str] | None
+) -> dict:
     """One changed path's entry; ``path_unreadable`` when the operating system refuses it.
 
-    A path in ``ignored`` (see ``ignored_paths``) is recorded as deleted.
+    A path in ``ignored`` (see ``ignored_paths``) is recorded as deleted. ``staged`` is as
+    ``path_mode`` takes it.
     """
     if relative in ignored:
         return {"path": recorded_path(relative), "mode": None, "digest": None}
     try:
-        mode, digest = path_mode(worktree, relative), path_digest(worktree, relative)
+        mode = path_mode(worktree, relative, staged)
+        digest = path_digest(worktree, relative)
+        # Neither a file, a symbolic link nor a directory, such as a FIFO, a socket or a
+        # device, has no Git file mode; only a path that is gone is measured as deleted.
+        unsupported = mode is None and os.path.lexists(worktree / relative)
     except OSError as error:
         raise MeasurementError(
             "path_unreadable",
             f"the changed path {recorded_path(relative)} cannot be read: {error}",
         ) from error
+    if unsupported:
+        raise MeasurementError(
+            "path_unreadable",
+            f"the changed path {recorded_path(relative)} is neither a file, a symbolic link "
+            "nor a directory, so it has no Git file mode",
+        )
     return {"path": recorded_path(relative), "mode": mode, "digest": digest}
 
 
@@ -288,7 +339,12 @@ def measure(worktree: Path, base: str) -> dict:
         .strip()
     )
     paths, ignored = _changes(worktree, base_commit)
-    changed = [_measured(worktree, path, ignored) for path in paths]
+    staged = (
+        None
+        if trusts_executable_bit(worktree)
+        else staged_regular_modes(worktree, paths)
+    )
+    changed = [_measured(worktree, path, ignored, staged) for path in paths]
     config_digest = configuration_digest(worktree)
     value = {
         "head": head,
@@ -361,6 +417,8 @@ __all__ = [
     "measure",
     "path_digest",
     "path_mode",
+    "staged_regular_modes",
+    "trusts_executable_bit",
     "real_path",
     "recorded_path",
     "sha256",

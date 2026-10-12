@@ -340,8 +340,8 @@ tree, it compares that tree with the readiness's measurement. Each path the read
 be staged with the mode it examined. Its content, passed through the smudge filters as a checkout
 passes it, must have the digest the readiness examined. Each other path must be staged as the base
 commit holds it. A filter that a checkout reverses, such as Git LFS, therefore passes. A filter
-that rewrites the content does not. Without `core.fileMode`, Git ignores the executable bit, and so
-does the comparison. When a path differs, the run fails `staged_unvalidated`, names every such
+that rewrites the content does not. The comparison always compares modes. The readiness examined
+the mode Git stages, even without `core.fileMode`. When a path differs, the run fails `staged_unvalidated`, names every such
 path and gives the index back. What the repository's attributes and filters do is the task level's
 to change.
 

@@ -38,6 +38,13 @@ is in the [contracts](contracts.md).
 
 ## Host checks
 
+### scenario.understanding.unbound-committed-specs — An unbound run reads the committed Specs
+
+- GIVEN a primary worktree whose uncommitted edit adds a Spec document to `module.a`
+- WHEN `understand` runs there unbound with `--modules module.a`
+- THEN the worker's grant comes from the Specs of the run's [unbound checkout](../../glossary.json#concept.unbound-checkout)
+- AND the grant does not name the uncommitted document
+
 ### scenario.understanding.unknown-module — An unknown Module fails the run
 
 - GIVEN a worker whose assessment names a Module identity the Specs of the worktree the run works on do not define
@@ -110,3 +117,4 @@ is in the [contracts](contracts.md).
 - GIVEN a reviewer whose finding cites an identity the bound Modules' Spec context does not define, or a `violation` without a basis
 - WHEN the Operation checks the review
 - THEN the result has status `failed` with `unresolved_basis` naming the finding
+- BUT a finding that cites a concept whose glossary entry the Spec context selects is not named, even when the concept's explanation lies outside the context's documents

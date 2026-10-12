@@ -11,7 +11,7 @@ the [contracts](contracts.md).
 - WHEN the caller runs `general --type specify` with an instruction to rewrite that Module's [Spec](../../glossary.json#concept.spec) document
 - THEN the worker may change the Module's Spec documents and nothing else
 - AND the result names the rewritten document as modified, with the kept diff and the earlier content
-- AND a separate reviewer, which may change nothing, receives the instruction, the diff and the earlier content
+- AND a separate reviewer, which may change nothing, receives the instruction, the workspace's goal, the diff and the earlier content
 - AND the result has status `ok` with the reviewer's findings and the verdict that follows from them
 
 ### scenario.general-work.instruction-file — An instruction file is kept as it was
@@ -27,6 +27,21 @@ the [contracts](contracts.md).
 - WHEN the reviewer reports a blocking `meaning` finding
 - THEN the result has status `ok` and the verdict `changes_required`
 - AND the worker's change stays in the worktree for the caller to keep, revise or revert
+
+### scenario.general-work.review-inputs — The reviewer reads the admitted inputs
+
+- GIVEN an earlier `ok` run of the same workspace whose output holds an answer
+- WHEN the caller runs `general` with `--input` naming that run and an instruction to summarize its answer
+- THEN the worker's brief carries that run's output as admitted material
+- AND the reviewer's brief carries the same material
+
+### scenario.general-work.reviewer-frozen-grant — The reviewer keeps the worker's grant
+
+- GIVEN a bound Module that uses another Module
+- WHEN a `general --type specify` worker breaks the bound Module's metadata, where that use is declared
+- THEN the reviewer still launches, under the grant the worker received with every writable level lowered to read
+- AND the reviewer's grant has the worker's [context identity](../../glossary.json#concept.context-identity) and still reads the used Module's Spec
+- AND the result has status `ok` with the reviewer's findings
 
 ### scenario.general-work.read-only-unbound — A read-only run works unbound
 

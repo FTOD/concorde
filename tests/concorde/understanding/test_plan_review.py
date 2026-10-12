@@ -349,6 +349,59 @@ class PlanReviewTests(unittest.TestCase):
         self.assertNotIn("F3", link["detail"])
         self.assertNotIn("F4", link["detail"])
 
+    @verifies("scenario.understanding.plan-unresolved-basis")
+    def test_a_selected_concept_is_a_basis_wherever_it_is_explained(self):
+        from tests.concorde.support.spec_project import update_module, upsert_concepts
+
+        # A no longer uses B, so B's documents leave A's Spec context, but A's own concept
+        # narrows B's concept.held, whose glossary entry the context therefore still selects.
+        update_module(self.worktree, "module.a", uses=[])
+        upsert_concepts(
+            self.worktree,
+            "specs/b/module.md",
+            [
+                {
+                    "id": "concept.held",
+                    "title": "Held",
+                    "owner": "module.b",
+                    "definition": "A thing B holds.",
+                },
+                {
+                    "id": "concept.other",
+                    "title": "Other",
+                    "owner": "module.b",
+                    "definition": "A thing A never names.",
+                },
+            ],
+        )
+        upsert_concepts(
+            self.worktree,
+            "specs/a/module.md",
+            [
+                {
+                    "id": "concept.answer",
+                    "title": "Answer",
+                    "owner": "module.a",
+                    "definition": "What A answers.",
+                    "narrows": ["concept.held"],
+                }
+            ],
+        )
+        self.write_plan(
+            findings=[
+                finding(1, basis="concept.held"),
+                finding(2, basis="concept.answer"),
+                finding(3, basis="concept.other"),
+            ]
+        )
+        _, envelope = self.review()
+        self.assertEqual("failed", envelope["status"], envelope)
+        link = link_at(envelope["error"], "operation")
+        self.assertEqual("unresolved_basis", link["code"])
+        self.assertIn("F3 cites concept.other", link["detail"])
+        self.assertNotIn("F1", link["detail"])
+        self.assertNotIn("F2", link["detail"])
+
     def test_a_plan_is_reviewed_only_in_a_workspace(self):
         path = self.write_plan()
         _, envelope = self.project.run(

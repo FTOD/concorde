@@ -287,6 +287,41 @@ class UnderstandTests(unittest.TestCase):
         self.assertEqual(1, len(record["rounds"]))
 
 
+class UnboundUnderstandTests(unittest.TestCase):
+    @verifies("scenario.understanding.unbound-committed-specs")
+    def test_an_unbound_run_reads_the_committed_specs_of_its_checkout(self):
+        from tests.concorde.support.spec_project import update_module
+
+        project = OperationProject(self)
+        root = project.root
+        # An uncommitted Spec edit of the primary worktree, which an unbound run never sees.
+        (root / "specs/a/draft.md").write_text("# Draft\n\nNot committed.\n")
+        metadata = json.loads((root / "specs/a/obligations.md.json").read_text())
+        metadata["document"]["id"] = "document.a.draft"
+        metadata["defines"] = []
+        (root / "specs/a/draft.md.json").write_text(json.dumps(metadata, indent=2))
+        owns = json.loads((root / "specs/a/module.md.json").read_text())["module"][
+            "owns"
+        ]
+        update_module(root, "module.a", owns=[*owns, "specs/a/draft.md"])
+        status, envelope = project.run(
+            "understand",
+            "--modules",
+            "module.a",
+            "--goal",
+            OperationProject.plan([{"result": {"output": assessment()}}]),
+            cwd=root,
+        )
+        self.assertEqual((0, "ok"), (status, envelope["status"]), envelope)
+        self.assertIsNone(envelope["workspace"])
+        record = read_record(root / ".concorde", envelope["worker_runs"][-1])
+        brief = (Path(record["run_directory"]) / "brief.md").read_text()
+        readable = brief.split("You may read these paths")[1].split("You may know")[0]
+        self.assertIn("/specs/a/module.md", readable)
+        self.assertNotIn("draft.md", brief)
+        self.assertNotIn(f"{root}/specs/a/module.md", readable)
+
+
 class ContractTests(unittest.TestCase):
     def test_the_output_schema_is_the_assessment_contract(self):
         text = (

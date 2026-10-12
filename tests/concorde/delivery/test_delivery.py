@@ -707,6 +707,23 @@ class DeliveryTests(unittest.TestCase):
         self.assertEqual((status, envelope["status"]), (0, "ok"), envelope)
         self.assertEqual(self.committed("src/a/extra.py"), "1 = ARTXE")
 
+    @verifies("scenario.delivery.untrusted-mode")
+    def test_without_core_file_mode_the_commit_holds_the_examined_mode(self):
+        git(self.worktree, "config", "core.fileMode", "false")
+        calc = self.worktree / "src/a/calc.py"
+        calc.write_text("def add(a, b):\n    return a + b\n")
+        calc.chmod(calc.stat().st_mode | 0o100)
+        status, envelope = self.project.deliver()
+        self.assertEqual((status, envelope["status"]), (0, "ok"), envelope)
+        [examined] = [
+            item
+            for item in self.saved_readiness(envelope)["inputs"]["changed"]
+            if item["path"] == "src/a/calc.py"
+        ]
+        listing = git(self.worktree, "ls-tree", "HEAD", "src/a/calc.py")
+        self.assertEqual("100644", examined["mode"])
+        self.assertTrue(listing.startswith("100644 "), listing)
+
     @verifies("scenario.delivery.stage-refused")
     def test_git_refuses_to_stage_a_change(self):
         # A required clean filter that fails refuses a new file while git add stages the others,

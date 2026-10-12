@@ -157,6 +157,14 @@ commit and output are defined in the [contracts](contracts.md).
 - THEN the result has status `ok`
 - AND the delivery commit holds the filtered content, which a checkout turns back into the content the readiness examined
 
+### scenario.delivery.untrusted-mode — Without core.fileMode, the commit holds the examined mode
+
+- GIVEN a ready workspace in a repository whose `core.fileMode` is false
+- AND a changed tracked file that the index holds as `100644` and that is executable in the worktree
+- WHEN the workspace is delivered
+- THEN the result has status `ok`
+- AND the delivery commit holds the file with the mode `100644`, which the readiness examined
+
 ### scenario.delivery.stage-refused — Git refuses to stage a change
 
 - GIVEN a workspace that is ready, with changes staged before the delivery, an intent-to-add path, a skip-worktree and an assume-unchanged flag
