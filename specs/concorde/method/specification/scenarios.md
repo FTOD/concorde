@@ -17,7 +17,8 @@ Concrete situations that show the [requirements](requirements.md) at work. The
 ### scenario.specification.missing-entry — A worker that binds a file that does not exist
 
 - GIVEN an intent that needs a new implementation file in a bound Module, which the task level has not created
-- WHEN the worker adds the file's path to the `entries` of one of the Module's realizations
+- AND a worker that adds the file's path to the `entries` of one of the Module's realizations, ends `ok` and leaves that entry in place through both repair rounds
+- WHEN the Operation validates the workspace after the last repair round
 - THEN validation reports `CHK.binds.exists` for the entry as a new error and the result has status `blocked`
 - BUT the file does not exist in the workspace after the run
 
@@ -51,10 +52,19 @@ Concrete situations that show the [requirements](requirements.md) at work. The
 - GIVEN an intent whose precise obligations belong in a new [Spec](../../glossary.json#concept.spec) document of role `implementation` (such as a contracts or scenarios document) of the bound Module, whose entry is `specs/a/module.md`
 - AND no file exists at `specs/a/rules.md` or `specs/a/rules.md.json`
 - WHEN the worker ends `blocked` proposing `specs/a/rules.md` for that Module
-- THEN the Operation creates `specs/a/rules.md` and its metadata, empty and owned by the Module, and adds it to the Module's `owns` and the registry mirror
+- THEN the Operation creates `specs/a/rules.md` with its metadata, owned by the Module, as a stub of the heading `# Rules` and one line linking to `module.md`
+- AND it adds the document to the Module's `owns` and the registry mirror
 - AND it launches a second worker whose brief names the created document, and that worker fills it
 - AND the result lists the document under `created_documents`, and the document, its metadata and the entry's metadata `specs/a/module.md.json` under `changed_documents`, with `document-created` evidence, and two worker runs
 - AND a document proposed below the entry's folder, such as `specs/a/details/rules.md`, is created the same way, linking to the entry as `../module.md`
+
+### scenario.specification.glossary-change — A glossary-only change names the Modules of its entries
+
+- GIVEN the glossary entry `concept.a.answer`, owned by the bound `module.a`, and no document of `module.b` that selects it
+- WHEN the worker changes only that entry's definition and ends `ok`
+- THEN the result's `changed_documents` is the project glossary alone
+- AND `affected_modules` names `module.a`, the entry's owner, whose [Spec context](../../glossary.json#concept.spec-context) carries it
+- BUT not `module.b`
 
 ### scenario.specification.document-refused — A proposal outside the bound Modules creates nothing
 
