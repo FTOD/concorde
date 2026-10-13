@@ -538,8 +538,10 @@ result after the `--check` commands it was given, unless they include it.
 
 [Distribution](../../distribution/module.md) promises that nothing merges before an update is
 validated. Otherwise, the checks a merge is given replace the default, so they could leave that
-validation out. A merge that validates clears the mark as any passing validation does. Thus, the
-merge of a task that repairs what the update found still lifts the barrier.
+validation out. A given check includes it when it runs `spec-validation` with no target, at most
+with `--format json`, through a `concorde` command, a `concorde.py` script or `python -m concorde`.
+A merge that validates clears the mark as any passing validation does. Thus, the merge of a task
+that repairs what the update found still lifts the barrier.
 
 ### req.tasks.merge-default-check — A merge without checks runs the Spec validation where it can
 

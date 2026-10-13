@@ -464,6 +464,7 @@ This illustrates [a merge running the Concorde it started with](requirements.md#
 - AND the latter check fails, so the merge is undone with `check_failed`
 - AND the task is delivered again
 - AND the mark stays
+- AND a merge whose given `--check` is `concorde spec-validation` itself runs it once, not twice
 - AND once the mark is gone, the same merge runs the given check alone
 
 ### scenario.tasks.merge-waits — A second merge waits for the first

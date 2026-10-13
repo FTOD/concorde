@@ -390,10 +390,34 @@ def with_update_check(primary: Path, commands: list[list[str]]) -> list[list[str
     if (
         parts.update_unvalidated(primary)
         and parts.spec_installed(primary)
-        and SPEC_VALIDATION not in commands
+        and not any(is_spec_validation(command) for command in commands)
     ):
         return [*commands, list(SPEC_VALIDATION)]
     return commands
+
+
+def is_spec_validation(argv: list[str]) -> bool:
+    """Whether ``argv`` is the project's Spec validation of the whole worktree: ``spec-validation``
+    with no target, at most ``--format json``, run by a ``concorde`` command, a ``concorde.py``
+    script or ``python -m concorde``, the forms in which a caller may name it."""
+    words = list(argv)
+    if words and Path(words[0]).name.startswith("python"):
+        words = words[1:]
+        if words[:2] == ["-m", "concorde"]:
+            words = words[2:]
+        elif words and Path(words[0]).name == "concorde.py":
+            words = words[1:]
+        else:
+            return False
+    elif words and Path(words[0]).name in ("concorde", "concorde.py"):
+        words = words[1:]
+    else:
+        return False
+    return words in (
+        ["spec-validation"],
+        ["spec-validation", "--format", "json"],
+        ["spec-validation", "--format=json"],
+    )
 
 
 def parse_checks(texts: list[str]) -> list[list[str]]:
@@ -1207,6 +1231,7 @@ __all__ = [
     "NO_CHECK",
     "SPEC_VALIDATION",
     "default_checks",
+    "is_spec_validation",
     "merge_task",
     "next_attempt",
     "parse_checks",
