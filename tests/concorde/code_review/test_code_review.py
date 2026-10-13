@@ -47,7 +47,7 @@ NO_ISSUES = [
 def without_issues():
     """Patch the reviews' ``concorde`` so that it offers no ``issues``."""
     return patch(
-        "concorde.method.review_issues.concorde_command", return_value=NO_ISSUES
+        "concorde.method.review_issues.started_concorde", return_value=NO_ISSUES
     )
 
 

@@ -24,8 +24,8 @@ it reports nowhere, and the Issue report of one finding.
 from __future__ import annotations
 
 import json
-import os
 import subprocess
+import sys
 import tempfile
 from collections.abc import Callable, Iterable, Mapping
 from pathlib import Path
@@ -33,7 +33,6 @@ from pathlib import Path
 from ..execution.context import RunContext, Stop, evidence
 from ..kernel.errors import link
 from ..workflows.output import step_output
-from ..workflows.step import concorde_command
 
 # The tiers and severities of the Issue report contract, weakest and most severe first; every tier
 # but the first is blocking.
@@ -120,19 +119,33 @@ def _absent(completed: subprocess.CompletedProcess, answer) -> bool:
     )
 
 
+def started_concorde(root: Path) -> list[str] | None:
+    """The ``concorde`` of the worktree the run started in: its installed command, or, in
+    Concorde's source checkout, its script run by this Python; None when it has neither."""
+    installed_command = root / ".concorde/bin/concorde"
+    if installed_command.is_file():
+        return [str(installed_command)]
+    script = root / "scripts/concorde.py"
+    if script.is_file():
+        return [sys.executable, str(script)]
+    return None
+
+
 def call(ctx: RunContext, *words: str) -> dict:
     """The answer of ``concorde issues <words> --root <started worktree>``; ``Absent`` where the
-    issues part is not installed, ``Refusal`` carrying the command's link when it refuses."""
+    issues part is not installed, ``Refusal`` carrying the command's link when it refuses or the
+    started worktree has no ``concorde`` of its own."""
     if installed(ctx) is False:
         raise Absent()
     root = Path(ctx.started_in)
-    command = concorde_command(root)
-    environment = dict(os.environ)
-    if command[1:3] == ["-m", "concorde"]:
-        # This package itself: make it importable for the child.
-        environment["PYTHONPATH"] = os.pathsep.join(
-            [str(Path(__file__).resolve().parents[2])]
-            + ([environment["PYTHONPATH"]] if environment.get("PYTHONPATH") else [])
+    command = started_concorde(root)
+    if command is None:
+        raise _failed(
+            f"the worktree {root} the run started in has neither its installed command "
+            ".concorde/bin/concorde nor a source checkout's scripts/concorde.py, so "
+            f"`concorde issues {' '.join(words)}` could not run",
+            "the review reaches the project's Issues only through the started worktree's own "
+            "concorde, never through another Concorde",
         )
     argv = [*command, "issues", *words, "--root", str(root)]
     shown = " ".join(argv)
@@ -140,7 +153,6 @@ def call(ctx: RunContext, *words: str) -> dict:
         completed = subprocess.run(
             argv,
             cwd=root,
-            env=environment,
             capture_output=True,
             text=True,
             timeout=TIMEOUT,

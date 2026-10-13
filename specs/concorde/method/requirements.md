@@ -188,6 +188,16 @@ their findings as
 
 Each review's own [Spec](../glossary.json#concept.spec) gives the shape.
 
+### req.method.issues-own-concorde — Issues are reached only through the started worktree's concorde
+
+`spec_panel`, `code_review` and `project_review` SHALL reach Issues only through the `concorde` of
+the worktree the run started in.
+
+That `concorde` is the worktree's installed command `.concorde/bin/concorde` or, in Concorde's
+source checkout, its `scripts/concorde.py`. When the worktree has neither, the review runs no other
+Concorde. Its call fails with `issues_command_failed`, and the review reports nothing outside the
+run.
+
 ### req.method.issues-absent-stated — Findings not recorded as Issues are said to be so
 
 Where the issues part is not installed, `spec_panel`, `code_review` and `project_review` SHALL

@@ -11,12 +11,15 @@ from __future__ import annotations
 
 import json
 import os
+import shlex
 import subprocess
+import sys
 from pathlib import Path
 from unittest.mock import patch
 
 from concorde.coordination.tasks import store
 from tests.concorde.support import runs
+from tests.concorde.support.paths import REPOSITORY_ROOT
 from tests.concorde.harness.workers.test_workers import WorkerProject
 
 
@@ -104,6 +107,23 @@ def claude_workers(root: Path) -> Path:
     return path
 
 
+def concorde_launcher(root: Path) -> Path:
+    """Commit the installed command ``.concorde/bin/concorde`` of ``root``, as an install commits
+    it, so that every worktree of the project runs its own ``concorde``: here this checkout's
+    package, by this Python."""
+    path = root / ".concorde/bin/concorde"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        "#!/bin/sh\n"
+        f"PYTHONPATH={shlex.quote(str(REPOSITORY_ROOT / 'src'))}"
+        "${PYTHONPATH:+:$PYTHONPATH} "
+        f'exec {shlex.quote(sys.executable)} -m concorde "$@"\n'
+    )
+    path.chmod(0o755)
+    commit(root, "install Concorde's command")
+    return path
+
+
 class OperationProject(WorkerProject):
     """``WorkerProject`` plus task and Operation helpers; ``home`` isolates deny rules. Its
     workers run on the fake ``claude``: the project's worker configuration chooses Claude
@@ -117,6 +137,7 @@ class OperationProject(WorkerProject):
         for key, value in (("user.name", "t"), ("user.email", "t@t")):
             subprocess.run(["git", "config", key, value], cwd=self.root, check=True)
         claude_workers(self.root)
+        concorde_launcher(self.root)
 
     def open_task(
         self, task_id: str = "t1", modules=("module.a",), goal="Fix A."
@@ -151,6 +172,7 @@ __all__ = [
     "OperationProject",
     "claude_workers",
     "commit",
+    "concorde_launcher",
     "link_at",
     "worker_error",
 ]

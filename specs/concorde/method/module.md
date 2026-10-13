@@ -641,7 +641,8 @@ in the run result with its tier. The result says that the findings were not reco
 
 They reach Issues only through the issues part's
 [bookkeeping command](../issues/interface.md#bookkeeping-command), `concorde issues` of the
-worktree the run started in. They never reach it through its code. The command takes JSON in and
+worktree the run started in: its installed command, or a source checkout's script. They never
+reach it through its code or through another Concorde. The command takes JSON in and
 out through these:
 
 - `list`.
