@@ -215,16 +215,34 @@ def operation(*arguments, **fields) -> Provider:
     )
 
 
-def interpreter_roots(interpreter: str, home: Path | None = None) -> tuple[Path, ...]:
+def interpreter_roots(
+    interpreter: str, home: Path | None = None, worktrees: tuple[Path, ...] = ()
+) -> tuple[Path, ...]:
     """What must be readable for a worker to run ``interpreter``.
 
     The sandbox makes a path readable at its real location, so the environment the interpreter
     belongs to and the installation it resolves to are not enough when the way between them
     passes through a symbolic link, such as uv's ``cpython-3.9-linux-x86_64-gnu`` pointing to
     ``cpython-3.9.25-linux-x86_64-gnu``: the directory holding each link on the way must be
-    readable too. A directory that is the home itself or holds it is never included.
+    readable too. ``/usr``, the home and a directory holding it, and each of ``worktrees`` and a
+    directory holding one, are never included: where such a directory holds a link on the way,
+    as a checkout holds its linked ``.venv``, the link itself is included instead.
     """
     home = Path(os.path.realpath(home or Path.home()))
+    protected = tuple(Path(os.path.realpath(worktree)) for worktree in worktrees)
+
+    def excluded(path: Path) -> bool:
+        """Whether ``path``, as given or resolved, is ``/usr`` or one of the protected
+        directories or holds one."""
+        return any(
+            spelling == Path("/usr")
+            or any(
+                spelling == root or spelling in root.parents
+                for root in (home, *protected)
+            )
+            for spelling in (path, Path(os.path.realpath(path)))
+        )
+
     roots = [Path(interpreter).parent.parent]
     pending = list(Path(interpreter).parts[1:])
     current = Path("/")
@@ -239,7 +257,7 @@ def interpreter_roots(interpreter: str, home: Path | None = None) -> tuple[Path,
         candidate = current / part
         if candidate.is_symlink():
             hops += 1
-            roots.append(current)
+            roots.append(candidate if excluded(current) else current)
             target = Path(os.readlink(candidate))
             if target.is_absolute():
                 current = Path("/")
@@ -250,13 +268,7 @@ def interpreter_roots(interpreter: str, home: Path | None = None) -> tuple[Path,
             current = candidate
     roots.append(Path(os.path.realpath(interpreter)).parent.parent)
     return tuple(
-        dict.fromkeys(
-            root
-            for root in roots
-            if root.exists()
-            and root != Path("/usr")
-            and not (root == home or root in home.parents)
-        )
+        dict.fromkeys(root for root in roots if root.exists() and not excluded(root))
     )
 
 
@@ -271,13 +283,18 @@ def runtime_readable(
 
     These are the ``configured`` runtime paths, relative to ``worktree`` or absolute, the step's
     own ``readable`` host material and, when the project names an ``interpreter`` that resolves,
-    its :func:`interpreter_roots`, whatever the configured runtime paths are. A path that does not
-    exist is left out.
+    its :func:`interpreter_roots`, whatever the configured runtime paths are, never the worktree,
+    its primary worktree or a directory holding either. A path that does not exist is left out.
     """
     paths = tuple(
         Path(path) if os.path.isabs(path) else worktree / path for path in configured
     ) + tuple(Path(path) for path in readable)
-    roots = interpreter_roots(interpreter, home) if interpreter is not None else ()
+    worktrees = (worktree, *filter(None, (layout.primary_worktree(worktree),)))
+    roots = (
+        interpreter_roots(interpreter, home, worktrees)
+        if interpreter is not None
+        else ()
+    )
     return tuple(path for path in paths if path.exists()) + roots
 
 

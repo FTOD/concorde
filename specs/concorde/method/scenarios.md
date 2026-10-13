@@ -165,6 +165,29 @@ the Operations that may run unbound, and the
 
 This illustrates [the interpreter's directories](requirements.md#req.method.interpreter-readable).
 
+### scenario.method.interpreter-linked-checkout — A worker launches in a checkout whose environment is a link
+
+- GIVEN a project whose configuration names the interpreter `.venv/bin/python` of its primary worktree, whose `.venv` links to an installation
+- WHEN an [unbound run](../glossary.json#concept.unbound-run) launches a worker in its [unbound checkout](../glossary.json#concept.unbound-checkout), which links `.venv` to the primary worktree's environment
+- THEN the worker launches and ends `ok`
+- AND its runtime paths hold the checkout's `.venv` link, the primary worktree's environment and the installation
+- BUT they hold neither the checkout, the primary worktree nor a directory that holds either
+
+This illustrates [the interpreter's directories](requirements.md#req.method.interpreter-readable)
+in a worktree whose environment is linked.
+
+### scenario.method.interpreter-own-environment — A worker launches in a task worktree with its own environment
+
+- GIVEN a project whose configuration names the interpreter `.venv/bin/python`
+- AND a task worktree that holds its own `.venv`, whose interpreter links to an installation
+- WHEN a worker-backed step launches a worker in that worktree
+- THEN the worker launches and ends `ok`
+- AND its runtime paths hold the worktree's environment and the installation
+- BUT they hold neither the task worktree, the primary worktree nor a directory that holds either
+
+This illustrates [the interpreter's directories](requirements.md#req.method.interpreter-readable)
+in a worktree with an environment of its own.
+
 ## The brownfield workflow
 
 ### scenario.method.brownfield-mutual-uses — Modules that use each other are described as a group

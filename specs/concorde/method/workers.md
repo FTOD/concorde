@@ -70,7 +70,19 @@ The step never adds these directories:
 - `/usr`.
 - The user's home directory.
 - A directory that holds the home directory, such as `/` or `/home`.
+- The worktree the step works in, such as a task worktree or an
+  [unbound checkout](../glossary.json#concept.unbound-checkout).
+- The primary worktree.
+- A directory that holds that worktree or the primary worktree.
 - A directory that does not exist.
+
+Each of these directories is excluded as given and with its symbolic links resolved. Workers
+refuses a runtime path that is or holds a worktree
+([Reading beside the grant](../worker-harness/workers/launch.md#reading-beside-the-grant)), and the
+grant already covers what the worker may read in its worktree. An excluded directory may hold a
+symbolic link on the way. In that case, the step adds the link itself instead. An example is the
+`.venv` link at the root of an unbound checkout, which leads to the primary worktree's
+environment. The step adds no link that is or holds one of the excluded directories.
 
 The step adds the interpreter's directories whatever the worker configuration's `runtime` sets.
 The configured runtime paths neither replace nor limit them. Like every runtime path, they are
