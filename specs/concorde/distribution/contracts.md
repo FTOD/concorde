@@ -318,9 +318,11 @@ For a refusal, `isError` is true.
 ### Calls
 
 The server runs none of its tools itself. It runs the `concorde` of a worktree.
-The server and the process of a call speak one **protocol**, numbered `2` today.
-Every [call object](#contract.distribution.mcp-call) names it as `protocol`.
-A change of the call object, of the answer line or of the reroute increments it.
+The server and the process of a call speak one **protocol**, numbered `1` today.
+Every [call object](#contract.distribution.mcp-call) names it as `protocol`. A call object that
+names none is of protocol `1`.
+A change of the call object, of the answer line or of the reroute that a server of the earlier
+protocol cannot read increments it.
 It chooses the program in this order:
 
 - When the worktree's `.concorde/bin/concorde` exists, it runs that program.
@@ -352,7 +354,7 @@ never commands for anyone else:
   The process performs these steps:
   - It reads the [call object](#contract.distribution.mcp-call) without `tool` as one JSON object
     on its standard input.
-  - When the call object names another `protocol` than its own, or none, it runs nothing. It
+  - When the call object names another `protocol` than its own, it runs nothing. It
     loads no part's code. It prints `{"error": <link>}` refusing the call with `host_outdated`.
     Every protocol reads that line the same way.
   - It loads the installed parts' registering code.
@@ -515,7 +517,7 @@ Long work goes on and keeps its locks until it ends.
     "where": "/home/dev/shop",
     "session": "4f6c2a1e-8b3d-4c5e-9f70-1a2b3c4d5e6f",
     "channel": true,
-    "protocol": 2,
+    "protocol": 1,
     "served": {"worktree": "primary", "long_work": true, "threaded": false},
     "long_work": {"call": "/tmp/concorde-project-mcp-x1y2z3/1-task_merge.log"}
   }
@@ -596,7 +598,7 @@ links of the [error contract](../kernel/tracing/contracts.md#contract.tracing.er
 | `invalid_input` | `input` | no part of the package registers the tool; the detail names the tools there are. With reason `environment`, the call's process received no readable call object or one without the session's provenance |
 | `invalid_answer` | `environment` | the tool's entry answered neither `value` nor `error` |
 | `start_failed` | `environment` | the operating system refused to start the command a long work's process was to become; its locks were released |
-| `host_outdated` | `environment` | the call object names another protocol than the call's process speaks, or none: the server started before an update changed that protocol; nothing ran, and the options are to reconnect the server with `/mcp` or to restart the session |
+| `host_outdated` | `environment` | the call object names another protocol than the call's process speaks: the server started before an update changed that protocol; nothing ran, and the options are to reconnect the server with `/mcp` or to restart the session |
 | `call_failed` | `environment` | the process of a call could not be started, exited or was stopped after its time without printing an answer, or asked twice to route the call otherwise; the detail names the command and worktree, its exit status and the end of what it printed |
 | any other code | `capability` | an unexpected error of the host, or of loading the installed parts' code, as a link built from the exception |
 

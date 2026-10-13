@@ -358,11 +358,12 @@ class RoutingTests(unittest.TestCase):
             "where": str(self.primary),
             "served": PLAIN,
         }
-        for protocol in (None, 1, tools.PROTOCOL + 1):
+        # A call object naming none is of protocol 1, the protocol of every server so far.
+        self.assertEqual(1, tools.PROTOCOL)
+        self.assertIn("value", tools.answer("locks", envelope)[0])
+        for protocol in (tools.PROTOCOL + 1, "1"):
             with self.subTest(protocol=protocol):
-                call = (
-                    envelope if protocol is None else {**envelope, "protocol": protocol}
-                )
+                call = {**envelope, "protocol": protocol}
                 with patch.object(tools.parts, "load") as load:
                     reply, handover = tools.answer("task_list", call)
                 load.assert_not_called()

@@ -540,7 +540,7 @@ since the session then lists them again ([listed](#req.distribution.mcp-tools-li
 
 ### req.distribution.mcp-host-protocol — A server of another protocol is refused
 
-When the call object of a call names another protocol between the server and the process of a call than the answering Concorde's, or none, the process of the call SHALL run nothing and refuse the call with `host_outdated`, naming reconnecting the server or restarting the session.
+When the call object of a call names another protocol between the server and the process of a call than the answering Concorde's, a call object naming none being of protocol 1, the process of the call SHALL run nothing and refuse the call with `host_outdated`, naming reconnecting the server or restarting the session.
 
 The server keeps its own code for the whole session ([Serving a call](module.md#serving-a-call)),
 so an update that changes that protocol cannot be served to a running server. No older protocol is

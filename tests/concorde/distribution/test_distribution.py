@@ -903,7 +903,7 @@ class PartsTests(unittest.TestCase):
             "arguments": {},
             "primary": str(project),
             "where": str(project),
-            "protocol": 2,
+            "protocol": 1,
         }
         answered = framework_command(
             project, "project-mcp", "--call", "issue_list", stdin=json.dumps(call)

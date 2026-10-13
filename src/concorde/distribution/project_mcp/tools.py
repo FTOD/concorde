@@ -30,9 +30,10 @@ from .. import formats, parts
 
 ACTOR = "Concorde project MCP server"
 # The protocol between the server and the process of a call, which every call object names: a
-# change of the call object, the answer or the reroute increments it. A call object that names
-# none is of protocol 1, the protocol before the call objects named theirs.
-PROTOCOL = 2
+# change of the call object, the answer or the reroute that a server of the earlier protocol
+# cannot read increments it. A call object that names none is of protocol 1, the protocol before
+# the call objects named theirs, which the added field alone does not change.
+PROTOCOL = 1
 # Opens the server's instructions; each installed part adds its own sentence.
 INSTRUCTIONS = (
     "Concorde's project MCP server: the tools the project's installed Concorde parts register, "
