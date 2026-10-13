@@ -338,21 +338,15 @@ def parent_reading(text: str, children: list[dict]) -> str:
         f"{' '.join(child['purpose'].split())}\n\n"
         for child in children
     )
+    from ...spec.syntax import sections
+
     lines = text.splitlines(keepends=True)
-    start = next(
-        (index for index, line in enumerate(lines) if line.strip() == "## Parts"),
-        None,
-    )
-    if start is None:
+    # Spec core's own reading of the Markdown finds the section: a heading with an explicit
+    # anchor counts, and a heading-like line inside a fenced example does not.
+    found = [(first, last) for title, first, last in sections(text) if title == "Parts"]
+    if not found:
         return text.rstrip("\n") + "\n\n## Parts\n\n" + paragraphs.rstrip("\n") + "\n"
-    end = next(
-        (
-            index
-            for index in range(start + 1, len(lines))
-            if lines[index].startswith("## ")
-        ),
-        len(lines),
-    )
+    start, end = found[0][0] - 1, found[0][1]
     section = "".join(lines[start:end]).replace(INIT_PARTS, SCAFFOLDED_PARTS, 1)
     before = ("".join(lines[:start]) + section).rstrip("\n") + "\n\n"
     after = "".join(lines[end:])
@@ -645,6 +639,7 @@ def unrestored(root: Path, changes: list[dict]) -> list[str]:
 def apply(ctx: RunContext):
     """Step 4: one file transaction, kept only when validation finds no new error."""
     from ...spec.changes import apply_files
+    from ...spec.errors import system_cause
     from ...spec.repository_base import SpecError
     from ...spec.validation import validate_repository
 
@@ -671,18 +666,65 @@ def apply(ctx: RunContext):
                 "scaffold_invalid",
             )
 
-    folders = {Path(change["path"]).parent for change in changes}
-    missing = {folder for folder in folders if not (ctx.worktree / folder).exists()}
+    made: list[Path] = []
+
+    def remove_made():
+        """Remove the child folders this attempt created, when they are empty again."""
+        for folder in reversed(made):
+            try:
+                (ctx.worktree / folder).rmdir()
+            except OSError:
+                pass
+
+    # Each child's folder is created here, exclusively: one that appeared after the recheck is
+    # a stale proposal, never reused (req.scaffold.no-overwrite).
+    for item in record["created"]:
+        folder = Path(item["entry"]).parent
+        try:
+            (ctx.worktree / folder).mkdir()
+        except FileExistsError:
+            remove_made()
+            return ctx.fail(
+                "blocked",
+                "stale_proposal",
+                f"The folder {folder.as_posix()}/ of {item['id']} appeared after the recheck; "
+                "nothing was written.",
+                f"the scaffold would create the folder {folder.as_posix()}/ for {item['id']}, "
+                f"but it exists in {ctx.worktree} since the proposal was checked again",
+                reason="decision",
+                explanation="the scaffold creates files only in folders it creates, so it "
+                "never writes into a folder that already exists",
+                evidence=[evidence("exists", folder.as_posix() + "/", "")],
+                causes=[
+                    mismatch(
+                        f"{folder.as_posix()}/ exists in {ctx.worktree}",
+                        "Scaffold apply",
+                    )
+                ],
+                options=["remove the folder or survey again with another identity"],
+            )
+        except OSError as problem:
+            remove_made()
+            return write_failed(
+                ctx,
+                record,
+                changes,
+                [],
+                SpecError(
+                    f"creating the folder {folder.as_posix()}/ failed; nothing was written",
+                    "system_error",
+                    path=folder.as_posix(),
+                    causes=[system_cause(problem, path=folder.as_posix())],
+                ),
+                [],
+            )
+        made.append(folder)
     try:
         apply_files(
             ctx.worktree, changes, {change["path"] for change in changes}, verify=verify
         )
     except SpecError as error:
-        for folder in sorted(missing, key=lambda item: len(item.parts), reverse=True):
-            try:
-                (ctx.worktree / folder).rmdir()
-            except OSError:
-                pass
+        remove_made()
         left = unrestored(ctx.worktree, changes)
         if left or error.code not in {"scaffold_invalid", "stale_proposal"}:
             return write_failed(ctx, record, changes, left, error, new)

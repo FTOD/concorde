@@ -512,6 +512,19 @@ class AdoptionTests(AdoptionCase):
             {"docs/.nojekyll": []},
             narrowed_entries(root, ["docs/.nojekyll"], ["docs/", "docs/.nojekyll"]),
         )
+        # An explicitly bound directory the child's directory entry skips stays with the
+        # parent too; one it does not skip goes to the child.
+        for path in ("src/.private/helper.py", "src/pkg/mod.py", "src/main.py"):
+            (root / path).parent.mkdir(parents=True, exist_ok=True)
+            (root / path).write_text("x\n")
+        self.assertEqual(
+            {"src/": [], "src/.private/": ["src/.private/"], "src/pkg/": []},
+            narrowed_entries(root, ["src/", "src/.private/", "src/pkg/"], ["src/"]),
+        )
+        self.assertEqual(
+            {"src/.private/": []},
+            narrowed_entries(root, ["src/.private/"], ["src/", "src/.private/"]),
+        )
         # Vendored code takes everything inside it, the dot files a directory entry skips too.
         (root / "docs/_themes").mkdir(exist_ok=True)
         (root / "docs/_themes/.gitignore").write_text("x\n")

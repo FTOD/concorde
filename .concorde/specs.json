@@ -1491,7 +1491,8 @@
             "concept.execution-runner",
             "concept.run-result",
             "req.execution.inputs-same-workspace",
-            "contract.execution.run-result"
+            "contract.execution.run-result",
+            "req.execution.one-result"
           ]
         },
         {
@@ -1527,6 +1528,11 @@
           "kind": "document",
           "target": "document.tracing.contracts",
           "reason": "the Framework's error contract, which this Module's errors follow"
+        },
+        {
+          "kind": "document",
+          "target": "document.execution.runner",
+          "reason": "the runner's refusals before the first step and its handling of cancellation, which this Module's error interface delegates to"
         }
       ],
       "participates": []
