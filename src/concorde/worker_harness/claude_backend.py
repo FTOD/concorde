@@ -9,6 +9,7 @@ record gives the session, the structured output or Claude Code's own error.
 from __future__ import annotations
 
 import ipaddress
+import itertools
 import json
 import os
 import shutil
@@ -47,6 +48,9 @@ ENVELOPE_KEPT = (
     "modelUsage",
     "duration_api_ms",
 )
+# From this version on, Claude Code restores a resumed session's saved totals, so the cost a resumed
+# round's envelope reports holds the session's earlier spend too.
+RESTORES_TOTALS = (2, 1, 277)
 
 
 class BackendRefusal(Exception):
@@ -58,6 +62,15 @@ class BackendRefusal(Exception):
         self.detail = detail
         self.reason = reason
         self.explanation = explanation
+
+
+@dataclass(frozen=True)
+class RoundLimits:
+    """What a round may still use of its run's limits: turns, and dollars when the run has a
+    budget (launch.md#limits)."""
+
+    max_turns: int
+    max_budget_usd: float | None
 
 
 @dataclass
@@ -90,6 +103,19 @@ def _amount(value) -> float | None:
     if isinstance(value, (int, float)) and not isinstance(value, bool) and value >= 0:
         return float(value)
     return None
+
+
+def restores_totals(version) -> bool:
+    """Whether the Claude Code ``version`` the stream named restores a resumed session's totals."""
+    if not isinstance(version, str):
+        return False
+    parts = []
+    for part in version.strip().split(" ")[0].split("."):
+        digits = "".join(itertools.takewhile(str.isdigit, part))
+        if not digits:
+            break
+        parts.append(int(digits))
+    return len(parts) >= 3 and tuple(parts[:3]) >= RESTORES_TOTALS
 
 
 def _tail(data: bytes, size: int = 4000) -> str:
@@ -216,12 +242,19 @@ def proxy_environment(host: dict[str, str] | None = None) -> dict[str, str]:
 
 
 class ClaudeStream:
-    """Reads one round's ``stream-json`` output."""
+    """Reads one round's ``stream-json`` output.
 
-    def __init__(self):
+    ``totals`` maps each session of the run to the cost the latest envelope of that session
+    reported, which the stream updates; ``resumed`` is the session the round resumes, if any."""
+
+    def __init__(self, totals: dict | None = None, resumed: str | None = None):
         # The session the output named so far, such as in its first ``system`` record, before
         # the round's envelope confirms it.
         self.session: str | None = None
+        self.totals = {} if totals is None else totals
+        self.resumed = resumed
+        # The Claude Code version the stream's init record named.
+        self.version: str | None = None
 
     def feed(self, line: str) -> list[tuple[str, dict]]:
         """The tool uses this line reports, as ``(tool, input)`` pairs."""
@@ -233,6 +266,9 @@ class ClaudeStream:
             return []
         if isinstance(record.get("session_id"), str) and record["session_id"]:
             self.session = record["session_id"]
+        if record.get("type") == "system" and record.get("subtype") == "init":
+            version = record.get("claude_code_version")
+            self.version = version if isinstance(version, str) else None
         if record.get("type") != "assistant":
             return []
         content = (record.get("message") or {}).get("content")
@@ -250,7 +286,10 @@ class ClaudeStream:
         if envelope:
             concluded.session = envelope.get("session_id")
             concluded.info = {
-                "claude": {key: envelope.get(key) for key in ENVELOPE_KEPT}
+                "claude": {
+                    **{key: envelope.get(key) for key in ENVELOPE_KEPT},
+                    "claude_code_version": self.version,
+                }
             }
             used = (
                 envelope.get("usage") if isinstance(envelope.get("usage"), dict) else {}
@@ -260,7 +299,7 @@ class ClaudeStream:
                 "tokens_out": _count(used.get("output_tokens")),
                 "tokens_cache_read": _count(used.get("cache_read_input_tokens")),
                 "tokens_cache_write": _count(used.get("cache_creation_input_tokens")),
-                "cost_usd": _amount(envelope.get("total_cost_usd")),
+                "cost_usd": self._own_cost(_amount(envelope.get("total_cost_usd"))),
                 "turns": _count(envelope.get("num_turns")),
             }
             concluded.result = envelope.get("structured_output")
@@ -268,6 +307,9 @@ class ClaudeStream:
         # A round that ended without its envelope, such as one killed at its deadline, still
         # names the session its output announced last.
         concluded.session = concluded.session or self.session
+        reported = _amount(envelope.get("total_cost_usd")) if envelope else None
+        if concluded.session and reported is not None:
+            self.totals[concluded.session] = reported
         concluded.failure = claude_failure(outcome, envelope)
         concluded.exhausted = bool(
             concluded.failure
@@ -279,12 +321,30 @@ class ClaudeStream:
                 concluded.transient = message
         return concluded
 
+    def _own_cost(self, reported: float | None) -> float | None:
+        """The round's own cost: the cost its envelope reported, less the total the session's
+        earlier round reported when this Claude Code restored it on resume (launch.md#limits).
+        A reported cost below that total was not restored and counts whole."""
+        earlier = self.totals.get(self.resumed) if self.resumed else None
+        if (
+            reported is None
+            or earlier is None
+            or reported < earlier
+            or not restores_totals(self.version)
+        ):
+            return reported
+        return round(reported - earlier, 10)
+
 
 class ClaudeBackend:
     name = "claude"
     failure_code = "claude_failed"
     process = "Claude Code"
     missing_command = "Workers cannot install or repair the claude command; set CONCORDE_CLAUDE or PATH"
+
+    def __init__(self):
+        # The cost the latest envelope of each session of the run reported.
+        self.totals: dict[str, float] = {}
 
     def tools(self, task_type: str, grant: dict | None = None) -> str:
         return tool_set(TOOL_SETS, task_type, grant)
@@ -357,7 +417,7 @@ class ClaudeBackend:
         return environment
 
     def command(
-        self, request, paths, schema_text: str, session: str | None
+        self, request, paths, schema_text: str, session: str | None, limits: RoundLimits
     ) -> list[str]:
         command = [
             self.executable(request),
@@ -376,10 +436,10 @@ class ClaudeBackend:
             "--allow-dangerously-skip-permissions",
             "--strict-mcp-config",
             "--max-turns",
-            str(request.max_turns),
+            str(limits.max_turns),
         ]
-        if request.max_budget_usd is not None:
-            command += ["--max-budget-usd", str(request.max_budget_usd)]
+        if limits.max_budget_usd is not None:
+            command += ["--max-budget-usd", f"{limits.max_budget_usd:.2f}"]
         if request.local_model:
             command += ["--model", request.local_model]
         if request.reasoning:
@@ -388,8 +448,12 @@ class ClaudeBackend:
             command += ["--resume", session]
         return command
 
-    def stream(self) -> ClaudeStream:
-        return ClaudeStream()
+    def round_environment(self, limits: RoundLimits) -> dict[str, str]:
+        """The round's own variables: none, since the command line carries its limits."""
+        return {}
+
+    def stream(self, session: str | None = None) -> ClaudeStream:
+        return ClaudeStream(self.totals, session)
 
     def transcript(self, paths, session: str | None) -> str | None:
         if not session:
@@ -403,6 +467,7 @@ __all__ = [
     "BackendRefusal",
     "ClaudeBackend",
     "ClaudeStream",
+    "RoundLimits",
     "RoundOutcome",
     "claude_failure",
     "envelope_of",

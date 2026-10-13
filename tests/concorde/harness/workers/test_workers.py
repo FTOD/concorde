@@ -19,7 +19,11 @@ from unittest.mock import patch
 from concorde.kernel.errors import ERROR_SCHEMA
 from concorde.worker_harness import runs as worker_runs
 from concorde.worker_harness import write_hook
-from concorde.worker_harness.claude_backend import ClaudeStream, proxy_environment
+from concorde.worker_harness.claude_backend import (
+    ClaudeStream,
+    proxy_environment,
+    restores_totals,
+)
 from concorde.worker_harness.settings import (
     RunPaths,
     SettingsError,
@@ -2088,7 +2092,7 @@ class WorkerRunTests(unittest.TestCase):
             for fence in text.split("```concorde-contract\n")[1:]
             if '"contract.workers.worker-round-trace"' in fence.split("```", 1)[0]
         ]
-        self.assertEqual(6, contract["version"])
+        self.assertEqual(7, contract["version"])
         validate(contract["example"], contract["schema"])
         self.assertEqual(
             sorted(contract["schema"]["required"]),
@@ -2139,6 +2143,214 @@ class RetryRuleTests(unittest.TestCase):
         for _ in range(50):
             self.assertTrue(5 <= retry_delay(request, 1) <= 10)
             self.assertTrue(20 <= retry_delay(request, 3) <= 40)
+
+
+def given(call: dict) -> tuple[str, str | None]:
+    """The turns and budget a fake round's command line gave it."""
+    argv = call["argv"]
+    budget = (
+        argv[argv.index("--max-budget-usd") + 1] if "--max-budget-usd" in argv else None
+    )
+    return argv[argv.index("--max-turns") + 1], budget
+
+
+class RunLimitTests(unittest.TestCase):
+    """max_turns and max_budget_usd bound the whole run: each round gets only what is left."""
+
+    def setUp(self):
+        self.project = WorkerProject(self, linked=True)
+        self.flag = f"{self.project.root}/src/a/flag"
+
+    def round(self, flag: str, turns: int, cost: float, **step) -> dict:
+        envelope = {"num_turns": turns, "total_cost_usd": cost}
+        envelope.update(step.pop("envelope", {}))
+        return {"writes": {self.flag: flag}, "envelope": envelope, **step}
+
+    @verifies("scenario.workers.limits-per-run")
+    def test_each_round_gets_what_the_earlier_rounds_left(self):
+        record = self.project.run(
+            [
+                self.round("bad", 4, 0.3, version="2.1.296"),
+                self.round(
+                    "ok",
+                    3,
+                    0.55,
+                    version="2.1.296",
+                    envelope={"session_id": "fake-session-1"},
+                ),
+            ],
+            max_turns=10,
+            max_budget_usd=1.0,
+        )
+        self.assertEqual("ok", record["status"], record["error"])
+        first, second = self.project.rounds(record)
+        self.assertEqual(("10", "1.00"), given(first))
+        # The resumed round's envelope holds the session's earlier 0.3 USD too.
+        self.assertEqual(("6", "0.70"), given(second))
+        self.assertIn("fake-session-1", second["argv"])
+        self.assertEqual(
+            [(4, 0.3), (3, 0.25)],
+            [
+                (item["usage"]["turns"], round(item["usage"]["cost_usd"], 6))
+                for item in record["rounds"]
+            ],
+        )
+        self.assertEqual(0.55, record["rounds"][1]["claude"]["total_cost_usd"])
+        self.assertEqual(
+            "2.1.296", record["rounds"][1]["claude"]["claude_code_version"]
+        )
+
+    @verifies("scenario.workers.limits-resumed-cost")
+    def test_a_claude_code_that_restores_no_totals_counts_a_resumed_cost_whole(self):
+        for version in ("2.1.276", None):
+            with self.subTest(version=version):
+                options = {} if version is None else {"version": version}
+                record = self.project.run(
+                    [
+                        self.round("bad", 1, 0.3, **options),
+                        self.round(
+                            "bad",
+                            1,
+                            0.35,
+                            envelope={"session_id": "fake-session-1"},
+                            **options,
+                        ),
+                        self.round("ok", 1, 0.1),
+                    ],
+                    max_budget_usd=1.0,
+                )
+                self.assertEqual("ok", record["status"], record["error"])
+                calls = self.project.rounds(record)
+                self.assertEqual(
+                    ["1.00", "0.70", "0.35"], [given(call)[1] for call in calls]
+                )
+                self.assertEqual(0.35, record["rounds"][1]["usage"]["cost_usd"])
+
+    @verifies("scenario.workers.limits-cumulative")
+    def test_rounds_each_within_the_budget_stop_once_the_run_spent_it(self):
+        record = self.project.run(
+            [
+                self.round("bad", 2, 0.6, version="2.1.296"),
+                {
+                    "no_structured": True,
+                    "version": "2.1.296",
+                    "envelope": {
+                        "session_id": "fake-session-1",
+                        "subtype": "error_max_budget_usd",
+                        "num_turns": 2,
+                        "total_cost_usd": 1.05,
+                    },
+                },
+            ],
+            max_budget_usd=1.0,
+        )
+        error = record["error"]
+        self.assertEqual(
+            ("worker_limit_reached", "exhausted"),
+            (error["code"], error["unhandled"]["reason"]),
+        )
+        self.assertEqual(("198", "0.40"), given(self.project.rounds(record)[1]))
+        self.assertIn("the round was given 198 turn(s) and 0.40 USD", error["detail"])
+        self.assertIn("1.05 USD of max_budget_usd 1.0", error["detail"])
+        self.assertIn("bound the whole run", error["unhandled"]["explanation"])
+        [cause] = error["causes"]
+        self.assertEqual("claude_error_max_budget_usd", cause["code"])
+
+    @verifies("scenario.workers.limits-nothing-left")
+    def test_no_resume_round_starts_when_nothing_is_left(self):
+        record = self.project.run([self.round("bad", 5, 0.1)], max_turns=5)
+        self.assertEqual(1, len(record["rounds"]))
+        self.assertEqual(1, len(self.project.rounds(record)))
+        error = record["error"]
+        self.assertEqual(
+            ("worker_limit_reached", "exhausted"),
+            (error["code"], error["unhandled"]["reason"]),
+        )
+        self.assertIn("no resume round was started", error["detail"])
+        self.assertIn("no turn is left", error["detail"])
+        self.assertIn("used 5 of max_turns 5", error["detail"])
+        self.assertIn("check.a", json.dumps(error["causes"]))
+        node = json.loads(
+            (Path(record["run_directory"]) / "rounds/1/trace.json").read_text()
+        )
+        self.assertEqual("limit_reached", node["outcome"])
+
+    @verifies("scenario.workers.limits-nothing-left")
+    def test_less_than_a_cent_left_is_no_budget(self):
+        record = self.project.run([self.round("bad", 1, 0.995)], max_budget_usd=1.0)
+        self.assertEqual("worker_limit_reached", record["error"]["code"])
+        self.assertIn("no budget is left", record["error"]["detail"])
+
+    @verifies("scenario.workers.limits-nothing-left")
+    def test_a_repair_left_to_the_caller_ends_ok_when_nothing_is_left(self):
+        record = self.project.run(
+            [self.round("ok", 5, 0.1)],
+            max_turns=5,
+            round_validation=lambda *_: RoundValidation(repair="tidy up"),
+        )
+        self.assertEqual("ok", record["status"], record["error"])
+        self.assertEqual(1, len(record["rounds"]))
+
+    @verifies("scenario.workers.limits-nothing-left")
+    def test_no_retry_round_starts_when_nothing_is_left(self):
+        record = self.project.run(
+            [
+                {
+                    "no_structured": True,
+                    "envelope": {
+                        "subtype": "error_during_execution",
+                        "is_error": True,
+                        "result": "API Error: 529 overloaded",
+                        "num_turns": 3,
+                    },
+                }
+            ],
+            check_modules=None,
+            max_turns=3,
+        )
+        self.assertEqual(1, len(record["rounds"]))
+        error = record["error"]
+        self.assertEqual("worker_limit_reached", error["code"])
+        self.assertIn("no retry round was started", error["detail"])
+        self.assertFalse(record["rounds"][0]["transient"]["retried"])
+        [cause] = error["causes"]
+        self.assertEqual("claude_error_during_execution", cause["code"])
+
+    def test_the_budget_left_is_rounded_down_to_whole_cents(self):
+        request = WorkerRequest(
+            worktree=Path("/w"),
+            task_type="implement",
+            grant={},
+            instructions="",
+            max_turns=40,
+            max_budget_usd=2.0,
+        )
+        rounds = [
+            {"usage": {"turns": 3, "cost_usd": 0.0159671}},
+            {"usage": {"turns": 3, "cost_usd": 0.0069757}},
+            {"usage": {"turns": None, "cost_usd": None}},
+        ]
+        self.assertEqual(
+            workers_module.RoundLimits(34, 1.97),
+            workers_module.limits_left(request, rounds),
+        )
+        request.max_budget_usd = None
+        self.assertIsNone(workers_module.limits_left(request, rounds).max_budget_usd)
+
+    def test_only_a_claude_code_that_restores_totals_is_told_apart(self):
+        for version, restores in (
+            ("2.1.277", True),
+            ("2.1.296 (Claude Code)", True),
+            ("2.2.0", True),
+            ("3.0.1-beta", True),
+            ("2.1.276", False),
+            ("1.9.999", False),
+            ("2.1", False),
+            ("", False),
+            (None, False),
+        ):
+            with self.subTest(version=version):
+                self.assertEqual(restores, restores_totals(version))
 
 
 if __name__ == "__main__":

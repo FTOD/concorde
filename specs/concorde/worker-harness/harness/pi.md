@@ -40,7 +40,7 @@ The policy also holds these items:
 
 - The sandbox's filesystem configuration.
 - The programs `rg` and `fd`.
-- The limits.
+- The run's limits, `max_turns` and `max_budget_usd`.
 - The [worker result](../../glossary.json#concept.worker-result) schema.
 
 The extension registers exactly these tools, replacing pi's built-ins of the same name:
@@ -163,10 +163,20 @@ ends, the extension resets the sandbox. The process therefore exits.
 
 ### Limits
 
-pi has no turn or budget limit of its own. The extension counts completed turns. It also adds up
-the cost each assistant message reports. When either exceeds `max_turns` or `max_budget_usd`, the
-extension appends a session entry of the custom type `concorde-limit`. The entry names the limit
-and the value reached. The extension then aborts the run.
+pi has no turn or budget limit of its own. The run's limits bound the whole worker run, so each
+round may use only what the earlier rounds left ([Limits](../workers/launch.md#limits)). The host
+passes that in the variable `CONCORDE_ROUND_LIMITS` as JSON, `{"maxTurns": <n>, "maxBudgetUsd": <x
+or null>}`. The extension reads the variable when pi loads it. It applies the lower of each limit
+there and the run's own limit in the policy. A round therefore never gets more than the run's
+limits. The variable is malformed when it is no JSON object or lacks a valid limit. A valid turn
+limit is a whole number of at least zero. A valid budget is null or a number of at least zero. When
+the variable is missing or malformed, the extension allows no turn and no cost. The round then
+stops at its first turn or at its first priced message.
+
+The extension counts the round's completed turns. It also adds up the cost each assistant message
+reports. When either exceeds the round's turns or budget, the extension appends a session entry of
+the custom type `concorde-limit`. The entry names the limit, the value reached and the round's
+maximum. The extension then aborts the run.
 
 ## Tool sets
 

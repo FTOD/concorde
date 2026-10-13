@@ -924,7 +924,9 @@
             "req.workers.pi-file-tools",
             "req.workers.pi-sandbox",
             "req.workers.pi-only-extension",
-            "req.workers.pi-limits"
+            "req.workers.pi-limits",
+            "req.workers.pi-round-limits",
+            "req.workers.limits-left-passed"
           ]
         }
       ],

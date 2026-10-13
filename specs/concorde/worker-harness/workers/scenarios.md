@@ -632,6 +632,54 @@ the run. [The run mechanics](launch.md) give these exact details:
 - AND the run ends `failed` with `claude_failed` after that one round
 - AND the round's node records the error as not retried
 
+## Limits
+
+### scenario.workers.limits-per-run — Each round gets what the earlier rounds left
+
+- GIVEN a worker on the Claude Code backend whose worker configuration sets `max_turns` to 10
+- AND it sets `max_budget_usd` to 1
+- AND its first round uses 4 turns and 0.30 USD and leaves a check failing
+- WHEN the host starts the resume round
+- THEN the first round's command gave `--max-turns 10` and `--max-budget-usd 1.00`
+- AND the resume round's command gives `--max-turns 6` and `--max-budget-usd 0.70`
+- AND when the resume round's envelope reports 0.55 USD on Claude Code 2.1.296, the round's usage
+  holds 0.25 USD
+- AND the round's content keeps the reported 0.55 USD and the Claude Code version
+
+### scenario.workers.limits-resumed-cost — A resumed round counts only its own cost
+
+- GIVEN a worker on the Claude Code backend whose session is resumed in a repair round
+- WHEN the Claude Code version that the stream names restores session totals
+- THEN the round's usage holds the reported cost less the cost the session's previous round
+  reported
+- AND its turns are the turns the round's envelope reports
+- BUT when the version is older or the stream names none, the round's usage holds the reported cost
+  whole
+- AND the next round gets the budget left after that whole cost
+
+### scenario.workers.limits-cumulative — Rounds that each stay within the budget stop once the run spent it
+
+- GIVEN a worker on the Claude Code backend whose `max_budget_usd` is 1
+- AND its first round costs 0.60 USD and leaves a check failing
+- WHEN its resume round, given 0.40 USD, ends with `error_max_budget_usd` after 0.45 USD more
+- THEN the run ends `failed` with `worker_limit_reached` and the reason `exhausted`
+- AND the detail names what the round was given
+- AND the detail names the 1.05 USD that the run's rounds used of `max_budget_usd`
+- AND the explanation says that the limits bound the whole run
+- AND neither round alone cost more than the budget
+
+### scenario.workers.limits-nothing-left — No round starts without turns or budget left
+
+- GIVEN a worker whose earlier rounds used every turn of `max_turns`, or left less than a cent of
+  `max_budget_usd`
+- WHEN its round validation reports a repair that fails the run
+- THEN the host starts no resume round
+- AND the run ends `failed` with `worker_limit_reached` and the round validation's causes
+- AND the last round's node has the outcome `limit_reached`
+- BUT a repair that does not fail the run ends the run `ok`
+- AND after a transient model-service error, the host starts no retry round either
+- AND that run ends `failed` with `worker_limit_reached` and the agent process's link
+
 ## The pi backend
 
 ### scenario.workers.pi-fenced-run — A pi worker is fenced by the same grant
@@ -727,7 +775,7 @@ the run. [The run mechanics](launch.md) give these exact details:
 
 ### scenario.workers.pi-budget-limit — A pi run over its budget stops
 
-- GIVEN the permission extension of a pi worker whose `max_budget_usd` is set
+- GIVEN the permission extension of a pi worker whose round was given a budget
 - WHEN the costs its assistant messages report add up to more than that budget
 - THEN the permission extension appends a `concorde-limit` entry naming the budget
 - AND the entry names the cost reached
@@ -738,7 +786,7 @@ the run. [The run mechanics](launch.md) give these exact details:
 
 ### scenario.workers.pi-limit — A pi run over its turn limit stops
 
-- GIVEN a pi worker whose turns exceed `max_turns`
+- GIVEN a pi worker whose turns exceed the turns its round was given
 - WHEN the [permission extension](../../glossary.json#concept.permission-extension) counts the turn
 - THEN it aborts the run
 - AND it records the limit reached
@@ -746,6 +794,23 @@ the run. [The run mechanics](launch.md) give these exact details:
 - AND the error's cause is the pi process's link with the limit and the value reached
 - AND the cause gives the reason `exhausted`
 - AND the cause is never a Claude Code process's link
+
+### scenario.workers.pi-limits-per-run — Each pi round gets what the earlier rounds left
+
+- GIVEN a pi worker whose worker configuration sets `max_turns` to 10 and `max_budget_usd` to 1
+- AND its first round uses 3 turns and 0.30 USD and leaves a check failing
+- WHEN the host starts the resume round
+- THEN the first round's `CONCORDE_ROUND_LIMITS` gave 10 turns and 1 USD
+- AND the resume round's `CONCORDE_ROUND_LIMITS` gives 7 turns and 0.70 USD
+- AND both rounds load the same permission extension, whose policy holds the run's own limits
+
+### scenario.workers.pi-round-limits — The extension applies the round's limits, never more than the run's
+
+- GIVEN the permission extension of a pi worker whose run's budget is 0.50 USD
+- WHEN `CONCORDE_ROUND_LIMITS` gives the round 0.20 USD
+- THEN the extension stops the round once its cost exceeds 0.20 USD
+- BUT when the variable gives more than 0.50 USD or no budget, the extension stops at 0.50 USD
+- AND when the variable is missing or malformed, the extension stops at the first priced message
 
 ## Worker models
 

@@ -22,6 +22,7 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
+import math
 import os
 import random
 import shutil
@@ -40,7 +41,7 @@ from ..kernel.tracing.kinds import NodeKind, register as register_kinds
 from ..kernel.tracing import layout
 from ..kernel.tracing.node import Node
 from .audit import audit, snapshot
-from .claude_backend import BackendRefusal, ClaudeBackend
+from .claude_backend import BackendRefusal, ClaudeBackend, RoundLimits
 from .pi_backend import PiBackend
 from .placement import PlacementError, place
 from .progress import Progress
@@ -106,7 +107,7 @@ register(
         },
     },
 )
-# contract.workers.worker-round-trace, version 6
+# contract.workers.worker-round-trace, version 7
 WORKER_ROUND_TRACE = "concorde-worker-round-trace"
 WORKER_ROUND_TRACE_SCHEMA = {
     "type": "object",
@@ -167,7 +168,7 @@ WORKER_ROUND_TRACE_SCHEMA = {
         "agent": _OBJECT,
     },
 }
-register(WORKER_ROUND_TRACE, 6, WORKER_ROUND_TRACE_SCHEMA)
+register(WORKER_ROUND_TRACE, 7, WORKER_ROUND_TRACE_SCHEMA)
 register_kinds(
     NodeKind(
         "worker-run",
@@ -380,6 +381,46 @@ def retry_delay(request: WorkerRequest, retry: int) -> float:
     return round(request.retry_delay * 2 ** (retry - 1) * random.uniform(0.5, 1.0), 3)
 
 
+def _used(rounds: list[dict], name: str) -> float:
+    """The sum of one usage figure over the rounds; a figure a round did not report counts as
+    none."""
+    return sum((item.get("usage") or {}).get(name) or 0 for item in rounds)
+
+
+def limits_left(request: WorkerRequest, rounds: list[dict]) -> RoundLimits:
+    """What the run's rounds left of its limits: ``max_turns`` less every round's turns, and, when
+    the run has a budget, ``max_budget_usd`` less every round's cost, rounded down to whole cents
+    (launch.md#limits)."""
+    budget = None
+    if request.max_budget_usd is not None:
+        left = request.max_budget_usd - _used(rounds, "cost_usd")
+        budget = max(math.floor(round(left * 100, 6)), 0) / 100
+    return RoundLimits(request.max_turns - int(_used(rounds, "turns")), budget)
+
+
+def nothing_left(limits: RoundLimits) -> str | None:
+    """Which limit leaves a round nothing: no turn, or less than a cent of the budget."""
+    if limits.max_turns < 1:
+        return "turn"
+    if limits.max_budget_usd is not None and limits.max_budget_usd < 0.01:
+        return "budget"
+    return None
+
+
+def _limits_text(request: WorkerRequest, rounds: list[dict]) -> str:
+    """What the run's rounds used of its limits, for a detail."""
+    text = (
+        f"its {len(rounds)} round(s) used {int(_used(rounds, 'turns'))} of max_turns "
+        f"{request.max_turns}"
+    )
+    if request.max_budget_usd is not None:
+        text += (
+            f" and {round(_used(rounds, 'cost_usd'), 6)} USD of max_budget_usd "
+            f"{request.max_budget_usd}"
+        )
+    return text
+
+
 def _unretried(
     request: WorkerRequest,
     backend,
@@ -393,10 +434,7 @@ def _unretried(
     """The reason and explanation of Workers' link for a round whose agent process failed and
     that the host does not retry."""
     if exhausted:
-        return "exhausted", (
-            f"Workers does not raise the limits it was given (max_turns "
-            f"{request.max_turns}, max_budget_usd {request.max_budget_usd})"
-        )
+        return "exhausted", _limits_explanation(request)
     if not transient:
         return "environment", (
             f"Workers retries a {backend.process} process only after a transient "
@@ -420,6 +458,22 @@ def _unretried(
         f"Workers retries rounds that transient model-service errors ended at most "
         f"{request.retries} time(s) in a run (limits.retries of .concorde/workers.json) and "
         "does not extend that"
+    )
+
+
+def _limits_explanation(request: WorkerRequest) -> str:
+    return (
+        f"Workers does not raise the limits it was given, which bound the whole run (max_turns "
+        f"{request.max_turns}, max_budget_usd {request.max_budget_usd}, limits of "
+        ".concorde/workers.json)"
+    )
+
+
+def _given_text(limits: RoundLimits) -> str:
+    return f"{limits.max_turns} turn(s)" + (
+        f" and {limits.max_budget_usd:.2f} USD"
+        if limits.max_budget_usd is not None
+        else ""
     )
 
 
@@ -930,6 +984,7 @@ def _run(
         environment = backend.environment(request, paths)
         prompt, kind = brief_file.read_text(), "initial"
         number = repairs = retries = 0
+        limits = limits_left(request, [])
         while True:
             number += 1
             pending["result"] = None
@@ -938,8 +993,8 @@ def _run(
             round_node = _start_round(trace, number, request, round_record)
             rounds[number] = round_node
             node.update(content=_run_content(record))
-            command = backend.command(request, paths, schema_text, session)
-            stream = backend.stream()
+            command = backend.command(request, paths, schema_text, session, limits)
+            stream = backend.stream(session)
 
             def on_line(line: str, stream=stream) -> None:
                 for tool, arguments in stream.feed(line):
@@ -954,7 +1009,13 @@ def _run(
                 _keep_stderr(round_node, data)
 
             outcome = _launch(
-                request, paths, command, environment, prompt, on_line, on_stderr
+                request,
+                paths,
+                command,
+                {**environment, **backend.round_environment(limits)},
+                prompt,
+                on_line,
+                on_stderr,
             )
             round_record.update(
                 exit=outcome.get("exit"), duration=outcome.get("duration")
@@ -1068,14 +1129,18 @@ def _run(
                 # retry could hide or replay: no write outside the grant, no valid result, and a
                 # session to continue or no change at all (launch.md#retries).
                 resumable = session is not None or not verdict.changed
-                if (
+                retriable = bool(
                     message
                     and not exhausted
                     and verdict.clean
                     and invalid is not None
                     and resumable
                     and retries < request.retries
-                ):
+                )
+                given = limits
+                limits = limits_left(request, record["rounds"])
+                spent = nothing_left(limits)
+                if retriable and spent is None:
                     retries += 1
                     delay = retry_delay(request, retries)
                     round_record["transient"] = {
@@ -1104,6 +1169,20 @@ def _run(
                         "retried": False,
                         "delay_seconds": None,
                     }
+                if retriable:
+                    # Only the run's limits stop this retry: nothing is left of one of them.
+                    _finish_round(round_node, round_record, "failed", "limit_reached")
+                    return fail(
+                        "worker_limit_reached",
+                        f"round {number}: the {backend.process} process ended with a transient "
+                        f"model-service error ({message}); no retry round was started, since "
+                        f"no {spent} is left of the run's limits: "
+                        + _limits_text(request, record["rounds"]),
+                        "exhausted",
+                        _limits_explanation(request),
+                        attempts=attempts,
+                        causes=[failure],
+                    )
                 _finish_round(
                     round_node,
                     round_record,
@@ -1122,7 +1201,13 @@ def _run(
                 return fail(
                     "worker_limit_reached" if exhausted else backend.failure_code,
                     f"round {number}: the {backend.process} process ended with an error "
-                    f"({failure['code']}) before a structured result{outside}",
+                    f"({failure['code']}) before a structured result{outside}"
+                    + (
+                        f"; the round was given {_given_text(given)} of the run's limits, "
+                        "and " + _limits_text(request, record["rounds"])
+                        if exhausted
+                        else ""
+                    ),
                     reason,
                     explanation,
                     attempts=attempts,
@@ -1277,6 +1362,25 @@ def _run(
                     "exhausted",
                     f"Workers resumes the worker at most {request.rounds} time(s) with what its "
                     "round validation reports and does not extend that",
+                    attempts=attempts,
+                    causes=list(refusal.causes),
+                )
+            limits = limits_left(request, record["rounds"])
+            spent = nothing_left(limits)
+            if spent is not None:
+                # A repair the run's limits leave no room for ends the run as no rounds left do.
+                if answer.failure is None:
+                    _finish_round(round_node, round_record, "ok", "ok")
+                    return finish("ok")
+                refusal = answer.failure
+                _finish_round(round_node, round_record, "failed", "limit_reached")
+                return fail(
+                    "worker_limit_reached",
+                    f"{refusal.detail}, after {number} round(s); no resume round was started, "
+                    f"since no {spent} is left of the run's limits: "
+                    + _limits_text(request, record["rounds"]),
+                    "exhausted",
+                    _limits_explanation(request),
                     attempts=attempts,
                     causes=list(refusal.causes),
                 )

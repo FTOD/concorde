@@ -21,7 +21,12 @@ import shutil
 from pathlib import Path
 
 from ..kernel.errors import link
-from .claude_backend import BackendRefusal, RoundOutcome, proxy_environment
+from .claude_backend import (
+    BackendRefusal,
+    RoundLimits,
+    RoundOutcome,
+    proxy_environment,
+)
 from .settings import SettingsError, grant_view, sandbox_filesystem, tool_set
 from .transient import transient
 
@@ -35,6 +40,8 @@ RUNTIME_PACKAGE = "node_modules/@anthropic-ai/sandbox-runtime"
 RUNTIME_VERSION = "0.0.77"
 RESULT_TOOL = "concorde_result"
 LIMIT_ENTRY = "concorde-limit"
+# The variable that tells the permission extension what its round may still use of the run's limits.
+LIMITS_VARIABLE = "CONCORDE_ROUND_LIMITS"
 COMMON_TOOLS = "read,grep,find,ls"
 TOOL_SETS = {
     "understand": f"{COMMON_TOOLS},{RESULT_TOOL}",
@@ -420,8 +427,21 @@ class PiBackend:
         environment.update(proxy_environment())
         return environment
 
+    def round_environment(self, limits: RoundLimits) -> dict[str, str]:
+        """The round's own variable: the turns and budget its permission extension allows."""
+        return {
+            LIMITS_VARIABLE: json.dumps(
+                {"maxTurns": limits.max_turns, "maxBudgetUsd": limits.max_budget_usd}
+            )
+        }
+
     def command(
-        self, request, paths, schema_text: str, session: str | None
+        self,
+        request,
+        paths,
+        schema_text: str,
+        session: str | None,
+        limits: RoundLimits | None = None,
     ) -> list[str]:
         command = [
             self.programs.get("pi") or request.pi or "pi",
@@ -447,7 +467,7 @@ class PiBackend:
             command += ["--thinking", request.reasoning]
         return command
 
-    def stream(self) -> PiStream:
+    def stream(self, session: str | None = None) -> PiStream:
         return PiStream()
 
     def transcript(self, paths, session: str | None) -> str | None:
@@ -460,6 +480,7 @@ class PiBackend:
 __all__ = [
     "ACTOR",
     "LIMIT_ENTRY",
+    "LIMITS_VARIABLE",
     "PiBackend",
     "PiStream",
     "RESULT_TOOL",

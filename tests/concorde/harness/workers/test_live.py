@@ -197,6 +197,41 @@ class LiveWorkerTests(unittest.TestCase):
         self.assertTrue(worker["unhandled"]["explanation"] and worker["options"])
         self.assertEqual([], record["rounds"][0]["audit"]["changed"])
 
+    @verifies("scenario.workers.limits-resumed-cost")
+    def test_a_resumed_round_counts_only_its_own_cost(self):
+        project = WorkerProject(self, linked=True)
+        root = project.root
+        record = run_worker(
+            project.request(
+                [],
+                instructions=(
+                    f"Use the Write tool to write exactly the text bad into {root}/src/a/flag "
+                    "and end with status ok. When the host later tells you that a check "
+                    f"failed, write exactly the text ok into {root}/src/a/flag instead and "
+                    "end with status ok again."
+                ),
+                claude=shutil.which("claude"),
+                credentials=Path.home() / ".claude/.credentials.json",
+                local_model="claude-haiku-4-5-20251001",
+                timeout=400,
+                max_turns=40,
+                max_budget_usd=2.0,
+            )
+        )
+        self.assertEqual("ok", record["status"], record["error"])
+        first, second = record["rounds"]
+        self.assertEqual(("initial", "repair"), (first["prompt"], second["prompt"]))
+        self.assertEqual(first["session"], second["session"])
+        # Claude Code reports the resumed session's earlier spend too; the round's usage holds
+        # only its own.
+        self.assertIsNotNone(second["claude"]["claude_code_version"])
+        reported = second["claude"]["total_cost_usd"]
+        self.assertGreater(reported, first["claude"]["total_cost_usd"])
+        self.assertAlmostEqual(
+            reported - first["claude"]["total_cost_usd"], second["usage"]["cost_usd"]
+        )
+        self.assertEqual(second["claude"]["num_turns"], second["usage"]["turns"])
+
 
 if __name__ == "__main__":
     unittest.main()

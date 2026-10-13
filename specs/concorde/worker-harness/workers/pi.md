@@ -78,7 +78,8 @@ pi -p --mode json --no-extensions -e <runtime>/control/permission.ts
 ```
 
 A [resume round](../../glossary.json#concept.resume-round) runs the same command with the same
-session identifier. The resume round takes the round validation's repair text on standard input.
+session identifier. The permission extension stays the same file for every round. Only
+`CONCORDE_ROUND_LIMITS` changes from round to round. The resume round takes the round validation's repair text on standard input.
 In a resume round, pi continues the session with its context. The command is `pi`, or the value of
 `CONCORDE_PI`.
 
@@ -94,6 +95,7 @@ The environment is cleared. It is then set to exactly these values:
 | `PI_CODING_AGENT_DIR` | `<runtime>/config` |
 | `PI_OFFLINE`, `PI_SKIP_VERSION_CHECK` | `1` |
 | `PI_TELEMETRY` | `0` |
+| `CONCORDE_ROUND_LIMITS` | the round's limits as JSON, `{"maxTurns": <n>, "maxBudgetUsd": <x or null>}`: the turns and the budget that the run's earlier rounds left ([Limits](launch.md#limits)) |
 | every variable whose name ends with `_API_KEY` | the host's value, only when the host has one |
 | the [proxy variables](launch.md#proxy) | as that section derives them from the host's |
 
@@ -229,8 +231,13 @@ The host SHALL copy from the user's pi configuration directory only `auth.json` 
 
 ### req.workers.pi-limits — pi runs stop at their limits
 
-For a pi run whose completed turns exceed `max_turns`, or, when the worker configuration sets
-`max_budget_usd`, whose reported cost exceeds it, the permission extension SHALL abort the run.
+For a pi round whose completed turns exceed the turns `CONCORDE_ROUND_LIMITS` gives it, or whose
+reported cost exceeds the budget it gives, the permission extension SHALL abort the run.
+
+### req.workers.pi-round-limits — A pi round never gets more than the run's limits
+
+The permission extension SHALL apply the lower of each limit in `CONCORDE_ROUND_LIMITS` and the
+run's own limit in its policy, and no turn and no cost when that variable is missing or malformed.
 
 ### req.workers.pi-limit-recorded — A pi run records the limit it reached
 

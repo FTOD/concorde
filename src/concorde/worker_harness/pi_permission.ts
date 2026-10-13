@@ -5,8 +5,9 @@
  * in `POLICY` and the sandbox-runtime entry point in the import below, and loads it as the only
  * extension of `pi -p`. It replaces pi's file tools with checked versions (`read`, `write`, `edit`),
  * runs every command and search (`bash`, `grep`, `find`, `ls`) inside the sandbox-runtime sandbox
- * with the grant's filesystem lists and no network, stops the run at its turn and budget limits,
- * and receives the worker result through `concorde_result`. See the Workers Module's pi run
+ * with the grant's filesystem lists and no network, stops the round at the turns and budget the
+ * host's `CONCORDE_ROUND_LIMITS` leaves it of the run's limits, and receives the worker result
+ * through `concorde_result`. See the Workers Module's pi run
  * mechanics for the tables it follows.
  */
 
@@ -36,6 +37,7 @@ import {
   readDecision,
   resolveLikePi,
   RipgrepReader,
+  roundLimits,
   searchDecision,
   writeDecision,
 } from "./pi_policy.ts";
@@ -43,6 +45,8 @@ import {
 const POLICY: Policy = {} as Policy;
 
 const LIMIT_ENTRY = "concorde-limit";
+// What this round may still use of the run's limits, as the host passed it.
+const LIMITS = roundLimits(POLICY.limits, process.env.CONCORDE_ROUND_LIMITS);
 const PREFIX = "Concorde grant: ";
 const MAX_OUTPUT = 50 * 1024;
 
@@ -379,8 +383,7 @@ export default function (pi: ExtensionAPI) {
 
   pi.on("turn_end", async (_event, ctx) => {
     turns++;
-    if (turns > POLICY.limits.maxTurns)
-      stop("turns", turns, POLICY.limits.maxTurns, ctx);
+    if (turns > LIMITS.maxTurns) stop("turns", turns, LIMITS.maxTurns, ctx);
   });
 
   pi.on("message_end", async (event, ctx) => {
@@ -391,7 +394,7 @@ export default function (pi: ExtensionAPI) {
     ).message;
     if (message?.role !== "assistant") return undefined;
     cost += message.usage?.cost?.total ?? 0;
-    const budget = POLICY.limits.maxBudgetUsd;
+    const budget = LIMITS.maxBudgetUsd;
     if (budget !== null && cost > budget) stop("budget", cost, budget, ctx);
     return undefined;
   });

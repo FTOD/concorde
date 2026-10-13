@@ -45,8 +45,50 @@ export interface Policy {
     denyWrite: string[];
   };
   programs: { rg: string; fd: string };
-  limits: { maxTurns: number; maxBudgetUsd: number | null };
+  limits: Limits;
   resultSchema: Record<string, unknown>;
+}
+
+export interface Limits {
+  maxTurns: number;
+  maxBudgetUsd: number | null;
+}
+
+/**
+ * The limits of one round: what the host passed in `CONCORDE_ROUND_LIMITS`, the turns and budget
+ * the round may still use of the run's limits, never above the run's own limits. A missing or
+ * malformed value allows nothing, so the round stops at its first turn or priced message.
+ */
+export function roundLimits(run: Limits, text: string | undefined): Limits {
+  let value: unknown = null;
+  try {
+    value = text === undefined ? null : JSON.parse(text);
+  } catch {
+    value = null;
+  }
+  const given = (value ?? {}) as { maxTurns?: unknown; maxBudgetUsd?: unknown };
+  const turns = given.maxTurns;
+  const budget = given.maxBudgetUsd;
+  const amount = (item: unknown): item is number =>
+    typeof item === "number" && Number.isFinite(item) && item >= 0;
+  if (
+    typeof value !== "object" ||
+    value === null ||
+    !Number.isInteger(turns) ||
+    (turns as number) < 0 ||
+    !(budget === null || amount(budget))
+  )
+    return { maxTurns: 0, maxBudgetUsd: 0 };
+  const ceiling = run.maxBudgetUsd;
+  return {
+    maxTurns: Math.min(turns as number, run.maxTurns),
+    maxBudgetUsd:
+      budget === null
+        ? ceiling
+        : ceiling === null
+          ? (budget as number)
+          : Math.min(budget as number, ceiling),
+  };
 }
 
 const UNICODE_SPACES = /[  -   　]/g;
