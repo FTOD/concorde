@@ -5,31 +5,32 @@ them in concrete situations.
 
 ### req.headless-sessions.conditions-in-tool — Testing conditions are told by the tool
 
-Every round of a [headless session](../../glossary.json#concept.headless-session) SHALL be started
-with the headless note appended to its system prompt.
+The driver SHALL start every round of a
+[headless session](../../glossary.json#concept.headless-session) with the headless note appended to
+its system prompt.
 
 ### req.headless-sessions.tools-granted — A round is granted its tools
 
-Every round of a headless session SHALL be started with its tools granted on the
-command line.
+The driver SHALL start every round of a headless session with its tools granted on the command
+line.
 
 ### req.headless-sessions.sandbox-off — A round runs without the Bash sandbox
 
-Every round of a headless session SHALL be started with Claude Code's Bash sandbox turned off by
-its own command line, never by a change of the developer's settings files.
+The driver SHALL start every round of a headless session with Claude Code's Bash sandbox turned
+off by the round's own command line, never by a change of the developer's settings files.
 
 A [detached run](../../glossary.json#concept.detached-run) started from a sandboxed Bash call dies
 with that call, so it could never outlive the round.
 
 ### req.headless-sessions.worktree-tools-granted — A headless main session may enter task worktrees
 
-The tools granted to every round of a headless [main
-agent](../../glossary.json#concept.main-agent) SHALL include EnterWorktree and ExitWorktree.
+The driver SHALL grant EnterWorktree and ExitWorktree to every round of a headless [main
+agent](../../glossary.json#concept.main-agent).
 
 ### req.headless-sessions.claude-works-tasks — A headless main session works its tasks itself
 
-Every round of a headless main agent SHALL carry, after its headless note, a test procedure with
-these contents:
+The driver SHALL append to every round of a headless main agent, after its headless note, a test
+procedure with these contents:
 
 - It overrides, for that session only, the rule to hand every task to a
   [task session](../../glossary.json#concept.task-session).
@@ -79,6 +80,11 @@ woken twice for one run.
 
 The driver SHALL start no more rounds of a session than the session was allowed.
 
+### req.headless-sessions.left-behind-not-woken — The last round's runs are left behind
+
+When the session's last allowed round leaves runs unsettled, the driver SHALL record them as left
+behind and never as runs a round woke for.
+
 ### req.headless-sessions.wait-bounded — Waiting for a run is bounded
 
 When a run a round left behind still runs after the wait limit, the driver SHALL fail the session
@@ -87,8 +93,36 @@ with `wait_exceeded`, naming:
 - That run's [run progress file](../../glossary.json#concept.run-progress-file).
 - The session's record.
 
+### req.headless-sessions.round-answer — A round's answer has a model turn
+
+The driver SHALL take as a round's result the last `result` event of the round whose `num_turns` is
+1 or more.
+
+A round without such an event has no result: a resumed round's replayed turn has `num_turns` 0.
+
+### req.headless-sessions.observation-visible — What the driver cannot observe fails the session
+
+The driver SHALL fail the session with `observation_failed`, naming the file and the session's
+record, when one of these still cannot be read as a JSON object when read again once:
+
+- The [run progress file](../../glossary.json#concept.run-progress-file) of a run in the
+  [run store](../../glossary.json#concept.run-store).
+- The result of a run whose run progress file says it finished.
+
+The same holds for a run progress file that names no start time the driver can read.
+
+### req.headless-sessions.binding-valid — An invalid workspace binding refuses the session
+
+When the session's worktree holds a [workspace
+binding](../../glossary.json#concept.workspace-binding) that cannot be read or names no
+`.concorde`, the driver SHALL refuse the session with `binding_invalid`, naming the binding, before
+it starts the first round.
+
 ### req.headless-sessions.logs-kept — Every round is kept
 
 The driver SHALL keep each round's output and standard error and the session's record in the session
-directory, including for a session that ends with a failed round or fails with `wait_exceeded`,
-whose record ends `wait_exceeded` and names the run progress file of the run that outlived the wait.
+directory, also for a session that ends with a failed round or fails with `wait_exceeded` or
+`observation_failed`.
+
+The record of such a failure ends with its code and names the file concerned: the run progress
+file of the run that outlived the wait, or the file the driver could not read.

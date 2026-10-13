@@ -206,7 +206,18 @@ crash or wrong result of any of these:
 This includes `concorde issues report --check` refusing a correct report. Do not write such a
 defect as a defect report because it is an Issue report. The Concorde repository would record it
 with the very Issue system that failed. A refusal whose reason is `environment`, such as
-`merge_busy`, is no defect. Wait for the lock, or for the merge to finish, and write again.
+`merge_busy`, is no defect. Only a busy lock passes by itself: for `merge_busy`, wait for the lock
+and write again. Every other such refusal names its cause and what removes it in its options.
+Follow those options, as the Issues guidance says, before you write again:
+
+- For `merge_incomplete`, finish the merge with the command its message names.
+- For `commit_failed`, fix the cause it names, such as a refusing commit hook.
+- For `recovery_failed`, fix the cause it names, then run `concorde issues recover`.
+- For `uncommitted_change`, inspect the record's change and revert it.
+
+Escalate a cause you cannot remove yourself, such as a disk that refuses writes, as any failure of
+a task. A new write without removing the cause meets the same refusal.
+
 Hand such a defect over as its error chain alone, with your own link on top. In a task, use
 `concorde task escalate <task> --code
 concorde_defect --reason scope`, as above. When a run's result carries the failure, use

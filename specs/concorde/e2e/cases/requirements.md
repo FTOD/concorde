@@ -14,7 +14,10 @@ been worked already, and it does not check.
 
 ### req.swe-bench-cases.specs-not-code — A case's repair never changes code
 
-The repair of an adopted case's Specs SHALL change the project's Specs and never its code.
+The repair of an adopted case's Specs SHALL NOT change the project's code.
+
+Whether the repair changes the Specs at all is the [bounded round](#req.swe-bench-cases.repair-specs-only)'s
+concern: a round whose first review accepts the Specs changes nothing.
 
 ### req.swe-bench-cases.graded-apart — A case's tests stay outside the project
 
@@ -26,7 +29,17 @@ only there.
 The tool SHALL count a listed test as passed by SWE-bench's rules for its list, applied to the status
 pytest reports under the test's complete node identity.
 
+### req.swe-bench-cases.patched-files-reset — Every file the test patch touches is reset
+
+Before it applies a case's test patch, the tool SHALL restore to the case's base commit every file
+the patch touches, on either side of the patch, whatever characters the file's path holds.
+
 ### req.swe-bench-cases.grading-worktree-removed — The grading worktree does not outlive grading
 
 The tool SHALL remove a case's grading worktree afterwards, whether grading ends with a verdict or
 with an error.
+
+### req.swe-bench-cases.cleanup-checked — A grading worktree left behind fails grading
+
+When the grading worktree, its registration or its scratch directory is left after grading, the
+tool SHALL fail with `cleanup_failed`, naming what is left and any earlier error of grading.

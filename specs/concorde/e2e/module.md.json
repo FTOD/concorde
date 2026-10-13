@@ -8,6 +8,7 @@
   "module": {
     "title": "End-to-end testing",
     "owns": [
+      "specs/concorde/e2e/mechanics.md",
       "specs/concorde/e2e/module.md",
       "specs/concorde/e2e/requirements.md",
       "specs/concorde/e2e/scenarios.md"
