@@ -227,8 +227,12 @@ Tasks SHALL move a closed task's folder to the history only under these conditio
 - Tasks holds the task's workspace lock and its workflow lock.
 - For a close without a merge, Tasks first stopped every task session of the task.
 - For a close without a merge, Tasks first stopped every run of the workspace still running or
-  waiting for its lock.
+  waiting for its lock whose run lock a process of this machine holds.
 - Tasks first removed the worktree with its binding.
+
+A run the close cannot reach, such as one waiting in a PID namespace the close cannot see, is not
+stopped. Such a run waits only in Execution's lobby. It is retired as below and never writes into
+the moved folder.
 
 Still holding both locks, the close then removes the workspace lock file and the workflow lock file.
 

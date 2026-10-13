@@ -1978,7 +1978,7 @@ class TaskStoreTests(unittest.TestCase):
         self.assertEqual(before, snapshot(self.history()))
         self.assertFalse(self.folder().exists())
 
-    @verifies("scenario.tasks.history-key")
+    @verifies("scenario.tasks.history-key", "scenario.tasks.history-lookup")
     def test_a_reused_name_gets_its_own_history_folder(self):
         self.project.open_task("retry")
         status, value = self.close("retry", "--completed", "--note", "first")
@@ -1996,11 +1996,32 @@ class TaskStoreTests(unittest.TestCase):
         )
         self.assertEqual(first, snapshot(self.history("retry")))
         self.assertFalse(self.folder("retry").exists())
-        # The name shows the latest; each history key shows its own.
+        # The name shows the latest; each history key shows its own, and `.1` the first.
         _, shown = self.command("show", "retry")
         self.assertEqual(str(self.history("retry.2")), shown["folder"])
         _, shown = self.command("show", "retry.2")
         self.assertEqual("second", shown["record"]["closed"]["note"])
+        _, shown = self.command("show", "retry.1")
+        self.assertEqual(str(self.history("retry")), shown["folder"])
+        self.assertEqual("first", shown["record"]["closed"]["note"])
+        self.assertEqual(
+            "unknown_task", self.command("show", "retry.4")[1]["error"]["code"]
+        )
+        # A current task of that name comes first.
+        git(self.root, "branch", "-D", "concorde/retry")
+        self.project.open_task("retry")
+        _, shown = self.command("show", "retry")
+        self.assertEqual(str(self.folder("retry")), shown["folder"])
+        _, shown = self.command("show", "retry.2")
+        self.assertEqual("second", shown["record"]["closed"]["note"])
+        status, value = self.close(
+            "retry", "--completed", "--note", "dropped", "--force"
+        )
+        self.assertEqual((0, "retry.3"), (status, value["closed"]["history"]), value)
+        git(self.root, "branch", "-D", "concorde/retry")
+        _, shown = self.command("show", "retry")
+        self.assertEqual("dropped", shown["record"]["closed"]["note"])
+        shutil.rmtree(self.history("retry.3"))
         _, listed = self.command("list")
         self.assertEqual(
             ["first", "second"], [item["closed"]["note"] for item in listed]
@@ -2010,11 +2031,10 @@ class TaskStoreTests(unittest.TestCase):
         for key in ("retry", "retry.2"):
             self.assertTrue((self.root / f".concorde/decisions/{key}.md").is_file())
             shutil.rmtree(self.history(key))
-        git(self.root, "branch", "-D", "concorde/retry")
         self.project.open_task("retry")
-        status, value = self.close("retry", "--completed", "--note", "third")
-        self.assertEqual((0, "retry.3"), (status, value["closed"]["history"]), value)
-        self.assert_log_committed("retry.3", self.history("retry.3"), "retry")
+        status, value = self.close("retry", "--completed", "--note", "fourth")
+        self.assertEqual((0, "retry.4"), (status, value["closed"]["history"]), value)
+        self.assert_log_committed("retry.4", self.history("retry.4"), "retry")
 
     def read_only_log(self, task_id="t1"):
         log = self.folder(task_id) / "decisions.md"
@@ -2022,7 +2042,11 @@ class TaskStoreTests(unittest.TestCase):
         self.addCleanup(lambda: log.exists() and log.chmod(0o644))
         return log
 
-    @verifies("scenario.tasks.close-rerun", "scenario.tasks.close-other-outcome")
+    @verifies(
+        "scenario.tasks.close-rerun",
+        "scenario.tasks.close-rerun-closed",
+        "scenario.tasks.close-other-outcome",
+    )
     def test_running_a_close_again_finishes_it(self):
         self.project.open_task("t1")
         worktree = self.project.worktree("t1")
@@ -2123,8 +2147,10 @@ class TaskStoreTests(unittest.TestCase):
         self.assertIn("`concorde task close t3 --completed`", value["error"]["detail"])
         self.assertIsNone(trace.read(self.folder("t3"))["ended_at"])
         self.assertIs(real_end, store._end_task_node)
+        stored = self.record("t3")
         status, value = self.close("t3", "--completed", "--note", "done")
         self.assertEqual(0, status, value)
+        self.assertEqual(stored, value)
         node = trace.read(self.history("t3"))
         self.assertEqual(("ok", "completed"), (node["status"], node["outcome"]))
         self.assertEqual(
