@@ -355,6 +355,18 @@ This illustrates [refusing a part the package does not build](requirements.md#re
 - THEN the file stays as the developer left it each time
 - AND each receipt still names the file under `files` and `defaults`
 
+### scenario.distribution.install-removes-dropped-tools — The receipt owns the runtime and the tools
+
+- GIVEN a project installed with every part, the pinned `d2` and the pi runtime
+- AND its receipt names under `files` the Framework copy `.concorde/framework/`, the pi runtime's folder `.concorde/tools/pi-runtime/` and the programs and records of both tools
+- AND Concorde was installed again with `--without-d2` and `--without-pi-runtime`, which left both tools in place and named in the receipt
+- WHEN Concorde is then installed with the coordination part alone
+- THEN both tools are removed
+- AND the receipt no longer names them
+- AND the receipt still names the Framework copy `.concorde/framework/`
+
+This illustrates [the receipt naming every owned file](requirements.md#req.distribution.receipt-complete).
+
 ### scenario.distribution.install-settings-kept — A developer's settings survive the installer
 
 - GIVEN a project whose `.claude/settings.json` has its own permission rules

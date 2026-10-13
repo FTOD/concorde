@@ -56,7 +56,16 @@ from .project_defaults import (
     project_default_files,
     protocol_files,
 )
-from .tools import ToolError, install_d2, install_pi_runtime, plan_pi_runtime
+from .tools import (
+    D2_RECORD,
+    PI_RUNTIME,
+    PI_RUNTIME_RECORD,
+    TOOLS,
+    ToolError,
+    install_d2,
+    install_pi_runtime,
+    plan_pi_runtime,
+)
 
 FRAMEWORK = ".concorde/framework"
 # Concorde's own Python environment, a venv inside the framework copy that uv creates: installed
@@ -770,6 +779,26 @@ def _previous_parts(previous: dict, everything: dict) -> set[str]:
     return set(named) if isinstance(named, dict) and named else set(everything)
 
 
+def tool_paths(tools: dict) -> set[str]:
+    """The paths in the project of the tools a receipt's ``tools`` names, a directory owned whole
+    as its path ending with ``/``."""
+    found = set()
+    if isinstance(tools.get("d2"), dict) and isinstance(tools["d2"].get("path"), str):
+        found |= {tools["d2"]["path"], D2_RECORD}
+    if isinstance(tools.get("pi-runtime"), dict):
+        found |= {PI_RUNTIME + "/", PI_RUNTIME_RECORD}
+    return found
+
+
+def program_of(path: str) -> str | None:
+    """The program a path of Concorde's tools belongs to, or None for any other path."""
+    if path in (D2_RECORD, f"{TOOLS}/d2", f"{TOOLS}/d2.exe"):
+        return "d2"
+    if path in (PI_RUNTIME + "/", PI_RUNTIME_RECORD):
+        return "pi-runtime"
+    return None
+
+
 def needs(registrations: dict, field: str) -> set[str]:
     """What the given parts need, the union of one of their install fields, such as the programs
     or the Python dependencies."""
@@ -1064,10 +1093,19 @@ def _place(
     )
     _register_server(project, mcp_config)
     _ignore(project, ignored(registrations))
+    # What an earlier install owned: its receipt's files, and the tools it names, which a
+    # receipt written before it listed them in its files names only there.
     earlier = [
         path
-        for path in previous.get("files") or []
+        for path in sorted(
+            {
+                *(previous.get("files") or []),
+                *tool_paths(previous.get("tools") or {}),
+            },
+            key=str,
+        )
         if isinstance(path, str)
+        and path
         and not path.startswith("/")
         and ".." not in Path(path).parts
     ]
@@ -1079,12 +1117,40 @@ def _place(
         path for path in project_default_files(everything) if path in earlier
     }
     kept = set(defaults) | {path for path in recorded if (project / path).is_file()}
-    owned = {*written, *kept, COMMAND, SKILL, *placed}
-    # What an earlier install owned and this one no longer ships, such as the workflows of a part
-    # it leaves out, goes; a default stays.
+    # A tool an installed part still needs, which this install was only asked to leave out,
+    # stays in place and Concorde's.
+    programs = needs(registrations, "programs")
+    retained = {
+        path
+        for path in earlier
+        if program_of(path) in programs
+        and program_of(path) not in tools
+        and (project / path.rstrip("/")).exists()
+    }
+    # The Framework copy, Concorde's own environment and what was prepared under it are one
+    # directory Concorde owns whole, named once as its path ending with "/".
+    owned = {
+        *written,
+        *kept,
+        COMMAND,
+        SKILL,
+        *placed,
+        FRAMEWORK + "/",
+        *(path for path in prepared if not path.startswith(FRAMEWORK + "/")),
+        *tool_paths(tools),
+        *retained,
+    }
+    # What an earlier install owned and this one no longer ships, such as the workflows or the
+    # tools of a part it leaves out, goes; a default stays.
     for path in earlier:
-        if path not in owned and path not in recorded:
-            (project / path).unlink(missing_ok=True)
+        if path in owned or path in recorded:
+            continue
+        target = project / path.rstrip("/")
+        if path.endswith("/"):
+            if target.is_dir() and not target.is_symlink():
+                shutil.rmtree(target)
+        else:
+            target.unlink(missing_ok=True)
     amended = [".gitignore", CLAUDE_MD, MCP_CONFIG] + (
         [CLAUDE_SETTINGS] if (project / CLAUDE_SETTINGS).exists() else []
     )

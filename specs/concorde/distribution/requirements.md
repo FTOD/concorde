@@ -245,8 +245,12 @@ Where the spec part is installed, the installed `CLAUDE.md` block SHALL import t
 
 The installer's receipt SHALL list under `files` every file Concorde owns in the project, whether or not this install wrote it, and under `defaults` those of them that are Concorde-owned defaults, a default an earlier receipt named that is still in place included.
 
-No install removes a default its earlier receipt names, since a default holds the project's own
-data ([Installing into a project](module.md#installing-into-a-project)).
+A directory Concorde owns whole, such as the Framework copy or the pi runtime's folder, is named
+once by its path ending with `/`. An install removes what its earlier receipt owned and this install
+no longer owns, such as the workflows or the tools of a part it leaves out. No install removes a
+default its earlier receipt names, since a default holds the project's own data
+([Installing into a project](module.md#installing-into-a-project)). Nor does it remove a tool an
+installed part still needs that it was only asked to leave out.
 
 ### req.distribution.receipt-amended — The receipt names every amended project file
 

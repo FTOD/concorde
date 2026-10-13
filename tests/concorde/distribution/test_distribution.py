@@ -2115,6 +2115,53 @@ class InstallTests(unittest.TestCase):
         self.assertNotIn("pi-runtime", left_out["tools"])
         self.assertFalse(left_out["pi_runtime"])
 
+    @verifies("scenario.distribution.install-removes-dropped-tools")
+    def test_the_receipt_owns_the_runtime_and_tools_and_drops_those_left_behind(self):
+        package = package_copy(self)
+        project = package.parent / "project"
+        subprocess.run(["git", "init", "-q", str(project)], check=True)
+        fetch = fake_d2(self, package)
+        calls = []
+        with which(npm="/usr/bin/npm"):
+            receipt = install(
+                project, package, fetch=fetch, run=fake_npm(calls), dependencies=False
+            )
+        d2 = receipt["tools"]["d2"]["path"]
+        for path in (
+            ".concorde/framework/",
+            ".concorde/tools/pi-runtime/",
+            ".concorde/tools/pi-runtime.json",
+            ".concorde/tools/d2.json",
+            d2,
+        ):
+            self.assertIn(path, receipt["files"])
+            self.assertTrue((project / path.rstrip("/")).exists(), path)
+        # Only asked to leave a tool out, an install keeps it while a part needs it.
+        with which():
+            kept = install(
+                project, package, d2=False, pi_runtime=False, dependencies=False
+            )
+        self.assertNotIn("d2", kept["tools"])
+        self.assertIn(d2, kept["files"])
+        self.assertIn(".concorde/tools/pi-runtime/", kept["files"])
+        self.assertTrue((project / d2).is_file())
+        # Without the parts that need them, the tools go.
+        with which():
+            dropped = install(
+                project,
+                package,
+                part_names=["coordination"],
+                pi_runtime=False,
+                dependencies=False,
+            )
+        self.assertNotIn("spec", dropped["parts"])
+        self.assertNotIn("worker harness", dropped["parts"])
+        for path in (d2, ".concorde/tools/d2.json", ".concorde/tools/pi-runtime.json"):
+            self.assertNotIn(path, dropped["files"])
+            self.assertFalse((project / path).exists(), path)
+        self.assertFalse((project / ".concorde/tools/pi-runtime").exists())
+        self.assertIn(".concorde/framework/", dropped["files"])
+
     @verifies("scenario.distribution.install-without-pi-runtime")
     def test_an_install_without_the_pi_runtime_needs_no_npm(self):
         package = package_copy(self)
