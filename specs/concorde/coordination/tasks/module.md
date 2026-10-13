@@ -90,7 +90,8 @@ concorde task merge severity           # by the main agent, in the primary workt
 
 The main agent [opens](#opening-a-task) the task and hands it to a
 [task session](../../glossary.json#concept.task-session). The session works in the task worktree and
-makes the [delivery commit](../../glossary.json#concept.delivery-commit). The main agent then
+makes the [delivery commit](../../glossary.json#concept.delivery-commit), with Method's `delivery`
+or, [without Method](#delivering-without-method), `concorde task deliver`. The main agent then
 [merges](#merging) the task, which closes it.
 
 Parallelism exists only between tasks. No tasks share a worktree. The Kernel's
