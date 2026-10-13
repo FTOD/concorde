@@ -473,6 +473,26 @@ class InterpreterRootsTests(unittest.TestCase):
             self.assertIn(directory, paths)
         self.assertEqual(((), (home / "env",), ()), tuple(excluded))
 
+    @verifies("scenario.method.interpreter-linked-checkout")
+    def test_a_link_in_a_worktree_is_readable_never_the_worktree(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            base = Path(os.path.realpath(temporary))
+            home = base / "home"
+            home.mkdir()
+            primary = base / "primary"
+            checkout = primary / ".claude/worktrees/unbound-r"
+            checkout.mkdir(parents=True)
+            environment = primary / ".venv"
+            (environment / "bin").mkdir(parents=True)
+            (environment / "bin/python").write_text("")
+            (checkout / ".venv").symlink_to(environment)
+
+            roots = interpreter_roots(
+                (checkout / ".venv/bin/python").as_posix(), home, (checkout, primary)
+            )
+
+        self.assertEqual((checkout / ".venv", environment), roots)
+
 
 class NoCheckTests(unittest.TestCase):
     def test_a_module_without_checks_ends_ok_without_check_evidence(self):

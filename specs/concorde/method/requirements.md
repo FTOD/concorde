@@ -106,8 +106,15 @@ paths, every one of the interpreter's directories that exists:
 - The installation it resolves to.
 - Each directory that holds a symbolic link on the way between them.
 
-It SHALL do so whatever runtime paths the worker configuration sets. It SHALL NOT hand `/usr`, the
-home directory or a directory that holds the home directory as one of the interpreter's directories
+It SHALL do so whatever runtime paths the worker configuration sets. It SHALL NOT hand any of these
+as one of the interpreter's directories, as given or with its symbolic links resolved:
+
+- `/usr`.
+- The home directory or a directory that holds it.
+- The worktree the step works in, the primary worktree or a directory that holds either.
+
+Where such a directory holds a symbolic link on the way, it SHALL hand that link instead, unless
+the link is itself one of them
 ([The interpreter's directories](workers.md#interpreter-directories)).
 
 ## The brownfield workflow
