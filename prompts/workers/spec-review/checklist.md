@@ -118,9 +118,11 @@ Only the reviewed Module's own documents can carry a blocking finding. When you 
 another Module's document, report it as a `suggestion` naming that Module. Judging it is that Module's
 own review.
 
-Report every blocking finding you can establish in this one run. Do not stop at the first. Do not
-hold findings back for a later round. One round of changes should be able to address them all.
-Do not pad the list either. A finding without evidence in the Specs is not a finding.
+As a reviewer or an architect, report every blocking finding you can establish in this one run.
+Do not stop at the first. Do not hold findings back for a later round. One round of changes should
+be able to address them all. Do not pad the list either. A finding without evidence in the Specs is
+not a finding. As the chair, you add no problem of your own. You account for every finding you
+receive.
 
 ## Earlier Issues
 

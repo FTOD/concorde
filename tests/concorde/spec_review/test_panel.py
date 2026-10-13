@@ -520,7 +520,7 @@ class SpecPanelTests(unittest.TestCase):
         self.assertNotIn("earlier", module["reviews"][0]["findings"][0])
         self.assertEqual("changes_required", module["outcome"])
 
-    @verifies("scenario.spec-review.panel-without-issues")
+    @verifies("scenario.spec-review.panel-stopped-earlier")
     def test_a_stopped_panel_drops_the_chairs_earlier_claims(self):
         plans = {
             "reviewer module.a 1": worker(findings=[finding()]),
@@ -624,6 +624,24 @@ class SpecPanelTests(unittest.TestCase):
         return grant(
             SpecRepository(self.worktree, REPOSITORY_ROOT), ["module.a"], "review-spec"
         ).value
+
+    @verifies("scenario.spec-review.unknown-module")
+    def test_an_unknown_module_refuses_the_whole_panel(self):
+        plans = {"reviewer module.a 1": worker(findings=[finding()])}
+        self.project.open_task(
+            "t1", modules=("module.a",), goal="FAKE-PLANS: " + json.dumps(plans)
+        )
+        self.worktree = self.project.worktree("t1")
+        exit_status, envelope = self.project.run(
+            "spec_panel", "--task", "t1", "--modules", "module.a,module.nowhere"
+        )
+        self.assertEqual((1, "failed"), (exit_status, envelope["status"]))
+        self.assertEqual("refused", envelope["error"]["code"])
+        [cause] = envelope["error"]["causes"]
+        self.assertEqual("unknown_module", cause["code"])
+        self.assertIn("module.nowhere", cause["detail"])
+        self.assertEqual([], envelope["worker_runs"])
+        self.assertEqual({}, self.issues())
 
     @verifies("scenario.spec-review.panel-short")
     def test_a_blocked_reviewer_stops_the_panel_before_the_chair(self):

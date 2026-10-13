@@ -266,23 +266,8 @@ def validate_modules(ctx: RunContext):
     state.validation = result
     found = []
     for module, review in reviews.items():
-        if module not in repository.modules:
-            item = evidence(
-                "structural", module, "not a registered Module of the task worktree"
-            )
-            found.append(item)
-            review.stop = ctx.fail(
-                "failed",
-                "unknown_module",
-                f"{module} is not a registered Module.",
-                f"{module} is not a registered Module of {ctx.worktree}, so it cannot be "
-                "reviewed",
-                reason="input",
-                explanation="the reviewed Modules come from the command line or the task",
-                evidence=[item],
-                options=["name registered Modules in --modules"],
-            )
-            continue
+        # Method's admission refused the run before any step when a named Module is not
+        # registered, so every Module here is.
         review.documents = repository.modules[module].documents
         errors = [
             item

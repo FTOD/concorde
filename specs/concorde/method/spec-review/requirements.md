@@ -41,8 +41,12 @@ A finding about a document the reviewed Module does not own SHALL NOT have a blo
 
 ### req.spec-review.one-pass — Every blocking finding in one pass
 
-The Reviewer brief SHALL instruct every worker that judges a Module to report every blocking finding
-it can establish in one run rather than stopping at the first.
+The Reviewer brief SHALL instruct every reviewer and every architect to report every blocking
+finding it can establish in one run rather than stopping at the first.
+
+The chair discovers nothing of its own. It audits and accounts for every finding the reviewers and
+architects reported, and may not add a problem that none of them reported
+([the panel graph](panel.md#the-panel-graph)).
 
 ### req.spec-review.earlier-issues — Workers receive the earlier Issues
 
@@ -53,9 +57,17 @@ not installed, there are none. In that case, the workers receive none.
 
 ### req.spec-review.reports-issues — Every finding that stands becomes an Issue where Issues exist
 
-Wherever the issues part is installed, the Operation SHALL report every finding its chair merged
-into the panel report as an [Issue report](../../glossary.json#concept.issue-report) through the
-Issue store.
+Wherever the issues part is installed, the Operation SHALL report as an
+[Issue report](../../glossary.json#concept.issue-report) through the Issue store every finding of
+a completed panel's report, in the order of the report, until the Issue store first refuses a
+report.
+
+A completed panel's report holds only the findings that remain after
+[normalization](panel.md#normalizing-a-finding) and accounting: a merged finding whose path does not
+hold is a rejection, and a panel whose report stays unaccounted stops without reporting. After the
+first refusal, the Operation reports no further finding of that Module
+([Reporting findings](panel.md#reporting-findings)). Each finding it did not report stays in the
+result.
 
 A worker never writes an Issue. The Operation reports in bound and unbound runs alike. Issues is an
 [optional integration](../../glossary.json#concept.optional-integration) of the method part. The
@@ -127,8 +139,8 @@ The refusal makes the Module's review `incomplete`. It travels in the result's
 
 ### req.spec-review.host-verdict — The Operation derives the verdict
 
-The verdict of a [Spec](../../glossary.json#concept.spec) panel SHALL be derived by the
-[Operation](../../glossary.json#concept.operation) by the rule of its payload contract, never taken
+The [Operation](../../glossary.json#concept.operation) SHALL derive the
+[Spec](../../glossary.json#concept.spec) panel's verdict by the rule of its payload contract, never
 from a worker's statement.
 
 ### req.spec-review.no-structural-substitute — Structural errors stop a Module's review
@@ -140,7 +152,12 @@ worker for that Module.
 
 Every reviewed Module's outcome SHALL carry the
 [context identity](../../glossary.json#concept.context-identity) of the grant its reviewers read
-under.
+under when that grant was computed, and null when the Module stopped before a reviewer grant
+existed.
+
+A Module that failed structural validation, or whose grant could not be computed, has no reviewer
+grant. Its outcome then names none rather than an identity nobody read under, as the
+[panel payload](panel.md#panel-payload) says.
 
 ### req.spec-review.claims-stay-claims — Worker claims stay claims
 

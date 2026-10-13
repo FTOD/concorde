@@ -21,7 +21,9 @@ The panel works on the worktree it starts in. With a
 [workspace](../../glossary.json#concept.workspace). `--modules` defaults to that workspace's
 Modules. Without a binding, it runs as an [unbound run](../../glossary.json#concept.unbound-run),
 for instance on the primary worktree. Such a run judges the [Specs](../../glossary.json#concept.spec)
-as merged there. `--modules` names one or more registered Modules of that worktree. `--reviewers`
+as merged there. `--modules` names one or more registered Modules of that worktree. When it names
+a Module the worktree does not register, Method's admission refuses the run with `unknown_module`
+before any step, as for every Method Operation ([Method](../module.md#code)). `--reviewers`
 is the number of reviewers on each [Module](../../glossary.json#concept.module)'s panel. Its
 default is 3. `--architects` is the number of architects. Its default is 2. The workers have these
 names:
@@ -44,7 +46,7 @@ the Operation launches any worker.
 
 | # | Step | Actor | On failure |
 | --- | --- | --- | --- |
-| 1 | Load the workspace's Specs and validate every named Module | Operation (Spec core) | a loading error fails the run; a structural error in the Module's own documents or about the Module or a node it defines makes the Module `incomplete`, with the findings as host evidence; an unknown Module is `incomplete` |
+| 1 | Load the workspace's Specs and validate every named Module | Operation (Spec core) | a loading error fails the run; a structural error in the Module's own documents or about the Module or a node it defines makes the Module `incomplete`, with the findings as host evidence |
 | 2 | For each Module that passed, read its [earlier Issues](#earlier-issues) from the project's Issues | Operation (Issues) | Issues that cannot be read: the Module is `incomplete` (`issues_unreadable`) |
 | 3 | For each Module whose earlier Issues were read, run the [panel graph](#the-panel-graph). Every reviewer runs under the Module's `review-spec` grant, every architect under its `review-architecture` grant, and the chair under the `review-architecture` grant when the panel has an architect and the `review-spec` grant otherwise. Each grant is frozen with its [context identity](../../glossary.json#concept.context-identity). Each worker receives the Panel brief and the earlier Issues. It is resumed once only when a finding's path does not [hold](#normalizing-a-finding), with those paths to correct. An audit that nothing changed follows it | Operation (Workers) | a grant that cannot be computed, a worker that ends `blocked` or `failed`, times out, returns an invalid result or changes a file stops that Module's panel, and so does a chair report still unaccounted after its last attempt: the Module is `incomplete` |
 | 4 | For each Module whose panel completed, [settle](#earlier-issues) the earlier Issues the chair's findings name and resolve, and [report](#reporting-findings) every finding of the chair's report as an [Issue](../../glossary.json#concept.issue), in the order of the report | Operation (Issues) | a refusal of the Issue store: the Module is `incomplete` (`issues_unreported`) and its later findings are not reported |
@@ -331,7 +333,7 @@ changes can be compared with them.
 | Verdict | Status | Error |
 | --- | --- | --- |
 | `accepted` or `changes_required` | `ok` | none |
-| `incomplete`, and some incomplete Module failed: a worker that failed, a launch error, a timeout, an invalid result, an audit violation, an unaccounted report, Issues that could not be read or written, an unknown Module or a grant that could not be computed | `failed` | `panel_incomplete`, one cause per incomplete Module |
+| `incomplete`, and some incomplete Module failed: a worker that failed, a launch error, a timeout, an invalid result, an audit violation, an unaccounted report, Issues that could not be read or written or a grant that could not be computed | `failed` | `panel_incomplete`, one cause per incomplete Module |
 | `incomplete` otherwise: a structural error or a `blocked` reviewer, architect or chair | `blocked` | `panel_incomplete`, one cause per incomplete Module |
 
 A loading error in step 1 and `langgraph_unavailable` are `failed` with no output. The Execution
@@ -346,7 +348,6 @@ The error of an incomplete Module is the Operation's link for it. Its actor name
 has one of these forms:
 
 - `structural_errors`, with one cause per failing rule, file and message.
-- `unknown_module`.
 - `panel_short` over the links of the workers that did not finish, each naming its worker id.
   Below a worker's link are Workers' link and the worker's own.
 - The link of a chair turn that stopped, with Workers' link and the chair's own below it.
