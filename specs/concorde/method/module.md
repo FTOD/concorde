@@ -55,6 +55,81 @@ requires, the run stops `blocked` on that [Spec gap](../glossary.json#concept.sp
 reporting the gap is that work, as for an assessment or a review's finding, the run reports it and
 ends `ok` ([req.method.gaps-never-repaired](requirements.md#req.method.gaps-never-repaired)).
 
+## Overview
+
+### How Method connects the parts
+
+```d2 illustrative
+direction: right
+spec: "Spec tooling\n(Spec core)"
+harness: Worker harness
+execution: Execution {
+  runner: Runner
+  checks: Check execution
+}
+workflows: Workflows
+issues: "Issues\n(optional)"
+method: Method {
+  definitions: "Operation and command\ndefinitions"
+  sequence: "Standard worker\nsequence"
+  validation: "Round validation"
+  script: "Brownfield\nworkflow script"
+}
+execution.runner -> method.definitions: "runs the steps of"
+method.sequence -> spec: "computes the grant through"
+method.sequence -> harness: "launches the worker through,\nwith the grant as data"
+harness -> method.validation: "calls after each round"
+method.validation -> execution.checks: "runs configured checks through"
+method.script -> workflows: "is run by"
+method.definitions -> issues: "reviews report findings to,\nwhere installed"
+```
+
+### A worker-backed step
+
+```d2 illustrative
+direction: down
+admit: "Run admission, before any provider step:\nevery worker against configuration and model map"
+grant: "Compute the grant from the workspace's\nSpecs and freeze it with its context identity"
+instruct: "Compose the task instructions"
+wh: Worker harness {
+  prepare: "Settings, tool set and brief"
+  launch: "Launch or resume the worker"
+  audit: "Write audit against the grant"
+  record: "Write the run record"
+  prepare -> launch -> audit
+}
+validation: "Round validation (Method):\nglossary ownership, configured checks,\nthe step's own validation"
+decide: "Decide what the outcome\nmeans for the run"
+admit -> grant -> instruct -> wh.prepare
+wh.audit -> validation: "worker ended ok, audit clean"
+validation -> wh.launch: "something to repair,\nrounds left: resume round" {style.stroke-dash: 3}
+validation -> wh.record: "nothing to repair, or rounds used up"
+wh.audit -> wh.record: "worker blocked or failed, invalid result,\ntimeout or audit violation" {style.stroke-dash: 3}
+ownership: "Glossary ownership,\nafter the worker run"
+wh.record -> ownership -> decide
+```
+
+### Claims and evidence
+
+A worker-backed run's result carries the worker's own
+[worker result](../glossary.json#concept.worker-result) unchanged, beside the evidence the run's
+steps produced. That evidence includes:
+
+- The grant.
+- The context identity.
+- The write audit.
+- Each check's exit code and log.
+- The [resume rounds](../glossary.json#concept.resume-round) used.
+- The transcript path.
+- The worker stderr.
+
+The caller therefore reads the claim as a claim and the evidence as fact. This is how Method's
+steps meet Execution's [requirement](../execution/requirements.md#req.execution.claims-apart) that
+worker claims stay the worker's. That requirement binds the runner and every step. Take an
+`implement` worker that claims the goal is done while one check still fails after the last resume
+round. Its run ends `failed`, with its claim kept unchanged and its chain naming the Operation,
+Workers' rounds and the check's log.
+
 ## Core concepts
 
 ### The Operations and commands it provides
@@ -202,81 +277,6 @@ Two design reasons shape the procedure:
   each description written from code.
 
 [The brownfield workflow](brownfield.md) walks through running and resuming it.
-
-## Overview
-
-### How Method connects the parts
-
-```d2 illustrative
-direction: right
-spec: "Spec tooling\n(Spec core)"
-harness: Worker harness
-execution: Execution {
-  runner: Runner
-  checks: Check execution
-}
-workflows: Workflows
-issues: "Issues\n(optional)"
-method: Method {
-  definitions: "Operation and command\ndefinitions"
-  sequence: "Standard worker\nsequence"
-  validation: "Round validation"
-  script: "Brownfield\nworkflow script"
-}
-execution.runner -> method.definitions: "runs the steps of"
-method.sequence -> spec: "computes the grant through"
-method.sequence -> harness: "launches the worker through,\nwith the grant as data"
-harness -> method.validation: "calls after each round"
-method.validation -> execution.checks: "runs configured checks through"
-method.script -> workflows: "is run by"
-method.definitions -> issues: "reviews report findings to,\nwhere installed"
-```
-
-### A worker-backed step
-
-```d2 illustrative
-direction: down
-admit: "Run admission, before any provider step:\nevery worker against configuration and model map"
-grant: "Compute the grant from the workspace's\nSpecs and freeze it with its context identity"
-instruct: "Compose the task instructions"
-wh: Worker harness {
-  prepare: "Settings, tool set and brief"
-  launch: "Launch or resume the worker"
-  audit: "Write audit against the grant"
-  record: "Write the run record"
-  prepare -> launch -> audit
-}
-validation: "Round validation (Method):\nglossary ownership, configured checks,\nthe step's own validation"
-decide: "Decide what the outcome\nmeans for the run"
-admit -> grant -> instruct -> wh.prepare
-wh.audit -> validation: "worker ended ok, audit clean"
-validation -> wh.launch: "something to repair,\nrounds left: resume round" {style.stroke-dash: 3}
-validation -> wh.record: "nothing to repair, or rounds used up"
-wh.audit -> wh.record: "worker blocked or failed, invalid result,\ntimeout or audit violation" {style.stroke-dash: 3}
-ownership: "Glossary ownership,\nafter the worker run"
-wh.record -> ownership -> decide
-```
-
-### Claims and evidence
-
-A worker-backed run's result carries the worker's own
-[worker result](../glossary.json#concept.worker-result) unchanged, beside the evidence the run's
-steps produced. That evidence includes:
-
-- The grant.
-- The context identity.
-- The write audit.
-- Each check's exit code and log.
-- The [resume rounds](../glossary.json#concept.resume-round) used.
-- The transcript path.
-- The worker stderr.
-
-The caller therefore reads the claim as a claim and the evidence as fact. This is how Method's
-steps meet Execution's [requirement](../execution/requirements.md#req.execution.claims-apart) that
-worker claims stay the worker's. That requirement binds the runner and every step. Take an
-`implement` worker that claims the goal is done while one check still fails after the last resume
-round. Its run ends `failed`, with its claim kept unchanged and its chain naming the Operation,
-Workers' rounds and the check's log.
 
 ## How it is built
 

@@ -60,6 +60,57 @@ Every worker has its own [worker id](../../glossary.json#concept.worker-id). The
 [worker configuration](../../glossary.json#concept.worker-configuration) may therefore give each a
 backend, model and level of its own under `operations.project_review`.
 
+## Overview
+
+```d2 illustrative
+direction: down
+prepare: "Validate the project; compute each part's identity;\nread the review record; decide the skips"
+deterministic: "Run every covered Module's checks; find uncovered\nscenarios and unowned files; settle and report"
+architecture: "Architecture review, once\n(skipped when every Spec is unchanged)"
+modules: "Per Module, at most --parallel at once:\nSpec panel and code review,\neach skipped when its input is unchanged"
+record: "Merge the completed parts into the review record;\ncommit it under the merge lock"
+verdict: "Each Module's outcome from the Issues that stand;\nthe project verdict" {shape: page}
+prepare -> deterministic -> architecture -> modules -> record -> verdict
+```
+
+## Running project_review
+
+```text
+concorde run project_review [--modules <id>,…] [--full] [--parallel <1-8>] [--reviewers <2-5>] [--architects <0-2>]
+```
+
+| Argument | Meaning | Default |
+| --- | --- | --- |
+| `--modules` | the Modules whose checks, coverage, Spec panel and code review the run covers | every registered Module |
+| `--full` | review every part whatever the record says | off |
+| `--parallel` | how many Spec panels and code reviews run at the same time | 2 |
+| `--reviewers` | the reviewers of each Spec panel | 3 |
+| `--architects` | the architects of the architecture review; 0 leaves it out | 2 |
+
+Each Spec panel runs its reviewers at the same time, so one Module's review keeps several workers
+busy at once. Workers that share one model provider can meet its concurrency limit. The default
+`--parallel` of 2 keeps the run's workers fewer than that limit usually allows.
+[Workers](../../worker-harness/workers/launch.md#retries) retries a round that such a limit ended
+anyway.
+
+In the primary worktree, the run is an [unbound run](../../glossary.json#concept.unbound-run). It
+examines the worktree's `HEAD` in its [unbound checkout](../../glossary.json#concept.unbound-checkout).
+In a task worktree, it examines the bound [workspace](../../glossary.json#concept.workspace), its
+uncommitted changes included. Either way, its Issues and the review record go to the primary branch.
+The command waits for the result. Start it in background Bash.
+
+When every worker part would be skipped, the run is refused with `nothing_to_review` before any
+step. Its result is `failed`, and its error names `--full`.
+
+The run's status is `ok` when every part completed and the record was written or had nothing new.
+Otherwise it is `blocked` or `failed`, with an [error chain](../../glossary.json#concept.error-chain)
+that has one cause per part that did not complete. The output carries the verdict either way. The
+caller handles the Issues that stand by their tier, as the
+[main-session guidance](../../coordination/main-session/module.md#issues) says. Fixing them is later
+work of a task. It is never the review's.
+
+## Findings, the record and the verdict
+
 ### The review record
 
 The **review record** is the file `.concorde/reviews/record.json` of the primary branch. For each
@@ -246,55 +297,6 @@ The project's verdict is the highest Module outcome in the order `accepted`, `ch
 The result counts the Issues that stand by [severity](../../glossary.json#concept.issue-severity)
 and by [tier](../../glossary.json#concept.issue-tier). Where the issues part is not installed, each
 Module's outcome follows from this run's findings, exactly as from the Issues they would become.
-
-## Overview
-
-```d2 illustrative
-direction: down
-prepare: "Validate the project; compute each part's identity;\nread the review record; decide the skips"
-deterministic: "Run every covered Module's checks; find uncovered\nscenarios and unowned files; settle and report"
-architecture: "Architecture review, once\n(skipped when every Spec is unchanged)"
-modules: "Per Module, at most --parallel at once:\nSpec panel and code review,\neach skipped when its input is unchanged"
-record: "Merge the completed parts into the review record;\ncommit it under the merge lock"
-verdict: "Each Module's outcome from the Issues that stand;\nthe project verdict" {shape: page}
-prepare -> deterministic -> architecture -> modules -> record -> verdict
-```
-
-## Running project_review
-
-```text
-concorde run project_review [--modules <id>,…] [--full] [--parallel <1-8>] [--reviewers <2-5>] [--architects <0-2>]
-```
-
-| Argument | Meaning | Default |
-| --- | --- | --- |
-| `--modules` | the Modules whose checks, coverage, Spec panel and code review the run covers | every registered Module |
-| `--full` | review every part whatever the record says | off |
-| `--parallel` | how many Spec panels and code reviews run at the same time | 2 |
-| `--reviewers` | the reviewers of each Spec panel | 3 |
-| `--architects` | the architects of the architecture review; 0 leaves it out | 2 |
-
-Each Spec panel runs its reviewers at the same time, so one Module's review keeps several workers
-busy at once. Workers that share one model provider can meet its concurrency limit. The default
-`--parallel` of 2 keeps the run's workers fewer than that limit usually allows.
-[Workers](../../worker-harness/workers/launch.md#retries) retries a round that such a limit ended
-anyway.
-
-In the primary worktree, the run is an [unbound run](../../glossary.json#concept.unbound-run). It
-examines the worktree's `HEAD` in its [unbound checkout](../../glossary.json#concept.unbound-checkout).
-In a task worktree, it examines the bound [workspace](../../glossary.json#concept.workspace), its
-uncommitted changes included. Either way, its Issues and the review record go to the primary branch.
-The command waits for the result. Start it in background Bash.
-
-When every worker part would be skipped, the run is refused with `nothing_to_review` before any
-step. Its result is `failed`, and its error names `--full`.
-
-The run's status is `ok` when every part completed and the record was written or had nothing new.
-Otherwise it is `blocked` or `failed`, with an [error chain](../../glossary.json#concept.error-chain)
-that has one cause per part that did not complete. The output carries the verdict either way. The
-caller handles the Issues that stand by their tier, as the
-[main-session guidance](../../coordination/main-session/module.md#issues) says. Fixing them is later
-work of a task. It is never the review's.
 
 ## How it is built
 
