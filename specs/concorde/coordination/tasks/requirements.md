@@ -25,10 +25,10 @@ Every change to a task record SHALL be one
 [file transaction](../../glossary.json#concept.file-transaction) bound to the digest of the record
 bytes it replaces.
 
-A change made before the transaction's digest check is detected. The update is applied again to what
-is there. After three conflicting attempts, the update is refused with `record_conflict`. During the
-transaction, the task's lock excludes a change, not the digest. Every writer of the record holds
-that lock.
+The Task store detects a change that another writer made before the transaction's digest check.
+The Task store then applies the update again to what is there. After three conflicting attempts,
+the Task store refuses the update with `record_conflict`. During the transaction, the task's lock
+excludes a change, not the digest. Every writer of the record holds that lock.
 
 ### req.tasks.records-kept — Records outlive their task
 
@@ -47,8 +47,10 @@ folder keeps its own log, which the copy never replaces.
 ### req.tasks.log-commit-alone — Committing a log commits nothing else
 
 A close that commits a decision log SHALL leave every other change of the primary worktree, staged
-or not, as it was, and refuse with `decision_log_uncommitted`, committing nothing and leaving the
-task's folder current, when Git refuses that commit.
+or not, as it was.
+
+When Git refuses that commit, the close refuses with `decision_log_uncommitted`, committing nothing
+and leaving the task's folder current.
 
 The same close run again commits the log and finishes the close.
 
@@ -111,7 +113,8 @@ Outside the primary worktree, the following commands SHALL refuse to run:
 
 ### req.tasks.worktree-ignored — A worktree inside the primary is ignored there
 
-Tasks SHALL refuse to open a task unless Git ignores its worktree path in the primary worktree.
+Unless Git ignores a task's worktree path in the primary worktree, Tasks SHALL refuse to open the
+task.
 
 ### req.tasks.one-worktree — One branch and one worktree per task
 
@@ -402,8 +405,10 @@ nothing to merge. The merge does the following:
 
 `concorde task merge` and `concorde task close` SHALL hold the task's
 [workspace lock](../../glossary.json#concept.workspace-lock), taken before the merge lock and held
-to the end, waiting for it inside the command up to `--wait` seconds, and refuse with
-`workspace_busy`, naming the lock's holder and changing nothing, when a run still holds it then.
+to the end, waiting for it inside the command up to `--wait` seconds.
+
+When a run still holds the lock after that wait, each refuses with `workspace_busy`, naming the
+lock's holder and changing nothing.
 
 Neither holds the merge lock while it waits for the workspace lock.
 
