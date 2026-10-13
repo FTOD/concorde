@@ -4,7 +4,7 @@
 {
   "schema_version": 4,
   "id": "I-b09819ab4bbb5bc6b0ebb9ab9f1a6f9d",
-  "status": "open",
+  "status": "closed",
   "reports": [
     {
       "id": "sha256:ec501c6f3575f01d3865b2b82bc8caff9a5a00a8284f06835fcc652f9daed3fb",
@@ -51,6 +51,18 @@
       }
     }
   ],
-  "dispositions": []
+  "dispositions": [
+    {
+      "reason": "resolved",
+      "note": "Fixed by task r3-adoption-specification, merged into the primary branch at f714248287265c189f92aaf7cee8a040c86b08e1.",
+      "evidence": [
+        "merge commit f714248287265c189f92aaf7cee8a040c86b08e1",
+        "task r3-adoption-specification"
+      ],
+      "duplicate_of": null,
+      "actor": "main-agent",
+      "created_at": "2026-10-13T14:45:24.663606+00:00"
+    }
+  ]
 }
 ```
