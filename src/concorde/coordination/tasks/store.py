@@ -255,27 +255,30 @@ def workspace_folder(folder: Path) -> Path:
 
 
 def found_folder(primary: Path, task_id: str) -> Path | None:
-    """The folder of ``task_id``: the current task's, else the latest of that name in the
-    history (a history key names one exactly); None when there is none."""
+    """The folder of ``task_id``: the current task's, else the latest task of that name in the
+    history; a history key ``<name>.<n>`` names that one exactly, ``<name>.1`` the first, whose
+    key is the bare name. None when there is none."""
     current = task_folder(primary, task_id)
     if (current / RECORD).is_file():
         return current
+    if not HISTORY_KEY.match(task_id or ""):
+        return None
     history = history_directory(primary)
-    if HISTORY_KEY.match(task_id or "") and (history / task_id / RECORD).is_file():
-        if "." in task_id or not (history / f"{task_id}.2").exists():
-            return history / task_id
-    if TASK_ID.match(task_id or "") and history.is_dir():
-        numbered = sorted(
-            (
-                int(item.name.rsplit(".", 1)[1])
-                for item in history.glob(f"{task_id}.*")
-                if item.name.rsplit(".", 1)[1].isdigit() and (item / RECORD).is_file()
-            ),
-            reverse=True,
-        )
-        if numbered:
-            return history / f"{task_id}.{numbered[0]}"
-    return None
+    name, dot, number = task_id.partition(".")
+    if dot:
+        folder = history / (name if number == "1" else task_id)
+        return folder if (folder / RECORD).is_file() else None
+    numbered = sorted(
+        (
+            int(item.name.rsplit(".", 1)[1])
+            for item in (history.glob(f"{name}.*") if history.is_dir() else [])
+            if item.name.rsplit(".", 1)[1].isdigit() and (item / RECORD).is_file()
+        ),
+        reverse=True,
+    )
+    if numbered:
+        return history / f"{name}.{numbered[0]}"
+    return history / name if (history / name / RECORD).is_file() else None
 
 
 def record_path(primary: Path, task_id: str) -> Path:
@@ -1087,13 +1090,8 @@ def record_session(primary: Path, task_id: str, session: dict) -> dict:
     _current_open(primary, task_id)
     with task_locked(primary, task_id):
         record = _current_open(primary, task_id)
-        if session.get("main"):
-            record = _bind_main(
-                primary,
-                task_id,
-                session["main"],
-                "a session works only in an open task",
-            )
+        # The node first, removed again when the record refuses its main: either refusal leaves
+        # the record as it was.
         folder = session_folder(primary, task_id, session["id"])
         node = Node(
             folder,
@@ -1112,6 +1110,17 @@ def record_session(primary: Path, task_id: str, session: dict) -> dict:
                 "record_unwritable",
                 f"the session node {folder} of task {task_id} cannot be written: {node.failure}",
             )
+        if session.get("main"):
+            try:
+                record = _bind_main(
+                    primary,
+                    task_id,
+                    session["main"],
+                    "a session works only in an open task",
+                )
+            except TaskError:
+                shutil.rmtree(folder, ignore_errors=True)
+                raise
         return record
 
 

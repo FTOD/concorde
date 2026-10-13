@@ -445,6 +445,14 @@ class MergeTests(unittest.TestCase):
             [shlex.split(passing), merge.SPEC_VALIDATION],
             trace.read(attempt)["content"]["data"]["checks"],
         )
+        # A given check that is the Spec validation itself is not followed by a second one.
+        named = f"{sys.executable} -m concorde spec-validation"
+        busy = self.refusal("merge", "t1", "--check", named)
+        self.assertEqual("check_failed", busy["code"], busy)
+        attempt = store.task_folder(self.root, "t1") / "merges/2"
+        self.assertEqual(
+            [shlex.split(named)], trace.read(attempt)["content"]["data"]["checks"]
+        )
         # Without the mark, the named checks alone run again.
         mark.unlink()
         status, value = self.command("merge", "t1", "--check", passing)
@@ -1457,19 +1465,23 @@ class MergeTests(unittest.TestCase):
         self.assertEqual(0, status, value)
         self.assertEqual("merged", value["record"]["closed"]["outcome"])
 
-    @verifies("scenario.tasks.merge-abort-diverged")
+    @verifies(
+        "scenario.tasks.merge-abort-diverged", "scenario.tasks.merge-resume-refused"
+    )
     def test_abort_refuses_a_primary_branch_that_moved_on(self):
         before, after = self.interrupted()
         (self.root / "notes.txt").write_text("committed on top of the merge\n")
         moved = commit(self.root, "a commit on top of the unchecked merge")
-        error = self.refusal("merge", "t1", "--abort")
-        self.assertEqual(
-            ("merge_diverged", "decision"),
-            (error["code"], error["unhandled"]["reason"]),
-        )
-        for part in (moved, before, after):
-            self.assertIn(part, error["detail"])
-        self.assertEqual((moved, "merging"), (self.head(), self.state()))
+        for option in ("--abort", "--resume"):
+            error = self.refusal("merge", "t1", option)
+            self.assertEqual(
+                ("merge_diverged", "decision"),
+                (error["code"], error["unhandled"]["reason"]),
+                option,
+            )
+            for part in (moved, before, after):
+                self.assertIn(part, error["detail"])
+            self.assertEqual((moved, "merging"), (self.head(), self.state()))
         # A merge in progress that is not the task's is refused before Git aborts it.
         git(self.root, "reset", "--hard", before)
         git(self.root, "branch", "side", before)
@@ -1597,6 +1609,27 @@ class FrozenSourcesTests(unittest.TestCase):
         self.merged(package)
         with self.assertRaises(ImportError):
             __import__("concorde_unfrozen_probe.command")
+
+
+class SpecValidationFormTests(unittest.TestCase):
+    """The forms in which a given check is the project's Spec validation."""
+
+    @verifies("scenario.tasks.merge-update-validated")
+    def test_the_forms_of_the_spec_validation(self):
+        for text in (
+            "concorde spec-validation",
+            ".concorde/bin/concorde spec-validation",
+            "python3 scripts/concorde.py spec-validation",
+            f"{sys.executable} -m concorde spec-validation --format json",
+        ):
+            self.assertTrue(merge.is_spec_validation(shlex.split(text)), text)
+        for text in (
+            "concorde spec-validation specs/other",
+            "concorde build",
+            "python3 -c pass",
+            "make spec-validation",
+        ):
+            self.assertFalse(merge.is_spec_validation(shlex.split(text)), text)
 
 
 if __name__ == "__main__":

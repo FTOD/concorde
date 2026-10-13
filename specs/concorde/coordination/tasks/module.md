@@ -79,6 +79,21 @@ of work it wants isolated, the main agent opens a task with:
 
 When the task ends, the folder moves to the [history](../../glossary.json#concept.history).
 
+A task's ordinary life takes four steps, each detailed below:
+
+```text
+concorde task open severity --goal "let Issue reports carry a severity" --modules module.issues
+concorde task session severity --main <the main agent's session>
+concorde delivery                      # by the task session, in .claude/worktrees/severity
+concorde task merge severity           # by the main agent, in the primary worktree
+```
+
+The main agent [opens](#opening-a-task) the task and hands it to a
+[task session](../../glossary.json#concept.task-session). The session works in the task worktree and
+makes the [delivery commit](../../glossary.json#concept.delivery-commit), with Method's `delivery`
+or, [without Method](#delivering-without-method), `concorde task deliver`. The main agent then
+[merges](#merging) the task, which closes it.
+
 Parallelism exists only between tasks. No tasks share a worktree. The Kernel's
 [workspace lock](../../glossary.json#concept.workspace-lock) lets each workspace do one thing at a
 time. A task's goal and Modules are those named at open and never change. When a run names further
@@ -176,46 +191,12 @@ and traces. A reader never joins these from several stores:
 - Its sessions.
 - Its runs.
 
-Removing or exporting a task is one folder. Tasks registers the current task folders and the history
-with [Tracing](../../kernel/tracing/module.md) as two of its trace roots. Thus,
-`concorde trace show` finds a task's nodes in either. Tasks also gives the history its retention.
-From each history folder of a task closed more than 30 days ago, Tracing's prune removes its
-**conversation records**. These are the transcripts of its task sessions and worker runs. They make
-up most of the folder's size. They are read mostly while the task is fresh. When the project
-configures a longer period in its
-[Tracing configuration](../../kernel/tracing/contracts.md#contract.tracing.configuration), Tracing's
-prune removes each history folder of a task closed longer ago than that, whole. Nothing of a current
-task is removed. What a task decided outlives retention: when the task ends, its decision log is
-committed to Git ([below](#decision-log-in-git)). When a task name is used again after its branch
-was deleted, it gets a new history key. The key is free both in the history and among the committed
-decision logs, so no closed task replaces another.
+Removing or exporting a task is one folder. The history is kept for a limited time, and a reused task
+name gets a new history key ([Where a task lives](#where-a-task-lives)).
 
-These task commands take the Kernel's [merge lock](../../glossary.json#concept.merge-lock) of the
-primary worktree:
-
-- Opening a task.
-- Merging a task.
-- Closing a task.
-
-These commands wait for the lock inside the command, up to `--wait`. When the lock is still held
-after `--wait`, the command refuses with `merge_busy`, naming its holder. A merge started by the
-[project MCP server](../../glossary.json#concept.project-mcp-server) is handed its locks. That merge
-holds the locks from its start without waiting, exactly as long as it runs.
-
-A merge also holds the task's **merge attempt lock**, `locks/attempts/<task>.lock`. The merge holds
-this lock from before it waits for its other locks until it prints its whole answer. The merge then
-removes the lock. While the merge still closes the task's Issues and writes its answer, the close
-that ends the merge removes the task's workspace lock. Thus, only the attempt lock tells that a
-merge of the task has really ended. `concorde task wait <task> --merge` waits for that lock. A merge
-the server started finds the folder of its attempt's node, `merges/<n>/`, already made and named in
-its environment. Its standard output and error go to `output.json` and `messages.log` there. Even
-when the merge is refused before it began, it records its attempt in that folder. Thus, the whole
-answer of every merge the server started is kept with the task. The answer moves with the task to
-the [history](../../glossary.json#concept.history), where the merge finishes writing it.
-`concorde task open` and `concorde task close` take the same lock. Thus, a task is never based on,
-or closed against, a merge that may still be undone. `close` takes the task's workspace lock before
-that lock, as `merge` does. The close waits up to its own `--wait`. While a run of the task could
-still write the worktree the close removes, the close then refuses with `workspace_busy`.
+Opening, merging and closing a task take the Kernel's
+[merge lock](../../glossary.json#concept.merge-lock) of the primary worktree, and a merge or close
+also takes the task's workspace lock first ([Locks](#locks)).
 
 A task's **state** is partly stored and partly derived. Only merging and closing a task change its
 stored state. Each time an open task is listed or shown, whether it is still open, active or
@@ -995,8 +976,8 @@ concorde task merge severity --abort
 
 When the primary branch's head is still the merge commit, `--resume` reruns the checks the merge
 recorded on that commit. It then closes the task as merged or undoes the merge and refuses with
-`check_failed` exactly as an uninterrupted merge does. With any other head, it refuses with
-`not_resumable`. `--abort` aborts a `git merge` left in progress. When the primary branch's head is
+`check_failed` exactly as an uninterrupted merge does. When the head is the commit before the
+merge, it refuses with `not_resumable`. `--abort` aborts a `git merge` left in progress. When the primary branch's head is
 the merge commit, it resets the branch to the commit before the merge. When the head already is that
 commit before the merge, it leaves the branch alone. It returns the task to delivered. Both take the
 merge lock and the workspace lock like a merge. When the primary worktree is on another branch or
@@ -1152,6 +1133,20 @@ items are read in one place and ended in one move:
 
 The record stays small because the task's history is its trace, which only grows by new nodes.
 
+Tasks registers the current task folders and the history with
+[Tracing](../../kernel/tracing/module.md) as two of its trace roots. Thus, `concorde trace show`
+finds a task's nodes in either. Tasks also gives the history its retention. From each history
+folder of a task closed more than 30 days ago, Tracing's prune removes its **conversation
+records**. These are the transcripts of its task sessions and worker runs. They make up most of the
+folder's size. They are read mostly while the task is fresh. When the project configures a longer
+period in its
+[Tracing configuration](../../kernel/tracing/contracts.md#contract.tracing.configuration), Tracing's
+prune removes each history folder of a task closed longer ago than that, whole. Nothing of a current
+task is removed. What a task decided outlives retention: when the task ends, its decision log is
+committed to Git ([below](#decision-log-in-git)). When a task name is used again after its branch
+was deleted, it gets a new history key. The key is free both in the history and among the committed
+decision logs, so no closed task replaces another.
+
 ### Locks
 
 Several processes may change a task at once, such as a task session escalating while the main agent
@@ -1215,6 +1210,33 @@ ensures that waiting for one task's run never holds up the merges of other tasks
 cycle. The waits happen inside the command because its callers are agents. A refusal they must
 retry would have them poll, paying for every look. A blocked command costs nothing until it
 returns.
+
+These task commands take the Kernel's [merge lock](../../glossary.json#concept.merge-lock) of the
+primary worktree:
+
+- Opening a task.
+- Merging a task.
+- Closing a task.
+
+These commands wait for the lock inside the command, up to `--wait`. When the lock is still held
+after `--wait`, the command refuses with `merge_busy`, naming its holder. A merge started by the
+[project MCP server](../../glossary.json#concept.project-mcp-server) is handed its locks. That merge
+holds the locks from its start without waiting, exactly as long as it runs.
+
+A merge also holds the task's **merge attempt lock**, `locks/attempts/<task>.lock`. The merge holds
+this lock from before it waits for its other locks until it prints its whole answer. The merge then
+removes the lock. While the merge still closes the task's Issues and writes its answer, the close
+that ends the merge removes the task's workspace lock. Thus, only the attempt lock tells that a
+merge of the task has really ended. `concorde task wait <task> --merge` waits for that lock. A merge
+the server started finds the folder of its attempt's node, `merges/<n>/`, already made and named in
+its environment. Its standard output and error go to `output.json` and `messages.log` there. Even
+when the merge is refused before it began, it records its attempt in that folder. Thus, the whole
+answer of every merge the server started is kept with the task. The answer moves with the task to
+the [history](../../glossary.json#concept.history), where the merge finishes writing it.
+`concorde task open` and `concorde task close` take the merge lock too. Thus, a task is never based
+on, or closed against, a merge that may still be undone. `close` takes the task's workspace lock
+before the merge lock, as `merge` does. The close waits up to its own `--wait`. While a run of the task could
+still write the worktree the close removes, the close then refuses with `workspace_busy`.
 
 ### Why the decision log goes to Git
 

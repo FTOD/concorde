@@ -343,20 +343,28 @@ A commit on the task branch past its base, or an uncommitted change in its workt
 
 ### scenario.tasks.close-rerun — Running a close again finishes it
 
-- GIVEN a task whose close removed its worktree and then could not write the record. Alternatively,
-  the close wrote the record and then could not append its closing to the decision log. Or the close
-  appended its closing and then could not end the task's trace node.
+- GIVEN a task whose close removed its worktree and then could not write the record
 - WHEN the main agent reads the refusal
-- THEN the refusal names what the close did and says that running the same close again finishes it
-- AND running the same close again closes the task, or appends the missing closing once, or ends the
-  trace node
+- THEN the refusal names the removed worktree and says that running the same close again finishes it
+- AND running the same close again skips the worktree and closes the task
+
+### scenario.tasks.close-rerun-closed — Running a close again finishes a closed task
+
+- GIVEN a task whose close wrote the record and then failed in a later step
+- AND that step appends the closing to the decision log, ends the task's trace node, commits the log
+  or moves the folder to the history
+- WHEN the main agent reads the refusal
+- THEN the refusal names the task's stored state, outcome and time and says that running the same
+  close again finishes it
+- AND running the same close again finishes the steps it lacks: it appends the missing closing once,
+  ends the trace node, commits the log and moves the folder
 - AND running the same close again leaves the record unchanged
 
 ### scenario.tasks.close-other-outcome — Refuse to close a closed task again
 
 - GIVEN a task already closed or failed
-- WHEN the main agent closes it with another outcome, or with its own outcome once its decision log
-  holds the closing
+- WHEN the main agent closes it with another outcome, or with its own outcome once its folder is in
+  the history
 - THEN the command fails with `invalid_transition`
 - AND the record and the decision log are unchanged
 
@@ -464,6 +472,7 @@ This illustrates [a merge running the Concorde it started with](requirements.md#
 - AND the latter check fails, so the merge is undone with `check_failed`
 - AND the task is delivered again
 - AND the mark stays
+- AND a merge whose given `--check` is `concorde spec-validation` itself runs it once, not twice
 - AND once the mark is gone, the same merge runs the given check alone
 
 ### scenario.tasks.merge-waits — A second merge waits for the first
@@ -688,7 +697,10 @@ This illustrates [a merge running the Concorde it started with](requirements.md#
   branch's head
 - WHEN the main agent runs `concorde task merge <task-id> --resume`, with or without `--check`
 - THEN for a task that is not merging, the command fails with `not_merging`
-- AND for a merge commit that is not the head, the command fails with `not_resumable`
+- AND for a head at the commit before the merge, the command fails with `not_resumable`
+- AND for a head that is neither the commit before the merge nor the merge commit, the command fails
+  with `merge_diverged`
+- AND that refusal names the head, the commit before the merge and the merge commit
 - AND for `--check` with `--resume`, the command fails with `invalid_input`
 - AND the primary branch and the task record are unchanged
 
@@ -890,6 +902,16 @@ This illustrates [the parts Coordination does without](../module.md#optional-int
   recording nothing
 - AND a report for a closed task is refused with `task_closed`, recording nothing
 
+### scenario.tasks.session-record-refused — A refused session record leaves the task record as it was
+
+- GIVEN an open task whose record names the main agent's session `concorde-7d`
+- WHEN a task session started for the main agent's session `concorde-8e` is recorded
+- AND the file system refuses the session's trace node
+- THEN the recording fails with `record_unwritable`
+- AND the task record is unchanged, byte for byte, still naming `concorde-7d`
+- BUT when the node is written and the record then refuses the new main, the node is removed again
+- AND the task record is still unchanged
+
 ### scenario.tasks.rebind — The main agent rebinds its tasks to its new session name
 
 - GIVEN a task `severity` whose record names the main agent's session `concorde-7d`
@@ -1059,6 +1081,17 @@ This illustrates [never failing a start](requirements.md#req.tasks.main-hook-nev
 - AND the first task's folder and log are unchanged
 - AND after retention removed both history folders, a third task `retry` closes as `retry.3`, since
   the committed logs still hold `retry` and `retry.2`
+
+### scenario.tasks.history-lookup — A reused name finds each of its tasks
+
+- GIVEN tasks `retry` closed under the history keys `retry` and `retry.2`
+- AND a current task `retry`
+- WHEN the main agent runs `concorde task show retry`
+- THEN the current task is shown
+- AND `concorde task show retry.2` shows the task closed as `retry.2`
+- AND `concorde task show retry.1` shows the first task, closed as `retry`
+- AND `concorde task show retry.4` fails with `unknown_task`
+- AND once the current task closed as `retry.3`, `concorde task show retry` shows that task
 
 ## Waiting
 

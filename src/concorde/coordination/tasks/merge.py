@@ -390,10 +390,34 @@ def with_update_check(primary: Path, commands: list[list[str]]) -> list[list[str
     if (
         parts.update_unvalidated(primary)
         and parts.spec_installed(primary)
-        and SPEC_VALIDATION not in commands
+        and not any(is_spec_validation(command) for command in commands)
     ):
         return [*commands, list(SPEC_VALIDATION)]
     return commands
+
+
+def is_spec_validation(argv: list[str]) -> bool:
+    """Whether ``argv`` is the project's Spec validation of the whole worktree: ``spec-validation``
+    with no target, at most ``--format json``, run by a ``concorde`` command, a ``concorde.py``
+    script or ``python -m concorde``, the forms in which a caller may name it."""
+    words = list(argv)
+    if words and Path(words[0]).name.startswith("python"):
+        words = words[1:]
+        if words[:2] == ["-m", "concorde"]:
+            words = words[2:]
+        elif words and Path(words[0]).name == "concorde.py":
+            words = words[1:]
+        else:
+            return False
+    elif words and Path(words[0]).name in ("concorde", "concorde.py"):
+        words = words[1:]
+    else:
+        return False
+    return words in (
+        ["spec-validation"],
+        ["spec-validation", "--format", "json"],
+        ["spec-validation", "--format=json"],
+    )
 
 
 def parse_checks(texts: list[str]) -> list[list[str]]:
@@ -1112,19 +1136,21 @@ def _resume(primary: Path, record: dict, waited, reserved: Path | None = None) -
     after = store.merge_commit(primary, merging)
     if after is None:
         head = _head(primary)
-        if head == merging["before"]:
-            detail = (
-                "the commit before the merge, so the merge never landed or was undone"
+        # A head that is neither commit holds commits Tasks did not make: the same refusal as
+        # --abort's, which cannot undo the merge there either.
+        if head != merging["before"]:
+            raise _diverged(
+                primary,
+                record,
+                f"is at {head}, which is neither the commit before the merge nor the merge "
+                "commit",
             )
-        else:
-            detail = "neither the commit before the merge nor the merge commit"
         raise TaskError(
             "not_resumable",
-            f"task {record['id']} is merging, but {branch} of {primary} is at {head}, "
-            f"{detail}; only a merge whose commit is still the primary branch's head can be "
-            f"checked again, and `concorde task merge {record['id']} --abort` returns the "
-            "task to delivered when the branch is at the commit before the merge or at the "
-            "merge commit",
+            f"task {record['id']} is merging, but {branch} of {primary} is at {head}, the "
+            "commit before the merge, so the merge never landed or was undone; only a merge "
+            "whose commit is still the primary branch's head can be checked again, and "
+            f"`concorde task merge {record['id']} --abort` returns the task to delivered",
         )
     merging = dict(merging, after=after)
     attempt = Attempt(primary, record["id"], "resume", merging, waited, reserved)
@@ -1207,6 +1233,7 @@ __all__ = [
     "NO_CHECK",
     "SPEC_VALIDATION",
     "default_checks",
+    "is_spec_validation",
     "merge_task",
     "next_attempt",
     "parse_checks",

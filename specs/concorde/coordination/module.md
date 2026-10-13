@@ -264,10 +264,11 @@ what happened.
 For a question or a review that changes no Spec or code, the main agent may also start an
 [Operation](../glossary.json#concept.operation) that allows it as an
 [unbound run](../glossary.json#concept.unbound-run) in the primary worktree. Where the issues part
-is installed, a review may publish its findings as [Issues](../glossary.json#concept.issue). This is
-the review's one lasting change besides its own record
-([Execution](../execution/module.md#unbound-runs)). Such a run has no workspace and belongs to no
-task.
+is installed, a review may publish its findings as [Issues](../glossary.json#concept.issue). A
+`project_review` run also commits its review record on the primary branch. That review record is
+separate from the run's own record, which every run keeps. Besides the run's own record, these are
+the only lasting changes of such a run ([Execution](../execution/module.md#unbound-runs)). Such a
+run has no workspace and belongs to no task.
 
 ### The children and what they rely on
 
