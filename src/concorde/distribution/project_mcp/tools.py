@@ -29,6 +29,10 @@ from pathlib import Path
 from .. import formats, parts
 
 ACTOR = "Concorde project MCP server"
+# The protocol between the server and the process of a call, which every call object names: a
+# change of the call object, the answer or the reroute increments it. A call object that names
+# none is of protocol 1, the protocol before the call objects named theirs.
+PROTOCOL = 2
 # Opens the server's instructions; each installed part adds its own sentence.
 INSTRUCTIONS = (
     "Concorde's project MCP server: the tools the project's installed Concorde parts register, "
@@ -133,6 +137,11 @@ def answer(name: str, envelope: dict) -> tuple[dict, dict | None]:
     """One call's reply, ``{"value"}`` or ``{"error"}`` with the digest of this code's tools and
     what the part asks the server to do afterwards; and the hand-over, when the call's process is
     to become the long work it started."""
+    protocol = envelope.get("protocol", 1)
+    if protocol != PROTOCOL:
+        # The server started with code of another protocol: nothing it sent can be trusted to
+        # mean what this code reads, so nothing runs.
+        return {"error": host_outdated(str(name), protocol)}, None
     installed = parts.installed()
     tools = presented(installed)
     try:
@@ -209,6 +218,24 @@ def answer(name: str, envelope: dict) -> tuple[dict, dict | None]:
     if "error" in reply or not tool["long_work"]:
         handover = None
     return {**reply, "tools": listed}, handover
+
+
+def host_outdated(name: str, protocol) -> dict:
+    """The refusal of a call whose server speaks another protocol than this code."""
+    return formats.link(
+        f"{ACTOR} ({name})",
+        "host_outdated",
+        f"the session's project MCP server speaks protocol {protocol!r} with the process of a "
+        f"call, while the current Concorde speaks protocol {PROTOCOL}: the server started "
+        "before an update or a merge changed that protocol",
+        reason="environment",
+        explanation="the server keeps the code it started with for the whole session, and the "
+        "current Concorde cannot answer a server of another protocol",
+        options=[
+            "reconnect the server with Claude Code's /mcp, then call again",
+            "restart the session, then call again",
+        ],
+    )
 
 
 def _write(descriptor: int, text: str) -> None:
@@ -293,6 +320,7 @@ __all__ = [
     "answer",
     "describe",
     "digest",
+    "host_outdated",
     "instructions",
     "listing",
     "presented",

@@ -288,6 +288,9 @@ For a refusal, `isError` is true.
 ### Calls
 
 The server runs none of its tools itself. It runs the `concorde` of a worktree.
+The server and the process of a call speak one **protocol**, numbered `2` today.
+Every [call object](#contract.distribution.mcp-call) names it as `protocol`.
+A change of the call object, of the answer line or of the reroute increments it.
 It chooses the program in this order:
 
 - When the worktree's `.concorde/bin/concorde` exists, it runs that program.
@@ -310,6 +313,7 @@ never commands for anyone else:
     - `long_work`
     - `threaded`
   - `instructions` gives the instructions.
+  The object only gains fields, so a server of any protocol reads it.
   The server answers `tools/list` with this object. When the process prints no such object,
   the server answers with no tool. When a call names a tool its last listing lacks, the server
   also fetches the object to learn how the tool is served. It then gives the session nothing.
@@ -318,6 +322,9 @@ never commands for anyone else:
   The process performs these steps:
   - It reads the [call object](#contract.distribution.mcp-call) without `tool` as one JSON object
     on its standard input.
+  - When the call object names another `protocol` than its own, or none, it runs nothing. It
+    loads no part's code. It prints `{"error": <link>}` refusing the call with `host_outdated`.
+    Every protocol reads that line the same way.
   - It loads the installed parts' registering code.
   - It calls the tool's entry with the call object.
   - It prints one JSON line on its standard output.
@@ -338,20 +345,30 @@ When the server does not find the tool there, it routes the call with these sett
 The call's process compares the call object's `served` with its own registration of the tool.
 When they differ, the process runs nothing. Instead, it prints
 `{"reroute": <serving>, "tools": <digest>}`, with `serving` as `--tools` gives it.
-For that reroute, the server takes that serving as its own. It routes the call again, once.
-When the tool is now served `threaded`, the server routes the call on a thread of its own.
+For that reroute, the server takes that serving as its own. It routes the call again, once for
+the whole call:
+
+- When the tool is now served `threaded` and the call is on the session's thread, the call goes on
+  on a thread of its own.
+- When the tool is no longer served `threaded` and the call is on a thread of its own, the call
+  goes back to the session's thread. It runs there after the work that thread already has.
+- Either way, the call has used its reroute. A second reroute refuses the call with `call_failed`.
 
 A call of a tool served `threaded` is answered on a thread of its own.
-Every other call is answered on the thread that reads the session, in the order it arrives.
+Every other call is answered on the session's thread, one at a time, in the order it arrives.
+A thread of the server reads the session and hands each message to the session's thread.
 The `--tools` process and the process of every call but long work may take 300 seconds.
 After 300 seconds, the process is stopped. The call is then refused with `call_failed`.
 A `workflow_step` call waits at most 100 seconds, so it fits in that time limit.
-When an answer's `tools` differs from the digest of the listing the server last gave its session,
-the server performs these actions:
+When an answer's `tools` differs from both of these digests, the server sends
+`notifications/tools/list_changed`:
 
-- It sends `notifications/tools/list_changed`.
-- It takes that digest as listed.
-- It answers its next `tools/list` with the current tools.
+- The digest of the tools the server last listed to its session.
+- The digest it last told the session of since that listing.
+
+The server keeps that digest as the one it told. Only an answer to the session's `tools/list`
+changes the digest listed, and it clears the digest told. Telling the session lists nothing to it.
+The server answers its next `tools/list` with the current tools.
 
 ### Waits and long work
 
@@ -429,10 +446,10 @@ Long work goes on and keeps its locks until it ends.
 ```concorde-contract
 {
   "id": "contract.distribution.mcp-call",
-  "version": 1,
+  "version": 2,
   "schema": {
     "type": "object",
-    "required": ["tool", "arguments", "primary", "where", "session", "channel", "served"],
+    "required": ["tool", "arguments", "primary", "where", "session", "channel", "served", "protocol"],
     "additionalProperties": false,
     "properties": {
       "tool": {"type": "string", "minLength": 1},
@@ -441,6 +458,7 @@ Long work goes on and keeps its locks until it ends.
       "where": {"type": "string", "minLength": 1},
       "session": {"type": ["string", "null"]},
       "channel": {"type": "boolean"},
+      "protocol": {"type": "integer", "minimum": 1},
       "served": {
         "type": "object",
         "required": ["worktree", "long_work", "threaded"],
@@ -459,7 +477,7 @@ Long work goes on and keeps its locks until it ends.
       }
     }
   },
-  "semantics": "The call object an MCP tool's entry is called with. The server writes it, without tool, to the standard input of concorde project-mcp --call <tool>, whose process adds tool, the name the call is for. arguments are the tools/call arguments as the session gave them, unchecked: the entry checks them against its input schema. primary is the absolute path of the primary worktree; where the session's folder, CLAUDE_PROJECT_DIR or else the server's working directory; session the Claude Code session the server serves, CLAUDE_CODE_SESSION_ID, or null; channel whether the server judged its session a channel. served is how the server routed the call, which the call's process compares with its own registration of the tool before anything runs. long_work is present only for a call routed as long work and names under call the file receiving the call's process's standard error until it becomes the work. A behaviour or field change increments the version.",
+  "semantics": "The call object an MCP tool's entry is called with. The server writes it, without tool, to the standard input of concorde project-mcp --call <tool>, whose process adds tool, the name the call is for. arguments are the tools/call arguments as the session gave them, unchecked: the entry checks them against its input schema. primary is the absolute path of the primary worktree; where the session's folder, CLAUDE_PROJECT_DIR or else the server's working directory; session the Claude Code session the server serves, CLAUDE_CODE_SESSION_ID, or null; channel whether the server judged its session a channel. protocol is the protocol the server speaks with the process of a call; a call object that names none is of protocol 1, and the process answers only its own protocol, refusing every other with host_outdated before anything runs. served is how the server routed the call, which the call's process compares with its own registration of the tool before anything runs. long_work is present only for a call routed as long work and names under call the file receiving the call's process's standard error until it becomes the work. A behaviour or field change increments the version.",
   "example": {
     "tool": "task_merge",
     "arguments": {"task": "fix-checkout"},
@@ -467,6 +485,7 @@ Long work goes on and keeps its locks until it ends.
     "where": "/home/dev/shop",
     "session": "4f6c2a1e-8b3d-4c5e-9f70-1a2b3c4d5e6f",
     "channel": true,
+    "protocol": 2,
     "served": {"worktree": "primary", "long_work": true, "threaded": false},
     "long_work": {"call": "/tmp/concorde-project-mcp-x1y2z3/1-task_merge.log"}
   }
@@ -547,6 +566,7 @@ links of the [error contract](../kernel/tracing/contracts.md#contract.tracing.er
 | `invalid_input` | `input` | no part of the package registers the tool; the detail names the tools there are. With reason `environment`, the call's process received no readable call object or one without the session's provenance |
 | `invalid_answer` | `environment` | the tool's entry answered neither `value` nor `error` |
 | `start_failed` | `environment` | the operating system refused to start the command a long work's process was to become; its locks were released |
+| `host_outdated` | `environment` | the call object names another protocol than the call's process speaks, or none: the server started before an update changed that protocol; nothing ran, and the options are to reconnect the server with `/mcp` or to restart the session |
 | `call_failed` | `environment` | the process of a call could not be started, exited or was stopped after its time without printing an answer, or asked twice to route the call otherwise; the detail names the command and worktree, its exit status and the end of what it printed |
 | any other code | `capability` | an unexpected error of the host, or of loading the installed parts' code, as a link built from the exception |
 

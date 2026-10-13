@@ -531,46 +531,33 @@ The host's own promises are these:
   Code loaded once would then keep answering with the rules and record formats it started with.
   That code would refuse the records the new code writes.
   So the server runs none of its tools itself.
-  Each call runs `concorde project-mcp --call <tool>` in a process of its own.
-  Unless the tool's registration names the session's own worktree instead, the call uses the
-  primary worktree's `concorde` as it is when the call arrives.
-  That command is its `.concorde/bin/concorde` or, in Concorde's source checkout, its
-  `scripts/concorde.py`.
-  The `workflow_step` registration names the session's own worktree instead.
-  The call's arguments and the session's provenance go to the call process as one JSON object.
-  The call process's answer or refusal is the tool's.
-  When a call's process gives no answer, or none within its time, the server refuses the call with
-  its own `call_failed` link.
-  The link names the command and what it printed.
-  The following come from `concorde project-mcp --tools` of the current code:
+  Each call runs in a fresh process of the `concorde` that the tool's registration names: the
+  primary worktree's as it is when the call arrives, or the session's own worktree's for
+  `workflow_step`.
+  That process's answer or refusal is the tool's.
+  When it gives no answer within its time, the server refuses the call with its own `call_failed`.
+  How a tool is served comes from the current code too:
 
-  - The tools.
-  - How each tool is served.
-  - The server's instructions, its own followed by the sentence each installed part registers.
+  - In which worktree its process runs.
+  - Whether it hands on long work.
+  - Whether it is answered on a thread of its own.
 
-  The server routes a call as the last such listing says how the tool is served.
-  That listing specifies:
-
-  - In which worktree the tool's process runs.
-  - Whether the tool hands on long work.
-  - Whether the tool is answered on a thread of its own.
-
-  The call's process, the current code, first checks that routing against its own registration
-  of the tool.
-  When the routing and registration differ, the call's process answers how it serves every tool
-  instead of running anything.
-  The server then routes the call again that way.
+  Before anything runs, the call's process checks the server's routing against its own
+  registration and has the call routed again when they differ.
   So an update that changes only how a tool is served takes effect at the next call.
-  Each answer also says which tools the current code has.
-  When those tools differ from those the server last listed to the session, the server tells its
+  When the current code's tools differ from those the session was listed, the server tells the
   session that its tools changed.
   Claude Code then lists the tools again.
-  A listing the server fetches only to learn how a tool is served is not one the session was given.
   Until the next session, only these stay what the session started with:
 
-  - The server's own session code.
-  - Its few protocol messages.
+  - The server's own session code and the protocol it speaks with the process of a call.
   - Its instructions.
+
+  An update that changes that protocol cannot be served to a running server.
+  Each call of such a server is refused with `host_outdated`, and nothing runs.
+  Reconnecting the server with Claude Code's `/mcp`, or restarting the session, starts a server of
+  the current code.
+  [The contract](contracts.md#calls) gives the commands, the messages and the routing exactly.
 
 - **Locks handed to the work.** When a tool's registration says it starts long work, the tool never
   waits for a lock.

@@ -391,9 +391,28 @@ This illustrates [refusing unusable settings first](requirements.md#req.distribu
 - WHEN the current code's registration serves it in the session's worktree, or as long work, or on a thread of its own, and the session calls it without listing its tools again
 - THEN the call's process answers how the current code serves every tool, running nothing
 - AND the server runs the call again in the session's worktree, or hands on its long work in that worktree, or answers it on a thread of its own
-- AND a call routed twice otherwise is refused with `call_failed`
+- AND a call routed twice otherwise is refused with `call_failed`, also when its first reroute moved it to a thread of its own
 
 This illustrates [serving a call as the current code registers its tool](requirements.md#req.distribution.mcp-current-serving).
+
+### scenario.distribution.mcp-reroute-to-session-thread — A call no longer threaded goes back to the session's thread
+
+- GIVEN a server that listed a tool as served on a thread of its own
+- AND the session called another tool, served on the session's thread, after it
+- WHEN the current code's registration no longer serves the tool on a thread of its own, and the session calls it
+- THEN the call's process answers how the current code serves every tool, running nothing
+- AND the server answers the call on the session's thread, after the call already there, never beside it
+
+This illustrates [serving a call as the current code registers its tool](requirements.md#req.distribution.mcp-current-serving).
+
+### scenario.distribution.mcp-host-outdated — A server of another protocol is told to reconnect
+
+- GIVEN a server that started before an update changed the protocol between the server and the process of a call
+- WHEN the session calls a tool
+- THEN the call's process runs nothing and loads no part's code
+- AND the call is refused with `host_outdated`, reason `environment`, whose options are to reconnect the server with `/mcp` or to restart the session
+
+This illustrates [refusing a server of another protocol](requirements.md#req.distribution.mcp-host-protocol).
 
 ### scenario.distribution.mcp-call-failed — A call without an answer keeps what its process printed
 
@@ -418,6 +437,16 @@ This illustrates [the session hearing that its tools changed](requirements.md#re
 - GIVEN a server whose fetch of the tools failed when its session listed them, so that the session was given no tools
 - WHEN a later call's answer names the current code's tools
 - THEN the server tells its session that its tools changed
+
+This illustrates [the session hearing that its tools changed](requirements.md#req.distribution.mcp-tools-changed).
+
+### scenario.distribution.mcp-tools-changed-once — Telling the session of a change lists nothing to it
+
+- GIVEN a server that told its session that its tools changed, after an answer named tools it was not listed
+- WHEN another answer names the same tools before the session lists its tools again
+- THEN the server does not tell the session again
+- AND when an answer names yet other tools, the server tells the session again
+- AND the tools the server compares with stay those it last listed to the session
 
 This illustrates [the session hearing that its tools changed](requirements.md#req.distribution.mcp-tools-changed).
 

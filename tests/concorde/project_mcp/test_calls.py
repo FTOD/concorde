@@ -235,6 +235,24 @@ class RoutingTests(unittest.TestCase):
         with self.assertRaises(Rethread):
             calls.call("probe", {}, threaded=False)
         self.assertEqual(threaded, calls.served("probe"))
+        # On its own thread now, the call has used its reroute: asked again, it is refused.
+        calls.replies = [{"reroute": {"probe": PLAIN}, "tools": "sha256:a"}]
+        calls.ran = []
+        with self.assertRaises(tools.Refusal) as refused:
+            calls.call("probe", {}, threaded=True, rerouted=threaded)
+        self.assertEqual("call_failed", refused.exception.link["code"])
+        self.assertEqual([("run", self.primary, threaded)], calls.ran)
+        # A call on a thread of its own that now belongs on the session's thread goes back.
+        calls.serving = {"probe": threaded}
+        calls.replies = [{"reroute": {"probe": PLAIN}, "tools": "sha256:a"}]
+        with self.assertRaises(Rethread) as moved:
+            calls.call("probe", {}, threaded=True)
+        self.assertEqual(PLAIN, moved.exception.served)
+        calls.replies = [{"value": {"answered": True}, "tools": "sha256:a"}]
+        self.assertEqual(
+            {"answered": True},
+            calls.call("probe", {}, threaded=False, rerouted=moved.exception.served),
+        )
         # Routed otherwise twice: the server cannot tell how the tool is served.
         calls.replies = [
             {"reroute": {"probe": PLAIN}, "tools": "sha256:a"},
@@ -251,6 +269,7 @@ class RoutingTests(unittest.TestCase):
             "arguments": {},
             "primary": str(self.primary),
             "where": str(self.primary),
+            "protocol": tools.PROTOCOL,
             "served": {**PLAIN, "worktree": "session"},
         }
         reply, handover = tools.answer("task_list", envelope)
@@ -279,7 +298,7 @@ class RoutingTests(unittest.TestCase):
         # The session calls a tool its listing lacks: the server learns how it is served.
         calls.call("late", {})
         self.assertEqual(["tools changed"], calls.notices)
-        self.assertEqual("sha256:new", calls.listed)
+        self.assertEqual("sha256:old", calls.listed)
 
     @verifies("scenario.distribution.mcp-tools-changed-after-failed-listing")
     def test_a_failed_listing_is_followed_by_a_tools_change(self):
@@ -293,7 +312,67 @@ class RoutingTests(unittest.TestCase):
         self.assertEqual([], calls.tools())
         calls.call("task_list", {})
         self.assertEqual(["tools changed"], calls.notices)
+        self.assertEqual(tools.digest([]), calls.listed)
+
+    @verifies("scenario.distribution.mcp-tools-changed-once")
+    def test_telling_the_session_of_a_change_lists_nothing_to_it(self):
+        calls = StoodIn(
+            self.primary,
+            self.primary,
+            [
+                listing("sha256:old", task_list=PLAIN),
+                listing("sha256:new", task_list=PLAIN),
+            ],
+            [
+                {"value": {}, "tools": "sha256:new"},
+                {"value": {}, "tools": "sha256:new"},
+                {"value": {}, "tools": "sha256:newer"},
+                {"value": {}, "tools": "sha256:old"},
+                {"value": {}, "tools": "sha256:newer"},
+            ],
+        )
+        calls.tools()
+        calls.call("task_list", {})
+        self.assertEqual(["tools changed"], calls.notices)
+        # Told once of these tools; still not listed, so the baseline stays the old listing.
+        calls.call("task_list", {})
+        self.assertEqual("sha256:old", calls.listed)
+        self.assertEqual(["tools changed"], calls.notices)
+        # Other tools again: told again.
+        calls.call("task_list", {})
+        self.assertEqual(["tools changed"] * 2, calls.notices)
+        # The tools it was listed: nothing to tell.
+        calls.call("task_list", {})
+        self.assertEqual(["tools changed"] * 2, calls.notices)
+        # Listing anew makes the listed tools the baseline.
+        calls.tools()
         self.assertEqual("sha256:new", calls.listed)
+        calls.call("task_list", {})
+        self.assertEqual(["tools changed"] * 3, calls.notices)
+
+    @verifies("scenario.distribution.mcp-host-outdated")
+    def test_a_call_of_another_protocol_runs_nothing(self):
+        envelope = {
+            "arguments": {},
+            "primary": str(self.primary),
+            "where": str(self.primary),
+            "served": PLAIN,
+        }
+        for protocol in (None, 1, tools.PROTOCOL + 1):
+            with self.subTest(protocol=protocol):
+                call = (
+                    envelope if protocol is None else {**envelope, "protocol": protocol}
+                )
+                with patch.object(tools.parts, "load") as load:
+                    reply, handover = tools.answer("task_list", call)
+                load.assert_not_called()
+                self.assertIsNone(handover)
+                self.assertEqual({"error"}, set(reply))
+                self.assertEqual("host_outdated", reply["error"]["code"])
+                self.assertEqual("environment", reply["error"]["unhandled"]["reason"])
+                self.assertTrue(
+                    any("/mcp" in option for option in reply["error"]["options"])
+                )
 
 
 class ChannelOverrideTests(unittest.TestCase):
@@ -326,10 +405,14 @@ class ServerRethreadTests(unittest.TestCase):
             def served(self, name):
                 return PLAIN
 
-            def call(self, name, arguments, threaded=True):
+            def call(self, name, arguments, threaded=True, rerouted=None):
                 if not threaded:
-                    raise Rethread(name)
-                return {"answered": name, "thread": threading.current_thread().name}
+                    raise Rethread(name, {**PLAIN, "threaded": True})
+                return {
+                    "answered": name,
+                    "thread": threading.current_thread().name,
+                    "rerouted": rerouted,
+                }
 
         directory = tempfile.TemporaryDirectory()
         self.addCleanup(directory.cleanup)
@@ -352,8 +435,80 @@ class ServerRethreadTests(unittest.TestCase):
         answer = json.loads(writer.getvalue())
         self.assertEqual(7, answer["id"])
         self.assertEqual(
-            {"answered": "probe", "thread": "call 7"},
+            {
+                "answered": "probe",
+                "thread": "call 7",
+                "rerouted": {**PLAIN, "threaded": True},
+            },
             json.loads(answer["result"]["content"][0]["text"]),
+        )
+
+    @verifies("scenario.distribution.mcp-reroute-to-session-thread")
+    def test_a_call_the_current_code_no_longer_threads_returns_to_the_sessions_thread(
+        self,
+    ):
+        threaded = {**PLAIN, "threaded": True}
+        order = []
+        release = threading.Event()
+
+        class Fake:
+            def served(self, name):
+                return threaded if name == "slow" else PLAIN
+
+            def call(self, name, arguments, threaded=True, rerouted=None):
+                thread = threading.current_thread().name
+                if name == "slow" and threaded:
+                    # Rerouted on its own thread: it belongs on the session's thread now.
+                    release.wait(10)
+                    raise Rethread(name, PLAIN)
+                order.append((name, thread, rerouted))
+                if name == "quick":
+                    release.set()
+                return {"answered": name}
+
+            def close(self):
+                pass
+
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        reader_end, writer_end = os.pipe()
+        reader = os.fdopen(reader_end, "r")
+        sender = os.fdopen(writer_end, "w")
+        output = io.StringIO()
+        session = server_module.Session(
+            reader, output, environment={}, cwd=Path(directory.name)
+        )
+        session.calls = Fake()
+        ran = threading.Thread(target=session.run)
+        ran.start()
+        for identity, name in ((1, "slow"), (2, "quick")):
+            sender.write(
+                json.dumps(
+                    {
+                        "jsonrpc": "2.0",
+                        "id": identity,
+                        "method": "tools/call",
+                        "params": {"name": name, "arguments": {}},
+                    }
+                )
+                + "\n"
+            )
+            sender.flush()
+        deadline = threading.Event()
+        for _ in range(100):
+            if len(output.getvalue().splitlines()) == 2:
+                break
+            deadline.wait(0.1)
+        sender.close()
+        ran.join(10)
+        main = ran.name
+        # Both ran on the session's thread, the moved call after the call already there.
+        self.assertEqual(
+            [("quick", main, None), ("slow", main, PLAIN)],
+            order,
+        )
+        self.assertEqual(
+            {1, 2}, {json.loads(line)["id"] for line in output.getvalue().splitlines()}
         )
 
 

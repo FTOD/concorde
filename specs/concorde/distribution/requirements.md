@@ -511,10 +511,21 @@ tools again.
 
 ### req.distribution.mcp-tools-changed — The session hears that its tools changed
 
-When the tools of the Concorde that answered a call differ from those the server last listed to its session, a listing it fetched without giving it to the session not counting as listed, the server SHALL tell the session that its tools changed.
+When the tools of the Concorde that answered a call differ from those the server last listed to its session, a listing it fetched without giving it to the session not counting as listed, the server SHALL tell the session that its tools changed, once for each set of tools it has not told the session of since that listing.
+
+Telling the session lists nothing to it: until the session lists its tools again, the server
+compares with the tools it last listed.
 
 A part installed or removed by an update thereby adds or removes its tools in a running session,
 since the session then lists them again ([listed](#req.distribution.mcp-tools-listed-current)).
+
+### req.distribution.mcp-host-protocol — A server of another protocol is refused
+
+When the call object of a call names another protocol between the server and the process of a call than the answering Concorde's, or none, the process of the call SHALL run nothing and refuse the call with `host_outdated`, naming reconnecting the server or restarting the session.
+
+The server keeps its own code for the whole session ([Serving a call](module.md#serving-a-call)),
+so an update that changes that protocol cannot be served to a running server. No older protocol is
+supported: a new server of the current code serves the session again.
 
 ### req.distribution.mcp-tools-listed-current — The server lists the current code's tools
 

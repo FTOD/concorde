@@ -22,6 +22,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import queue
 import subprocess
 import sys
 import threading
@@ -146,6 +147,9 @@ class Session:
         self.reader = reader
         self.writer = writer
         self.lock = threading.Lock()
+        # What the session's thread does, in order: each line the session sent, and each call
+        # its reroute moved back from a thread of its own.
+        self.inbox: queue.Queue = queue.Queue()
         environment = dict(os.environ if environment is None else environment)
         primary = find_primary(environment, Path(cwd or Path.cwd()))
         self.where = Path(environment.get("CLAUDE_PROJECT_DIR") or cwd or Path.cwd())
@@ -226,12 +230,7 @@ class Session:
             if self.calls is not None and self.calls.served(str(name))["threaded"]:
                 self.threaded(identity, name, arguments)
             else:
-                try:
-                    result = self.tool_result(name, arguments, threaded=False)
-                except Rethread:
-                    self.threaded(identity, name, arguments)
-                else:
-                    self.reply(identity, result)
+                self.answer(identity, name, arguments, threaded=False)
         else:
             self.send(
                 {
@@ -241,11 +240,27 @@ class Session:
                 }
             )
 
-    def threaded(self, identity, name, arguments) -> None:
+    def answer(
+        self, identity, name, arguments, threaded: bool, rerouted: dict | None = None
+    ) -> None:
+        """Answer the call on the thread it runs on, or move it, its reroute used, to the thread
+        its reroute names: a thread of its own, or the session's thread, after what that thread
+        already has to do."""
+        try:
+            result = self.tool_result(name, arguments, threaded, rerouted)
+        except Rethread as moved:
+            if moved.served["threaded"]:
+                self.threaded(identity, name, arguments, moved.served)
+            else:
+                self.inbox.put(("call", (identity, name, arguments, moved.served)))
+        else:
+            self.reply(identity, result)
+
+    def threaded(self, identity, name, arguments, rerouted: dict | None = None) -> None:
         """Answer the call on a thread of its own: a workflow step waits up to its bound, and
         the other calls are answered meanwhile."""
         threading.Thread(
-            target=lambda: self.reply(identity, self.tool_result(name, arguments)),
+            target=lambda: self.answer(identity, name, arguments, True, rerouted),
             name=f"call {identity}",
             daemon=True,
         ).start()
@@ -258,9 +273,11 @@ class Session:
         self.calls.refresh()
         return self.calls.instructions
 
-    def tool_result(self, name, arguments, threaded: bool = True) -> dict:
-        """The call's result; ``Rethread`` for a call made on the session's thread (``threaded``
-        false) that the current code serves on a thread of its own."""
+    def tool_result(
+        self, name, arguments, threaded: bool = False, rerouted: dict | None = None
+    ) -> dict:
+        """The call's result; ``Rethread`` for a call the current code serves on another thread
+        than the one it runs on (``threaded`` false for the session's thread)."""
         try:
             if self.calls is None:
                 raise Refusal(
@@ -277,7 +294,7 @@ class Session:
                         ],
                     )
                 )
-            value, error = self.calls.call(name, arguments, threaded), False
+            value, error = self.calls.call(name, arguments, threaded, rerouted), False
         except Rethread:
             raise
         except Refusal as refusal:
@@ -295,8 +312,23 @@ class Session:
         text = json.dumps(value, indent=1, ensure_ascii=False, sort_keys=True)
         return {"content": [{"type": "text", "text": text}], "isError": error}
 
-    def run(self) -> int:
+    def read(self) -> None:
+        """Hand each line the session sends to the session's thread, then the end."""
         for line in self.reader:
+            self.inbox.put(("line", line))
+        self.inbox.put(("end", None))
+
+    def run(self) -> int:
+        threading.Thread(target=self.read, name="read", daemon=True).start()
+        while True:
+            kind, item = self.inbox.get()
+            if kind == "end":
+                break
+            if kind == "call":
+                identity, name, arguments, rerouted = item
+                self.answer(identity, name, arguments, False, rerouted)
+                continue
+            line = item
             if not line.strip():
                 continue
             try:

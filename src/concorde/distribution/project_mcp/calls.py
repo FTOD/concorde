@@ -31,7 +31,7 @@ import threading
 from pathlib import Path
 
 from .. import formats
-from .tools import ACTOR, INSTRUCTIONS, Refusal, digest
+from .tools import ACTOR, INSTRUCTIONS, PROTOCOL, Refusal, digest
 
 # How long an ordinary call's process may take before the call is refused.
 CALL_LIMIT = 300
@@ -121,8 +121,13 @@ UNLISTED = {"worktree": "primary", "long_work": False, "threaded": False}
 
 
 class Rethread(Exception):
-    """The call, routed on the session's thread, belongs on a thread of its own, as the current
-    code's registration of the tool now says."""
+    """The call belongs on another thread than the one it runs on, as the current code's
+    registration of the tool now says: on a thread of its own, or back on the session's thread.
+    ``served`` is how it is served now; the call has used its one reroute."""
+
+    def __init__(self, name: str, served: dict):
+        super().__init__(name)
+        self.served = served
 
 
 class Calls:
@@ -149,7 +154,10 @@ class Calls:
         self.waits = 0
         self.watched: list[subprocess.Popen] = []
         self.closing = False
+        # The digest of the tools last listed to the session, and of the tools it was last told
+        # changed since; telling it of a change lists nothing to it.
         self.listed: str | None = None
+        self.notified: str | None = None
         # How each tool is served, from the last listing: worktree, long_work and threaded.
         self.serving: dict[str, dict] | None = None
         self.instructions = INSTRUCTIONS
@@ -210,9 +218,9 @@ class Calls:
         if value is None:
             # The session was given an empty listing: a later answer naming other tools tells it
             # that its tools changed.
-            self.listed = digest([])
+            self.listed, self.notified = digest([]), None
             return []
-        self.listed = value["digest"]
+        self.listed, self.notified = value["digest"], None
         return value["tools"]
 
     def served(self, name: str) -> dict:
@@ -225,22 +233,31 @@ class Calls:
 
     # --- calls ------------------------------------------------------------------------------
 
-    def call(self, name: str, arguments, threaded: bool = True) -> object:
+    def call(
+        self,
+        name: str,
+        arguments,
+        threaded: bool = False,
+        rerouted: dict | None = None,
+    ) -> object:
         """The answer of the call's process, or ``Refusal`` with its link; ``Rethread`` when the
-        call, made on the session's thread (``threaded`` false), belongs on a thread of its own.
+        call belongs on another thread than the one it runs on: a thread of its own, or the
+        session's thread (``threaded`` false).
 
         The call is routed as the last listing says; a process whose current code serves the tool
         otherwise answers ``reroute`` with how it serves every tool, having run nothing, and the
-        call is routed again that way, once."""
+        call is routed again that way, once. A call moved to another thread by its reroute goes
+        on there as ``rerouted``, how it is now served, with its reroute used."""
         envelope = {
             "arguments": arguments,
             "primary": self.primary.as_posix(),
             "where": self.where.as_posix(),
             "session": self.session,
             "channel": self.channel,
+            "protocol": PROTOCOL,
         }
-        served = self.served(name)
-        for _ in range(2):
+        served = rerouted or self.served(name)
+        while True:
             worktree = (
                 (toplevel(self.where) or self.primary)
                 if served["worktree"] == "session"
@@ -253,20 +270,22 @@ class Calls:
                 reply = self.run(name, routed, CALL_LIMIT, worktree)
             if not isinstance(reply.get("reroute"), dict):
                 break
+            if rerouted is not None:
+                raise self.failed(
+                    name,
+                    ["project-mcp", "--call", name],
+                    "asked twice to route the call otherwise, so the server cannot tell how "
+                    "the current code serves the tool",
+                )
             self.serving = reply["reroute"]
-            served = self.served(name)
-            if served["threaded"] and not threaded:
-                raise Rethread(name)
-        else:
-            raise self.failed(
-                name,
-                ["project-mcp", "--call", name],
-                "asked twice to route the call otherwise, so the server cannot tell how the "
-                "current code serves the tool",
-            )
-        if self.listed is not None and reply.get("tools") not in (None, self.listed):
+            served = rerouted = self.served(name)
+            if served["threaded"] != threaded:
+                raise Rethread(name, served)
+        tools = reply.get("tools")
+        if self.listed is not None and tools not in (None, self.listed, self.notified):
             # The session was given other tools than the current code's: it lists them again.
-            self.listed = reply["tools"]
+            # It is told once for each set of tools it was not given.
+            self.notified = tools
             self.changed()
         if "error" in reply:
             raise Refusal(reply["error"])

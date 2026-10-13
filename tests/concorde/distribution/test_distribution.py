@@ -850,7 +850,12 @@ class PartsTests(unittest.TestCase):
             {"issue_list", "issue_report", "run_result", "task_resolve"} & names
         )
         self.assertIn("register_wait", names)
-        call = {"arguments": {}, "primary": str(project), "where": str(project)}
+        call = {
+            "arguments": {},
+            "primary": str(project),
+            "where": str(project),
+            "protocol": 2,
+        }
         answered = framework_command(
             project, "project-mcp", "--call", "issue_list", stdin=json.dumps(call)
         )
