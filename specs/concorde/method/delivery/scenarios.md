@@ -8,6 +8,7 @@ commit and output are defined in the [contracts](contracts.md).
 ### scenario.delivery.deliver — Deliver a workspace with uncommitted work
 
 - GIVEN a task worktree bound to the workspace `severity` on the branch `concorde/severity`, with uncommitted changes that pass validation
+- AND a repository with no hook that changes a commit message
 - WHEN the task level runs `concorde delivery` there
 - THEN Delivery decides the readiness itself and names its own run as the readiness run
 - AND a [delivery commit](../../glossary.json#concept.delivery-commit) `concorde: deliver severity`, with the goal as body and no trailer, is created on `concorde/severity` with the validated head as its parent
@@ -124,6 +125,13 @@ commit and output are defined in the [contracts](contracts.md).
 - AND the index and the worktree hold what the commit held, the hook's version of `src/a/calc.py` staged
 - AND the branch holds no delivery commit, so a following `delivery` validates the workspace as it now is
 
+### scenario.delivery.hook-trailer — A commit message hook that only adds a trailer is accepted
+
+- GIVEN a workspace that is ready, with a commit-msg hook that appends a `Change-Id` trailer to the body
+- WHEN the workspace is delivered
+- THEN the delivery commit has the subject `concorde: deliver t1`, the goal and the trailer in its body
+- AND the result has status `ok` with that commit as output
+
 ### scenario.delivery.hook-changed-message — A commit message hook that rewrites the subject is caught
 
 - GIVEN a workspace that is ready, with a commit-msg hook that prefixes the subject with a ticket, `[T-1] `
@@ -131,6 +139,13 @@ commit and output are defined in the [contracts](contracts.md).
 - THEN Git creates the commit with the subject `[T-1] concorde: deliver t1`
 - BUT its subject is not the delivery subject, so the result has status `failed` with `commit_unverified`, naming the subject it carries and the one it should
 - AND Delivery takes the commit off the branch: the head is again the validated head and the branch holds no delivery commit
+
+### scenario.delivery.restore-failed — A part of the index that cannot be restored is named
+
+- GIVEN a delivery whose step 9 failed after step 8 recorded the index
+- WHEN Git refuses to read the recorded tree back into the index
+- THEN the run's summary and error say that restoring the index failed and the index is not as the readiness examined it, with Git's account as a cause
+- AND they say that the intent-to-add entries were not restored, since Delivery attempted no restoration that applies only to an index that was read back
 
 ### scenario.delivery.hook-edits-kept — A failing hook's worktree edits are kept and named
 

@@ -572,6 +572,7 @@ def apply_project_proposal(root: Path, package: Path, proposal: dict) -> dict:
             "invalid_proposal",
             "/proposal/files",
             path=".concorde/specs.json",
+            causes=[system_cause(error, path=".concorde/specs.json")],
         ) from error
     if proposal["base_digest"] is not None or any(
         item["before_digest"] is not None for item in files

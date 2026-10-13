@@ -405,9 +405,9 @@ in, it serves these for the whole project from the primary worktree:
 
 The server reads them afresh on every call. The `concorde` commands stay the source of truth. Every
 answer and refusal of a query or short write is the command's own. Every refusal is an error chain
-link. The server's only rule of its own is that it never waits for a lock. So `task_merge` and
-`register_wait` answer at once with the merge they started or the wait they registered. The merge's
-result or the wait's answer comes later.
+link. Coordination's tools have one rule of their own: they never wait for a lock. So `task_merge`
+and `register_wait` answer at once with the merge they started or the wait they registered. The
+merge's result or the wait's answer comes later.
 
 The server presents these queries:
 
@@ -448,10 +448,17 @@ returns at once. Even if your session ends first, that process holds the three l
 ends. Its `checks`, `resume` and `abort` are the command's
 `--check`, `--resume` and `--abort`.
 
-Handle its outcome as a merge's (see "Merge delivered work" above). When it is refused with
-`workspace_busy` or `merge_busy`, register a wait for that lock with `register_wait`. Without a
-channel, run the `concorde task wait` command it returns in background Bash instead. Call
-`task_merge` again once you are woken: you may be refused again.
+Handle its outcome as a merge's (see "Merge delivered work" above). When it is refused, its detail
+names the busy lock file:
+
+- For the task's merge attempt lock, `locks/attempts/<task>.lock` (`merge_busy`), a merge of the
+  task still runs. `register_wait` takes no such lock. Run `concorde task wait <task> --merge` in
+  background Bash. When it returns, read that merge's answer in the `output.json` it names. Call
+  `task_merge` again only when that merge did not close the task.
+- For the task's workspace lock (`workspace_busy`) or the merge lock (`merge_busy`), register a
+  wait for that lock with `register_wait`. Without a channel, run the `concorde task wait` command
+  it returns in background Bash instead. Call `task_merge` again once you are woken: you may be
+  refused again.
 
 `register_wait` asks to be woken in these cases:
 

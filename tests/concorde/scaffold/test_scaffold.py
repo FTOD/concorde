@@ -274,6 +274,39 @@ class ScaffoldTests(AdoptionCase):
         self.assertEqual([], list(folder.iterdir()))
         self.assertFalse((worktree / "specs/project/inventory").exists())
 
+    @verifies("scenario.scaffold.target-folder-exists")
+    def test_a_child_folder_created_after_the_recheck_is_refused(self):
+        worktree = self.open()
+        _, survey = self.survey()
+        folder = worktree / "specs/project/inventory"
+        reading = parent_reading
+
+        def created_meanwhile(text, children):
+            # Another process creates an empty child folder after the recheck found none.
+            folder.mkdir()
+            return reading(text, children)
+
+        before = git(worktree, "status", "--porcelain", "--untracked-files=all")
+        with patch(
+            "concorde.method.scaffold.command.parent_reading", created_meanwhile
+        ):
+            _status, envelope = self.project.run(
+                "scaffold", "--task", "adopt", "--input", survey["run_id"]
+            )
+        self.assertEqual("blocked", envelope["status"], envelope)
+        self.assertEqual("stale_proposal", envelope["error"]["code"])
+        self.assertIn("specs/project/inventory/", envelope["error"]["detail"])
+        self.assertEqual(
+            ["proposal_mismatch"],
+            [cause["code"] for cause in envelope["error"]["causes"]],
+        )
+        self.assertEqual(
+            before, git(worktree, "status", "--porcelain", "--untracked-files=all")
+        )
+        # The folder the other process created stays; the one this attempt created is gone.
+        self.assertEqual([], list(folder.iterdir()))
+        self.assertFalse((worktree / "specs/project/checkout").exists())
+
     @verifies("scenario.scaffold.invalid-not-kept")
     def test_a_scaffold_that_would_not_validate_keeps_nothing(self):
         worktree = self.open()
@@ -583,6 +616,34 @@ class ScaffoldTests(AdoptionCase):
         after = parent_reading(quoted, child)
         self.assertEqual(quoted.rstrip("\n"), after.split("\n\n<a id=")[0])
         self.assertNotIn(SCAFFOLDED_PARTS, after)
+
+    @verifies("scenario.scaffold.creates")
+    def test_parts_is_found_as_spec_core_reads_the_markdown(self):
+        child = [
+            {"id": "module.checkout", "title": "Checkout", "purpose": "It orders."}
+        ]
+        paragraph = '<a id="contains-checkout"></a>'
+        # A Parts heading with an explicit anchor is the Parts section: no second one is added.
+        anchored = (
+            "# Shop\n\n## Parts {#parts}\n\nShop has parts.\n\n## Design\n\nIt is.\n"
+        )
+        after = parent_reading(anchored, child)
+        self.assertEqual(1, after.count("## Parts"))
+        self.assertLess(after.index(paragraph), after.index("## Design"))
+        # A level-two heading inside a fenced example ends nothing.
+        fenced = (
+            "# Shop\n\n## Parts\n\nAn example:\n\n```markdown\n## Example\n\ntext\n```\n\n"
+            "Shop has parts.\n\n## Design\n\nIt is.\n"
+        )
+        after = parent_reading(fenced, child)
+        self.assertIn("```markdown\n## Example\n\ntext\n```\n", after)
+        self.assertLess(after.index("```\n\nShop has parts."), after.index(paragraph))
+        self.assertLess(after.index(paragraph), after.index("## Design"))
+        # A Parts heading inside a fence alone is no Parts section.
+        only_fenced = "# Shop\n\n```markdown\n## Parts\n```\n"
+        after = parent_reading(only_fenced, child)
+        self.assertTrue(after.startswith(only_fenced))
+        self.assertIn("\n## Parts\n\n" + paragraph, after)
 
     @verifies("scenario.scaffold.distinct-anchors")
     def test_distinct_identities_get_distinct_anchors(self):

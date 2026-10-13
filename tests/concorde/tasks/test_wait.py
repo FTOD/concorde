@@ -11,13 +11,14 @@ import sys
 import threading
 import time
 import unittest
+from unittest.mock import patch
 
 from concorde.kernel.errors import ERROR_SCHEMA
 from tests.concorde.support.ignored import TRACES
 from concorde.kernel.locking import workspace_lock
 from concorde.spec.schema import validate
 from concorde.spec.verification import verifies
-from concorde.coordination.tasks import cli, store
+from concorde.coordination.tasks import cli, store, wait
 from concorde.kernel.tracing import layout
 from tests.concorde.support.environment import child_environment
 from tests.concorde.support.operation_project import OperationProject, commit
@@ -146,6 +147,30 @@ class WaitTests(unittest.TestCase):
         self.assertEqual("wait_unreachable", value["error"]["code"])
         status, value = self.command("wait", "--rebound", "concorde-8e")
         self.assertEqual("invalid_input", value["error"]["code"])
+
+    @verifies("scenario.tasks.wait-rebound")
+    def test_a_rebind_wait_never_makes_the_folder_of_a_task_that_closed(self):
+        store.rebind(self.root, "t1", "concorde-7d")
+        # The close lands between the wait's first read and its watch.
+        real = wait.rebound
+        calls = []
+
+        def closing_first(primary, task_id, former):
+            calls.append(task_id)
+            if len(calls) == 1:
+                found = real(primary, task_id, former)
+                store.close_task(self.root, "t1", "completed", note="done", errors=[])
+                return found
+            return real(primary, task_id, former)
+
+        with patch.object(wait, "rebound", closing_first):
+            status, value = self.command(
+                "wait", "t1", "--rebound", "concorde-7d", "--timeout", "30"
+            )
+        self.assertEqual(1, status, value)
+        self.assertEqual("wait_unreachable", value["error"]["code"])
+        self.assertFalse(store.task_folder(self.root, "t1").exists())
+        self.assertTrue((store.history_folder(self.root, "t1") / "task.json").is_file())
 
     @verifies("scenario.tasks.wait-lock")
     def test_a_lock_wait_returns_when_its_holder_dies(self):

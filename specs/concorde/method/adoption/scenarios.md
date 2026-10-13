@@ -47,6 +47,7 @@ shapes are in the [contracts](contracts.md).
 - AND the [Operation](../../glossary.json#concept.operation)'s link lists both inconsistencies with `capability` as its reason
 - AND the worker's proposal stays in the result's `worker` field only
 - AND a child entry in a directory the exclusion rule skips below `src/`, such as `src/build/`, or one reached through a symbolic link fails the same way, since `module.shop` never bound its files
+- AND a child whose folder already exists, such as an empty `specs/shop/checkout/` that no Module registers, fails the same way, naming the folder
 
 ### scenario.adoption.vendored-bound-elsewhere — Vendored code another Module binds does not fit
 
@@ -61,7 +62,17 @@ shapes are in the [contracts](contracts.md).
 - WHEN the caller runs the survey of `module.shop` there again, with answers that revise it
 - THEN the result is `failed` with `fresh_workspace_required`, naming each Module `module.shop` contains since the workspace's base commit, before any worker started
 - AND nothing the scaffold wrote is undone and no file changes
-- BUT a survey of `module.checkout`, to which no scaffold wrote, runs as usual in the same worktree
+- BUT a survey of `module.checkout`, to which no scaffold wrote and whose entry metadata the base commit lacks, runs as usual in the same worktree
+
+### scenario.adoption.survey-revised-elsewhere — A survey revised after its scaffold runs anew in a fresh workspace
+
+- GIVEN the task worktree `adopt`, in which a survey of `module.shop` decided `d.db-helper` "stay with the root" and its scaffold ran
+- AND the answer "a Module of its own" to `d.db-helper`
+- AND a fresh task worktree `adopt-2` for `module.shop`, from a base commit without that scaffold
+- WHEN the caller runs the survey of `module.shop` in `adopt-2` with `--answers` naming `d.db-helper` and no `--input`
+- THEN the result is `failed` with `invalid_answers`, since no run of `adopt-2` asked `d.db-helper`
+- BUT a survey of `module.shop` in `adopt-2` with `--goal` stating "the database helper becomes a Module of its own" runs and lists its own decisions
+- AND a survey given `--answers` that settle that run's [decision points](../../glossary.json#concept.decision-point) and that run as `--input` follows them as before any scaffold
 
 ### scenario.adoption.survey-answers — A survey follows the answers and records who settled them
 
@@ -99,6 +110,7 @@ shapes are in the [contracts](contracts.md).
 ### scenario.adoption.describe-module — A Module's code becomes its Spec
 
 - GIVEN the scaffolded Module `module.checkout` binding `src/checkout/`
+- AND a worker whose scenario promises name no existing test, so that no test needs a `verifies` decorator
 - WHEN the caller runs `concorde run code_to_spec --modules module.checkout` in the workspace `adopt`
 - THEN the worker's grant reads `src/checkout/` and writes only `module.checkout`'s documents
 - AND the worker has no tool that runs commands

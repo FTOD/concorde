@@ -10,7 +10,7 @@ import math
 import re
 from typing import Any
 
-from .errors import SpecError
+from .errors import SpecError, system_cause
 
 
 class ContractError(SpecError):
@@ -18,8 +18,8 @@ class ContractError(SpecError):
 
     DEFAULT_CODE = "contract_violation"
 
-    def __init__(self, message: str, field: str = ""):
-        super().__init__(f"{field or '/'}: {message}", field=field)
+    def __init__(self, message: str, field: str = "", *, causes=()):
+        super().__init__(f"{field or '/'}: {message}", field=field, causes=causes)
 
 
 KEYWORDS = frozenset(
@@ -88,76 +88,101 @@ def pointer(base: str, key: Any) -> str:
     return base + "/" + str(key).replace("~", "~0").replace("/", "~1")
 
 
-def admit(schema: Any, root: dict | None = None) -> None:
+def admit(schema: Any, root: dict | None = None, field: str = "") -> None:
+    """Refuse a schema outside the subset with a ``ContractError`` whose field is the JSON
+    pointer of the offending keyword, checking each keyword's shape before using it."""
     if type(schema) is bool:
         return
     if not isinstance(schema, dict):
-        raise ContractError("schema must be an object or boolean")
+        raise ContractError("schema must be an object or boolean", field or "/")
     root = schema if root is None else root
-    if set(schema) - KEYWORDS:
+    unknown = sorted(set(schema) - KEYWORDS, key=str)
+    if unknown:
         raise ContractError(
-            f"unsupported schema keywords: {sorted(set(schema) - KEYWORDS)}"
+            f"unsupported schema keywords: {unknown}", pointer(field, unknown[0])
         )
+    for name in ("properties", "$defs"):
+        if name in schema and not isinstance(schema[name], dict):
+            raise ContractError(f"{name} must be an object", pointer(field, name))
     if "type" in schema:
         kinds = schema["type"] if isinstance(schema["type"], list) else [schema["type"]]
-        if not kinds or any(kind not in TYPES for kind in kinds):
-            raise ContractError("unsupported schema type")
+        if not kinds or any(
+            not isinstance(kind, str) or kind not in TYPES for kind in kinds
+        ):
+            raise ContractError("unsupported schema type", pointer(field, "type"))
     if "$ref" in schema:
         ref = schema["$ref"]
         if not isinstance(ref, str) or not ref.startswith("#/$defs/") or "/" in ref[8:]:
-            raise ContractError("only direct local $defs references are supported")
-        if ref[8:] not in root.get("$defs", {}):
-            raise ContractError(f"unresolved schema reference: {ref}")
+            raise ContractError(
+                "only direct local $defs references are supported",
+                pointer(field, "$ref"),
+            )
+        definitions = root.get("$defs", {})
+        if not isinstance(definitions, dict) or ref[8:] not in definitions:
+            raise ContractError(
+                f"unresolved schema reference: {ref}", pointer(field, "$ref")
+            )
     for name in ("properties", "$defs"):
-        if name in schema:
-            if not isinstance(schema[name], dict):
-                raise ContractError(f"{name} must be an object")
-            for child in schema[name].values():
-                admit(child, root)
+        for key, child in schema.get(name, {}).items():
+            admit(child, root, pointer(pointer(field, name), key))
     for name in ("items", "additionalProperties"):
         if name in schema:
-            admit(schema[name], root)
+            admit(schema[name], root, pointer(field, name))
     for name in ("anyOf", "oneOf", "allOf"):
         if name in schema:
             if not isinstance(schema[name], list) or not schema[name]:
-                raise ContractError(f"{name} must contain schemas")
-            for child in schema[name]:
-                admit(child, root)
+                raise ContractError(
+                    f"{name} must contain schemas", pointer(field, name)
+                )
+            for position, child in enumerate(schema[name]):
+                admit(child, root, pointer(pointer(field, name), position))
     if "required" in schema and (
         not isinstance(schema["required"], list)
         or any(not isinstance(k, str) for k in schema["required"])
         or len(set(schema["required"])) != len(schema["required"])
     ):
-        raise ContractError("required must be a unique string array")
+        raise ContractError(
+            "required must be a unique string array", pointer(field, "required")
+        )
     for key in ("minItems", "maxItems", "minLength", "maxLength"):
         if key in schema and (type(schema[key]) is not int or schema[key] < 0):
-            raise ContractError(f"{key} must be a nonnegative integer")
+            raise ContractError(
+                f"{key} must be a nonnegative integer", pointer(field, key)
+            )
     for key in ("minimum", "maximum"):
         if key in schema and (
             type(schema[key]) not in {int, float}
             or (type(schema[key]) is float and not math.isfinite(schema[key]))
         ):
-            raise ContractError(f"{key} must be a finite number")
+            raise ContractError(f"{key} must be a finite number", pointer(field, key))
     if "uniqueItems" in schema and type(schema["uniqueItems"]) is not bool:
-        raise ContractError("uniqueItems must be boolean")
+        raise ContractError(
+            "uniqueItems must be boolean", pointer(field, "uniqueItems")
+        )
     if "enum" in schema and (
         not isinstance(schema["enum"], list) or not schema["enum"]
     ):
-        raise ContractError("enum must be a nonempty array")
+        raise ContractError("enum must be a nonempty array", pointer(field, "enum"))
     for low, high in (
         ("minItems", "maxItems"),
         ("minLength", "maxLength"),
         ("minimum", "maximum"),
     ):
         if low in schema and high in schema and schema[low] > schema[high]:
-            raise ContractError(f"{low} exceeds {high}")
+            raise ContractError(f"{low} exceeds {high}", pointer(field, low))
     if "pattern" in schema:
         try:
             re.compile(schema["pattern"])
         except (TypeError, re.error) as error:
-            raise ContractError("invalid pattern") from error
+            raise ContractError(
+                "invalid pattern",
+                pointer(field, "pattern"),
+                causes=[system_cause(error)],
+            ) from error
     if "format" in schema and schema["format"] != "project-path":
-        raise ContractError("only the project-path format is supported")
+        raise ContractError(
+            "only the project-path format is supported", pointer(field, "format")
+        )
 
 
 def validate(

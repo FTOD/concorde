@@ -50,6 +50,13 @@ the [contracts](contracts.md).
 - THEN the worker may read the Modules' code and change nothing
 - AND the result carries the worker's answer, an empty change and the review
 
+### scenario.general-work.type-sets-boundary-only — The task type gives no job of its own
+
+- GIVEN a task worktree bound to a Module
+- WHEN the caller runs `general --type code-to-spec --read-only` or `general --type review-code` with a question
+- THEN neither worker's brief tells it to describe the code in the Specs or to report a `spec-gap` finding
+- AND both briefs carry General work's own rule for a promise the Spec does not state
+
 ### scenario.general-work.unbound-write — A writing run needs a workspace
 
 - GIVEN the primary worktree, which has no workspace binding
@@ -71,6 +78,14 @@ the [contracts](contracts.md).
 - GIVEN a worker that cannot do the work and ends `blocked`
 - WHEN the run ends
 - THEN the run ends `blocked` with the worker's own link in its [error chain](../../glossary.json#concept.error-chain)
+- AND the reviewer does not launch
+- AND the run's host evidence keeps the tree recorded before the worker, but no observed change
+
+### scenario.general-work.after-unobservable — A change Git cannot record gets no review
+
+- GIVEN a worker that ends `ok` with a clean audit
+- WHEN Git cannot record the worktree as a tree after the worker
+- THEN the run ends `failed` with `change_unobservable` and reason `environment`
 - AND the reviewer does not launch
 
 ### scenario.general-work.no-instruction — An empty instruction launches nothing

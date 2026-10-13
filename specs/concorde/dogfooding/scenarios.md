@@ -8,7 +8,7 @@ Concrete situations that show the [requirements](requirements.md) at work.
 
 - GIVEN a [Concorde repository](../glossary.json#concept.concorde-repository) whose primary worktree is on a branch, built and fully committed
 - AND a project
-- WHEN the developer runs the repository's installer on the project with `--develop`
+- WHEN the developer runs the repository's installer on the project with `--develop`, choosing parts that include the coordination and issues parts
 - THEN Concorde is installed as a normal install would install it
 - AND the receipt records mode `develop`, the repository as `source` and its `HEAD` as `source_commit`
 - AND the installed skill ends with the section "Developing Concorde while using it" and the `CLAUDE.md` block with the develop paragraph
@@ -19,7 +19,6 @@ Concrete situations that show the [requirements](requirements.md) at work.
 - WHEN the developer runs the repository's installer on the project with `--develop`, choosing the issues part alone, and later updates it
 - THEN the receipt records mode `develop` and the repository's `HEAD` as `source_commit`, each time
 - BUT neither the skill nor the `CLAUDE.md` block carries the develop section, which names tasks the project cannot open
-- AND choosing the coordination and issues parts gives both the develop section
 
 ### scenario.dogfooding.normal-install — A normal install carries no develop guidance
 
@@ -70,7 +69,7 @@ worktree whose `HEAD` is detached is refused as a linked worktree.
 
 ### scenario.dogfooding.update-keeps-develop — Update a develop install
 
-- GIVEN a [develop install](../glossary.json#concept.develop-install)
+- GIVEN a [develop install](../glossary.json#concept.develop-install) whose parts include the coordination and issues parts
 - AND a new commit merged into the Concorde repository's primary worktree
 - WHEN the project runs `concorde update`
 - THEN Concorde is installed again in develop mode with the develop guidance
@@ -100,7 +99,8 @@ worktree whose `HEAD` is detached is refused as a linked worktree.
 - AND for a defect seen outside a task to keep the report only under `.concorde/runs/defects/` and name it to the developer, opening no task for it
 - AND to check it with `concorde issues report --check` before handing it over
 - BUT for a defect of the Issue system itself to write no defect report and to hand over instead its [error chain](../glossary.json#concept.error-chain) with its own link on top, under `.concorde/runs/defects/`
-- AND that a refusal whose reason is `environment` is no defect but a wait
+- AND that a refusal whose reason is `environment` is no defect, and that after `merge_busy` it waits and writes again
+- AND that for every other such refusal, such as `commit_failed` or `recovery_failed`, it removes the cause the options name, or escalates it, before it writes again
 - AND to take the fix with `concorde update` while nothing runs, and to start nothing until the update ends
 
 ## Concorde repository

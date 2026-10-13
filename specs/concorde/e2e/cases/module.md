@@ -87,6 +87,8 @@ python3 scripts/e2e/e2e.py repair-specs <project> [--modules <ids>] [--task repa
 python3 scripts/e2e/e2e.py grade <project> --instance <case.json> --python <interpreter> [--ref main] [--pythonpath <dir>]…
 ```
 
+The [contracts](contracts.md) define the case `grade` reads, the verdict it prints and its errors.
+
 ### Repairing the adopted Specs
 
 In a case the Specs are the test's own addition. They describe code the test never changes.
@@ -162,7 +164,9 @@ delivery -> stop: "not ok" {style.stroke-dash: 3}
 In a throwaway worktree of `--ref`, it follows these steps:
 
 - Since the change may edit these test files, restore every file the case's test patch touches
-  to the case's base-commit state.
+  to the case's base-commit state. Git's own reading of the patch names these files, so a path
+  that holds a space or that Git quotes is restored too. The source of a renamed or copied file
+  counts as touched ([requirement](requirements.md#req.swe-bench-cases.patched-files-reset)).
 - Apply the test patch.
 - Run the test files it names with the given interpreter.
 - Report how many of the FAIL_TO_PASS and PASS_TO_PASS tests passed.
@@ -196,7 +200,8 @@ is `ERROR`. A listed identity that pytest never reports is `not run`.
   `not run`.
 
 When every FAIL_TO_PASS and every PASS_TO_PASS test passed, the case is resolved. Failing tests
-are a verdict, not an error. For each listed test that did not pass, grading names the test with
+are a verdict, not an error. The [verdict contract](contracts.md#the-verdict) gives the fields of
+the verdict. For each listed test that did not pass, grading names the test with
 its status. Pytest's exit code is kept. In the following cases, grading stops with an error
 instead:
 
@@ -219,7 +224,12 @@ instead:
   run that finished.
 
 However grading ends, the throwaway worktree is removed
-([requirements](requirements.md#req.swe-bench-cases.grading-worktree-removed)).
+([requirements](requirements.md#req.swe-bench-cases.grading-worktree-removed)). The worktree's
+whole life lies inside one cleanup, from the moment it is made. Grading removes the worktree,
+prunes its registration from the project and removes its scratch directory. It then checks that
+none of them is left. When one is, grading fails with `cleanup_failed`, naming what is left
+([requirement](requirements.md#req.swe-bench-cases.cleanup-checked)). When grading had failed
+before, `cleanup_failed` names that earlier error too, so neither is lost.
 
 ## Why it is built this way
 
@@ -267,20 +277,17 @@ The `repair-specs` and `grade` commands of `scripts/e2e/e2e.py` call it.
 
 <a id="realization.swe-bench-cases.tests"></a>
 
-The **case step tests**, `tests/concorde/e2e/test_cases.py`, do the following:
-
-- Clone a case at its base commit.
-- Grade a toy case before and after its fix.
-- Drive the repair round with stand-in runs.
-
-These tests verify the [requirements](requirements.md) and [scenarios](scenarios.md).
+The **case step tests** grade toy cases with a real pytest and drive the repair round with
+stand-in runs, so that no model is spent.
 
 ## Around it
 
 <a id="uses-distribution"></a>
 
-**Distribution** provides the project's `concorde` command.
-Through that command, the repair round does the following:
+**Distribution** provides the project's `concorde` command and routes each of its commands to
+the part that provides it. Distribution decides only that the command is there. What each command
+does is promised by Tasks, Execution, Validation and Delivery below. Through that command, the
+repair round does the following:
 
 - Opens its task.
 - Runs its Operations and execution commands in the task's worktree.
@@ -302,6 +309,20 @@ fails with that refusal. Tasks also merges the delivered task. A merge closes th
 its branch holds a [delivery commit](../../glossary.json#concept.delivery-commit) that verifies
 ([requirement](../../coordination/tasks/requirements.md#req.tasks.merge-verified)). A step that
 does not end `ok` therefore leaves the task open and unmerged.
+
+<a id="uses-execution"></a>
+
+**Execution** runs each [Operation](../../glossary.json#concept.operation) and execution command
+of the round and prints its [run result](../../glossary.json#concept.run-result), the [run result
+contract](../../execution/contracts.md#run-result). The repair round reads these fields of it:
+
+- `run_id`, `status` and `summary`.
+- `output.verdict`, for a review.
+- `error`, for a run that did not end `ok`.
+
+A run ends `ok`, `blocked` or `failed`. The round goes on only after a run that ended `ok`. A
+command that prints no JSON result stops the repair with `unreadable_result`, naming the command
+and the end of its output.
 
 <a id="uses-validation"></a>
 

@@ -330,7 +330,7 @@ contract's schema as it is. Examples are:
 
   An **artifact** is an object with exactly these keys:
 
-  - `id`.
+  - `id`, a nonempty string.
   - `path`.
   - `digest`.
 
@@ -344,8 +344,16 @@ contract's schema as it is. Examples are:
   Verification treats every object with exactly those three keys as an artifact.
   When an artifact's file is missing or its bytes changed, verification refuses the artifact as
   `stale_reference` ([Library](#library)).
-  When an array's `items` schema is the library's artifact schema, the array lists each artifact
-  once. That schema requires those three keys. That schema admits no other key.
+  The library's **artifact schema** is the following value. The library exports it, and an owner
+  takes it from the library for its own schema:
+
+  ```json
+  {"type": "object", "properties": {"id": {"type": "string", "minLength": 1}, "path": {"type": "string", "minLength": 1, "format": "project-path"}, "digest": {"type": "string", "minLength": 1, "pattern": "^sha256:[0-9a-f]{64}$"}}, "required": ["id", "path", "digest"], "additionalProperties": false}
+  ```
+
+  When an array's `items` schema is equal to that value as JSON, the array lists each artifact
+  once. An `items` schema that differs from it in any keyword does not apply this rule, even when
+  it accepts the same objects.
   In such an array, two artifacts with the same `id` or the same `path` are refused with
   `invalid_field`.
   Below its root, the file an artifact or a [file transaction](#file-transactions) names is reached
@@ -473,7 +481,11 @@ The fields follow these rules:
   digits. When the file must not exist, `before_digest` is `null`.
 
 When a `before_digest` has any other form, the list is malformed. The caller also names the paths
-it allows. Optionally, the caller names a final check to run after the writes.
+it allows, as a set of file paths that follow the `project-path` rule. A change is allowed only
+when its `path` is exactly one of them. An allowed path never covers the files below it, and the
+transaction reads no allowed path as a pattern. An allowed path that names no change, or that is
+no canonical project path, allows nothing. The transaction never refuses it. Optionally, the caller
+names a final check to run after the writes.
 
 1. Before any write, the transaction refuses any of the following:
    - A malformed list (`invalid_proposal`).
@@ -511,11 +523,19 @@ What the caller then receives:
 
 These guarantees hold for failures the process observes. They include an interruption the process
 receives, such as `KeyboardInterrupt` or `SystemExit`. Once every file is restored, the process
-raises the interruption again unchanged. A killed process restores nothing. After a killed
-process, the files have these states:
+raises the interruption again unchanged. A killed process restores nothing more after the kill.
+What it did before the kill stays done. The transaction restores the written files newest first.
+After a process killed during the writes, the files have these states:
 
 - Each file already renamed into place keeps its new content.
 - Every other file keeps its original bytes.
+- `.concorde-write-` temporary files may remain beside them.
+
+After a process killed during the restoration of step 4, the files have these states:
+
+- Each file whose restoration or removal was complete keeps its original bytes, or stays absent.
+- Each written file whose restoration did not complete keeps its new content.
+- Every file the transaction did not write keeps its original bytes.
 - `.concorde-write-` temporary files may remain beside them.
 
 A writer's recovery may remove those temporary files.

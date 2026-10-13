@@ -9,6 +9,7 @@ import re
 import subprocess
 import sys
 import tempfile
+import textwrap
 import threading
 import unittest
 from pathlib import Path
@@ -541,6 +542,19 @@ class DialectTests(unittest.TestCase):
             with self.subTest(repeated=repeated):
                 self.assertTrue(self.refused([one, repeated], listed))
 
+    def test_the_artifact_schema_is_the_contract_s_and_recognised_by_equality(self):
+        text = (
+            Path(__file__).resolve().parents[3] / "specs/concorde/kernel/contracts.md"
+        ).read_text()
+        [documented] = re.findall(
+            r'^  (\{"type": "object", "properties": \{"id".*)$', text, re.M
+        )
+        self.assertEqual(schema.ARTIFACT, json.loads(documented))
+        one = {"id": "a", "path": "a.txt", "digest": "sha256:" + "0" * 64}
+        # A schema that accepts the same objects but differs in a keyword lists them freely.
+        alike = schema.array({**schema.ARTIFACT, "description": "artifacts"})
+        self.assertFalse(self.refused([one, {**one, "id": "b"}], alike))
+
     def test_an_artifact_the_system_cannot_read_is_refused_with_a_code(self):
         root = Path(tempfile.mkdtemp())
         (root / "a.txt").write_text("a\n")
@@ -595,6 +609,33 @@ class TransactionTests(unittest.TestCase):
             files.apply_files(self.root, self.changes(), {"a.txt"})
         self.assertEqual("permission_denied", refused.exception.code)
         self.assertEqual({"a.txt": "a\n", "b.txt": "b\n"}, self.contents())
+
+    @verifies("scenario.kernel.transaction-exact-allowance")
+    def test_an_allowed_path_covers_only_itself(self):
+        (self.root / "notes").mkdir()
+        (self.root / "notes/a.txt").write_text("a\n")
+        (self.root / "notes/b.txt").write_text("b\n")
+        allowed = {"notes/a.txt", "notes", "notes/*"}
+        with self.assertRaises(KernelError) as refused:
+            files.apply_files(
+                self.root,
+                [files.file_change(self.root, "notes/b.txt", "B\n")],
+                allowed,
+            )
+        self.assertEqual(
+            ("permission_denied", "notes/b.txt"),
+            (refused.exception.code, refused.exception.field),
+        )
+        self.assertEqual("b\n", (self.root / "notes/b.txt").read_text())
+        self.assertEqual(
+            ["notes/a.txt"],
+            files.apply_files(
+                self.root,
+                [files.file_change(self.root, "notes/a.txt", "A\n")],
+                allowed,
+            ),
+        )
+        self.assertEqual("A\n", (self.root / "notes/a.txt").read_text())
 
     @verifies("scenario.kernel.transaction-malformed")
     def test_a_malformed_list_of_changes_writes_nothing(self):
@@ -696,6 +737,43 @@ class TransactionTests(unittest.TestCase):
             self.assertEqual(
                 [], list(self.root.rglob(".concorde-write-*")), "no temporary file"
             )
+
+    @verifies("scenario.kernel.transaction-killed-restoring")
+    def test_a_process_killed_during_restoration_keeps_what_it_restored(self):
+        script = textwrap.dedent(
+            """
+            import os, sys
+            from pathlib import Path
+            from concorde.kernel import files
+
+            root = Path(sys.argv[1])
+            write = files._write
+
+            def killed(path, data):
+                # The restoration of a.txt, after b.txt was restored: the process dies.
+                if path.name == "a.txt" and data == b"a\\n":
+                    os._exit(9)
+                write(path, data)
+
+            def check():
+                raise RuntimeError("the final check failed")
+
+            changes = [
+                files.file_change(root, "a.txt", "A\\n"),
+                files.file_change(root, "b.txt", "B\\n"),
+            ]
+            files._write = killed
+            files.apply_files(root, changes, {"a.txt", "b.txt"}, verify=check)
+            """
+        )
+        source = Path(files.__file__).resolve().parents[2]
+        ended = subprocess.run(
+            [sys.executable, "-c", script, str(self.root)],
+            capture_output=True,
+            env={**os.environ, "PYTHONPATH": str(source)},
+        )
+        self.assertEqual(9, ended.returncode, ended.stderr)
+        self.assertEqual({"a.txt": "A\n", "b.txt": "b\n"}, self.contents())
 
     @verifies("scenario.kernel.transaction-unrestored")
     def test_a_refused_restoration_is_named(self):
@@ -933,3 +1011,18 @@ class MarkerTests(unittest.TestCase):
         with self.assertRaises(KernelError) as refused:
             marker.write_marker(blocked, value)
         self.assertEqual("system_error", refused.exception.code)
+
+    def test_a_refused_cleanup_keeps_the_coded_write_refusal(self):
+        root, value = self.marked()
+        concorde = root / ".concorde"
+        replaced = PermissionError(13, "Permission denied", "marker.json")
+        unlinked = PermissionError(13, "Permission denied", ".concorde-write-x")
+        with (
+            patch("concorde.kernel.marker.os.replace", side_effect=replaced),
+            patch.object(Path, "unlink", side_effect=unlinked),
+        ):
+            with self.assertRaises(KernelError) as refused:
+                marker.write_marker(concorde, value)
+        self.assertEqual("system_error", refused.exception.code)
+        self.assertEqual(str(marker.marker_path(concorde)), refused.exception.field)
+        self.assertEqual([replaced, unlinked], refused.exception.causes)

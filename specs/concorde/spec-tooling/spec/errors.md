@@ -9,10 +9,16 @@ it in `concorde.spec.errors`. Every command of Spec tooling and the
 
 ## The error record
 
-Every failure raises a `SpecError` or one of its subclasses (`TypedDataError`, `ContractError`,
+Every failure that Spec tooling detects, or translates from another exception, raises a
+`SpecError` or one of its subclasses. The subclasses are `TypedDataError`, `ContractError`,
 `FrontMatterError`, `DeclarationError`, `DiagramError`, `DocsiteTemplateError` and the
-[Spec](../../glossary.json#concept.spec) MCP server's `ToolError`). Besides a stable code and a
-concrete message, each carries these details:
+[Spec](../../glossary.json#concept.spec) MCP server's `ToolError`.
+One exception passes through unchanged. A
+[file transaction](../../glossary.json#concept.file-transaction) raises the exception of its
+caller's own final check as the caller raised it ([definition](contracts.md#file-transactions)).
+A Python caller therefore catches its own check's exception, which need not be a `SpecError`.
+At a command boundary, every failure becomes an error record, as below.
+Besides a stable code and a concrete message, each `SpecError` carries these details:
 
 - Where the error is.
 - Why it is an error.
@@ -204,7 +210,7 @@ specific ones.
 | `installed_file` | an installed file is the installer's and is never writable, so no writable directory entry may cover it (CHK.binds.installed) | bind each installed file by its exact path and keep it out of the realization's directory entries |
 | `invalid_context` | a context holds each registered document member once, with its owner's role and provenance | recompute the context from the current Specs instead of editing it |
 | `stale_context` | a context is valid only for the exact Spec sources it was computed from | compute the context again from the current Specs |
-| `invalid_proposal` | a proposal is applied only in exactly the shape and content it was proposed with | propose again and apply the new proposal unchanged |
+| `invalid_proposal` | a proposal is applied only when its shape, digest, Protocol binding and destinations pass apply's checks | propose again and apply the new proposal unchanged |
 | `stale_proposal` | a proposal is applied only to the bytes it was computed from | propose again from the current files |
 | `permission_denied` | the change or read lies outside the paths its caller authorized | restrict the change to the authorized paths, or ask for the wider boundary |
 | `contract_violation` | the value does not satisfy the published schema it is checked against | correct the value at the named field so that it satisfies the schema |

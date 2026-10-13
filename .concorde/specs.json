@@ -9,7 +9,8 @@
         "specs/concorde/method/adoption/module.md",
         "specs/concorde/method/adoption/requirements.md",
         "specs/concorde/method/adoption/scenarios.md",
-        "specs/concorde/method/adoption/contracts.md"
+        "specs/concorde/method/adoption/contracts.md",
+        "specs/concorde/method/adoption/test-links.md"
       ],
       "contains": [],
       "uses": [
@@ -417,6 +418,7 @@
       "entry": "specs/concorde/method/delivery/module.md",
       "owns": [
         "specs/concorde/method/delivery/module.md",
+        "specs/concorde/method/delivery/git.md",
         "specs/concorde/method/delivery/contracts.md",
         "specs/concorde/method/delivery/requirements.md",
         "specs/concorde/method/delivery/scenarios.md"
@@ -665,6 +667,7 @@
       "title": "End-to-end testing",
       "entry": "specs/concorde/e2e/module.md",
       "owns": [
+        "specs/concorde/e2e/mechanics.md",
         "specs/concorde/e2e/module.md",
         "specs/concorde/e2e/requirements.md",
         "specs/concorde/e2e/scenarios.md"
@@ -1221,6 +1224,16 @@
           ]
         },
         {
+          "target": "module.project-review",
+          "meaning": "#uses-project-review",
+          "relies_on": [
+            "req.project-review.covered-modules",
+            "req.project-review.worker-ids",
+            "req.project-review.skip-unchanged",
+            "req.project-review.record-commit"
+          ]
+        },
+        {
           "target": "module.workers",
           "meaning": "#uses-workers",
           "relies_on": [
@@ -1491,7 +1504,8 @@
             "concept.execution-runner",
             "concept.run-result",
             "req.execution.inputs-same-workspace",
-            "contract.execution.run-result"
+            "contract.execution.run-result",
+            "req.execution.one-result"
           ]
         },
         {
@@ -1527,6 +1541,11 @@
           "kind": "document",
           "target": "document.tracing.contracts",
           "reason": "the Framework's error contract, which this Module's errors follow"
+        },
+        {
+          "kind": "document",
+          "target": "document.execution.runner",
+          "reason": "the runner's refusals before the first step and its handling of cancellation, which this Module's error interface delegates to"
         }
       ],
       "participates": []
@@ -1919,7 +1938,8 @@
       "title": "Spec tooling",
       "entry": "specs/concorde/spec-tooling/module.md",
       "owns": [
-        "specs/concorde/spec-tooling/module.md"
+        "specs/concorde/spec-tooling/module.md",
+        "specs/concorde/spec-tooling/contracts.md"
       ],
       "contains": [
         {
@@ -2013,6 +2033,7 @@
       "title": "SWE-bench cases",
       "entry": "specs/concorde/e2e/cases/module.md",
       "owns": [
+        "specs/concorde/e2e/cases/contracts.md",
         "specs/concorde/e2e/cases/module.md",
         "specs/concorde/e2e/cases/requirements.md",
         "specs/concorde/e2e/cases/scenarios.md"
@@ -2045,6 +2066,14 @@
             "concept.task",
             "req.tasks.binding",
             "req.tasks.merge-verified"
+          ]
+        },
+        {
+          "target": "module.execution",
+          "meaning": "#uses-execution",
+          "relies_on": [
+            "concept.run-result",
+            "contract.execution.run-result"
           ]
         },
         {
@@ -2316,11 +2345,20 @@
           "target": "module.kernel",
           "meaning": "#uses-kernel",
           "relies_on": [
-            "concept.typed-value"
+            "concept.typed-value",
+            "req.kernel.registration-stable",
+            "req.kernel.registered-dialect",
+            "req.kernel.typed-checked"
           ]
         }
       ],
-      "includes": [],
+      "includes": [
+        {
+          "kind": "document",
+          "target": "document.kernel.contracts",
+          "reason": "the Kernel's typed values and its library table, which give exactly how a producer registers a content type and how the library checks node content against it"
+        }
+      ],
       "participates": []
     },
     {

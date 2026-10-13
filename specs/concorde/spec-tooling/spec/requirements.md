@@ -356,7 +356,7 @@ The [context identity](../../glossary.json#concept.context-identity) SHALL chang
 cases:
 
 - A byte of a selected document member changes.
-- A byte of a selected glossary entry changes.
+- The value of a selected glossary entry changes, any field of it.
 - A byte of a selecting declaration changes.
 - A byte of a document's owner changes.
 - A byte of pinned external material changes.
@@ -364,6 +364,11 @@ cases:
 - For a `review-architecture` grant, a byte of any file of ProjectSpecification changes. Such a
   file is a member of any registered Module's document, a file of its bound inclusions or the
   glossary, whichever Modules the grant binds.
+
+A selected glossary entry counts by its value, not by its bytes in the glossary file. A change
+that leaves every entry's value the same, such as reformatting the file or another JSON escape of
+the same text, leaves the ordinary context identity unchanged. For a `review-architecture` grant,
+the glossary file counts by its bytes, as ProjectSpecification's files do.
 
 The context identity covers no implementation file contents except the files of bound inclusions.
 A worker's writes to other implementation files therefore never change it.

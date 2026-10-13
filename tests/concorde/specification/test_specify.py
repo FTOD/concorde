@@ -158,6 +158,12 @@ class SpecifyTests(unittest.TestCase):
         self.assertIn("src/second.py", new[0]["message"])
         self.assertNotIn("pending_declared", envelope["output"])
         self.assertFalse((worktree / "src/second.py").exists())
+        # The worker ended ok and left the entry in place through both repair rounds.
+        record = read_record(
+            self.project.root / ".concorde", envelope["worker_runs"][-1]
+        )
+        self.assertEqual(3, len(record["rounds"]))
+        self.assertEqual("ok", envelope["worker"]["status"])
 
     @verifies("scenario.specification.repair-broken")
     def test_a_run_repairs_specs_that_were_already_invalid(self):
@@ -625,6 +631,35 @@ class GlossaryAfterRunTests(unittest.TestCase):
         )
         self.assertEqual(1, len(record["rounds"]))
         return error
+
+    @verifies("scenario.specification.glossary-change")
+    def test_a_glossary_only_change_affects_the_modules_of_its_entries(self):
+        value = read_glossary(self.worktree)
+        for entry in value["concepts"]:
+            if entry["id"] == "concept.a.answer":
+                entry["definition"] = "What A returns for one question, in full."
+        status, envelope = self.project.run(
+            "specify",
+            "--task",
+            "t1",
+            "--intent",
+            OperationProject.plan(
+                [
+                    {
+                        "writes": {
+                            str(self.worktree / GLOSSARY): json.dumps(value, indent=2)
+                            + "\n"
+                        },
+                        "result": {"output": CLAIMS},
+                    }
+                ]
+            ),
+        )
+        self.assertEqual(0, status, envelope)
+        output = envelope["output"]
+        self.assertEqual([GLOSSARY], output["changed_documents"])
+        self.assertIn("module.a", output["affected_modules"])
+        self.assertNotIn("module.b", output["affected_modules"])
 
     @verifies("scenario.method.glossary-after-run")
     def test_a_blocked_worker_that_changed_a_foreign_entry_fails(self):

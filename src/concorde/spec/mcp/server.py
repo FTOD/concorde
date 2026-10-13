@@ -41,24 +41,44 @@ class Session:
         self.writer.write(json.dumps(message, separators=(",", ":")) + "\n")
         self.writer.flush()
 
+    def parsed(self, line: str) -> dict | None:
+        """The JSON-RPC message of one input line, or ``None`` once a malformed line was
+        answered: invalid JSON with a parse error, any other value than an object with an
+        invalid-request error, both without an identity the server could not read."""
+        try:
+            message = json.loads(line)
+        except ValueError:
+            self.send(
+                {
+                    "jsonrpc": "2.0",
+                    "id": None,
+                    "error": {"code": -32700, "message": "parse error"},
+                }
+            )
+            return None
+        if not isinstance(message, dict):
+            self.send(
+                {
+                    "jsonrpc": "2.0",
+                    "id": None,
+                    "error": {
+                        "code": -32600,
+                        "message": "invalid request: a message is a JSON object, not a "
+                        f"JSON {type(message).__name__}",
+                    },
+                }
+            )
+            return None
+        return message
+
     def receive(self) -> dict | None:
+        """The next message, or ``None`` only at the end of the input."""
         if self.pending:
             return self.pending.pop(0)
-        while True:
-            line = self.reader.readline()
-            if not line:
-                return None
-            if line.strip():
-                try:
-                    return json.loads(line)
-                except ValueError:
-                    self.send(
-                        {
-                            "jsonrpc": "2.0",
-                            "id": None,
-                            "error": {"code": -32700, "message": "parse error"},
-                        }
-                    )
+        while line := self.reader.readline():
+            if line.strip() and (message := self.parsed(line)) is not None:
+                return message
+        return None
 
     def request_client(self, method: str, params: dict | None = None) -> dict | None:
         """Send a request to the client and wait for its response, queueing other messages."""
@@ -67,23 +87,13 @@ class Session:
         self.send(
             {"jsonrpc": "2.0", "id": identity, "method": method, "params": params or {}}
         )
-        while True:
-            line = self.reader.readline()
-            if not line:
-                return None
-            if not line.strip():
+        while line := self.reader.readline():
+            if not line.strip() or (message := self.parsed(line)) is None:
                 continue
-            try:
-                message = json.loads(line)
-            except ValueError:
-                continue
-            if (
-                isinstance(message, dict)
-                and message.get("id") == identity
-                and "method" not in message
-            ):
+            if message.get("id") == identity and "method" not in message:
                 return message
             self.pending.append(message)
+        return None
 
     # --- root -------------------------------------------------------------------------------
 
@@ -213,8 +223,6 @@ class Session:
 
     def run(self) -> int:
         while (message := self.receive()) is not None:
-            if not isinstance(message, dict):
-                continue
             try:
                 self.handle(message)
             except Exception as error:  # noqa: BLE001 -- one bad message never ends the session

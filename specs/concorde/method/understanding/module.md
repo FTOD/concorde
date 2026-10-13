@@ -222,7 +222,10 @@ advisory. Each finding names its kind:
   - They leave a new file uncreated before the worker that fills it.
 
 A finding may name its **basis**, a stable identity or Spec passage of the bound Modules'
-[Spec context](../../glossary.json#concept.spec-context). A `violation` always does. The
+[Spec context](../../glossary.json#concept.spec-context). A passage is a document path, optionally
+followed by `#` and an anchor that document has
+([req.understanding.plan-review-basis](requirements.md#req.understanding.plan-review-basis)). A
+`violation` always names a basis. The
 reviewer judges the plan against the goal, the Specs and the code as they are, never against taste.
 
 ### Running plan_review

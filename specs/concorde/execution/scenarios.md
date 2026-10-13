@@ -59,7 +59,8 @@ and commands.
 - AND the result has `workspace` null
 - AND the result names that `HEAD` as `commit`
 - AND the result is saved in the trace node `.concorde/unbound/<run-id>/` of the primary worktree
-- AND a later [unbound run](../glossary.json#concept.unbound-run) may admit it with `--input`
+- AND when that result is `ok`, a later [unbound run](../glossary.json#concept.unbound-run) may
+  admit it with `--input`
 
 ### scenario.execution.unbound-bound-input-refused — An unbound run refuses the output of a bound run
 
@@ -110,11 +111,33 @@ and commands.
   `checkout-not-removed` evidence saying what is left and how to remove it
 - AND the result's status is unchanged
 
+### scenario.execution.unbound-setup-failed — A checkout whose setup fails is still named and removed
+
+- GIVEN a primary worktree at commit `C`
+- AND a definition whose runtime-path resolver raises an error
+- WHEN an unbound run of that definition is started there
+- THEN the result is `failed` with `host_error`
+- AND the result names `C` as `commit` and has `checkout` evidence
+- AND once the result is written, the checkout is gone
+- BUT a checkout that neither Git nor the direct removal could delete is named by
+  `checkout-not-removed` evidence
+
+### scenario.execution.unbound-checkout-interrupted — A signal during the checkout's creation leaves no checkout
+
+- GIVEN a primary worktree at commit `C`
+- WHEN the runner of an unbound run started there receives `SIGTERM` after Git made the checkout
+  and before `git worktree add` returned
+- THEN the result is `failed` with `cancelled`
+- AND once the result is written, the checkout's directory is gone
+- AND the repository lists exactly the worktrees it listed before the run
+
 ### scenario.execution.unbound-prepared — An unbound checkout is prepared before the first step
 
 - GIVEN a primary worktree at commit `C` whose `.concorde/preparation.json` declares two commands
-- AND the first command writes a file of the checkout
+- AND the first command writes a file of the checkout and exits 0
 - AND the second command tries to write a file of the primary worktree
+- AND the second command exits 0 when that write is refused, and fails only when it succeeds
+- AND the definition's steps end `ok`
 - WHEN an unbound run is started there
 - THEN both commands run in order in the checkout, before the first step
 - AND the run's steps read the file the first command wrote
@@ -213,6 +236,8 @@ and commands.
 ### scenario.execution.workspace-wait-merge — A run waiting behind a merge names the merge
 
 - GIVEN a bound workspace whose lock `task merge` of its task holds
+- AND the merge holds the lock longer than 0.3 seconds after both runs started
+- AND the merge releases the lock within 600 seconds after the second run started
 - WHEN a run is started there with `--wait 0.3`, and another with `--wait 600`
 - THEN the first is refused with `workspace_busy`
 - AND its `refused` evidence names the merge as the lock's holder line describes it

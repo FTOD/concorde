@@ -165,8 +165,16 @@ only the commit the same run created.
 
 ### req.delivery.atomic — A failed commit gives the validated index back
 
-When staging, its comparison or the commit fails, Delivery SHALL restore the index to the state the
-readiness examined.
+When staging, its comparison or the commit fails, Delivery SHALL attempt to restore each recorded
+part of the index to the state the readiness examined, and name in the run's summary and error each
+part it could not restore.
+
+The parts are the index's entries, the intent-to-add entries and each kind of flag. The other parts
+apply only to an index whose entries were read back. When restoring the entries fails, Delivery
+attempts none of them and says that they were not restored. Each failed part is a cause of the
+run's error with Git's own account, as
+[scenario.delivery.restore-failed](scenarios.md#scenario.delivery.restore-failed) shows.
+[Delivery's Git procedures](git.md#recording-and-restoring-the-index) give the commands.
 
 ### req.delivery.failed-worktree-kept — A failed commit leaves the worktree as it is
 
@@ -180,8 +188,12 @@ is.
 
 ### req.delivery.failed-paths-named — A failed commit names what changed since the readiness
 
-When staging, its comparison or the commit fails, Delivery SHALL name in the run's summary and
-error every worktree path whose mode or content is no longer what the readiness examined.
+When staging, its comparison or the commit fails and the worktree can be measured again,
+Delivery SHALL name in the run's summary and error every worktree path whose mode or content is no
+longer what the readiness examined.
+
+When the worktree cannot be measured again, the run's summary and error say so instead. The
+measurement's account is a cause of the run's error.
 
 With these names, the caller sees which edits
 [req.delivery.failed-worktree-kept](#req.delivery.failed-worktree-kept) kept.

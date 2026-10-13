@@ -103,7 +103,8 @@ CODES: dict[str, tuple[str, str]] = {
         "compute the context again from the current Specs",
     ),
     "invalid_proposal": (
-        "a proposal is applied only in exactly the shape and content it was proposed with",
+        "a proposal is applied only when its shape, digest, Protocol binding and destinations "
+        "pass apply's checks",
         "propose again and apply the new proposal unchanged",
     ),
     "stale_proposal": (

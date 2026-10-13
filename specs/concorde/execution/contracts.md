@@ -344,7 +344,7 @@ how the runner reads and fills them.
       "level": "command",
       "actor": "Command task-validation r-20260927T101500-task_validation-3f2a9c1b (workspace retry)",
       "code": "not_deliverable",
-      "detail": "workspace retry is not deliverable: 1 blocking finding(s), each a cause below; delivery, which decides the same readiness again, refuses the workspace until they are repaired (readiness in /home/dev/shop/.concorde/tasks/retry/workspace/runs/r-20260927T101500-task_validation-3f2a9c1b/readiness.json)",
+      "detail": "workspace retry is not deliverable: 1 blocking finding(s), each a cause below; delivery, which decides the same readiness again, refuses the workspace until they are repaired (readiness in /home/dev/shop/.concorde/tasks/retry/workspace/runs/r-20260927T101500-task_validation-3f2a9c1b/readiness.json) (Modules: module.http)",
       "evidence": [
         {
           "kind": "blocking",
@@ -592,10 +592,16 @@ node is the value below.
         "started_at": "2026-09-27T10:30:41.000000Z",
         "ended_at": "2026-09-27T10:30:42.500000Z",
         "outcome": "continue"
+      },
+      {
+        "name": "output",
+        "started_at": "2026-09-27T10:30:42.500000Z",
+        "ended_at": "2026-09-27T10:30:42.510000Z",
+        "outcome": "stop"
       }
     ],
     "worker_runs": [],
-    "summary": "Delivered workspace retry as 9f8e7d6c5b4a39281706f5e4d3c2b1a098765432."
+    "summary": "Delivered retry as 9f8e7d6c5b4a on concorde/retry."
   }
 }
 ```

@@ -642,7 +642,9 @@ def revalidate(ctx: RunContext):
 def affected_modules(
     ctx: RunContext, touched: set[str]
 ) -> tuple[list[str], list[dict]]:
-    """Modules whose Spec context, before or after the change, contains a touched document."""
+    """Modules whose Spec context, before or after the change, contains a touched document or
+    carries a glossary entry the change added, changed or removed, and the owners of those
+    entries before or after the change."""
     from ...spec.repository import SpecRepository
     from ...spec.repository_base import SpecError
 
@@ -666,16 +668,37 @@ def affected_modules(
                 set(ctx.modules) | set(getattr(before, "modules", None) or ())
             )
         ]
+    loaded = [repository for _, repository in repositories if repository is not None]
+    entries = [
+        getattr(repository, "glossary_entries", None) or {} for repository in loaded
+    ]
+    # A glossary entry changed when it differs between the Specs before and after the change;
+    # when the Specs after it do not load, no entry is known to have changed.
+    terms = (
+        {
+            identity
+            for identity in set(entries[0]) | set(entries[-1])
+            if entries[0].get(identity) != entries[-1].get(identity)
+        }
+        if len(entries) == 2
+        else set()
+    )
+    for each in entries:
+        for identity in terms:
+            owner = (each.get(identity) or {}).get("owner")
+            if isinstance(owner, str) and owner.startswith("module."):
+                affected.add(owner)
     for label, repository in repositories:
         if repository is None:
             continue
         for module in repository.modules:
             try:
                 paths = set(repository.spec_context(module).paths)
+                selected = set(repository.terms(module)) if terms else set()
             except (SpecError, OSError, ValueError) as error:
                 notes.append(evidence("spec-context", f"{label} {module}", str(error)))
                 continue
-            if paths & touched:
+            if paths & touched or selected & terms:
                 affected.add(module)
     return sorted(affected), notes
 

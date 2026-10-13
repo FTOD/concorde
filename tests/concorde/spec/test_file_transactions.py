@@ -156,6 +156,25 @@ class FileTransactionTests(unittest.TestCase):
                 self.assertEqual("a\n", (self.root / "a.txt").read_text())
                 self.assertFalse((self.root / "b.txt").exists())
 
+    @verifies("scenario.spec.transaction-interrupted")
+    def test_an_observed_interruption_restores_and_is_raised_again(self):
+        (self.root / "a.txt").write_text("a\n")
+        for interruption in (KeyboardInterrupt(), SystemExit(3)):
+            with self.subTest(type(interruption).__name__):
+                changes = [
+                    file_change(self.root, "a.txt", "A\n"),
+                    file_change(self.root, "b.txt", "B\n"),
+                ]
+
+                def verify(interruption=interruption):
+                    raise interruption
+
+                with self.assertRaises(type(interruption)) as raised:
+                    apply_files(self.root, changes, {"a.txt", "b.txt"}, verify=verify)
+                self.assertIs(interruption, raised.exception)
+                self.assertEqual("a\n", (self.root / "a.txt").read_text())
+                self.assertFalse((self.root / "b.txt").exists())
+
 
 class ChangedDefinitionTests(unittest.TestCase):
     def setUp(self):

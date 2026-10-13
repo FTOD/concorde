@@ -111,14 +111,16 @@ A **[file transaction](../glossary.json#concept.file-transaction)** writes a set
 each bound to the digest of the bytes it replaces. When a write or its final check fails while the
 process runs, the transaction restores every file it wrote. The operating system may refuse that
 restoration. When the operating system refuses restoration, the failure names every file still
-holding its new content. A process killed in the middle restores nothing. Every writer that uses
+holding its new content. A process killed in the middle restores nothing more. Every writer that uses
 a file transaction therefore says how its records are recovered from both cases. A transaction
 protects nothing against another writer. Its caller holds whatever lock its records require for
 the whole transaction. The [contracts](contracts.md#typed-values) give both formats exactly.
 
-A killed process takes none of the paths below. It leaves every file renamed into place with its
-new content. The [file transaction contract](contracts.md#file-transactions) gives the outcomes
-of one transaction exactly:
+A killed process takes none of the paths below. Killed during the writes, it leaves every file
+renamed into place with its new content. Killed during the restoration, it leaves each file it had
+already restored with its original bytes and every other written file with its new content. The
+[file transaction contract](contracts.md#file-transactions) gives the outcomes of one transaction
+exactly:
 
 ```d2 illustrative
 direction: right

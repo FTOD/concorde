@@ -14,6 +14,7 @@ define these items:
 - GIVEN a current task's workspace ran an [Operation](../../glossary.json#concept.operation) with one worker run of two rounds
 - AND each round recorded its tokens and cost
 - AND the workspace then ran `delivery`
+- AND no other node of the task recorded tokens, cost or turns
 - WHEN the [main agent](../../glossary.json#concept.main-agent) runs `concorde trace show <task>`
 - THEN it prints the task's node with its workspace, with the two runs below it
 - AND it prints the worker run below the Operation's run
@@ -65,6 +66,42 @@ define these items:
 - AND it prints the same usage as before the move
 - AND it prints the new folder as `path`
 
+### scenario.tracing.name-collision — A current task wins over a closed task of its name
+
+- GIVEN a closed task `retry` in the history folder `history/retry/`
+- AND a current task, also named `retry`
+- WHEN `concorde trace show retry` runs
+- THEN it shows the current task
+- AND `concorde trace show history/retry` shows the closed task
+
+### scenario.tracing.folder-in-roots — A folder is shown only inside a registered root
+
+- GIVEN a folder `.concorde/elsewhere/n/` of the primary worktree that holds a `trace.json`
+- AND a linked worktree whose `.concorde/tasks/t/` holds a task's `trace.json`
+- WHEN `concorde trace show` is given each folder by its absolute path
+- AND `concorde trace show` is given the first by the path `elsewhere/n`
+- THEN it refuses each with `unknown_node`
+- AND it shows nothing of either folder
+
+### scenario.tracing.children-any-folder — Children are found whatever their folders are named
+
+- GIVEN a run whose folder holds a node in `reports/1/`
+- AND the run's folder holds a node in `.hidden/2/`
+- WHEN `concorde trace show` shows the run
+- THEN it shows both nodes as the run's children
+
+### scenario.tracing.unreadable-node — A damaged record below is shown, not fatal
+
+- GIVEN a task's trace whose first worker round's `trace.json` is no JSON
+- AND the second round's `trace.json` has `schema_version` 2
+- WHEN `concorde trace show <task>` runs
+- THEN it shows the task's trace
+- AND it shows each of the two rounds with status `unreadable` and its folder's name as `id`
+- AND each round's `reason` names its `trace.json` and why it cannot be read
+- AND the task's `rolled_up` counts no figure of the two rounds
+- AND `concorde trace show` given the first round's folder refuses it with `node_unreadable`
+- AND that refusal names the file
+
 ## Recording
 
 ### scenario.tracing.created-or-found — A node tells what it created from what it found
@@ -81,12 +118,20 @@ define these items:
 
 - GIVEN the node kinds the installed parts registered, such as Check execution's `check` with its content type
 - AND that example kind has the metadata `check` and `module`
-- WHEN a producer writes a node of a kind no installed part registered, a `check` node listing the metadata `workspace`, or a `check` node whose content is of another type
+- WHEN a producer writes a node of a kind no installed part registered
+- AND the producer writes a `check` node listing the metadata `workspace`
+- AND the producer writes a `check` node whose content is of another type
 - THEN each write is refused
 - AND the first two writes are refused with `node_invalid`
 - AND the last write is refused with `content_invalid`
 - AND no `trace.json` is written
-- AND a `check` node with its own metadata and content is written
+
+### scenario.tracing.kind-registered-written — A node that satisfies its kind's registration is written
+
+- GIVEN Check execution's registered kind `check` with the metadata `check` and `module`
+- WHEN a producer writes a `check` node with only that metadata and no content
+- THEN its `trace.json` is written
+- AND reading it gives the kind `check`
 
 ## Removing
 
@@ -107,11 +152,32 @@ define these items:
 - AND it prints each removal
 - AND the year-old folder keeps its [decision log](../../glossary.json#concept.decision-log) and [trace nodes](../../glossary.json#concept.trace-node)
 - AND the folder closed two days ago keeps its transcript
-- AND with `--dry-run` it prints the same and removes nothing
-- AND with a configuration whose `history_days` is 30 it also removes the year-old history folder
-- AND when the operating system does not let it remove a folder wholly, it prints that folder with the error among the failed paths
-- AND that folder keeps its `trace.json`
-- AND a later prune removes that folder
+
+### scenario.tracing.prune-dry-run — A dry run prints what it would remove
+
+- GIVEN the traces of [scenario.tracing.prune](#scenario.tracing.prune) before any prune
+- WHEN `concorde trace prune --dry-run` runs
+- THEN it prints the same removals as that scenario's prune
+- AND it removes nothing
+
+### scenario.tracing.prune-configured — A configured period replaces its default only
+
+- GIVEN a history folder closed a year ago
+- AND an unbound run ended 8 days ago
+- AND a Tracing configuration whose `retention` holds only `history_days` 30
+- WHEN `concorde trace prune` runs
+- THEN it removes the history folder
+- AND it removes the unbound run, by the default `unbound_days` of 7
+- AND a configuration without `retention` refuses the prune with `config_invalid`
+
+### scenario.tracing.prune-retried — A folder retention could not remove is tried again
+
+- GIVEN an unbound run ended 8 days ago
+- AND during the next prune only, the operating system refuses to remove the run's own folder once its content is gone
+- WHEN `concorde trace prune` runs
+- THEN it prints that folder with the error among the failed paths
+- AND the folder keeps its `trace.json`
+- AND when `concorde trace prune` runs again, without that refusal, it removes the folder
 
 ## Locks
 

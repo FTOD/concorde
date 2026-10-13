@@ -249,3 +249,5 @@ Commands and the session's [trace node](../../glossary.json#concept.trace-node) 
   `claude rm <id>`
 - AND the session is not removed
 - AND the session's node in the history lists no transcript
+- AND when writing the session's node fails as well, the task is still closed and the warning also
+  names that failure

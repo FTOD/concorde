@@ -146,6 +146,20 @@ class ModuleImplementationTests(SharedFileProject, unittest.TestCase):
             self.assertIn(place, str(raised.exception))
         self.assertIn("profile_version to 19", raised.exception.remediation)
 
+    @verifies("scenario.spec.reject-unsupported-profile")
+    def test_a_malformed_protocol_manifest_is_a_protocol_mismatch(self):
+        manifest = ".concorde/protocol/manifest.json"
+        for content in ("[]", "null", '{"assets": {}}', '{"assets": [1]}', "{not json"):
+            with self.subTest(content=content):
+                self.write(manifest, content)
+                with self.assertRaises(SpecError) as raised:
+                    self.repository()
+                self.assertEqual("protocol_mismatch", raised.exception.code)
+                self.assertEqual(manifest, raised.exception.path)
+                report = validate_repository(self.root)
+                self.assertIn("CONCORDE-SOURCE-008", rule_ids(report))
+        self.assertEqual("invalid_json", raised.exception.record()["causes"][0]["code"])
+
     def test_parent_context_contains_the_children_and_children_do_not_see_the_parent(
         self,
     ):

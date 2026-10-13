@@ -60,8 +60,8 @@ on the workspace at these times:
 
 ### req.specification.stop-on-new-error — New structural errors stop the run
 
-A specify run SHALL end `blocked` with the new findings as evidence when both of these conditions
-hold:
+When both of these conditions hold, a specify run SHALL end `blocked` with the new findings as
+evidence:
 
 - Its worker ended `ok`.
 - After the last repair round, validation still reports an error the baseline did not have.
@@ -104,9 +104,12 @@ of them meets all of these conditions:
 - It is proposed only once.
 - The metadata of its Module's entry can be read and has an `owns` list.
 
-A document is created empty. It is registered in its Module's `owns`, so that the second worker's
-grant makes it writable. The Operation writes nothing else into it. Since the change needs all of
-them, one refused proposal refuses the whole list. Every proposal is checked before anything is
+A document is created as a minimal stub. Its reading file holds a title heading named after the
+file and one line that links to its Module's entry by a relative path. Its metadata names its
+identity, owner and role and defines and relates nothing. It is registered in its Module's `owns`,
+so that the second worker's grant makes it writable. The Operation writes nothing else into it.
+The second worker writes its content. Since the change needs all of them, one refused proposal
+refuses the whole list. Every proposal is checked before anything is
 written, so that no document is created twice and no refusal leaves a partial creation.
 
 ### req.specification.creation-transaction — Created documents are written in one file transaction
@@ -132,5 +135,33 @@ it created.
 
 ### req.specification.observed-facts — The result reports what the Operation observed
 
-The Spec change's changed documents, affected Modules and validation findings SHALL be computed by
-the Operation from the workspace, never taken from the worker's result.
+The specify Operation SHALL compute the following fields of the Spec change from the workspace,
+never from the worker's result:
+
+- The changed documents.
+- The affected Modules.
+- The validation findings.
+
+### req.specification.observed-baseline — The observed change spans the whole run
+
+The specify Operation SHALL compare the workspace after its last worker launch and its own writes
+with the workspace as it was before that run's first worker launch.
+
+The changed documents are every path that any round's
+[write audit](../../glossary.json#concept.write-audit) of either worker launch found changed, and
+every file the Operation wrote. Each launch's audit compares with the worktree just before that
+launch, so the two lists together cover the whole run. An uncommitted edit made before the run and
+left unchanged by it is not listed. A path the run changed and then changed back is still listed,
+since it changed during the run. The affected Modules compare the Specs loaded for the baseline,
+before the first launch, with the Specs after the run.
+
+### req.specification.glossary-affects — A changed glossary entry affects its Modules
+
+The specify Operation SHALL list among the affected Modules every Module whose Spec context, before
+or after the change, carries a glossary entry the change added, changed or removed, and the owner of
+each such entry before or after the change.
+
+A [Spec context](../../glossary.json#concept.spec-context) holds the glossary entries of its terms
+as well as its documents. So a glossary-only change affects the Modules that read the changed
+entries, as [scenario.specification.glossary-change](scenarios.md#scenario.specification.glossary-change)
+shows. When the Specs after the change do not load, no entry is known to have changed.

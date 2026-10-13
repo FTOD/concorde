@@ -73,6 +73,8 @@ class Checkout:
     links: list[Path] = field(default_factory=list)
     # What the checkout provides or lacks, as host evidence of the run.
     evidence: list[dict] = field(default_factory=list)
+    # Whether git worktree add finished: until then, Git may have made part of the checkout.
+    created: bool = False
     closed: bool = False
 
     def close(self) -> list[dict]:
@@ -81,6 +83,8 @@ class Checkout:
         if self.closed:
             return []
         self.closed = True
+        if not self.created:
+            return self._abandon()
         problems = []
         for link in self.links:
             try:
@@ -104,6 +108,32 @@ class Checkout:
                     )
                 )
         return problems
+
+    def _abandon(self) -> list[dict]:
+        """Remove whatever an unfinished git worktree add left: its directory directly, then its
+        administrative entry by pruning; evidence only of what is left."""
+        shutil.rmtree(self.path, ignore_errors=True)
+        pruned = _git(self.origin, "worktree", "prune")
+        left = []
+        if os.path.lexists(self.path):
+            left.append(f"{_leftover(self.path)}, so it could not be deleted")
+        if pruned.returncode != 0:
+            left.append(
+                f"git worktree prune exited {pruned.returncode}: {_said(pruned)}, so the "
+                "worktree list may still name it"
+            )
+        if not left:
+            return []
+        return [
+            evidence(
+                "checkout-not-removed",
+                self.path.as_posix(),
+                f"git worktree add of {self.commit} did not finish; "
+                + "; ".join(left)
+                + f"; remove what is left with git worktree remove --force {self.path} and "
+                f"git worktree prune in {self.origin}",
+            )
+        ]
 
 
 def _leftover(path: Path) -> str:
@@ -186,6 +216,7 @@ def open_checkout(
     origin: Path,
     run_id: str,
     runtime_paths: Callable[[Path], Sequence[str]] | None = None,
+    owner: Callable[[Checkout], None] | None = None,
 ) -> Checkout:
     """Check out ``origin``'s ``HEAD`` detached as ``.claude/worktrees/unbound-<run_id>`` of the
     repository's primary worktree.
@@ -194,7 +225,11 @@ def open_checkout(
     relative path it returns that exists in ``origin`` and that Git ignores is linked into the
     checkout. ``RunError`` ``checkout_unavailable`` when ``HEAD`` names no commit, the
     primary worktree's Git does not ignore the checkout's place, the place is taken or Git
-    refuses the checkout, which is then left nowhere.
+    refuses the checkout.
+
+    ``owner`` receives the checkout before ``git worktree add`` starts and closes it from then
+    on, however the call ends; its ``created`` says whether Git finished it. Without an owner,
+    a call that does not return the checkout closes it itself, so it is left nowhere.
     """
     head = _git(origin, "rev-parse", "--verify", "--quiet", "HEAD^{commit}")
     if head.returncode != 0:
@@ -230,24 +265,27 @@ def open_checkout(
             f"the directory {path.parent} for the checkout of {commit} cannot be created: "
             f"{error}",
         ) from error
-    added = _git(
-        origin, "worktree", "add", "--detach", "--quiet", path.as_posix(), commit
-    )
-    if added.returncode != 0:
-        shutil.rmtree(path, ignore_errors=True)
-        _git(origin, "worktree", "prune")
-        raise RunError(
-            "checkout_unavailable",
-            f"git worktree add --detach {path} {commit} in {origin} exited "
-            f"{added.returncode}: {_said(added)}",
-        )
     checkout = Checkout(origin, path, commit)
+    # From here on the checkout may exist, even when a signal interrupts git worktree add.
+    if owner is not None:
+        owner(checkout)
     try:
+        added = _git(
+            origin, "worktree", "add", "--detach", "--quiet", path.as_posix(), commit
+        )
+        if added.returncode != 0:
+            raise RunError(
+                "checkout_unavailable",
+                f"git worktree add --detach {path} {commit} in {origin} exited "
+                f"{added.returncode}: {_said(added)}",
+            )
+        checkout.created = True
         _submodules(checkout)
         if runtime_paths is not None:
             _environments(checkout, runtime_paths(path))
     except BaseException:
-        checkout.close()
+        if owner is None:
+            checkout.close()
         raise
     return checkout
 

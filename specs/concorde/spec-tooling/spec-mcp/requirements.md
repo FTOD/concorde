@@ -29,8 +29,8 @@ A path resolves outside the root through any of these:
 
 ### req.spec-mcp.spec-core-answers — Every answer is Spec core's
 
-Every successful tool result SHALL equal what Spec core computes for the server root and the same
-arguments.
+The server SHALL return as every successful tool result what Spec core computes for the server
+root and the same arguments.
 
 In particular, `boundary` returns the
 [context identity](../../glossary.json#concept.context-identity) and entries of Spec core's grant.
@@ -45,8 +45,11 @@ A call refused before that, with `no_root`, `invalid_input` or `outside_root`, l
 
 ### req.spec-mcp.no-partial-answer — Failures are whole
 
-A tool call whose request is rejected, or whose Specs a tool other than `validate` cannot load,
-SHALL return a tool error carrying the failure's code and no result.
+The server SHALL answer a tool call with a tool error carrying the failure's code and no result in
+either of these cases:
+
+- It rejects the call's request.
+- A tool other than `validate` cannot load the Specs.
 
 The failure's code is one of the server's own codes or Spec core's, as the
 [contracts](contracts.md#session) list them. For Specs it cannot load, `validate` reports the load

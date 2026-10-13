@@ -50,3 +50,25 @@ Concrete situations that show the [requirements](requirements.md) of
 - WHEN the developer runs `repair-specs` for it
 - THEN the repair stops at `specify` with that step's result
 - BUT the task is not merged and stays open
+
+### scenario.swe-bench-cases.grade-reset-paths — Files with special paths are reset before the patch
+
+- GIVEN a case whose test patch changes a file whose path holds a space, a file whose path Git quotes and a renamed file, and removes a line beginning with `--`
+- AND a change that edits each of them
+- WHEN the developer grades the project
+- THEN each file the patch touches, the renamed file's source included, is restored to the base commit before the patch applies
+- AND the patch applies
+
+### scenario.swe-bench-cases.grade-creation-failed — A grading worktree that cannot be made leaves nothing
+
+- GIVEN a ref the project does not have
+- WHEN the developer grades the project at that ref
+- THEN grading fails with `command_failed`, naming `git worktree add`
+- AND no scratch directory and no worktree of the grading is left
+
+### scenario.swe-bench-cases.grade-cleanup-failed — A grading worktree that cannot be removed fails grading
+
+- GIVEN a grading whose worktree Git cannot remove
+- WHEN grading ends
+- THEN it fails with `cleanup_failed`, naming the worktree and listing its registration and its scratch directory as left
+- AND when grading had failed before, `cleanup_failed` names that earlier error

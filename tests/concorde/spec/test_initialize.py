@@ -3,6 +3,7 @@
 import copy
 import json
 import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -13,6 +14,7 @@ from concorde.spec.initialize import apply_project_proposal, project_proposal
 from concorde.spec.repository import SpecError, SpecRepository, digest
 from concorde.spec.validation import validate_repository
 from concorde.spec.verification import verifies
+from tests.concorde.support.paths import REPOSITORY_ROOT
 from tests.concorde.support.spec_project import PACKAGE
 
 
@@ -452,7 +454,7 @@ class InitialModuleTests(unittest.TestCase):
                 (
                     "issuance token",
                     "invalid_proposal",
-                    mutated(lambda p: p.update(issuance_token="accepted")),  # noqa: S106 - deliberately forged proposal field
+                    mutated(lambda p: p.update(issuance_token="accepted")),
                 ),
                 (
                     "registry omitted",
@@ -605,6 +607,91 @@ class ProposalBindingTests(unittest.TestCase):
             )
             self.assertEqual("applied", applied["status"])
             self.assertIsNone(applied["proposal_digest"])
+
+
+class InitCommandTests(unittest.TestCase):
+    """The init adapter's own refusals (specs/concorde/spec-tooling/contracts.md#init-command)."""
+
+    def setUp(self):
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        self.root = Path(directory.name) / "project"
+        self.root.mkdir()
+        install_project_defaults(self.root, PACKAGE)
+        self.before = sorted(p.relative_to(self.root) for p in self.root.rglob("*"))
+
+    def refused(self, words, code):
+        envelope = commands.init(words, self.root)
+        self.assertEqual(
+            ("init", ".", "failed", code),
+            (
+                envelope["tool"],
+                envelope["target"],
+                envelope["status"],
+                envelope["error"]["code"],
+            ),
+        )
+        self.assertEqual(
+            self.before, sorted(p.relative_to(self.root) for p in self.root.rglob("*"))
+        )
+        return envelope
+
+    def proposal_file(self, name, content):
+        path = self.root.parent / name
+        path.write_text(content)
+        return str(path)
+
+    def test_the_adapter_refuses_malformed_arguments_and_proposal_files(self):
+        for words in ([], ["--propose", "--apply"], ["--propose", "--unknown"]):
+            with self.subTest(words=words):
+                self.refused(words, "invalid_input")
+        self.refused(["--propose"], "invalid_input")
+        self.refused(["--apply"], "invalid_input")
+        unreadable = self.refused(
+            ["--apply", "--proposal", str(self.root.parent / "missing.json")],
+            "invalid_input",
+        )
+        self.assertEqual("system_error", unreadable["error"]["causes"][0]["code"])
+        self.refused(
+            ["--apply", "--proposal", self.proposal_file("bad.json", "{not json")],
+            "invalid_input",
+        )
+        for content in ("[]", '"text"', '{"proposal": {}}', '{"proposal_digest": "x"}'):
+            with self.subTest(content=content):
+                self.refused(
+                    ["--apply", "--proposal", self.proposal_file("p.json", content)],
+                    "invalid_proposal",
+                )
+
+    def test_a_refusal_exits_3_with_the_failed_envelope(self):
+        done = subprocess.run(
+            [
+                sys.executable,
+                str(REPOSITORY_ROOT / "scripts/concorde.py"),
+                "--project-root",
+                str(self.root),
+                "init",
+                "--apply",
+            ],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertEqual(3, done.returncode, done.stderr)
+        envelope = json.loads(done.stdout)
+        self.assertEqual(("init", "failed"), (envelope["tool"], envelope["status"]))
+        self.assertEqual("invalid_input", envelope["error"]["code"])
+
+    def test_a_relative_proposal_file_resolves_against_the_project_root(self):
+        envelope = commands.init(["--propose", "--name", "Relative"], self.root)
+        self.assertEqual("success", envelope["status"])
+        (self.root.parent / "proposal.json").write_text(json.dumps(envelope["result"]))
+        applied = commands.init(
+            ["--apply", "--proposal", "../proposal.json"], self.root
+        )
+        self.assertEqual(
+            ("success", "applied"), (applied["status"], applied["result"]["status"])
+        )
 
 
 if __name__ == "__main__":

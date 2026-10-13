@@ -197,7 +197,9 @@ measurement also leaves out the empty read-only placeholder file the sandbox cre
 at each such path. The sandbox keeps that file while any of the session's sandboxed commands still
 runs. Readiness and delivery therefore come out the same inside and outside that sandbox.
 
-A placeholder is recognised by the signature the sandbox runtime itself uses for its leftovers:
+A placeholder is recognised by the signature the sandbox runtime itself uses for its leftovers.
+Nothing records which process created a file, so every untracked file with this signature is left
+out, whatever created it ([contract](contracts.md#input-measurement)):
 
 - It is empty.
 - It is regular.
@@ -258,7 +260,12 @@ The readiness lists the check results in that order. When the second call fails,
 finding names the whole selection, its identities joined by commas. Each failed call keeps Check
 execution's own error link as its cause. The
 checks such a failed call finished before the error keep their results. Since the call itself
-returns none, Validation reads those results back from the checks' trace nodes.
+returns none, Validation reads those results back from the checks' trace nodes. Check execution
+lets a refused write of a `trace.json` change neither the check nor the call. A finished check
+whose final trace write was refused therefore has no node that records its end, and the readiness
+lists no result for it. The workspace is not ready anyway, since the failed call's blocking finding
+stands. That finding's cause is Check execution's link, which names the refused writes that
+Check execution's error carries.
 
 Structural validation does not read checks files, which belong to Check execution. Step 6 is
 therefore also where these problems with a checks file are found:
@@ -341,7 +348,10 @@ bound-workspace fixture Delivery's tests share.
   cannot establish a boundary, the run fails. When a call fails after some of its checks ran,
   Validation relies on each check's trace node
   ([contract](../../execution/checks/service.md#contract.checks.check-trace)) for the result of
-  every check that finished.
+  every check that finished and whose node records its end. A check whose final trace write was
+  refused has no result in the readiness. The blocking finding of the failed call names the call's
+  Modules. Its cause, Check execution's link, names the refused writes that Check execution's error
+  carries.
 - <a id="uses-workflows"></a>**Workflows** defines the
   [step output convention](../../workflows/contracts.md#contract.workflows.step-output), the
   `workflow` object of a run's output. In that object, every task-validation run that decided a

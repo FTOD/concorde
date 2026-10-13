@@ -37,7 +37,8 @@ edit only the documents the bound Modules own: their reading files (`.md`) and t
    - Its `role`.
    - Its `reason`.
 
-   In that case, return `blocked`. The host then creates each one, empty and owned by its Module.
+   In that case, return `blocked`. The host then creates each one as a stub owned by its Module.
+   The stub holds a title heading and one line that links to the entry.
    The host launches a worker again to fill it. Make the edits that do not depend on the new
    document first. To remove an owned document, list both its reading file and its metadata file
    in `proposed_deletions`. The host deletes them after your run.

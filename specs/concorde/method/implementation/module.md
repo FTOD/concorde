@@ -132,18 +132,29 @@ other Issues files. It returns once the checks pass or the rounds run out.
 
 - When the last round's checks passed, it is `ok`.
 - When the worker reported a Spec gap or another problem it cannot solve within its grant, it is
-  `blocked`. Such a problem may be a change that needs a file only an unbound Module binds. The
+  `blocked`, unless a host failure below overrides it. Such a problem may be a change that needs a file only an unbound Module binds. The
   [error chain](../../glossary.json#concept.error-chain) ends in the worker's own link, unresumed.
 - When any of these conditions holds, it is `failed`:
   - Checks still fail after the last round (one link per failing check, exit code and log tail).
   - The audit found a change outside the grant.
   - The worker ended `failed` or could not be run.
+  - A proposed deletion failed (`deletion_failed`).
+
+When the worker ended `blocked` or `failed` and a host failure also happened, Workers' ordered
+[rounds table](../../worker-harness/workers/launch.md#rounds) and its
+[proposed deletions](../../worker-harness/workers/launch.md#proposed-deletions) decide the status.
+An audit violation ends the run `failed` with `audit_violation` whatever the worker's result. A
+failed deletion ends it `failed` with `deletion_failed`, with the link the run would otherwise have
+ended with as its cause.
   - The grant could not be computed. For instance, a writable file may also be bound by an unbound
     Module. This is refused before any worker starts.
 
-When a run has no configured check, it ends `ok` with no check evidence. The result states this.
-The caller should run `test` or add checks. Whenever the worker returned a result, the output holds
-the code change whatever the status. In that case, edits stay uncommitted.
+When no configured check runs, the run ends `ok` with no check results. Its evidence states that
+no configured check ran. The caller should run `test` or add checks. Whenever the run record holds
+a valid worker result, the output holds the code change whatever the status. The worker's last valid
+result gives its claims, even when a later resume round could not be launched. Without a valid
+result, as after a launch error, a timeout or an invalid result of the first round, the run has no
+output. Its run record still holds every write audit. Either way, edits stay uncommitted.
 
 `test`'s `status` has these cases:
 
@@ -170,7 +181,7 @@ Running `test` again is safe.
 | 5 | After a clean audit of a worker that ended `ok`, call the round validation, which runs the configured checks of the bound Modules and of every Module that uses one of them | Workers, Operation, Check execution | — |
 | 6 | While the round validation reports a failing check with rounds left, resume the session with the failures, repeat 4–5 | Workers, worker | rounds used, still failing (`failed`) |
 | 7 | Perform proposed deletions after a clean audit; write the run record | Workers | — |
-| 8 | Compose the code change from the run record and return it | Operation, Execution runner | — |
+| 8 | When the run record holds a valid worker result, compose the code change from it and return it | Operation, Execution runner | — |
 
 The main path, the resume loop and the exits, which all meet at steps 7–8:
 
@@ -192,11 +203,13 @@ checks -> record: "still failing, rounds used up: failed" {style.stroke-dash: 3}
 audit -> record: "write outside the grant, timeout, limit reached, invalid result: failed;\nworker blocked or failed: its status, unresumed" {style.stroke-dash: 3}
 launch -> record: "launch error: failed" {style.stroke-dash: 3}
 grant -> stopped: Specs not loaded, Module unknown {style.stroke-dash: 3}
-record -> output
+record -> output: a valid worker result
 ```
 
-Once launched, steps 7–8 run whatever the status, so the run record and the output stay consistent
-after a failure. Steps 1–7 are the
+Once launched, step 7 runs whatever the status, and step 8 runs whenever the run record holds a
+valid worker result. The run record and the output therefore stay consistent after a failure. The
+code change's files come from the last write audit, which spans every round. When a resume round
+could not be launched, that is the audit of the round before it. Steps 1–7 are the
 [standard worker sequence](../../glossary.json#concept.standard-worker-sequence). Step 8 is this
 Operation's own.
 
@@ -286,7 +299,8 @@ registers their definitions as Operations that need a bound workspace, naming th
 provider ([Method](../module.md#the-operations-and-commands-it-provides)). `implement` writes the
 bound Modules' code. Implementation never calls another Operation. Implementation relies on
 Method's [standard worker sequence](../../glossary.json#concept.standard-worker-sequence) and its
-mapping of worker and audit outcomes to run statuses for these steps:
+[mapping of worker and audit outcomes to run statuses](../workers.md#errors-of-the-worker-sequence)
+for these steps:
 
 - Steps 1–8 of `implement`.
 - The worker launch of `test`.
@@ -332,5 +346,4 @@ and log. This is the only evidence of whether checks passed.
 <a id="uses-spec"></a>
 
 **Spec core** computes the `implement` and `test` grants. When a file is bound by several Modules,
-it is writable only when all are bound. Spec core also loads the realizations whose markers step 9
-clears.
+it is writable only when all are bound.

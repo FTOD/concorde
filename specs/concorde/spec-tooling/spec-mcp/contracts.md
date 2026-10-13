@@ -30,9 +30,28 @@ After the client's first `initialized` notification, the server resolves its roo
 The server waits for the reply to `roots/list` without a time limit. Requests that arrive
 meanwhile are answered, in their order, once the reply has arrived. When the input ends before the
 reply, the session ends. The root is the real path of the chosen directory. The root does not
-change for the life of the process. A later `initialized` notification resolves nothing. A
-malformed message never ends the session. When the server cannot answer a request, it answers with
-a JSON-RPC error and reads the next message.
+change for the life of the process. A later `initialized` notification resolves nothing.
+
+A malformed message never ends the session. The server answers a message it cannot take as a
+JSON-RPC message with a JSON-RPC error and reads the next message. Only these protocol failures
+receive a JSON-RPC error:
+
+| Failure | JSON-RPC error | `id` |
+| --- | --- | --- |
+| A line that is not JSON | `-32700` (parse error) | `null` |
+| A JSON value that is not an object, such as `null`, a number or an array | `-32600` (invalid request) | `null` |
+| A request whose method the server does not know | `-32601` (method not found) | the request's |
+| A defect of the server while it answers a request other than `tools/call` | `-32603` (internal error), with the error record as `data.error` | the request's |
+
+The server never answers a notification or a response.
+The server answers every `tools/call` request with a tool result, never with a JSON-RPC error.
+This holds for a malformed call too, such as params that are not an object.
+For example, the server answers a malformed line and a `tools/call` with the params `[1]` as follows:
+
+```json
+{"jsonrpc":"2.0","id":null,"error":{"code":-32700,"message":"parse error"}}
+{"jsonrpc":"2.0","id":7,"result":{"content":[{"type":"text","text":"{\"error\":{\"code\":\"invalid_input\",...}}"}],"isError":true}}
+```
 
 Every tool returns one text content item holding canonical JSON. A failure sets `isError: true`.
 Its JSON is `{"error": <record>}`, where the record is Spec tooling's

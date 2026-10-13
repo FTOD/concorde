@@ -128,7 +128,7 @@ project: The project {
     own: Ordinary work in the project
     write: Write the defect report, check it with concorde issues report --check
     log: Record it in the decision log, leave the blocked work open
-    update: concorde update, then concorde spec-validation
+    update: "concorde update, then concorde spec-validation\nwhere the spec part is installed"
     resume: "Have the open tasks' sessions merge the primary branch,\ntake up the blocked work"
     observe -> classify
     classify -> own: the project's own
@@ -186,7 +186,8 @@ worktree of the Concorde repository.
 Because uncommitted changes would install a Concorde no commit records, the installer refuses them.
 It then installs as a normal install does.
 It copies the framework into the project.
-It adds Dogfooding's guidance to the installed skill and `CLAUDE.md` block.
+Where the coordination and issues parts are installed, it adds Dogfooding's guidance to the
+installed skill and `CLAUDE.md` block. Otherwise, the project gets no develop guidance.
 The receipt `.concorde/install.json` records:
 
 - `mode:
@@ -344,8 +345,18 @@ Outside a task, the main agent writes its link by hand.
 It writes that chain to `.concorde/runs/defects/<name>.error.json`
 ([requirements](requirements.md#req.dogfooding.issue-system-defect-kept)).
 It names the file to the developer
-([requirements](requirements.md#req.dogfooding.issue-system-defect-named)). A refusal whose reason is `environment`, such as a busy merge
-lock, is no defect. For such a refusal, the main agent waits and writes again.
+([requirements](requirements.md#req.dogfooding.issue-system-defect-named)).
+
+A refusal whose reason is `environment` is no defect
+([requirement](requirements.md#req.dogfooding.environment-refusal-handled)). Only a busy lock is
+transient: for `merge_busy`, the main agent waits for the lock and writes again. Every other such
+refusal names its cause and what removes it in its options. The main agent follows those options
+as [Issues](../issues/module.md#failures-of-the-issue-system) says before it writes again. It
+finishes an unfinished merge for `merge_incomplete`. It fixes the cause that `commit_failed` names.
+It fixes the cause that `recovery_failed` names and then runs `concorde issues recover`. It inspects
+and reverts the record's change for `uncommitted_change`. A cause it cannot remove itself, such as a disk that refuses
+writes, it escalates as any failure of a task. Writing again without removing the cause only meets
+the same refusal.
 The developer hands the chain to the Concorde repository as a failure.
 The main agent there takes it up as any error chain the developer shows it.
 It opens a task for the Issues Module.
@@ -395,11 +406,14 @@ The update takes these steps:
 - It records the commit it installed
   ([requirements](requirements.md#req.dogfooding.update-commit-recorded)).
 
-Like every update, it leaves the project unvalidated until `concorde spec-validation` passes.
+Where the spec part is installed, the update, like every update, leaves the project unvalidated
+until `concorde spec-validation` passes. Without the spec part, the update writes no such mark and
+the project has no `spec-validation` to run
+([Distribution](../distribution/module.md#updating-an-installed-concorde)).
 While the update runs, the main agent starts nothing in the project because its check does not stop
-what starts afterward ([Distribution](../distribution/module.md#installing-into-a-project)).
-When the update asks for it, the main agent then has the open tasks' sessions merge the primary
-branch into their task branches.
+what starts afterward ([Distribution](../distribution/module.md#updating-an-installed-concorde)).
+Where the coordination part is installed and the update asks for it, the main agent then has the
+open tasks' sessions merge the primary branch into their task branches.
 The main agent takes up the blocked work.
 
 ## How it is built
@@ -541,11 +555,8 @@ Its `CLAUDE.md` tells every session to load that skill beside the `concorde` ski
 The root Module, not Dogfooding, binds the skill's source and that file.
 Both sides receive the same sentence so they never differ on what observing a run means
 ([requirements](requirements.md#req.dogfooding.one-observation-rule)).
-The sentence is kept once as a prompt fragment with these uses:
-
-- The develop guidance includes it.
-- The development skill includes it.
-- The Dogfooding tests find it word for word in the rendered skill.
+The sentence is kept once as a prompt fragment, which both the develop guidance and the
+development skill include. Neither side holds a copy that could drift from the other.
 
 ### The parts
 
@@ -573,11 +584,5 @@ Distribution's build renders them into `generated/dogfooding/`.
 
 <a id="realization.dogfooding.tests"></a>
 
-The **Dogfooding tests**, under `tests/concorde/dogfooding/`, take these actions:
-
-- Make develop installs from temporary Concorde repositories.
-- Refuse the sources the requirements exclude.
-- Update a develop install.
-- Check the rendered guidance and the Concorde repository's agent instructions.
-
-These actions verify the [requirements](requirements.md) and [scenarios](scenarios.md).
+The **Dogfooding tests** install and update from temporary Concorde repositories, so that no real
+project or repository is touched, and read the rendered guidance.

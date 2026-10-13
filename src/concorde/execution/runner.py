@@ -37,6 +37,7 @@ import subprocess
 import sys
 import tempfile
 import time
+from collections.abc import Callable
 from pathlib import Path
 
 from ..kernel import errors
@@ -61,6 +62,7 @@ from .runs import (
     now,
     run_lock,
     store_of,
+    validate_result,
     workspace_lock,
 )
 
@@ -263,8 +265,12 @@ def _named_modules(arguments) -> list[str] | None:
     return [item.strip() for item in arguments.modules.split(",") if item.strip()]
 
 
-def _checkout(chosen: Provider, context: RunContext) -> Checkout:
-    """Admit an unbound run and move it into a throwaway checkout of its worktree's ``HEAD``."""
+def _checkout(
+    chosen: Provider, context: RunContext, owner: Callable[[Checkout], None]
+) -> Checkout:
+    """Admit an unbound run and move it into a throwaway checkout of its worktree's ``HEAD``.
+    ``owner`` receives the checkout before Git starts it and removes it however the run ends;
+    once Git made it, the run names its commit and evidence even when its setup then fails."""
     if chosen.binding == "required":
         raise RunError(
             "binding_required",
@@ -282,11 +288,26 @@ def _checkout(chosen: Provider, context: RunContext) -> Checkout:
         except Exception as error:  # noqa: BLE001 -- a resolver error is a failed result
             raise DefinitionFailed("runtime-path resolver", error) from error
 
-    checkout = open_checkout(
-        context.worktree,
-        context.run_id,
-        runtime_paths if resolver is not None else None,
-    )
+    owned: list[Checkout] = []
+
+    def own(checkout: Checkout) -> None:
+        owned.append(checkout)
+        owner(checkout)
+
+    try:
+        return open_checkout(
+            context.worktree,
+            context.run_id,
+            runtime_paths if resolver is not None else None,
+            own,
+        )
+    finally:
+        if owned and owned[0].created:
+            _record_checkout(context, owned[0])
+
+
+def _record_checkout(context: RunContext, checkout: Checkout) -> None:
+    """Move the run into the checkout Git made: its commit and what it provides or lacks."""
     context.origin, context.worktree = context.worktree, checkout.path
     context.commit = checkout.commit
     context.evidence.append(
@@ -298,7 +319,6 @@ def _checkout(chosen: Provider, context: RunContext) -> Checkout:
         )
     )
     context.evidence.extend(checkout.evidence)
-    return checkout
 
 
 def _resolve(chosen: Provider, context: RunContext, arguments) -> Stop | None:
@@ -629,9 +649,14 @@ def execute(
                         _enter(context, node, node_folder)
                         _progress(context, step=None, waiting_for=None)
                     else:
-                        checkout = _checkout(chosen, context)
-                        # However the runner leaves, the checkout does not outlive it.
-                        held.callback(checkout.close)
+
+                        def own(opened: Checkout) -> None:
+                            nonlocal checkout
+                            checkout = opened
+                            # However the runner leaves, the checkout does not outlive it.
+                            held.callback(opened.close)
+
+                        _checkout(chosen, context, own)
                         _progress(context, step=None)
                     stop = _resolve(chosen, context, arguments)
                     if stop is None and checkout is not None:
@@ -1069,7 +1094,7 @@ def _envelope(chosen: Provider, context: RunContext, stop: Stop | None, started:
         "finished_at": now(),
     }
     try:
-        validate(envelope, RESULT_SCHEMA)
+        validate_result(envelope)
         _check_own_link(chosen, context, envelope["error"])
         if status == "ok" and chosen.output_schema is not None:
             validate(envelope["output"], chosen.output_schema)
@@ -1077,7 +1102,7 @@ def _envelope(chosen: Provider, context: RunContext, stop: Stop | None, started:
         envelope = _replaced(chosen, context, envelope, problem)
         # The replacement keeps only what satisfies the contract; one that still breaks it is
         # a defect of the runner itself, which no result may hide.
-        validate(envelope, RESULT_SCHEMA)
+        validate_result(envelope)
     return envelope
 
 

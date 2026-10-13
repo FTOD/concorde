@@ -13,6 +13,12 @@ only their tools. When a part is not installed, a command or tool of that part i
 may install that part with `concorde update --parts
 <part>`. The command adds that part with the parts it depends on.
 
+Each session runs its own project MCP server. The server keeps the code it started with for the
+whole session, but each call runs the current Concorde. After an update or a merge changed how the
+two talk, every call of an older server is refused with `host_outdated`, and nothing runs. Then
+reconnect the server with Claude Code's `/mcp`, or restart the session, and call again. A
+background session cannot use `/mcp`: report the refusal instead.
+
 Update Concorde only when the developer asks. Run `concorde update` in the primary worktree, in
 background Bash.
 

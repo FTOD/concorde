@@ -134,8 +134,8 @@ HANDLING = {
     ),
     "not_resumable": (
         "decision",
-        "the primary branch's head is no longer the merge that could be checked again, and "
-        "Tasks does not merge again on its own",
+        "the primary branch is back at the commit before the merge, so there is no merge to "
+        "check again, and Tasks does not merge again on its own",
     ),
     "merge_diverged": (
         "decision",

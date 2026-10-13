@@ -63,8 +63,11 @@ Each `--input` names a run whose result is `ok`. For a bound run, the input run'
 run's workspace. For an unbound run, the input run has no workspace. Once its saved result
 satisfies the current [run result contract](contracts.md#contract.execution.run-result), its saved
 `output` is admitted, with its name, as material of the run. Any other run is refused with
-`input_not_admissible`. This includes a result an older Concorde wrote under another version of
-the contract.
+`input_not_admissible`. This includes a result an older Concorde wrote that no longer satisfies
+the current contract. Admission compares no version: an older result that still satisfies the
+contract is admitted. Admission judges a saved result as publication judges a result it writes:
+its schema, an `error` that is null exactly when the status is `ok`, and an error of the level of
+the run's kind.
 
 For a bound run, `--wait <seconds>` (default 0) is how long it waits for a busy workspace's lock
 before refusal with `workspace_busy`. A negative value is a command-line error. An unbound run
@@ -577,10 +580,15 @@ That starting worktree is here called its origin. The runner follows these steps
   workers' backends, models and limits. The run context keeps the origin and the commit. The
   origin's `.concorde` keeps the run's trace node and run lock. The result names the commit as
   `commit`. The run's error link names it as `… (unbound, <origin> at <commit>)`. `checkout`
-  evidence names the commit and the checkout's path.
-5. Before composing the result, however the steps ended, the runner removes the links, the
-  submodule checkouts and the checkout with `git worktree remove --force`. This includes a refusal,
-  a raised error or a cancellation. The runner then removes whatever is left of the checkout's
+  evidence names the commit and the checkout's path. These hold as soon as `git worktree add`
+  returned the checkout, even when a submodule or the resolver then fails. The evidence of the
+  submodules and links made until then is kept.
+5. The runner owns the checkout's removal from before `git worktree add` starts. Before composing
+  the result, however the steps ended, the runner removes the links, the submodule checkouts and
+  the checkout with `git worktree remove --force`. This includes a refusal, a raised error or a
+  cancellation, also one that ends the run while the checkout is created. When `git worktree add`
+  did not return the checkout, the runner deletes whatever Git made of its directory and prunes
+  Git's worktree list. `checkout-not-removed` evidence then names only what is left. The runner then removes whatever is left of the checkout's
   directory, never the `.claude/worktrees/` that holds it. When Git refuses a removal, the runner
   does it directly, deleting the directory and pruning Git's worktree list. The runner reports
   that removal with `checkout-not-removed` evidence. The evidence says whether the directory is
@@ -746,7 +754,7 @@ The file holds these fields:
 | `step` | the step running now, `workspace-lock` while the run waits for the workspace lock, or null |
 | `waiting_for` | while this run waits for the workspace lock, its holder as the holder line [Tracing](../kernel/tracing/contracts.md#locks) keeps in the lock file describes it: a run's runner, such as `implement run <run-id>`, or another taker such as a task's merge or close, with its process, start time and, when its holder line names them, its session and task; null otherwise |
 | `status`, `summary` | null while running; the result's status and summary once finished |
-| `host_pid` | the runner's process identifier in its own PID namespace, for display and for the process that started it; never a sign that the run still runs |
+| `host_pid` | the runner's process identifier in its own PID namespace, for display and for the process that started it; never a sign that the run still runs, and never the process another observer signals, which finds the runner as the holder of the run lock |
 | `started_at`, `updated_at` | UTC times |
 
 Except for the first, a failed write never changes the run. Without the first write, the run runs

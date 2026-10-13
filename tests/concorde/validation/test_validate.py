@@ -14,6 +14,7 @@ from concorde.execution.checks import checks as check_service
 from concorde.execution.checks.check_executor import CheckSandboxError
 from concorde.spec.repository import SpecRepository
 from concorde.spec.verification import verifies
+from concorde.kernel.schema import validate
 from concorde.method.validation.command import READINESS_SCHEMA, TASK_VALIDATION
 from concorde.method.validation.measurement import (
     measure,
@@ -89,6 +90,8 @@ class ValidateTests(unittest.TestCase):
         saved = folder / "readiness.json"
         workflow = readiness.pop("workflow")
         self.assertEqual(json.loads(saved.read_text()), readiness)
+        # One schema covers both representations of the readiness.
+        validate(json.loads(saved.read_text()), READINESS_SCHEMA)
         self.assertEqual(
             ({"ready": True}, None), (workflow["data"], workflow["blocking"])
         )
@@ -331,6 +334,28 @@ class ValidateTests(unittest.TestCase):
         self.assertNotIn(".bashrc", unbound)
         self.assertIn("notes/empty.txt", unbound)
         self.assertIn("notes/frozen.txt", unbound)
+
+    @verifies("scenario.validation.placeholder-signature")
+    def test_a_tasks_file_with_the_placeholder_signature_counts_once_staged(self):
+        (self.worktree / "src/a/calc.py").write_text(FIXED)
+        marker = self.worktree / "notes/marker"
+        marker.parent.mkdir()
+        marker.touch()
+        marker.chmod(0o444)
+
+        def changed():
+            readiness = self.project.validate()[1]["output"]
+            return [item["path"] for item in readiness["inputs"]["changed"]], [
+                item["ref"]
+                for item in readiness["blocking"]
+                if item["kind"] == "unbound"
+            ]
+
+        self.assertEqual((["src/a/calc.py"], []), changed())
+        git(self.worktree, "add", "notes/marker")
+        self.assertEqual(
+            (["notes/marker", "src/a/calc.py"], ["notes/marker"]), changed()
+        )
 
     @verifies("scenario.validation.mode-change")
     def test_a_changed_file_mode_changes_the_input_digest(self):
@@ -632,6 +657,44 @@ class ValidateTests(unittest.TestCase):
                 if cause["level"] in ("check", "component")
             ][-2:],
         )
+
+    @verifies("scenario.validation.check-trace-refused")
+    def test_a_finished_check_whose_trace_write_was_refused_has_no_result(self):
+        from concorde.kernel.tracing import node as trace_node
+
+        (self.worktree / "src/a/flag").write_text("broken")
+        [check] = read_checks(self.worktree)
+        write_checks(self.worktree, [check, {**check, "id": "check.a2", "inputs": []}])
+        real_execute, real_write = check_service.execute_check, trace_node.write
+        calls = []
+
+        def second_refused(*arguments, **options):
+            calls.append(arguments)
+            if len(calls) > 1:
+                raise check_service.CheckError(
+                    "an input of check.a2 vanished", "check_input_missing"
+                )
+            return real_execute(*arguments, **options)
+
+        def end_refused(folder, record):
+            if record.get("kind") == "check" and record.get("ended_at"):
+                raise PermissionError(13, "Permission denied", str(folder))
+            return real_write(folder, record)
+
+        with (
+            patch.object(check_service, "execute_check", second_refused),
+            patch.object(trace_node, "write", end_refused),
+        ):
+            status, envelope = self.project.validate()
+        self.assertEqual((status, envelope["status"]), (1, "blocked"), envelope)
+        readiness = envelope["output"]
+        self.assertEqual([], readiness["checks"])
+        self.assertFalse(readiness["ready"])
+        self.assertIn(
+            ("check", "module.a"),
+            [(item["kind"], item["ref"]) for item in readiness["blocking"]],
+        )
+        self.assertIn("could not be written at its end", json.dumps(envelope["error"]))
 
     def test_an_operating_system_error_of_check_execution_is_a_check_finding(self):
         (self.worktree / "src/a/calc.py").write_text(FIXED)

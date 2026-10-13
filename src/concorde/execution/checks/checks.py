@@ -97,6 +97,11 @@ class CheckError(Exception):
             "set `python` in .concorde/config.json to the project's interpreter, or create it "
             "where the configuration says",
         ),
+        "check_node_exists": (
+            "a check's trace node holds the log and record an earlier result names, so a "
+            "later call never writes over it",
+            "give each call a trace directory where none of its checks' nodes exists yet",
+        ),
         "system_error": (
             "the operating system refused an operation Check execution needed",
             "repair what the message names and run the checks again",
@@ -288,9 +293,10 @@ def _inputs(root: Path, check: dict) -> list[tuple[str, str]]:
     return digests
 
 
-def checks_files(worktree: Path) -> list[tuple[str, str]]:
+def checks_files(worktree: Path, modules=None) -> list[tuple[str, str]]:
     """The checks files of a worktree as ``(path, Module id)``, in the byte order of their
-    names; none when the worktree has no checks directory."""
+    names; none when the worktree has no checks directory. Given ``modules``, only their files
+    are judged and listed, so a malformed file of another Module stops nothing."""
     try:
         directory = checked_path(Path(worktree), CHECKS_DIR)
     except KernelError as error:
@@ -314,6 +320,8 @@ def checks_files(worktree: Path) -> list[tuple[str, str]]:
     for name in sorted(os.listdir(directory)):
         relative = f"{CHECKS_DIR}/{name}"
         module = name.removesuffix(".json") if name.endswith(".json") else ""
+        if modules is not None and module not in modules:
+            continue
         entry = directory / name
         if not IDENTITY.fullmatch(module) or entry.is_symlink() or not entry.is_file():
             state = (
@@ -342,9 +350,7 @@ def configured_checks(worktree: Path, modules=None) -> list[dict]:
     check runs. Given ``modules``, only their checks files are read."""
     root = Path(worktree)
     result, seen = [], {}
-    for path, module in checks_files(root):
-        if modules is not None and module not in modules:
-            continue
+    for path, module in checks_files(root, modules):
         try:
             value = decode((root / path).read_text(encoding="utf-8"))
         except (OSError, UnicodeError, KernelError) as error:
@@ -500,6 +506,9 @@ def project_python(worktree: Path, configured: str | None, check_id: str) -> str
             "project_python_missing",
             subject=check_id,
         )
+    # The check runs from inside the worktree, so a candidate is never relative to the
+    # caller's directory; the environment's own link is kept, never resolved.
+    worktree = Path(os.path.abspath(worktree))
     if os.path.isabs(configured):
         candidates = [Path(configured)]
     else:
@@ -729,6 +738,14 @@ def run_checks(
         )
         kept.append((check, argv, _timeout(check), environment(check)))
     for check, *_ in kept:
+        folder = layout.check_folder(trace_directory, check["id"])
+        if os.path.lexists(folder):
+            raise CheckError(
+                f"the trace node {folder} of check {check['id']} ({check['module']}) exists "
+                "already",
+                "check_node_exists",
+                subject=check["id"],
+            )
         _present_inputs(worktree, check)
         for path in measured.get(check["module"], ()):
             _measured_file(worktree, path, f"measured file of {check['module']}")
@@ -757,13 +774,32 @@ def run_checks(
                     list(tests) if selective(check) else [],
                 )
             )
-        except CheckError as error:
+        except BaseException as error:
             # The call returns no result: its error names the refused trace writes instead.
-            error.trace_failures[:0] = [
-                failure for result in results for failure in result["trace_failures"]
-            ]
+            _carry(
+                error,
+                [failure for result in results for failure in result["trace_failures"]],
+                first=True,
+            )
             raise
     return results
+
+
+def _carry(error: BaseException, failures: list[str], *, first: bool = False) -> None:
+    """Add ``failures``, refused writes of checks' trace.json, to the ``trace_failures`` of
+    ``error``, which leaves the call as it is; ``first`` puts them before those it carries."""
+    if not failures:
+        return
+    carried = getattr(error, "trace_failures", None)
+    if not isinstance(carried, list):
+        # An exception that takes no attribute keeps its identity and loses them.
+        with contextlib.suppress(AttributeError, TypeError):
+            error.trace_failures = list(failures)
+        return
+    if first:
+        carried[:0] = failures
+    else:
+        carried.extend(failures)
 
 
 def _run_one(
@@ -879,6 +915,7 @@ def _run_one(
                     error=service_error(error) if isinstance(error, OSError) else None,
                     content=_check_content("interrupted", None, before, argv, chosen),
                 )
+            _carry(error, list(node.failures))
         raise
 
 
@@ -931,6 +968,11 @@ SERVICE_REASONS = {
 def service_error(error: BaseException) -> dict:
     """Check execution's own error link for an error ``run_checks`` raised, which the caller
     keeps as a cause under its own link."""
+    # The refused trace writes of the checks the call ran, whatever error ended it.
+    writes = [
+        evidence("trace-write", "", failure)
+        for failure in getattr(error, "trace_failures", None) or ()
+    ]
     if isinstance(error, OSError):
         return link(
             "component",
@@ -939,6 +981,7 @@ def service_error(error: BaseException) -> dict:
             f"{type(error).__name__}: {error}",
             reason="environment",
             explanation="the operating system refused an operation Check execution needed",
+            evidence=writes,
         )
     if not isinstance(error, CheckError):
         return link(
@@ -948,6 +991,7 @@ def service_error(error: BaseException) -> dict:
             f"{type(error).__name__}: {error}",
             reason="capability",
             explanation="Check execution raised an error it did not expect",
+            evidence=writes,
         )
     where = error.where()
     return link(
@@ -957,8 +1001,7 @@ def service_error(error: BaseException) -> dict:
         str(error) + (f" (at {where})" if where else ""),
         reason=SERVICE_REASONS.get(error.code, "input"),
         explanation=error.reason,
-        evidence=([evidence("location", where, "")] if where else [])
-        + [evidence("trace-write", "", failure) for failure in error.trace_failures],
+        evidence=([evidence("location", where, "")] if where else []) + writes,
         options=[error.remediation],
         recommendation=error.remediation,
         causes=[service_error(cause) for cause in error.causes],

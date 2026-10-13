@@ -120,8 +120,9 @@ Concrete situations of the [Spec MCP server](module.md). Exact tools and results
 ### scenario.spec-mcp.outside-root — Paths outside the root are refused
 
 - GIVEN a server rooted at a worktree
-- WHEN the client calls `impact` with a path containing `..` that leaves the root, an absolute
-  path in another directory, or a path through a symbolic link pointing outside the root
+- WHEN the client calls `impact` with a path containing `..` that leaves the root
+- AND it calls `impact` with an absolute path in another directory
+- AND it calls `impact` with a path through a symbolic link pointing outside the root
 - THEN each call fails with `outside_root`
 - AND its error names what the path resolved to
 
@@ -137,7 +138,21 @@ Concrete situations of the [Spec MCP server](module.md). Exact tools and results
 ### scenario.spec-mcp.malformed-call — A malformed call is refused and the session goes on
 
 - GIVEN a server rooted at a worktree
-- WHEN the client sends a `tools/call` with params that are not an object, a tool name that is
-  not a string, present `arguments` that are not an object, or optional `target` set to `null`
-- THEN each call fails with `invalid_input` naming the argument
+- WHEN the client sends a `tools/call` whose params are not an object
+- AND it sends a `tools/call` whose tool name is not a string
+- AND it sends a `tools/call` whose present `arguments` are not an object
+- AND it sends a `tools/call` whose optional `target` is `null`
+- THEN each call fails with a tool error `invalid_input` naming the argument
+- AND the next well-formed call on the same connection is answered
+
+### scenario.spec-mcp.malformed-message — A malformed message is answered and the session goes on
+
+- GIVEN a server rooted at a worktree
+- WHEN the client sends a line that is not JSON
+- AND it sends a line holding the JSON `null`
+- AND it sends a line holding a JSON number
+- AND it sends a line holding a JSON array
+- THEN the server answers the line that is not JSON with the JSON-RPC error `-32700` and `id`
+  `null`
+- AND it answers each of the other lines with the JSON-RPC error `-32600` and `id` `null`
 - AND the next well-formed call on the same connection is answered

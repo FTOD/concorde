@@ -14,7 +14,7 @@ import { spawn } from "node:child_process";
 import { constants } from "node:fs";
 import { access, readFile, stat } from "node:fs/promises";
 import { homedir } from "node:os";
-import { relative } from "node:path";
+import { StringDecoder } from "node:string_decoder";
 import { SandboxManager } from "@concorde/sandbox-runtime";
 import { Type } from "typebox";
 import {
@@ -31,9 +31,11 @@ import {
   type ReadOperations,
 } from "@earendil-works/pi-coding-agent";
 import {
+  LineSplitter,
   type Policy,
   readDecision,
   resolveLikePi,
+  RipgrepReader,
   searchDecision,
   writeDecision,
 } from "./pi_policy.ts";
@@ -68,7 +70,14 @@ interface Completed {
   code: number | null;
 }
 
-/** Run a shell command inside the sandbox, streaming or collecting its output. */
+/** The longest line of standard output `inSandbox` hands to a line reader whole. */
+const LINE_CAP = 8 * MAX_OUTPUT;
+
+/**
+ * Run a shell command inside the sandbox, streaming or collecting its output. With `onLine`,
+ * standard output goes to it line by line instead, each line cut at `LINE_CAP`; once it answers
+ * false, the command is stopped and ends as if it had finished.
+ */
 async function inSandbox(
   command: string,
   cwd: string,
@@ -76,6 +85,7 @@ async function inSandbox(
     signal?: AbortSignal;
     timeout?: number;
     onData?: (data: Buffer) => void;
+    onLine?: (line: string, cut: boolean) => boolean;
   } = {},
 ): Promise<Completed> {
   await sandbox();
@@ -102,8 +112,18 @@ async function inSandbox(
       ? setTimeout(() => ((timedOut = true), kill()), options.timeout * 1000)
       : undefined;
     options.signal?.addEventListener("abort", kill, { once: true });
+    const lines = options.onLine
+      ? new LineSplitter(LINE_CAP, options.onLine)
+      : undefined;
+    const decoder = new StringDecoder("utf8");
+    let enough = false;
     child.stdout.on("data", (chunk: Buffer) => {
-      if (options.onData) options.onData(chunk);
+      if (lines) {
+        if (!enough && !lines.push(decoder.write(chunk))) {
+          enough = true;
+          kill();
+        }
+      } else if (options.onData) options.onData(chunk);
       else if (stdout.length < 8 * MAX_OUTPUT) stdout += chunk.toString();
     });
     child.stderr.on("data", (chunk: Buffer) => {
@@ -114,9 +134,13 @@ async function inSandbox(
     child.on("close", (code) => {
       if (timer) clearTimeout(timer);
       options.signal?.removeEventListener("abort", kill);
+      if (lines && !enough) {
+        lines.push(decoder.end());
+        lines.end();
+      }
       if (options.signal?.aborted) reject(new Error("aborted"));
       else if (timedOut) reject(new Error(`timeout:${options.timeout}`));
-      else resolve({ stdout, stderr, code });
+      else resolve({ stdout, stderr, code: enough ? 0 : code });
     });
   });
 }
@@ -286,6 +310,7 @@ export default function (pi: ExtensionAPI) {
       const limit = Math.max(1, params.limit ?? 100);
       const context =
         params.context && params.context > 0 ? Math.floor(params.context) : 0;
+      const reader = new RipgrepReader(root, limit, LINE_CAP);
       const completed = await inSandbox(
         [
           quote(POLICY.programs.rg),
@@ -299,7 +324,7 @@ export default function (pi: ExtensionAPI) {
           quote(root),
         ].join(" "),
         POLICY.own[0],
-        { signal },
+        { signal, onLine: (line, cut) => reader.read(line, cut) },
       );
       if (completed.code !== 0 && completed.code !== 1) {
         throw new Error(
@@ -307,48 +332,10 @@ export default function (pi: ExtensionAPI) {
             `ripgrep exited with code ${completed.code}`,
         );
       }
-      const lines: string[] = [];
-      let matches = 0;
-      let limited = false;
-      for (const line of completed.stdout.split("\n")) {
-        if (!line.trim()) continue;
-        let event: {
-          type?: string;
-          data?: {
-            path?: { text?: string };
-            line_number?: number;
-            lines?: { text?: string };
-          };
-        };
-        try {
-          event = JSON.parse(line);
-        } catch {
-          continue;
-        }
-        if (event.type !== "match" && event.type !== "context") continue;
-        if (event.type === "match" && matches >= limit) {
-          limited = true;
-          break;
-        }
-        const file = event.data?.path?.text ?? "";
-        const shown = relative(root, file) || file;
-        const text = (event.data?.lines?.text ?? "").replace(/\r?\n$/, "");
-        if (event.type === "match") {
-          matches++;
-          lines.push(`${shown}:${event.data?.line_number}: ${text}`);
-        } else {
-          lines.push(`${shown}-${event.data?.line_number}- ${text}`);
-        }
-      }
-      if (matches === 0)
-        return {
-          content: [{ type: "text", text: "No matches found" }],
-          details: undefined,
-        };
-      let output = truncated(lines.join("\n"));
-      if (limited)
-        output += `\n\n[${limit} matches limit reached. Use limit=${limit * 2} for more, or refine pattern]`;
-      return { content: [{ type: "text", text: output }], details: undefined };
+      return {
+        content: [{ type: "text", text: reader.answer(truncated) }],
+        details: undefined,
+      };
     },
   });
 

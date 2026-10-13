@@ -51,7 +51,8 @@ The caller names one of the eight task types with `--type`. The Operation comput
 grant for the run's Modules through Method's
 [standard worker sequence](../../glossary.json#concept.standard-worker-sequence). The run's
 Modules are `--modules`, otherwise the binding's. The type decides what the worker may read and
-write, exactly as for the Operation that normally uses that type. For example:
+write, exactly as for the Operation that normally uses that type. The type gives the work no job
+of its own. The instruction is the job. For example:
 
 - `--type specify` lets the worker change the bound Modules' Spec documents.
 - `--type implement` lets the worker change their code.
@@ -64,11 +65,22 @@ then changes nothing, whatever the type. A type that writes needs a bound
 [unbound run](../../glossary.json#concept.unbound-run) of such a type fails before any worker
 launches.
 
+Method's standard worker sequence gives every worker a rule for a promise the Spec does not state.
+That rule depends on the task type. For some types it also sets the type's own job or result
+format. For `code-to-spec`, describing the code in the Specs is the job. For `review-code`, the
+rule asks for a `spec-gap` finding, which the reviewer's findings cannot hold. Each worker of
+`general` therefore gets this Module's own rule in place of the type's:
+
+- The worker never infers such a promise from code. It says so in its answer. It returns `blocked`
+  when it cannot do the work without the promise.
+- The reviewer never infers such a promise from code either. It judges against the instruction and
+  the files as they are. It names what the Spec leaves open in its summary.
+
 ### The observed change
 
 The Operation observes the change itself, outside the worker. It records the worktree as a Git
-tree before the worker launches and again after the worker ends. The difference between the two
-trees is the **observed change**:
+tree before the worker launches. When the worker ends `ok` and its audit is clean, it records the
+worktree again. The difference between the two trees is the **observed change**:
 
 - The files the worker added, modified or deleted.
 - A unified diff of the change, kept as `change.diff` in the run's trace node.
@@ -77,6 +89,13 @@ trees is the **observed change**:
 Files Git ignores are not observed, as in the
 [write audit](../../glossary.json#concept.write-audit). The observed change is host evidence. The
 worker's own account of what it did is its claim.
+
+A worker that does not end `ok`, or whose audit finds a write outside the grant, gets no review.
+The Operation then records no second tree, no diff and no earlier content. Its changes stay in the
+worktree. The run's host evidence keeps the tree recorded before the worker as `tree-before`. The
+caller can compare the worktree with that tree, such as with `git diff <tree>`. The worker's
+[run record](../../glossary.json#concept.run-record) keeps the write audit of each round, which
+names every path the worker changed.
 
 ### The review
 
@@ -176,7 +195,9 @@ The output is a [general work result](contracts.md#contract.general-work.result)
 | `failed` | `inconsistent_review` | `capability` | two findings of the review have the same id |
 
 `instruction_unreadable` stops the run before any worker launches. When the worker does not end
-`ok`, the reviewer does not launch. When the reviewer does not end `ok`, the worker's change stays
+`ok`, the reviewer does not launch. Its host evidence keeps the tree recorded before the worker.
+When Git cannot record the worktree after the worker (`change_unobservable`), the reviewer does not
+launch either. When the reviewer does not end `ok`, the worker's change stays
 in the worktree. The run's host evidence then names the changed files and the kept diff. Only an
 `ok` run carries an output. The `worker` field of the [run
 result](../../glossary.json#concept.run-result) carries the [worker
@@ -197,8 +218,9 @@ no fixed task type ([Operations](../../execution/operations/module.md)).
 | 6 | Check the review, derive the verdict and return the result | Operation, Execution runner | duplicate finding ids (`failed`) |
 
 Neither worker gets configured checks or [resume rounds](../../glossary.json#concept.resume-round).
-Nothing in this Operation validates a round, so a round never has anything to repair. The round
-validation Method gives every worker still checks glossary ownership. The Operation keeps the
+General work adds no validation of its own to a round, so a round never has anything to repair.
+The round validation Method gives every worker still checks glossary ownership. A worker that
+changes a glossary entry that a Module outside the grant owns therefore still fails the run. The Operation keeps the
 worker's answer and the reviewer's findings as their claims. It decides only these:
 
 - The observed change.
@@ -238,7 +260,10 @@ for the reviewer. It is tested against a fake worker in `tests/concorde/general_
   ([req.method.gaps-never-repaired](../requirements.md#req.method.gaps-never-repaired)).
 
 [How an Operation runs its workers](../workers.md) gives the sequence's steps and the
-[errors](../workers.md#errors-of-the-worker-sequence) that General work's results pass on.
+[errors](../workers.md#errors-of-the-worker-sequence) that General work's results pass on. In the
+sequence's task instructions, General work gives its own rule for a promise the Spec does not
+state, in place of the task type's rule
+([req.general-work.instruction-is-the-job](requirements.md#req.general-work.instruction-is-the-job)).
 
 <a id="uses-operations"></a>
 

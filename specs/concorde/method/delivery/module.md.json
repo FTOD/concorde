@@ -9,6 +9,7 @@
     "title": "Delivery",
     "owns": [
       "specs/concorde/method/delivery/module.md",
+      "specs/concorde/method/delivery/git.md",
       "specs/concorde/method/delivery/contracts.md",
       "specs/concorde/method/delivery/requirements.md",
       "specs/concorde/method/delivery/scenarios.md"

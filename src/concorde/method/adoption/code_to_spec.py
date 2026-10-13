@@ -162,7 +162,7 @@ def prepare(ctx: RunContext):
             "creates Modules, code_to_spec never does",
             options=["run scaffold first, or bind registered Modules"],
         )
-    changes, stubs = [], []
+    changes, stubs, contents = [], [], {}
     for module in ctx.modules:
         item = repository.modules[module]
         folder = item.entry.rsplit("/", 1)[0]
@@ -177,7 +177,9 @@ def prepare(ctx: RunContext):
             path = f"{folder}/{name}"
             if path in owned or (ctx.worktree / path).exists():
                 continue
-            changes.append(file_change(ctx.worktree, path, stub_text(item.title, kind)))
+            text = stub_text(item.title, kind)
+            changes.append(file_change(ctx.worktree, path, text))
+            contents[path] = text.encode("utf-8")
             changes.append(
                 file_change(
                     ctx.worktree,
@@ -210,12 +212,13 @@ def prepare(ctx: RunContext):
                 )
             )
             stubs += [(module, path) for path in added]
+    # The stubs are noted before anything is written, so that tidy removes every one written
+    # when a write, the registry's reconciliation or a cancellation stops the preparation
+    # (req.adoption.stubs-removed).
+    ctx.state["stubs"] = {path: (module, contents[path]) for module, path in stubs}
     if changes:
         apply_files(ctx.worktree, changes, {change["path"] for change in changes})
         registry_command(ctx.worktree, write=True)
-    ctx.state["stubs"] = {
-        path: (module, (ctx.worktree / path).read_bytes()) for module, path in stubs
-    }
     return Continue(
         evidence=[
             evidence("stubs", "", ", ".join(path for _, path in stubs) or "none needed")
@@ -394,14 +397,18 @@ def tidy(ctx: RunContext):
 def describe_code(ctx: RunContext):
     """Steps 2 to 7 as one step: prepare the stubs, run the worker, and remove the stubs left
     unchanged however the worker step ends, an exception or a cancellation included."""
-    prepared = prepare(ctx)
-    if isinstance(prepared, Stop):
-        return prepared
-    found = list(prepared.evidence)
+    found = []
     try:
+        prepared = prepare(ctx)
+        if isinstance(prepared, Stop):
+            return prepared
+        found += prepared.evidence
         found += describe(ctx).evidence
     finally:
-        found += tidy(ctx).evidence
+        # Once prepare has noted its stubs, they are removed however the run stops, a failed
+        # preparation included; a preparation that stopped before that wrote nothing.
+        if "stubs" in ctx.state:
+            found += tidy(ctx).evidence
     return Continue(evidence=found)
 
 

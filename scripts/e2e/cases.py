@@ -138,14 +138,80 @@ def repair_specs(
     return {"task": task, "modules": modules, "steps": steps, "stopped_at": None}
 
 
-PATCHED_FILE = re.compile(r"^diff --git a/(\S+) b/(\S+)$", re.MULTILINE)
+# The header lines of a Git patch that name the path a change comes from: the old side of a
+# content change, with its ``a/`` prefix, and the source of a rename or copy. Git quotes a path
+# with special characters and ends a ``---`` line with a tab when its path holds a space.
+SOURCE_LINE = re.compile(r"^(--- |rename from |copy from )(.+?)\t?$")
+QUOTED_ESCAPES = {
+    "a": 7,
+    "b": 8,
+    "f": 12,
+    "n": 10,
+    "r": 13,
+    "t": 9,
+    "v": 11,
+    '"': 34,
+    "\\": 92,
+}
 
 
-def reset_patched_files(tree: Path, patch: str, base: str) -> list[str]:
+def unquote(text: str) -> str:
+    """A path as Git writes it in a patch: as is, or between double quotes with C escapes and
+    octal bytes."""
+    if not (len(text) >= 2 and text[0] == text[-1] == '"'):
+        return text
+    raw = bytearray()
+    body = text[1:-1]
+    index = 0
+    while index < len(body):
+        char = body[index]
+        if char != "\\":
+            raw += char.encode("utf-8")
+            index += 1
+        elif (
+            body[index + 1 : index + 4].isdigit()
+            and len(body[index + 1 : index + 4]) == 3
+        ):
+            raw.append(int(body[index + 1 : index + 4], 8))
+            index += 4
+        else:
+            raw.append(QUOTED_ESCAPES.get(body[index + 1 : index + 2], ord("\\")))
+            index += 2
+    return raw.decode("utf-8", errors="surrogateescape")
+
+
+def patched_paths(tree: Path, patch: Path) -> list[str]:
+    """Every path ``patch`` touches, on either side: Git's own reading of the patch gives each
+    changed file's path, whatever characters it holds, and the patch's source lines add the paths
+    that renames and copies come from."""
+    listed = run(["git", "apply", "--numstat", "-z", str(patch)], cwd=tree).stdout
+    paths = {
+        entry.split("\t", 2)[2]
+        for entry in listed.split("\0")
+        if entry.count("\t") >= 2 and entry.split("\t", 2)[2]
+    }
+    header = False
+    for line in patch.read_text(encoding="utf-8").split("\n"):
+        # Only a file's header names paths; a hunk's removed line may begin with ``---`` too.
+        if line.startswith("diff --git "):
+            header = True
+        elif line.startswith("@@"):
+            header = False
+        found = SOURCE_LINE.match(line) if header else None
+        if found is None:
+            continue
+        kind, path = found.group(1), unquote(found.group(2))
+        if path == "/dev/null":
+            continue
+        paths.add(path[2:] if kind == "--- " and path.startswith("a/") else path)
+    return sorted(paths)
+
+
+def reset_patched_files(tree: Path, patch: Path, base: str) -> list[str]:
     """Put every file ``patch`` touches back as it was at ``base``, removing the ones ``base``
     lacks, as SWE-bench does before it applies a test patch: the change under test may have
     edited the same test files, and the case's tests are graded as the case wrote them."""
-    paths = sorted({path for pair in PATCHED_FILE.findall(patch) for path in pair})
+    paths = patched_paths(tree, patch)
     for path in paths:
         present = subprocess.run(
             ["git", "cat-file", "-e", f"{base}:{path}"],
@@ -255,6 +321,49 @@ def _keep(log: Path | None, output: str) -> Path | None:
     return log
 
 
+def remove_grading_worktree(project: Path, tree: Path, scratch: Path) -> list[str]:
+    """Remove the grading worktree ``tree``, its registration in ``project`` and the scratch
+    directory that holds it; what is left of them, each with Git's account, empty when nothing
+    is."""
+    removal = subprocess.run(
+        ["git", "worktree", "remove", "--force", str(tree)],
+        cwd=project,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    shutil.rmtree(scratch, ignore_errors=True)
+    # A registration whose directory is gone, as after a failed removal, is pruned.
+    subprocess.run(
+        ["git", "worktree", "prune"], cwd=project, capture_output=True, check=False
+    )
+    listed = subprocess.run(
+        ["git", "worktree", "list", "--porcelain", "-z"],
+        cwd=project,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    left = []
+    if listed.returncode != 0:
+        left.append(
+            f"`git worktree list` exited with status {listed.returncode}: "
+            f"{listed.stderr.strip()}"
+        )
+    elif {f"worktree {tree}", f"worktree {os.path.realpath(tree)}"} & set(
+        listed.stdout.split("\0")
+    ):
+        left.append(f"{tree} is still registered as a worktree of {project}")
+    if scratch.exists():
+        left.append(f"the directory {scratch} still exists")
+    if left and removal.returncode != 0:
+        left.append(
+            f"`git worktree remove --force` exited with status {removal.returncode}: "
+            f"{removal.stderr.strip()}"
+        )
+    return left
+
+
 def grade(
     project: Path,
     instance: dict,
@@ -280,11 +389,14 @@ def grade(
         )
     scratch = Path(tempfile.mkdtemp(prefix="concorde-grade-"))
     tree = scratch / "tree"
-    run(["git", "worktree", "add", "-q", "--detach", str(tree), ref], cwd=project)
+    # The worktree's whole life, from its creation, lies inside one cleanup: however grading
+    # ends, the worktree is removed, or the grading fails with what is left of it.
+    failure: BaseException | None = None
     try:
+        run(["git", "worktree", "add", "-q", "--detach", str(tree), ref], cwd=project)
         patch = scratch / "test.patch"
         patch.write_text(instance["test_patch"], encoding="utf-8")
-        reset_patched_files(tree, instance["test_patch"], instance["base_commit"])
+        reset_patched_files(tree, patch, instance["base_commit"])
         run(["git", "apply", str(patch)], cwd=tree)
         files = sorted({test.split("::")[0] for test in fail_to_pass + pass_to_pass})
         plugin = scratch / "plugin"
@@ -345,14 +457,31 @@ def grade(
                 **({"log": str(kept)} if kept else {}),
             ) from error
         statuses = read_report(report)
+    except BaseException as error:
+        failure = error
+        raise
     finally:
-        subprocess.run(
-            ["git", "worktree", "remove", "--force", str(tree)],
-            cwd=project,
-            capture_output=True,
-            check=False,
-        )
-        shutil.rmtree(scratch, ignore_errors=True)
+        left = remove_grading_worktree(project, tree, scratch)
+        if left:
+            cause = (
+                f"; grading had failed before: {failure.code}: {failure.detail}"
+                if isinstance(failure, E2EError)
+                else f"; grading had failed before: {failure!r}"
+                if failure is not None
+                else ""
+            )
+            raise E2EError(
+                "cleanup_failed",
+                f"the grading worktree {tree} of case {instance.get('instance_id')} could not "
+                f"be removed: {'; '.join(left)}{cause}",
+                worktree=str(tree),
+                left=left,
+                **(
+                    {"cause": failure.evidence | {"code": failure.code}}
+                    if isinstance(failure, E2EError)
+                    else {}
+                ),
+            ) from failure
     _keep(log, completed.stdout + "\n" + completed.stderr)
 
     def split(tests: list[str], counted: tuple[str, ...]) -> dict:

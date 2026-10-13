@@ -425,10 +425,10 @@ class E2ETests(unittest.TestCase):
             )
             self.assertEqual(
                 [
+                    (waiting.name, "adopt", "waiting"),
                     (direct.name, "adopt", None),
                     (run_id, "adopt", "worker"),
                     (unbound.name, None, None),
-                    (waiting.name, "adopt", "waiting"),
                 ],
                 [
                     (listed["run"], listed["workspace"], listed["phase"])

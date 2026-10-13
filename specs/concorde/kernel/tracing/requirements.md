@@ -46,9 +46,12 @@ This counts each token once only because no node repeats its children's usage.
 
 ### req.tracing.reported-usage — Usage is what the agent program reported
 
-A trace node's `usage` SHALL hold the figures the agent program reported or recorded for the node's
-work, and null for a figure it did not report, never a figure Concorde computed from prices or
-estimates of its own.
+A trace node's tokens, cost and turns in `usage` SHALL hold the figures the agent program reported
+or recorded for the node's work, and null for a figure it did not report, never a figure Concorde
+computed from prices or estimates of its own.
+
+A node's `duration_seconds` is no such figure. It is the wall-clock time Concorde observed between
+the node's start and its end. A node without an agent program has a duration too.
 
 When its task ends, a task session's node takes the figures from Claude Code's records of the session
 ([Task sessions](../../coordination/task-session/requirements.md#req.task-session.node-finished)).

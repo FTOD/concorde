@@ -204,7 +204,9 @@ def inventory(ctx: RunContext):
                 options=[
                     (
                         "open a fresh task for the Module and run the survey or the "
-                        "brownfield workflow there with the same answers"
+                        "brownfield workflow there anew, with --goal stating the revision; "
+                        "answers settle only the decisions of a run of that workspace, so "
+                        "answer the new run's own decision points"
                     ),
                     (
                         "keep this workspace and go on from its scaffold, describing the "

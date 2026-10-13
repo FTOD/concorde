@@ -172,9 +172,11 @@ workspace:
 
 - The main agent, or whoever prepares workspaces, opens a new task for `module.shop` from the
   primary worktree.
-- Its task session starts the workflow there with the same answers under the base key `survey`.
-- The survey of the new workspace follows those answers without the first workspace's run as
-  input.
+- Its task session starts the workflow there in interactive mode, without answers. The survey
+  runs anew and stops at its own decision points. Answers name only the decisions of a run of
+  their own workspace, so the first workspace's answers cannot be given to it.
+- The main agent answers those decision points as the revision requires. The task session starts
+  the workflow again with those answers under the base key `survey`.
 
 Nothing written in the first workspace is undone. The main agent decides whether its task is kept,
 to compare or to take descriptions from, or closed unmerged. When its authority does not cover

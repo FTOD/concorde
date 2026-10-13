@@ -142,10 +142,13 @@ The run's own link SHALL give the reason the run cannot handle the error as its 
 
 The run's own link SHALL name all of these:
 
-- in its actor, the run and its workspace or, for an unbound run, the worktree it started in and
-  the commit it examined
+- in its actor, the run and its workspace or, for an unbound run, the worktree it started in and,
+  once its checkout exists, the commit it examined
 - in a detail, the paths and the messages concerned
 - in that detail, the Modules the run works on
+
+An unbound run refused before its checkout existed examined no commit. Its actor then names none
+([Errors](runner.md#errors)).
 
 ### req.execution.output-checked — Outputs match their contract
 
@@ -230,13 +233,19 @@ Specs and its code stay as they were then.
 
 ### req.execution.unbound-prepared — An unbound checkout is prepared before the first step
 
-Before the first step of an admitted unbound run, the runner SHALL run in order every preparation
-command that the checkout's committed `.concorde/preparation.json` declares, and start the first
-step only once each of them exited 0.
+Before the first step of an admitted unbound run, the runner SHALL run the preparation commands
+that the checkout's committed `.concorde/preparation.json` declares, in their order, until one
+fails or the run is cancelled.
 
-A run whose preparation file breaks its contract, or one of whose commands failed, runs no step. It
-ends `failed` with `preparation_failed` or `preparation_invalid`, as
-[Preparing the checkout](runner.md#preparing-the-checkout) says. The runner prepares no bound run.
+The first command that fails ends the preparation: no later command runs. It ends the run `failed`
+with `preparation_failed`. A preparation file that breaks its contract runs no command and ends the
+run `failed` with `preparation_invalid`. [Preparing the checkout](runner.md#preparing-the-checkout)
+says how. The runner prepares no bound run.
+
+### req.execution.unbound-prepared-first — No step runs unless the preparation succeeded
+
+The runner SHALL NOT start the first step of an unbound run unless every preparation command its
+checkout declares exited 0.
 
 ### req.execution.preparation-confined — A preparation command writes only the checkout
 
@@ -285,16 +294,27 @@ and stays there when the run never does.
 
 ### req.execution.trace-started — A run's node says it runs before its first step
 
-The runner SHALL write a run's `trace.json`, with the status `running`, before the run's first step.
+Before the run's first step, the runner SHALL attempt to write a run's `trace.json` with the status
+`running`.
+
+A first `trace.json` that breaks the node contract is no such attempt: the runner refuses the run
+before any step ([When records cannot be written](runner.md#when-records-cannot-be-written)). A
+write the operating system refuses does not stop the run. The result names it
+([req.execution.trace-write-reported](#req.execution.trace-write-reported)).
 
 ### req.execution.trace-ended — A run's node holds its end after its result
 
-After writing a run's result, the runner SHALL write its `trace.json` again with the fields
-[Run identity and trace node](runner.md#run-identity-and-trace-node) lists:
+After writing a run's result, the runner SHALL attempt to write its `trace.json` again with the
+fields [Run identity and trace node](runner.md#run-identity-and-trace-node) lists:
 
 - the run's end
 - the run's status
 - the run's outcome
+
+A write the operating system refuses is added to the published result
+([req.execution.trace-write-reported](#req.execution.trace-write-reported)). A final `trace.json`
+that breaks the node contract leaves the run lost
+([When records cannot be written](runner.md#when-records-cannot-be-written)).
 
 ### req.execution.trace-write-reported — A refused trace write is in the result
 
@@ -361,8 +381,10 @@ The runner SHALL admit a run as `--input` only when all these conditions hold:
   run's `workspace` is null.
 - The input run's saved result satisfies the current run result contract.
 
-A result an older Concorde wrote under another version of the contract is refused like any other
-inadmissible input. No version field or migration exists, since runs are short-lived trace data.
+Admission measures conformance to the current contract, never the version that wrote the result.
+A result an older Concorde wrote is refused when it no longer satisfies the current contract, like
+any other inadmissible input. One that still satisfies it is admitted. No version field or
+migration exists, since runs are short-lived trace data.
 
 ### req.execution.detached-same-run — A detached run is an ordinary run
 
@@ -405,18 +427,25 @@ and including the first step that stops the run.
 
 The runner SHALL hold a run's [run lock](../glossary.json#concept.run-lock) from before it writes
 the run's first [run progress file](../glossary.json#concept.run-progress-file) until after it
-writes all of the following:
+attempted all of the following writes:
 
 - the run's result
 - its finished run progress file
 - its final `trace.json`
+
+A write that failed releases the lock as one that succeeded does. When publishing the result
+failed, the runner attempts no later write
+([When records cannot be written](runner.md#when-records-cannot-be-written)).
 
 However the runner ends, the operating system releases the lock. So a run is running exactly
 while its run lock is held. So a run without a result whose lock nobody holds is lost
 ([Run progress file](runner.md#run-progress-file)). Whoever prepared a workspace reads its runs
 through this lock and the records the [run store](../glossary.json#concept.run-store) keeps. The
 run store keeps those records in the workspace folder and the [lobby](runner.md#the-lobby). To
-stop a run that still runs, whoever prepared the workspace sends its runner `SIGTERM`. Execution
+stop a run that still runs, whoever prepared the workspace sends `SIGTERM` to the holder of its run
+lock, never to `host_pid`. The sender finds that holder in the operating system's lock table of its
+own PID namespace. A run whose holder that table does not show cannot be stopped by that sender, which
+waits on its run lock instead. Execution
 registers no call for either reading or stopping runs. Where the execution part is installed,
 Coordination does both to derive whether a task is active and to stop a task's runs before it
 closes the task.

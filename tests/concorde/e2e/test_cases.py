@@ -259,6 +259,143 @@ class CaseTests(unittest.TestCase):
             # The grading worktree is removed even so.
             self.assertEqual(1, git(project, "worktree", "list").count("\n"))
 
+    @verifies("scenario.swe-bench-cases.grade-reset-paths")
+    def test_files_with_special_paths_are_reset_before_the_patch(self):
+        with tempfile.TemporaryDirectory() as directory:
+            project = Path(directory) / "project"
+            project.mkdir()
+            git(project, "init", "-q", "-b", "main")
+            spaced, quoted = project / "with space.py", project / "tab\tname ü.py"
+            spaced.write_text("x = 1\n-- note\n")
+            quoted.write_text("y = 1\n")
+            (project / "old.py").write_text("z = 1\n" * 5)
+            git(project, "add", "-A")
+            git(project, "commit", "-q", "-m", "base")
+            base = git(project, "rev-parse", "HEAD").strip()
+            # The case's test patch: the line beginning with `--` removed, the quoted path
+            # changed and old.py renamed.
+            git(project, "switch", "-q", "-c", "case")
+            spaced.write_text("x = 1\n")
+            quoted.write_text("y = 2\n")
+            git(project, "mv", "old.py", "new.py")
+            git(project, "commit", "-q", "-am", "case")
+            text = git(project, "diff", "-M", base, "case")
+            self.assertIn('"a/tab\\tname \\303\\274.py"', text)
+            self.assertIn("\n--- note\n", text)
+            git(project, "switch", "-q", "main")
+            git(project, "branch", "-q", "-D", "case")
+            # The change under test edits every one of them.
+            spaced.write_text("x = 3\n-- note\n")
+            quoted.write_text("y = 3\n")
+            (project / "old.py").write_text("z = 3\n")
+            git(project, "commit", "-q", "-am", "change")
+            patch = Path(directory) / "test.patch"
+            patch.write_text(text, encoding="utf-8")
+            self.assertEqual(
+                ["new.py", "old.py", "tab\tname ü.py", "with space.py"],
+                cases.reset_patched_files(project, patch, base),
+            )
+            self.assertEqual("x = 1\n-- note\n", spaced.read_text())
+            git(project, "apply", str(patch))
+            self.assertEqual(
+                ("x = 1\n", "y = 2\n", "z = 1\n" * 5),
+                (
+                    spaced.read_text(),
+                    quoted.read_text(),
+                    (project / "new.py").read_text(),
+                ),
+            )
+            self.assertFalse((project / "old.py").exists())
+
+    def toy_case(self, directory: str, patch: str | None = None) -> tuple[Path, dict]:
+        """A one-commit project and a case adding a passing test to it."""
+        project = Path(directory) / "project"
+        project.mkdir()
+        git(project, "init", "-q", "-b", "main")
+        (project / "calc.py").write_text("def add(a, b):\n    return a + b\n")
+        git(project, "add", "-A")
+        git(project, "commit", "-q", "-m", "base")
+        return project, {
+            "instance_id": "toy__calc-4",
+            "base_commit": git(project, "rev-parse", "HEAD").strip(),
+            "test_patch": patch
+            or (
+                "diff --git a/test_calc.py b/test_calc.py\nnew file mode 100644\n"
+                "--- /dev/null\n+++ b/test_calc.py\n@@ -0,0 +1,2 @@\n"
+                "+def test_add():\n+    assert True\n"
+            ),
+            "FAIL_TO_PASS": ["test_calc.py::test_add"],
+        }
+
+    @verifies("scenario.swe-bench-cases.grade-creation-failed")
+    def test_a_grading_worktree_that_cannot_be_made_leaves_nothing(self):
+        from unittest.mock import patch
+
+        with tempfile.TemporaryDirectory() as directory:
+            project, case = self.toy_case(directory)
+            scratch = Path(directory) / "scratch"
+            scratch.mkdir()
+            made = tempfile.mkdtemp
+            with (
+                patch.object(
+                    cases.tempfile,
+                    "mkdtemp",
+                    lambda prefix: made(prefix=prefix, dir=scratch),
+                ),
+                self.assertRaises(cases.E2EError) as raised,
+            ):
+                cases.grade(project, case, Path(sys.executable), ref="no-such-ref")
+            self.assertEqual("command_failed", raised.exception.code)
+            self.assertIn("git worktree add", raised.exception.detail)
+            self.assertEqual([], list(scratch.iterdir()))
+            self.assertEqual(1, git(project, "worktree", "list").count("\n"))
+
+    @verifies("scenario.swe-bench-cases.grade-cleanup-failed")
+    def test_a_grading_worktree_that_cannot_be_removed_fails_grading(self):
+        from unittest.mock import patch
+
+        real_run = subprocess.run
+
+        def refused_removal(command, *arguments, **options):
+            if list(command[:3]) == ["git", "worktree", "remove"]:
+                return subprocess.CompletedProcess(
+                    command, 1, "", "fatal: it is locked"
+                )
+            return real_run(command, *arguments, **options)
+
+        for broken in (False, True):
+            with tempfile.TemporaryDirectory() as directory:
+                # A test patch that does not apply fails grading before its cleanup.
+                project, case = self.toy_case(
+                    directory,
+                    "diff --git a/calc.py b/calc.py\n--- a/calc.py\n+++ b/calc.py\n"
+                    "@@ -1,1 +1,1 @@\n-absent\n+other\n"
+                    if broken
+                    else None,
+                )
+                with (
+                    patch.object(cases.subprocess, "run", refused_removal),
+                    patch.object(cases.shutil, "rmtree", lambda *a, **k: None),
+                    self.assertRaises(cases.E2EError) as raised,
+                ):
+                    cases.grade(project, case, Path(sys.executable))
+                error = raised.exception
+                self.assertEqual("cleanup_failed", error.code)
+                tree = Path(error.evidence["worktree"])
+                left = "\n".join(error.evidence["left"])
+                self.assertIn(f"{tree} is still registered", left)
+                self.assertIn(f"{tree.parent} still exists", left)
+                self.assertIn("fatal: it is locked", left)
+                if broken:
+                    self.assertIn(
+                        "grading had failed before: command_failed", error.detail
+                    )
+                    self.assertEqual("command_failed", error.evidence["cause"]["code"])
+                else:
+                    self.assertNotIn("cause", error.evidence)
+                git(project, "worktree", "remove", "--force", str(tree))
+                cases.shutil.rmtree(tree.parent)
+
     @verifies(
         "scenario.swe-bench-cases.repair-specs",
         "scenario.swe-bench-cases.repair-accepted",

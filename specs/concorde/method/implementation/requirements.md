@@ -66,11 +66,17 @@ preceding round.
 ### req.implementation.worker-status — A blocked or failed worker ends the run
 
 When an implement run's [worker result](../../glossary.json#concept.worker-result) is `blocked` or
-`failed`, including one that reports a [Spec gap](../../glossary.json#concept.spec-gap), the run
-SHALL end with both of these:
+`failed`, including one that reports a [Spec gap](../../glossary.json#concept.spec-gap), and no
+host failure overrides it, the run SHALL end with both of these:
 
 - That status.
 - An [error chain](../../glossary.json#concept.error-chain) that ends in the worker's own link.
+
+A host failure overrides the worker's status as Workers' ordered
+[rounds table](../../worker-harness/workers/launch.md#rounds) and its
+[proposed deletions](../../worker-harness/workers/launch.md#proposed-deletions) say. An audit
+violation ends the run `failed` as [req.implementation.audit](#req.implementation.audit) says. A
+failed deletion ends it `failed` with `deletion_failed`, with the worker's link as its cause.
 
 ### req.implementation.round-limit — Resume rounds are bounded
 

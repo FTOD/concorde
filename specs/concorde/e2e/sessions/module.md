@@ -63,12 +63,19 @@ The diagram shows one round and its wake. The session ends in these ways:
 - After the allowed rounds, the session ends with `rounds_exhausted`
   ([requirements](requirements.md#req.headless-sessions.rounds-bounded)).
 - When a run still runs after the wait limit, the session ends with `wait_exceeded`.
+- When the tool cannot read what a run left, the session ends with `observation_failed`
+  ([Observation failures](#observation-failures)).
+
+Before the first round, the tool refuses a session whose
+[workspace binding](../../glossary.json#concept.workspace-binding) names no `.concorde`, with
+`binding_invalid`.
 
 ```d2 illustrative
 direction: down
 round: "Round n: claude -p"
 failed: "Process failed?" {shape: diamond}
 named: "Session named?" {shape: diamond}
+readable: "Runs readable?" {shape: diamond}
 unsettled: "Unsettled runs?" {shape: diamond}
 wait: "Wait until each has ended or its runner has gone"
 within: "Within the hour?" {shape: diamond}
@@ -78,12 +85,15 @@ exited: "exited" {shape: oval}
 no_session: "no_session" {shape: oval}
 idle: "idle" {shape: oval}
 exceeded: "wait_exceeded, session.json written first" {shape: oval}
+unobserved: "observation_failed, session.json written first" {shape: oval}
 exhausted: "rounds_exhausted" {shape: oval}
 round -> failed
 failed -> exited: yes
 failed -> named: no
 named -> no_session: no
-named -> unsettled: yes
+named -> readable: yes
+readable -> unobserved: no
+readable -> unsettled: yes
 unsettled -> idle: no
 unsettled -> wait: yes
 wait -> within
@@ -118,6 +128,8 @@ The last file contains these details:
 - Each round's result.
 - Each round's number of tool calls.
 - The runs each round woke for.
+- The runs the last allowed round left behind, under `left_behind`. No round is left to wake for
+  them, so they are never among the runs a round woke for.
 - How the session ended.
 - Its final answer.
 - Its cost.
@@ -233,6 +245,17 @@ session's. This includes the runs of the tasks it opened. Their workspace folder
 same `.concorde`. If another session starts a run in the same project meanwhile, the tool also
 takes that run for this session.
 
+A run counts as started since the session began when the start time of its
+[run progress file](../../glossary.json#concept.run-progress-file) is not earlier than the
+session's. The tool compares the two as times, never as text. Execution writes a start time to the
+microsecond, and a run started in the session's first second counts too.
+
+The lobby is listed before the workspace folders. A run moves from the lobby into its workspace
+folder when it takes its [workspace lock](../../glossary.json#concept.workspace-lock). A run that moves while the tool lists the run store is
+therefore found in its workspace folder after the lobby. When a run's folder has moved since the
+tool listed it, the tool looks the run up again and reads it in its new folder. The tool counts
+each run once.
+
 When a run meets both conditions, it still runs:
 
 - Its [run progress file](../../glossary.json#concept.run-progress-file) is not finished.
@@ -274,13 +297,38 @@ the tool writes `session.json` with these details:
 The failure names the same file and the session's `session.json`.
 This lets the kept session show what outlived the wait.
 
+When a round is the last the session was allowed, the tool still waits for its unsettled runs.
+It then ends the session with `rounds_exhausted` and records those runs under `left_behind`. It
+wakes the session for none of them.
+
+<a id="observation-failures"></a>
+
+**Observation failures.** The tool never guesses what it cannot read. It reads two files of a
+run: its run progress file, and its result once the run progress file says it finished. When such a
+file cannot be read as a JSON object, the tool reads it again once, a second later. A run's folder
+exists a moment before its first run progress file. When the second read fails too, or a run progress file names no
+start time the tool can read, the tool fails the session with `observation_failed`
+([requirement](requirements.md#req.headless-sessions.observation-visible)). Before the failure goes
+up, the tool writes `session.json` with the rounds so far, the end `observation_failed` and, under
+`file`, the file it could not read. The failure names the same file and the session's
+`session.json`. A run's lock file that is missing or cannot be locked is no observation failure. It
+means that the run's runner is gone.
+
+When a workspace binding is there and cannot be read, or names no `.concorde`, the tool refuses
+the session with `binding_invalid` naming the binding. It does so before the first round, so it
+writes no `session.json`. Without the binding's `.concorde`, the tool would watch the wrong run
+store and miss every run of the session. A worktree without a binding is no failure: the tool
+watches the worktree's own `.concorde`.
+
 ### Live sessions
 
 <a id="live-sessions"></a>
 
 A round's process ends with its turn, so the tool stands in for every wake. A live session instead
 keeps one main session's process running. It feeds the process prompts on standard input so that
-its own program wakes it.
+its own program wakes it. A live session has no command of its own. Another component of End-to-end
+testing, such as the [owners case](../module.md#owners-case), uses it through the `LiveSession` class
+of `scripts/e2e/live.py`.
 The program is `claude -p --input-format stream-json --output-format stream-json
 --verbose`. The process is granted Bash and Read. When one of its background commands ends, it
 begins a turn of its own with a `task_notification`. It gets a short note appended to its system
@@ -300,6 +348,31 @@ While the caller sends no prompt, a turn that begins or a notification that arri
 the session. After 30 seconds, the tool kills what is left of it. The [owners
 case](../module.md#owners-case) of End-to-end testing runs several live sessions at once.
 
+A caller uses a live session as follows:
+
+```python
+session = LiveSession("claude-1", project, directory)  # starts the process
+sent = session.send("Run `sleep 5` in background Bash, then end your turn.")
+session.wait_settled(sent, 600)  # the prompted turn ended with its `result`
+ended = time.time()
+time.sleep(30)  # the caller sends nothing while the command runs
+session.woken(ended)  # whether a turn began or a `task_notification` arrived since `ended`
+session.close()  # standard input closes; the rest is killed after 30 seconds
+session.record()  # its name, Claude Code's session identity, its logs and its exit status
+```
+
+The caller names these:
+
+- The session's name, which names its two files.
+- The project, the process's working directory.
+- The directory that keeps the files.
+- Optionally, the model, passed to Claude Code's `--model`.
+
+`send` returns the time the prompt was sent. `since`, `turns`, `notifications` and `tool_output`
+read the events that arrived from a given time on. `wait_settled` waits at most the given seconds
+for a turn to end, with `live_timeout` when none ends. A process that cannot start, or that ends
+while the caller waits for its turn or sends a prompt, fails with `session_failed`.
+
 ### Reading the logs
 
 The tool splits a round's `stream-json` output into its records at line feeds only. A string
@@ -307,8 +380,21 @@ inside a record may hold a Unicode line or paragraph separator, which is no reco
 call is named with its whole target, never a shortened one.
 
 A resumed round first replays the stopped background command as a turn of its own with no model
-turn. Its `result` event is not the round's answer. The round's result is the last `result` event
-with a model turn. A round with no such event has no result. Its cost is the session's total so far.
+turn. Its `result` event is not the round's answer. A `result` event has a model turn when its
+`num_turns` is 1 or more. A replayed turn's `result` has `num_turns` 0. The round's result is the
+last `result` event with a model turn
+([requirement](requirements.md#req.headless-sessions.round-answer)). A round with no such event
+has no result. The session's final answer and cost are those of the last round that has a result.
+Claude Code's `total_cost_usd` there is the session's total so far.
+
+For example, a resumed round prints these events, among others:
+
+```json
+{"type": "result", "subtype": "success", "num_turns": 0, "result": ""}
+{"type": "result", "subtype": "success", "num_turns": 3, "total_cost_usd": 0.2, "result": "done"}
+```
+
+Its result is the second event's.
 
 ## Why it is built this way
 
@@ -359,15 +445,8 @@ The `session` commands of `scripts/e2e/e2e.py` call it. `scripts/e2e/live.py` ho
 
 <a id="realization.headless-sessions.tests"></a>
 
-The **session driver tests**, `tests/concorde/e2e/test_sessions.py`, verify the
-[requirements](requirements.md) and [scenarios](scenarios.md) by checking these things:
-
-- The command.
-- The log reading.
-- Which runs are unsettled.
-- With a stand-in for `claude -p`, a whole session that is woken once.
-
-The live sessions are tested with the owners case, in `tests/concorde/e2e/test_owners.py`.
+The **session driver tests** run the driver against stand-ins for `claude -p` and for Execution's
+records, so that no model is spent.
 
 ## Around it
 
@@ -396,7 +475,8 @@ The fields and values of the run progress file are those of
 result contract](../../execution/contracts.md#run-result). The error code `cancelled` and the
 [lobby](../../execution/runner.md#the-lobby) are also defined there.
 
-The driver never changes any of them.
+The driver never changes any of them. When it cannot read one of them, it fails the session with
+`observation_failed` rather than skip the run ([Observation failures](#observation-failures)).
 
 <a id="uses-kernel"></a>
 
@@ -407,13 +487,17 @@ The driver relies on its `.concorde` to name where a session's workspace keeps t
 - Its runs' locks.
 - Its [run progress files](../../glossary.json#concept.run-progress-file).
 
+A binding that cannot be read or names no `.concorde` refuses the session with `binding_invalid`
+([Observation failures](#observation-failures)).
+
 Claude Code is external. The driver relies on `claude -p` with these options and output:
 
 - `--resume`.
 - `--append-system-prompt`.
 - `--allowedTools`.
 - `--settings` with an inline JSON value, whose `sandbox.enabled` turns the Bash sandbox off.
-- `stream-json` output, whose events carry the session identity.
+- `stream-json` output, whose events carry the session identity, and whose `result` event carries
+  `num_turns`, `result` and `total_cost_usd`.
 
 A live session also relies on `--input-format stream-json`.
 

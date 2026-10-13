@@ -256,8 +256,16 @@ def interval_record(
     start_ns,
     end_ns,
     status="ok",
+    process_id=None,
 ):
-    """Adapt an already measured runner interval to the same diagnostic record."""
+    """Adapt an interval measured elsewhere to the span shape: ``start_ns`` and ``end_ns`` are
+    monotonic nanoseconds of the process ``process_id`` (the calling one when None), ``end_ns``
+    None when the work did not finish; ``ValueError`` for an end before the start or a status
+    a span cannot have."""
+    if status not in ("ok", "error", "cancelled", "incomplete"):
+        raise ValueError(f"a span has no status {status!r}")
+    if end_ns is not None and end_ns < start_ns:
+        raise ValueError("an interval cannot end before it starts")
     return {
         "schema_version": 1,
         "trace_id": trace_id,
@@ -265,7 +273,7 @@ def interval_record(
         "parent_id": parent_id,
         "layer": layer,
         "name": name,
-        "process_id": os.getpid(),
+        "process_id": os.getpid() if process_id is None else process_id,
         "session_id": None,
         "task_id": None,
         "started_at": started_at,

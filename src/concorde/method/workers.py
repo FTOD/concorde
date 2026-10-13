@@ -356,15 +356,18 @@ def terms(value: dict) -> str:
     return "".join(lines)
 
 
-def compose(prompt: str, task_type: str, value: dict) -> str:
+def compose(
+    prompt: str, task_type: str, value: dict, unstated: str | None = None
+) -> str:
     """The task instructions: the provider's prompt, the glossary terms of the grant and the rule
-    about promises the Spec does not state."""
+    about promises the Spec does not state, the provider's own ``unstated`` rule when it gives
+    one, else the task type's."""
     return (
         prompt.strip()
         + "\n\n"
         + terms(value)
         + "## Promises the Spec does not state\n\n"
-        + spec_rule(task_type)
+        + (spec_rule(task_type) if unstated is None else unstated)
     )
 
 
@@ -566,6 +569,7 @@ def run_worker(
     records: list[dict] | None = None,
     frozen: dict | None = None,
     grants: list[dict] | None = None,
+    unstated: str | None = None,
 ):
     """The standard worker sequence of one worker-backed step; returns ``Continue`` or ``Stop``.
 
@@ -585,7 +589,9 @@ def run_worker(
     ``frozen`` is a grant an earlier worker of the same run received, as ``grants`` gave it; the
     worker then runs under that grant, with the same context identity, instead of one computed
     from the worktree's Specs as they are now. ``grants``, when given, receives the grant this
-    worker runs under, writes already withheld when ``read_only`` asked for it.
+    worker runs under, writes already withheld when ``read_only`` asked for it. ``unstated``
+    is the provider's own rule about promises the Spec does not state, for a provider whose job
+    is not the task type's, in place of the task type's rule.
     """
     from ..spec.errors import SpecError
     from .checks import checked_modules
@@ -670,7 +676,7 @@ def run_worker(
             trace_parent=ctx.run_dir,
             task_type=task_type,
             grant=grant_input(computed),
-            instructions=compose(instructions, task_type, computed),
+            instructions=compose(instructions, task_type, computed, unstated),
             runtime=readable_paths,
             output_schema=output_schema,
             rounds=rounds if rounds is not None else bounds["rounds"],

@@ -136,15 +136,26 @@ def write_marker(concorde: Path, value: dict) -> Path:
         os.replace(temporary, path)
         temporary = None
     except OSError as error:
+        causes: list[BaseException] = [error]
+        if temporary is not None:
+            # A refused cleanup never hides the refused write: it is one more cause.
+            try:
+                Path(temporary).unlink(missing_ok=True)
+            except OSError as cleanup:
+                causes.append(cleanup)
         raise KernelError(
             "system_error",
             f"the unfinished-merge marker {path} cannot be written: {error}",
             field=str(path),
-            causes=[error],
+            causes=causes,
         ) from error
-    finally:
+    except BaseException:
         if temporary is not None:
-            Path(temporary).unlink(missing_ok=True)
+            try:
+                Path(temporary).unlink(missing_ok=True)
+            except OSError:
+                pass
+        raise
     return path
 
 

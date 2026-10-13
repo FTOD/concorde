@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import io
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -321,7 +322,9 @@ class TracingTests(unittest.TestCase):
             [str(old)], retention.prune(self.concorde, moment=now)["removed"]
         )
 
-    @verifies("scenario.tracing.kind-registered")
+    @verifies(
+        "scenario.tracing.kind-registered", "scenario.tracing.kind-registered-written"
+    )
     def test_a_node_is_checked_against_the_registration_of_its_kind(self):
         from concorde.execution.checks.checks import CHECK_TRACE
         from concorde.worker_harness.workers import WORKER_ROUND_TRACE
@@ -526,7 +529,88 @@ class TracingTests(unittest.TestCase):
         self.assertEqual(str(target), after["path"])
         self.assertEqual(target, reader.locate("retry", [self.concorde])[0])
 
-    @verifies("scenario.tracing.prune")
+    @verifies("scenario.tracing.name-collision")
+    def test_a_current_task_wins_over_a_closed_task_of_its_name(self):
+        closed = TaskTrace(self.concorde)
+        target = Path(self.concorde) / "history" / "retry"
+        target.parent.mkdir(parents=True)
+        closed.folder.rename(target)
+        current = TaskTrace(self.concorde)
+        self.assertEqual(current.folder, reader.locate("retry", [self.concorde])[0])
+        self.assertEqual(target, reader.locate("history/retry", [self.concorde])[0])
+
+    @verifies("scenario.tracing.folder-in-roots")
+    def test_a_folder_is_shown_only_inside_a_registered_root(self):
+        elsewhere = Path(self.concorde) / "elsewhere" / "n"
+        ended(elsewhere, "n", "run")
+        linked = Path(self.temporary.name) / "linked"
+        linked.mkdir()
+        (linked / ".git").write_text("gitdir: elsewhere\n")
+        stray = TaskTrace(linked / ".concorde", "t")
+        searched = [linked / ".concorde", self.concorde]
+        for address in (str(elsewhere), str(stray.folder), "elsewhere/n"):
+            with (
+                self.subTest(address=address),
+                self.assertRaises(reader.ReadError) as refused,
+            ):
+                reader.locate(address, searched)
+            self.assertEqual("unknown_node", refused.exception.code)
+        output = io.StringIO()
+        with redirect_stdout(output):
+            self.assertEqual(1, command.main(["show", str(elsewhere)], here=self.root))
+        self.assertEqual("unknown_node", json.loads(output.getvalue())["error"]["code"])
+        # A folder inside a registered root is still shown by its path.
+        task = TaskTrace(self.concorde)
+        self.assertEqual(task.run, reader.locate(str(task.run), [self.concorde])[0])
+
+    @verifies("scenario.tracing.children-any-folder")
+    def test_children_are_found_whatever_their_folders_are_named(self):
+        run = Path(self.concorde) / "unbound" / "r-20260927T100300-understand-00000004"
+        ended(run, run.name, "run")
+        ended(run / "reports" / "1", "1", "check", metadata={"check": "check.a"})
+        ended(
+            run / ".hidden" / "2",
+            "2",
+            "check",
+            metadata={"check": "check.b"},
+            started_at="2026-09-27T10:01:00.000000Z",
+        )
+        value = reader.view(run, self.concorde)
+        self.assertEqual(["1", "2"], [child["id"] for child in value["children"]])
+
+    @verifies("scenario.tracing.unreadable-node")
+    def test_a_damaged_record_below_is_shown_and_not_fatal(self):
+        task = TaskTrace(self.concorde)
+        first = layout.round_folder(task.worker, 1)
+        second = layout.round_folder(task.worker, 2)
+        (first / layout.TRACE).write_text("{not json")
+        record = json.loads((second / layout.TRACE).read_text())
+        (second / layout.TRACE).write_text(json.dumps({**record, "schema_version": 2}))
+        value = reader.view(task.folder, self.concorde)
+        validate(value, spec_contract("contract.tracing.view")["schema"])
+        worker = value["children"][0]["children"][0]["children"][0]
+        self.assertEqual(
+            [("1", "unreadable", None), ("2", "unreadable", None)],
+            [(item["id"], item["status"], item["kind"]) for item in worker["children"]],
+        )
+        for folder, item in zip((first, second), worker["children"]):
+            self.assertIn(str(folder / layout.TRACE), item["reason"])
+        self.assertIn("no JSON", worker["children"][0]["reason"])
+        self.assertIn("schema_version 2", worker["children"][1]["reason"])
+        self.assertIsNone(worker["reason"])
+        self.assertEqual(0, value["rolled_up"]["tokens_in"])
+        self.assertEqual(0, value["rolled_up"]["cost_usd"])
+        self.assertIn("unreadable", reader.render(value))
+        with self.assertRaises(reader.ReadError) as refused:
+            reader.view(first, self.concorde)
+        self.assertEqual("node_unreadable", refused.exception.code)
+        self.assertIn(str(first / layout.TRACE), str(refused.exception))
+        # A damaged top node is listed as unreadable rather than refusing the list.
+        (task.folder / layout.TRACE).write_text("[]")
+        [listed] = reader.listing(self.concorde)
+        self.assertEqual(("retry", "unreadable"), (listed["id"], listed["status"]))
+
+    @verifies("scenario.tracing.prune", "scenario.tracing.prune-dry-run")
     def test_retention_removes_only_what_ended_long_enough_ago(self):
         now = datetime(2026, 9, 29, tzinfo=UTC)
 
@@ -589,22 +673,37 @@ class TracingTests(unittest.TestCase):
         self.assertTrue((history / "decisions.md").exists())
         self.assertTrue((history / layout.TRACE).exists())
         self.assertTrue((recent / "sessions" / "s3" / "transcript.jsonl").exists())
+
+    @verifies("scenario.tracing.prune-configured")
+    def test_a_configured_period_replaces_its_default_only(self):
+        now = datetime(2026, 9, 29, tzinfo=UTC)
+
+        def at(delta: timedelta) -> str:
+            return (now - delta).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+
+        history = Path(self.concorde) / "history" / "done"
+        ended(history, "done", "task", ended_at=at(timedelta(days=365)))
+        old = Path(self.concorde) / "unbound" / "r-20260920T000000-understand-00000001"
+        ended(old, old.name, "run", ended_at=at(timedelta(days=8)))
         (self.concorde / "tracing.json").write_text(
-            json.dumps(
-                {
-                    "schema_version": 1,
-                    "retention": {"unbound_days": 7, "history_days": 30},
-                }
-            )
+            json.dumps({"schema_version": 1, "retention": {"history_days": 30}})
         )
         self.assertEqual(
-            [str(history)], retention.prune(self.concorde, moment=now)["removed"]
+            sorted([str(history), str(old)]),
+            sorted(retention.prune(self.concorde, moment=now)["removed"]),
+        )
+        (self.concorde / "tracing.json").write_text(
+            json.dumps({"schema_version": 1, "retention": {"conversation_days": 10}})
+        )
+        self.assertEqual(
+            {"unbound_days": 7, "history_days": None, "conversation_days": 10},
+            retention.configuration(self.concorde),
         )
         (self.concorde / "tracing.json").write_text('{"schema_version": 1}')
         with self.assertRaises(retention.ConfigError):
             retention.prune(self.concorde, moment=now)
 
-    @verifies("scenario.tracing.prune")
+    @verifies("scenario.tracing.prune-retried")
     def test_a_folder_prune_cannot_remove_is_reported_with_its_error(self):
         run = Path(self.concorde) / "unbound" / "r-20260101T000000-understand-00000001"
         ended(run, run.name, "run", ended_at="2026-01-01T00:00:00.000000Z")
@@ -619,8 +718,33 @@ class TracingTests(unittest.TestCase):
         [failed] = pruned["failed"]
         self.assertEqual(str(run), failed["path"])
         self.assertIn("Permission denied", failed["error"])
-        self.assertTrue(run.exists())
+        self.assertTrue((run / layout.TRACE).exists())
         self.assertEqual([str(run)], retention.prune(self.concorde)["removed"])
+
+    @verifies("scenario.tracing.prune-retried")
+    def test_a_top_folder_retention_cannot_remove_keeps_its_record(self):
+        run = Path(self.concorde) / "unbound" / "r-20260101T000000-understand-00000001"
+        ended(run, run.name, "run", ended_at="2026-01-01T00:00:00.000000Z")
+        (run / "status.json").write_text("{}\n")
+        (run / "workers" / "w-1").mkdir(parents=True)
+        record = (run / layout.TRACE).read_bytes()
+        rmdir = os.rmdir
+
+        def refused(path, *arguments, **keywords):
+            if os.fspath(path) == str(run):
+                raise PermissionError(13, "Permission denied", str(path))
+            return rmdir(path, *arguments, **keywords)
+
+        with patch("os.rmdir", refused):
+            pruned = retention.prune(self.concorde)
+        self.assertEqual([], pruned["removed"])
+        [failed] = pruned["failed"]
+        self.assertEqual(str(run), failed["path"])
+        self.assertIn("Permission denied", failed["error"])
+        self.assertEqual(record, (run / layout.TRACE).read_bytes())
+        self.assertEqual([layout.TRACE], sorted(item.name for item in run.iterdir()))
+        self.assertEqual([str(run)], retention.prune(self.concorde)["removed"])
+        self.assertFalse(run.exists())
 
     def test_the_prune_command_reaches_a_linked_worktree_s_unbound_runs(self):
         identity = ("-c", "user.name=t", "-c", "user.email=t@t")

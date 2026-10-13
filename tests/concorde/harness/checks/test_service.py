@@ -50,7 +50,9 @@ class CheckServiceTests(unittest.TestCase):
     def setUp(self):
         self.project = WorkerProject(self)
         self.root = self.project.root
-        # The folder of the trace node the check nodes are written below.
+        # The folder of the trace node the check nodes of the latest call are written below:
+        # each call gets a fresh one, as each caller's node is.
+        self.calls = 0
         self.logs = self.project.base / "checks"
 
     def repository(self):
@@ -59,6 +61,8 @@ class CheckServiceTests(unittest.TestCase):
     def run_checks(self, modules, **options):
         """Run the checks of ``modules`` as Method's steps call the service: with each Module's
         implementation files, the tests verifying its scenarios and the project's interpreter."""
+        self.calls += 1
+        self.logs = self.project.base / "checks" / str(self.calls)
         return run_module_checks(
             self.root,
             modules,
@@ -626,6 +630,100 @@ assert result['status'] == 'passed', result
                     ),
                 )
 
+    @verifies("scenario.checks.service-trace-write")
+    def test_an_exceptional_exit_keeps_the_refused_trace_writes(self):
+        from concorde.execution.checks import checks
+        from concorde.kernel.tracing import node as trace_node
+
+        [first] = read_checks(self.root)
+        second = {**first, "id": "check.a2"}
+        write_checks(self.root, [first, second])
+        original, real = trace_node.write, checks.execute_check
+
+        def refused(folder, record):
+            if record["kind"] != "check":
+                return original(folder, record)
+            Path(folder).mkdir(parents=True, exist_ok=True)
+            raise OSError(28, "No space left on device")
+
+        def second_fails(error):
+            def execute(worktree, argv, **options):
+                if Path(self.logs / "check.a2").exists():
+                    raise error
+                return real(worktree, argv, **options)
+
+            return execute
+
+        for error in (
+            KeyboardInterrupt(),
+            OSError(5, "Input/output error"),
+            RuntimeError("unexpected"),
+        ):
+            with self.subTest(error=type(error).__name__):
+                with (
+                    patch.object(trace_node, "write", refused),
+                    patch.object(checks, "execute_check", second_fails(error)),
+                ):
+                    with self.assertRaises(type(error)) as raised:
+                        self.run_checks(["module.a"])
+                # The error goes on unchanged, carrying the refused writes of both checks:
+                # the first check's start and end, the second's start and its interrupted end.
+                self.assertIs(error, raised.exception)
+                self.assertEqual(
+                    ["check.a"] * 2 + ["check.a2"] * 2,
+                    [
+                        failure.split(self.logs.as_posix() + "/")[1].split("/")[0]
+                        for failure in raised.exception.trace_failures
+                    ],
+                )
+                link = service_error(raised.exception)
+                validate(link, ERROR_SCHEMA)
+                self.assertEqual(
+                    4, [item["kind"] for item in link["evidence"]].count("trace-write")
+                )
+
+    @verifies("scenario.checks.check-node-exists")
+    def test_a_check_node_that_exists_is_never_written_over(self):
+        [result] = self.run_checks(["module.a"])
+        log = Path(result["log"]).read_bytes()
+        trace = (self.logs / "check.a/trace.json").read_bytes()
+        (self.root / "src/a/flag").write_text("broken")
+        with self.assertRaises(CheckError) as raised:
+            run_checks(
+                self.root,
+                modules=["module.a"],
+                trace_directory=self.logs,
+                python=sys.executable,
+            )
+        self.assertEqual("check_node_exists", raised.exception.code)
+        self.assertIn("check.a", str(raised.exception))
+        # The earlier node, which the earlier result names, is untouched.
+        self.assertEqual(log, Path(result["log"]).read_bytes())
+        self.assertEqual(trace, (self.logs / "check.a/trace.json").read_bytes())
+
+    def test_a_relative_worktree_finds_its_relative_interpreter(self):
+        interpreter = self.root / "env/bin/python"
+        interpreter.parent.mkdir(parents=True)
+        interpreter.write_text(
+            f'#!/bin/sh\necho "project interpreter"\nexec {sys.executable} "$@"\n'
+        )
+        interpreter.chmod(0o755)
+        self.change_check(argv=["{python}", "-c", "print('ran')"])
+        with contextlib.chdir(self.root.parent):
+            relative = Path(self.root.name)
+            self.assertEqual(
+                (self.root / "env/bin/python").as_posix(),
+                project_python(relative, "env/bin/python", "check.a"),
+            )
+            [result] = run_checks(
+                relative,
+                modules=["module.a"],
+                trace_directory=self.project.base / "relative-worktree",
+                python="env/bin/python",
+            )
+        self.assertEqual("passed", result["status"])
+        self.assertIn("project interpreter", Path(result["log"]).read_text())
+
     def test_a_selective_log_begins_with_its_tests_however_the_check_ends(self):
         from concorde.execution.checks import checks
         from concorde.execution.checks.check_executor import (
@@ -857,6 +955,20 @@ class ChecksFileTests(unittest.TestCase):
         )
         self.assertIn("symbolic link", str(self.refused()))
         (self.folder / "module.c.json").unlink()
+
+    @verifies("scenario.checks.checks-files-narrowed")
+    def test_a_malformed_file_of_another_module_stops_no_narrowed_read(self):
+        self.write("module.a.json", {"checks": [{"id": "check.a"}]})
+        outside = Path(tempfile.mkdtemp()) / "module.b.json"
+        outside.write_text(json.dumps({"checks": [{"id": "check.b"}]}))
+        (self.folder / "module.b.json").symlink_to(outside)
+        self.write("module.c.json", "{not json")
+        self.assertEqual(
+            ["check.a"],
+            [check["id"] for check in configured_checks(self.root, ["module.a"])],
+        )
+        # Every file is judged when the read is not narrowed.
+        self.assertIn("symbolic link", str(self.refused()))
 
     def test_a_nonfinite_timeout_is_an_invalid_check(self):
         for value, number in (("NaN", math.nan), ("Infinity", math.inf)):

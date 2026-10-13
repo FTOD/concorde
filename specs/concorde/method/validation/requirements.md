@@ -32,8 +32,11 @@ Validation SHALL NOT issue a readiness.
 
 ### req.validation.workspace — The bound workspace is validated
 
-Validation SHALL validate the Specs and run the checks of the bound workspace the run works on,
-never of another worktree.
+Validation SHALL perform every structural validation and every configured check that a run
+performs on the bound workspace the run works on, never on another worktree.
+
+The run's steps decide whether each is performed. For example, a run whose Specs cannot be loaded
+runs no configured check.
 
 ### req.validation.bound-branch — Readiness is decided on the bound branch
 

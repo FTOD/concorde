@@ -111,10 +111,11 @@ structural error.
 The scaffold host SHALL derive the new content of every existing file it changes from the bytes its
 recheck loaded and bind that change to the digest of those same bytes.
 
-It binds every file it creates to the file's absence. Thus, a file changed after the recheck ends
-the run `blocked` with `stale_proposal`, nothing of the scaffold kept and the change made to that
-file preserved, as
-[scenario.scaffold.concurrent-edit](scenarios.md#scenario.scaffold.concurrent-edit) shows.
+It binds every file it creates to the file's absence. A file changed after the recheck thus fails
+the transaction. When the transaction restores every file it wrote, the run ends `blocked` with
+`stale_proposal`, nothing of the scaffold kept and the change made to that file preserved, as
+[scenario.scaffold.concurrent-edit](scenarios.md#scenario.scaffold.concurrent-edit) shows. When it
+cannot restore a file, [req.scaffold.write-failed](#req.scaffold.write-failed) applies instead.
 
 ### req.scaffold.write-failed — A failed write names what was not restored
 

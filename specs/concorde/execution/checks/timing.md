@@ -59,7 +59,7 @@ or starts changes nothing handed over. The span is not recorded.
 | `Trace(trace_id=None, *, sink=None, layer="B")` / `tracing(trace)` | open a trace in the current context; its sink receives the finished trace once |
 | `notice_incomplete()` | write the one `CONCORDE_TIMING_INCOMPLETE` line of a sink that could not keep its trace |
 | `diagnostic_sink(directory)` | a sink writing each trace as a new mode-0600 file, never through a symbolic link, in a directory that exists and is absolute, canonical and outside both the working directory and any `.concorde/tasks`, `.concorde/history`, `.concorde/unbound` or `.concorde/locks` directory; any other directory is refused |
-| `interval_record(...)` | adapt an interval measured elsewhere to the span shape |
+| `interval_record(*, name, trace_id, started_at, start_ns, end_ns, parent_id=None, layer="C", status="ok", process_id=None)` | adapt an interval measured elsewhere to the span shape ([Adapting an interval](#adapting-an-interval)) |
 | `summarize(spans)` | the timing summary of finished span records |
 
 The timing summary is `{complete, summed_span_seconds, covered_seconds_by_process}`: what the
@@ -102,6 +102,50 @@ summary = summarize(received[0]["spans"])
 
 When the `tracing` block ends, the sink receives the finished trace once. `summarize` reads the span
 records of that trace.
+
+## Adapting an interval
+
+`interval_record` turns an interval that another runner measured into one span record. It takes
+keyword arguments only. It opens no trace and needs none. Its arguments are these:
+
+| Argument | Content |
+| --- | --- |
+| `name` | the span name |
+| `trace_id` | the identity of the trace the record belongs to |
+| `parent_id` | the enclosing span's `span_id`, or None |
+| `layer` | the record's layer, `C` unless the caller says otherwise |
+| `started_at` | the RFC 3339 UTC wall time of the start, for correlation only |
+| `start_ns` | the start, in monotonic nanoseconds of the measuring process |
+| `end_ns` | the end, in the same clock, or None when the work did not finish |
+| `status` | `ok`, `error`, `cancelled` or `incomplete` |
+| `process_id` | the measuring process, or None for the calling process |
+
+`start_ns` and `end_ns` come from the monotonic clock of the process that `process_id` names. A
+summary unions the intervals of each process apart
+([req.checks.timing-per-process](#req.checks.timing-per-process)).
+So a caller that adapts an interval another process measured names that process.
+
+The record has a new `span_id` and `duration_ns` `end_ns - start_ns`. When `end_ns` is None,
+`duration_ns` is null, which the caller marks with the status `incomplete`. `session_id`, `task_id`
+and `metadata` are empty. A status a span cannot have, or an `end_ns` before `start_ns`, raises
+`ValueError`. Nothing else is checked.
+
+A test runner measured one test in its worker process 4242 and adapts it below its run's total
+span:
+
+```python
+unit = interval_record(
+    name="test.unit",
+    trace_id=run_id,
+    parent_id=total["span_id"],
+    started_at="2026-10-13T09:00:00+00:00",
+    start_ns=5_000_000_000,
+    end_ns=7_500_000_000,
+    process_id=4242,
+)
+# unit["duration_ns"] == 2_500_000_000, unit["layer"] == "C", unit["process_id"] == 4242
+summary = summarize([total, unit])  # covers 2.5 seconds for process 4242
+```
 
 ## Requirements
 
@@ -217,6 +261,14 @@ timestamps are used only to correlate records.
 - WHEN their spans finish in interleaved order
 - THEN every span is stored in the trace that was open where its work started
 - AND every span is stored with that trace's identity and parent
+
+### scenario.checks.timing-interval — An interval measured elsewhere becomes a span record
+
+- GIVEN an interval that a process measured with its monotonic clock, from a start to an end
+- WHEN a caller adapts it with `interval_record`, naming that process
+- THEN the record has the span shape with layer `C`, that process and the interval's duration
+- AND an interval without an end has a null duration
+- BUT an end before the start, or a status a span cannot have, raises `ValueError`
 
 ### scenario.checks.timing-summary — A timing summary reports covered time per process
 

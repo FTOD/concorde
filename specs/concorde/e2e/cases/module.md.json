@@ -8,6 +8,7 @@
   "module": {
     "title": "SWE-bench cases",
     "owns": [
+      "specs/concorde/e2e/cases/contracts.md",
       "specs/concorde/e2e/cases/module.md",
       "specs/concorde/e2e/cases/requirements.md",
       "specs/concorde/e2e/cases/scenarios.md"
@@ -40,6 +41,14 @@
           "concept.task",
           "req.tasks.binding",
           "req.tasks.merge-verified"
+        ]
+      },
+      {
+        "target": "module.execution",
+        "meaning": "#uses-execution",
+        "relies_on": [
+          "concept.run-result",
+          "contract.execution.run-result"
         ]
       },
       {

@@ -178,13 +178,20 @@ The call runs these steps:
   - `env`
   - `timeout_seconds`
 
-  The service replaces `{python}` and `{tests}`. The service finds every declared input, measured
-  file and selected test file of every kept check. Whichever Module the kept check belongs to, any
-  of these problems stops the call before the first command:
+  The service replaces `{python}` and `{tests}`. A relative interpreter is made absolute in the
+  worktree, without resolving its last symbolic link, since the check runs from inside the
+  worktree. The service finds every declared input, measured file and selected test file of every
+  kept check. Whichever Module the kept check belongs to, any of these problems stops the call
+  before the first command:
 
   - an invalid check or argument
   - a missing interpreter
   - a missing input, measured file or test file
+  - a trace node `<trace_directory>/<check id>/` of a kept check that exists already
+
+  The caller gives each call a `trace_directory` where none of its checks' nodes exists. An earlier
+  node keeps the log and the record that an earlier result names. So a later call never writes over
+  it, and refuses with `check_node_exists` instead.
 
 5. For each kept check, the service computes its measured digest with `measured_digest`, in the
   same file. For an ordinary check, the digest is `check_revision` of the check's own Module.
@@ -224,11 +231,13 @@ The call runs these steps:
 
   When one of these events ends the call before the node ended, the log holds the output the
   boundary drained. Under this condition, the node ends `failed` with the outcome and status
-  `interrupted`. The error goes on to the caller unchanged.
+  `interrupted`. The error goes on to the caller as the same object. Only its `trace_failures`
+  attribute is added.
 
   When the operating system refuses a write of `trace.json`, that write never changes the check
-  or the call. The check result names the refused write in `trace_failures`. An error the call
-  fails with names those of every check it ran ([Errors](#errors)).
+  or the call. The check result names the refused write in `trace_failures`. Whatever error the
+  call fails with names those of every check it ran in its own `trace_failures`
+  ([Errors](#errors)). An exception that takes no attribute loses them.
 7. The service computes the measured digest again, over the same named files and selected tests.
   When the digest differs or can no longer be computed, the service fails the whole call with
   `stale_evidence`. The digest can no longer be computed when a measured file, selected test file
@@ -378,6 +387,8 @@ The record uses these codes:
   interpreter, or none that is an executable file where it was looked for
 - `check_sandbox_unavailable`: the read-only boundary cannot be established
 - `stale_evidence`: an input changed while the check ran
+- `check_node_exists`: the trace node of a kept check exists already in the caller's
+  `trace_directory`
 - `system_error`: an operating-system error
 
 Each carries the following:
@@ -388,9 +399,11 @@ Each carries the following:
 - remediation
 - causes
 
-When a `CheckError` ends a call after checks ran, it also carries each refused trace write in
-`trace_failures`. These are writes of those checks' nodes' `trace.json` that the operating system
-refused. It carries them because the call returns no result that could name them. Check execution depends on no part but
+When any error ends a call after checks ran, it also carries each refused trace write in its
+`trace_failures` attribute. Such an error is a `CheckError`, an operating-system error, a
+cancellation or an unexpected error. The writes are those of the checks' nodes' `trace.json` that
+the operating system refused. The error carries them because the call returns no result that could
+name them. Check execution depends on no part but
 the kernel, so its error type is its own. Since `service_error` makes the link, a caller never
 needs to translate the error type.
 
@@ -410,7 +423,8 @@ The link has the following:
 - the actor `Check execution`
 - the error's code
 - a detail with its message and location
-- the location and each refused trace write of the error as `trace-write` evidence
+- the location and each refused trace write of the error as `trace-write` evidence, whatever the
+  error's type
 - the code's reason as explanation
 - its remediation as option and recommendation
 - the error's own causes nested the same way
@@ -517,6 +531,14 @@ start.
 - AND so is an `id` another file already uses, or an input that is not a canonical project-relative path
 - AND so is a file that is not valid JSON or holds another field, or a file not named `<module id>.json`
 
+### scenario.checks.checks-files-narrowed — A malformed file of another Module stops no narrowed read
+
+- GIVEN a worktree whose `.concorde/checks/` holds a valid `module.a.json`
+- AND a `module.b.json` that is a symbolic link and a `module.c.json` that is not valid JSON
+- WHEN Check execution reads the configured checks of `module.a` alone
+- THEN it holds the check of `module.a`
+- BUT a read of every checks file is refused, naming the symbolic link
+
 ### scenario.checks.check-input-missing — A configured check names a missing input
 
 - GIVEN a checks file whose [configured check](../../glossary.json#concept.configured-check) declares an input path that does not exist
@@ -539,6 +561,15 @@ start.
 - AND the result's `trace_failures` names each refused write with the node's file, the moment and the error
 - AND a check whose every write succeeded has empty `trace_failures`
 - BUT when the call then fails, such as with `stale_evidence`, Check execution's link names each refused write of the checks it ran as `trace-write` evidence
+- AND a cancellation, an operating-system error or an unexpected error that ends the call after a first check completed goes on as the same object
+- AND that error's `trace_failures` and Check execution's link for it name the refused writes of both checks
+
+### scenario.checks.check-node-exists — A check node that exists is never written over
+
+- GIVEN a call of the service that ran the check of Module A in a trace directory
+- WHEN a later call is asked to run the same check in the same trace directory
+- THEN the later call fails with `check_node_exists`, naming the check, before any command runs
+- AND the earlier node's `output.log` and `trace.json` are unchanged
 
 ### scenario.checks.service-no-checks — A Module without checks gets no result
 

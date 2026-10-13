@@ -49,6 +49,7 @@ shapes are in the [contracts](contracts.md).
 - GIVEN an `ok` survey whose proposal fits the workspace
 - AND the scaffold's recheck has loaded the root's entry `specs/shop/module.md`
 - WHEN another process appends a paragraph to that entry before the scaffold writes it
+- AND the transaction restores every file it wrote
 - THEN the result is `blocked` with `stale_proposal`, Spec core's error its cause
 - AND the root's entry holds the appended paragraph and none of the scaffold's paragraphs
 - AND no folder of a proposed child exists, and every other file is as before the scaffold
@@ -98,6 +99,7 @@ shapes are in the [contracts](contracts.md).
 
 - GIVEN a survey whose proposed `module.checkout` has a purpose linking to an anchor that no document defines
 - WHEN the main agent runs the scaffold with that survey as input
+- AND the transaction restores every file it wrote
 - THEN the result is `failed` with `scaffold_invalid` and one cause for each structural error the scaffold would add
 - AND every file of the workspace is as before the scaffold, and no folder of a proposed child exists
 
@@ -105,6 +107,7 @@ shapes are in the [contracts](contracts.md).
 
 - GIVEN a survey whose proposal fits the workspace
 - WHEN the operating system refuses one of the scaffold's writes
+- AND the transaction restores every file it wrote before the refusal
 - THEN the result is `failed` with `write_failed`, reason `environment`, Spec core's error as its cause
 - AND every file of the workspace is as before
 

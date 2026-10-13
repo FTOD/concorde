@@ -7,9 +7,13 @@ concrete situations.
 
 ### req.dogfooding.clean-primary-source — Only a clean primary worktree is installed from
 
-A [develop install](../glossary.json#concept.develop-install), and every update of one, SHALL be
-refused before anything is written unless the Concorde it installs from is the root of the primary
-worktree of its Git repository, on a branch, with no uncommitted or untracked change.
+The installer SHALL refuse a [develop install](../glossary.json#concept.develop-install), and every
+update of one, before it writes anything, unless the Concorde it installs from meets all of these
+conditions:
+
+- It is the root of the primary worktree of its Git repository.
+- It is on a branch.
+- It has no uncommitted or untracked change.
 
 ### req.dogfooding.refusal-names-reason — A refused source names its reason
 
@@ -120,6 +124,12 @@ A defect report is an [Issue report](../glossary.json#concept.issue-report).
 An Issue system failure is never recorded as an Issue
 ([Issues](../issues/requirements.md#req.issues.own-failures)) because the Concorde repository would
 record it with the very system that failed.
+
+### req.dogfooding.environment-refusal-handled — An environment refusal is handled by its options
+
+The develop guidance SHALL tell the main agent that a refusal whose reason is `environment` is no
+defect, to wait and write again only for a busy lock, and for every other such refusal to remove
+the cause its options name, or escalate it, before it writes again.
 
 ### req.dogfooding.issue-system-defect-kept — The chain of an Issue system defect is kept
 

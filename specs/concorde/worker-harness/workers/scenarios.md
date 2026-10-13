@@ -151,6 +151,15 @@ the run. [The run mechanics](launch.md) give these exact details:
 - AND the grant the run record keeps is the request's grant
 - AND that grant has the same context identity as the request's grant
 
+### scenario.workers.runtime-path-overlap-refused — A runtime path that meets protected material is refused
+
+- GIVEN a request whose runtime path holds the task worktree or the user's home, lies below the
+  repository's common Git directory, or is or holds a directory the grant lists `rw`
+- WHEN the host is asked to start the worker
+- THEN it refuses before launch with `runtime_path_overlap` and the reason `input`
+- AND the refusal's detail names the runtime path and what it meets
+- AND no round runs
+
 ## The boundary
 
 ### scenario.workers.undeclared-write-denied — A new undeclared file cannot be written
@@ -290,14 +299,23 @@ the run. [The run mechanics](launch.md) give these exact details:
 
 ### scenario.workers.malformed-grant-refused — A malformed grant is refused before launch
 
-- GIVEN a grant whose entries are not a list, or with an entry that is not an object, has a field
-  other than `path` and `level`, has no path, an absolute path or one leaving the task worktree
-  through `..`, or a level other than `rw`, `ro` and `names`
+- GIVEN a grant whose entries are not a list, or with an entry that breaks the shape of the
+  [grant input](contracts.md#contract.workers.grant-input)
+- AND such an entry is not an object, has a field besides `path` and `level`, has no path, an
+  absolute path or one leaving the task worktree through `..`, or an unknown level
 - WHEN the host is asked to start the worker, or generates its settings
 - THEN settings generation raises `grant_malformed` naming the entry and what is wrong with it
 - AND the host refuses before launch with `grant_malformed` and the reason `input`
 - AND the host generates no settings or write hook
 - AND it still writes the run record
+
+### scenario.workers.duplicate-grant-path-refused — A path listed twice is a malformed grant
+
+- GIVEN a grant with two entries for the same file, or for the same directory
+- AND their levels are equal or differ
+- WHEN settings are generated from it
+- THEN settings generation raises `grant_malformed`
+- AND the error names the second entry and says that its path is listed again
 
 ## Audit and deletions
 
@@ -346,6 +364,19 @@ the run. [The run mechanics](launch.md) give these exact details:
 - THEN the run ends `failed` with `audit_violation` and the violating path as host evidence
 - AND the error's detail says that the worker result was invalid
 - AND the error has no cause from the worker
+
+### scenario.workers.audit-unavailable — A round that cannot be audited ends the run
+
+- GIVEN a worker round that ends with a valid `ok` result proposing the deletion of a `rw` file
+- AND a round validation
+- AND after the round, the audit's read-only Git fails
+- WHEN the host audits the worktree
+- THEN the run ends `failed` with `audit_unavailable` and the reason `environment`
+- AND the round's `audit` is null
+- AND no round validation runs
+- AND no retry round or resume round follows
+- AND the host performs no proposed deletion
+- AND the run keeps the valid result as its `worker_result`
 
 ### scenario.workers.glossary-entries — A worker may change its own Modules' glossary entries
 
@@ -502,15 +533,16 @@ the run. [The run mechanics](launch.md) give these exact details:
 - AND when the interruption comes while the worker of a round still runs, after its output named
   the session, the [run directory](../../glossary.json#concept.run-directory) keeps that session's
   transcript
+- AND that round's `stderr.log` keeps the standard error the round wrote before the interruption
 
 ### scenario.workers.invalid-result — A worker without a valid result has failed
 
 - GIVEN a worker round whose agent process ends normally, within its timeout and limits
 - AND the agent process ends with no process error of its backend
 - AND the worker round changes nothing outside the grant's `rw` list
-- AND the worker round ends without a structured result that satisfies the worker result schema:
-  with none, with a status other than `ok`, `blocked` and `failed`, with a `blocked` or `failed`
-  result without an error, or with an `ok` result with one
+- AND the worker round ends without a structured result that satisfies the worker result schema
+- AND that result is missing, has a status other than `ok`, `blocked` and `failed`, is `blocked`
+  or `failed` without an error, or is `ok` with one
 - WHEN the host reads its output
 - THEN the run ends `failed` with `worker_result_invalid` and the schema violation or the worker's
   final text in its error
@@ -521,6 +553,8 @@ the run. [The run mechanics](launch.md) give these exact details:
 
 - GIVEN a worker whose Claude Code session ends with an error subtype, such as the turn limit,
   instead of a structured result
+- AND the error is no [transient model-service error](launch.md#retries), which
+  [scenario.workers.transient-retry-claude](#scenario.workers.transient-retry-claude) retries
 - WHEN the host reads its output
 - THEN for a turn or budget limit, the run ends `failed` with `worker_limit_reached`
 - AND otherwise, the run ends `failed` with `claude_failed`
@@ -588,6 +622,16 @@ the run. [The run mechanics](launch.md) give these exact details:
 - AND the error's detail names the write outside the grant
 - AND the round's node records the error as not retried
 
+### scenario.workers.transient-sessionless-change-not-retried — Changes without a session are not replayed
+
+- GIVEN a worker on the Claude Code backend that writes a file of its `rw` list
+- AND then its session ends with an error envelope that names no session and whose final text is
+  an `API Error` naming an overloaded service
+- WHEN the host reads the round
+- THEN the round's audit is clean and lists the file in `changed`
+- AND the run ends `failed` with `claude_failed` after that one round
+- AND the round's node records the error as not retried
+
 ## The pi backend
 
 ### scenario.workers.pi-fenced-run — A pi worker is fenced by the same grant
@@ -610,12 +654,15 @@ the run. [The run mechanics](launch.md) give these exact details:
 ### scenario.workers.pi-file-tools-denied — pi file tools explain every denial
 
 - GIVEN a running pi worker
-- WHEN it reads a `names` file, an ungranted file, the task worktree's `.git`, a submodule's `.git`,
-  a file of the common Git directory, a source file of the primary worktree outside the task
-  worktree, with that primary worktree outside the user's home, a file of its runtime directory's
-  `config/`, or a granted name that does not exist whose other spelling, such as its NFD form, is an
-  ungranted file pi's `read` would open instead, or writes a `ro` file, an undeclared file or a
-  submodule's `.git`
+- WHEN it reads a `names` file or an ungranted file of the task worktree
+- AND it reads the task worktree's `.git`, a submodule's `.git` or a file of the common Git
+  directory
+- AND it reads a source file of the primary worktree outside the task worktree, with that primary
+  worktree outside the user's home
+- AND it reads a file of its runtime directory's `config/`
+- AND it reads a granted name that does not exist whose other spelling, such as its NFD form, is an
+  ungranted file pi's `read` would open instead
+- AND it writes a `ro` file, an undeclared file or a submodule's `.git`
 - THEN each call is denied with the reason the Harness's read or write table gives, prefixed
   `Concorde grant:`
 - AND no file changes
@@ -633,6 +680,16 @@ the run. [The run mechanics](launch.md) give these exact details:
 - AND bash can write `rw` files
 - AND bash's temporary files go to the run's private `TMPDIR`
 - AND bash can write that `TMPDIR`
+
+### scenario.workers.pi-grep-incomplete-output — pi's grep never takes an incomplete reading for no match
+
+- GIVEN a running pi worker
+- AND `rg` reports a match on a line longer than the extension reads whole
+- WHEN the worker greps for it
+- THEN the answer names the file and says that the matching line is too long to show
+- AND the answer never says that nothing matched
+- AND when a line of `rg`'s output cannot be read, the answer says so
+- AND when the matches reach the limit, the extension stops `rg` and says that the limit was reached
 
 ### scenario.workers.pi-runtime-missing — A pi run without its runtime is refused
 
@@ -804,12 +861,21 @@ the run. [The run mechanics](launch.md) give these exact details:
 - AND a worker with no level anywhere gets none
 - AND for that worker, its program's built-in default remains
 
-### scenario.workers.model-level-refused — A model's own level its backend lacks is refused
+### scenario.workers.model-level-refused — A model's own level of neither backend is refused
 
-- GIVEN `enabled_models` giving a model a level of neither backend, or a level the backend of a
-  worker taking that model does not have
+- GIVEN `enabled_models` giving a model a level of neither backend
 - WHEN the configuration is checked
 - THEN it is refused with `config_invalid`
+
+### scenario.workers.model-level-inherited-refused — A model's own level its worker's backend lacks is refused where it applies
+
+- GIVEN `enabled_models` giving a model the level `off`, which Claude Code does not have
+- AND a worker on Claude Code takes that model
+- AND neither the entry that chose the model nor a more specific one sets a level
+- WHEN the configuration is checked
+- THEN it is refused with `config_invalid`, since the model's own level is the worker's level
+- BUT when the entry that chose the model sets a level Claude Code has, that level is the worker's
+- AND then the configuration is accepted
 
 ### scenario.workers.model-unresolved — A worker whose configuration names no model is refused
 
@@ -836,10 +902,11 @@ the run. [The run mechanics](launch.md) give these exact details:
 
 ### scenario.workers.model-refused — Validation refuses invalid entries
 
-- GIVEN a configuration with invalid structure, an Operation or worker name its caller does not
-  declare, a malformed `enabled_models` entry, an enabled model named by one program's id such as
-  `local-openai/gpt-6` rather than a project model name, or a reasoning level outside the effective
-  backend's vocabulary
+- GIVEN a configuration with one defect of its structure, its names or its levels
+- AND a defect of its structure is invalid structure or a malformed `enabled_models` entry
+- AND a defect of its names is an Operation or worker name its caller does not declare, or an
+  enabled model named by one program's id, such as `local-openai/gpt-6`, not a project model name
+- AND a defect of its levels is a reasoning level outside the effective backend's vocabulary
 - WHEN the shared validator checks it
 - THEN it is refused with `config_invalid`
 

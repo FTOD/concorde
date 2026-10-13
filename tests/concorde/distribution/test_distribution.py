@@ -206,12 +206,10 @@ class BuildTests(unittest.TestCase):
         everything = parts.package_parts(root)
 
         def composed(kind):
-            return (
-                "\n\n".join(
-                    (root / path).read_text().strip("\n")
-                    for path in guidance.sections(everything, kind)
-                )
-                + "\n"
+            # Each render byte for byte, one blank line between two renders.
+            return "\n".join(
+                (root / path).read_text()
+                for path in guidance.sections(everything, kind)
             )
 
         # Coordination's working method first, then the other parts in the parts table's order.
@@ -290,6 +288,17 @@ class BuildTests(unittest.TestCase):
             three["claude_md"],
         )
         self.assertNotIn("issues", "".join(three.values()))
+        # A render's own blank lines at its edges stay.
+        padded = lambda path: f"\n<{path}>\n\n"  # noqa: E731
+        self.assertEqual(
+            "\n<generated/main-session/task-session.md>\n\n\n"
+            "\n<generated/guidance/spec/task-session.md>\n\n",
+            guidance.compose(
+                {name: everything[name] for name in ("spec", "coordination")},
+                "task_session",
+                padded,
+            ),
+        )
 
     @verifies("scenario.distribution.composed-guidance-without-coordination")
     def test_the_guidance_without_coordination_is_the_given_sections_alone(self):
@@ -349,6 +358,79 @@ class BuildTests(unittest.TestCase):
             "generated/workflows/claude/concorde-brownfield.js", " ".join(differences)
         )
 
+    @verifies("scenario.distribution.build-include-values")
+    def test_an_includes_values_fill_the_prompt_it_includes_alone(self):
+        from concorde.distribution.prompt_resolver import (
+            PromptResolverError,
+            resolve_role_prompt,
+        )
+
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        root = Path(directory.name)
+        (root / "prompts").mkdir()
+
+        def prompt(name, body, audience="shared"):
+            (root / f"prompts/{name}.md").write_text(
+                f"---\naudience: {audience}\n---\n\n{body}\n"
+            )
+
+        prompt("root", "Root.\n\n@prompts/middle.md NAME=value", "worker")
+        prompt(
+            "middle", "Middle {NAME} shows {{NAME}}.\n\n@prompts/leaf.md NAME={NAME}"
+        )
+        prompt("leaf", "Leaf {NAME}, {not a value}.")
+        body = resolve_role_prompt(root, "prompts/root.md").body
+        self.assertIn("Middle value shows {NAME}.", body)
+        self.assertIn("Leaf value, {not a value}.", body)
+        # A value never reaches the prompts the included prompt includes by itself.
+        prompt("middle", "Middle {NAME}.\n\n@prompts/leaf.md")
+        with self.assertRaises(PromptResolverError) as raised:
+            resolve_role_prompt(root, "prompts/root.md")
+        self.assertIn("prompts/leaf.md", str(raised.exception))
+        self.assertIn("{NAME}", str(raised.exception))
+        # A key named twice on one line.
+        prompt("root", "Root.\n\n@prompts/middle.md NAME=a NAME=b", "worker")
+        with self.assertRaises(PromptResolverError) as raised:
+            resolve_role_prompt(root, "prompts/root.md")
+        self.assertIn("duplicate", str(raised.exception))
+        # A front matter key but the audience.
+        (root / "prompts/root.md").write_text(
+            "---\naudience: worker\ndescription: x\n---\n\nRoot.\n"
+        )
+        with self.assertRaises(PromptResolverError) as raised:
+            resolve_role_prompt(root, "prompts/root.md")
+        self.assertIn("description", str(raised.exception))
+
+    @verifies("scenario.distribution.build-check-stale")
+    def test_checking_the_build_writes_no_import_cache(self):
+        # A copy without caches whose own .venv is this one, so that the command, started on
+        # the base interpreter, runs again on the copy's .venv as in a prepared checkout.
+        root = package_copy(self)
+        venv = Path(sys.prefix)
+        (root / ".venv/bin").mkdir(parents=True)
+        shutil.copy2(venv / "pyvenv.cfg", root / ".venv/pyvenv.cfg")
+        (root / ".venv/lib").symlink_to(venv / "lib")
+        (root / ".venv/bin/python").symlink_to(venv / "bin/python")
+        before = sorted(str(path) for path in root.rglob("*"))
+        done = subprocess.run(
+            [
+                getattr(sys, "_base_executable", sys.executable),
+                str(root / "scripts/concorde.py"),
+                "--project-root",
+                str(root),
+                "build",
+                "--check",
+            ],
+            cwd=root,
+            capture_output=True,
+            text=True,
+            env={**os.environ, "PYTHONDONTWRITEBYTECODE": ""},
+        )
+        self.assertEqual(0, done.returncode, done.stdout + done.stderr)
+        self.assertEqual("success", json.loads(done.stdout)["status"])
+        self.assertEqual(before, sorted(str(path) for path in root.rglob("*")))
+
     @verifies("scenario.distribution.build-check-stale")
     def test_a_stale_build_is_reported_without_writing(self):
         root = package_copy(self)
@@ -380,6 +462,12 @@ class BuildTests(unittest.TestCase):
         with self.assertRaises(BuildError) as raised:
             write_build(root)
         self.assertIn("unreachable", str(raised.exception))
+        orphan.unlink()
+        # A link to a prompt is a prompt of its own, which no include can reach.
+        orphan.symlink_to(root / "prompts/main-session/skill.md")
+        with self.assertRaises(BuildError) as raised:
+            write_build(root)
+        self.assertIn("prompts/orphan.md", str(raised.exception))
         orphan.unlink()
         cycle = root / "prompts/main-session/skill.md"
         (root / "prompts/loop.md").write_text(
@@ -477,6 +565,7 @@ class ProtocolTests(unittest.TestCase):
         "scenario.distribution.protocol-manifest-bind",
         "scenario.distribution.protocol-manifest-report",
         "scenario.distribution.protocol-manifest-single-flag",
+        "scenario.distribution.protocol-manifest-write-alone",
     )
     def test_a_changed_protocol_is_accepted_explicitly(self):
         root = package_copy(self)
@@ -724,9 +813,9 @@ class RoutingTests(unittest.TestCase):
         self.assertEqual(2, command("task", "frobnicate").returncode)
 
 
-def framework(test, parts: list[str] | None) -> Path:
-    """A project whose Framework copy is this package, with a receipt naming ``parts``, or no
-    parts at all when None; the project's root."""
+def framework(test, named: list[str] | None) -> Path:
+    """A project whose Framework copy is this package, with a receipt naming the parts
+    ``named``, or no parts at all when None; the project's root."""
     directory = tempfile.TemporaryDirectory()
     test.addCleanup(directory.cleanup)
     project = Path(directory.name) / "project"
@@ -736,14 +825,15 @@ def framework(test, parts: list[str] | None) -> Path:
         copy / "src",
         ignore=shutil.ignore_patterns("__pycache__", "*.pyc"),
     )
+    # The parts index of these sources, as the build writes it, without reading the checkout's.
     (copy / "generated").mkdir(parents=True)
-    shutil.copy2(
-        REPOSITORY_ROOT / "generated/parts.json", copy / "generated/parts.json"
+    (copy / "generated/parts.json").write_text(
+        json.dumps(parts.index_of(parts.package_parts(REPOSITORY_ROOT)))
     )
     shutil.copy2(REPOSITORY_ROOT / "concorde.json", copy / "concorde.json")
     receipt = {"version": "9.0.0"}
-    if parts is not None:
-        receipt["parts"] = {name: "9.0.0" for name in parts}
+    if named is not None:
+        receipt["parts"] = {name: "9.0.0" for name in named}
     (project / ".concorde/install.json").write_text(json.dumps(receipt))
     subprocess.run(["git", "init", "-q", str(project)], check=True)
     return project
@@ -767,8 +857,11 @@ class PartsTests(unittest.TestCase):
     EVERY_PART_BUT = ("issues", "execution")
 
     def installed(self) -> list[str]:
-        index = json.loads((REPOSITORY_ROOT / "generated/parts.json").read_text())
-        return [name for name in index["parts"] if name not in self.EVERY_PART_BUT]
+        return [
+            name
+            for name in parts.package_parts(REPOSITORY_ROOT)
+            if name not in self.EVERY_PART_BUT
+        ]
 
     @verifies(
         "scenario.distribution.part-missing",
@@ -806,7 +899,12 @@ class PartsTests(unittest.TestCase):
             {"issue_list", "issue_report", "run_result", "task_resolve"} & names
         )
         self.assertIn("register_wait", names)
-        call = {"arguments": {}, "primary": str(project), "where": str(project)}
+        call = {
+            "arguments": {},
+            "primary": str(project),
+            "where": str(project),
+            "protocol": 1,
+        }
         answered = framework_command(
             project, "project-mcp", "--call", "issue_list", stdin=json.dumps(call)
         )
@@ -834,7 +932,7 @@ class PartsTests(unittest.TestCase):
 
     @verifies("scenario.distribution.composed-from-installed-parts")
     def test_a_receipt_naming_no_parts_installs_every_part(self):
-        index = json.loads((REPOSITORY_ROOT / "generated/parts.json").read_text())
+        index = parts.index_of(parts.package_parts(REPOSITORY_ROOT))
         # A receipt without parts and one whose parts are empty both name none.
         for named in (None, []):
             with self.subTest(parts=named):
@@ -853,6 +951,55 @@ class PartsTests(unittest.TestCase):
         everything = parts.package_parts(REPOSITORY_ROOT)
         for receipt in ({"version": "9.0.0"}, {"version": "9.0.0", "parts": {}}):
             self.assertEqual(set(everything), _previous_parts(receipt, everything))
+
+    @verifies("scenario.distribution.registration-only-installed")
+    def test_a_project_reads_no_registration_of_a_part_it_has_not_installed(self):
+        project = framework(self, self.installed())
+        copy = project / ".concorde/framework"
+        # The issues part is not installed: its registration is not even JSON.
+        (copy / "src/concorde/issues/registration.json").write_text(
+            "not a registration"
+        )
+        usage = framework_command(project, "--help")
+        self.assertEqual(0, usage.returncode, usage.stderr)
+        self.assertIn("task", usage.stdout)
+        listed = framework_command(project, "project-mcp", "--tools")
+        self.assertEqual(0, listed.returncode, listed.stderr)
+        self.assertIn(
+            "task_list", {tool["name"] for tool in json.loads(listed.stdout)["tools"]}
+        )
+        refused = framework_command(project, "issues", "list")
+        self.assertEqual("part_missing", json.loads(refused.stdout)["error"]["code"])
+        # An index of another version cannot place the installed parts: refused, not guessed.
+        index = json.loads((copy / "generated/parts.json").read_text())
+        index["schema_version"] = 1
+        (copy / "generated/parts.json").write_text(json.dumps(index))
+        stale = framework_command(project, "--help")
+        self.assertNotEqual(0, stale.returncode)
+        self.assertEqual("stale_build", json.loads(stale.stdout)["error"]["code"])
+
+    def test_the_parts_index_has_the_form_of_its_contract(self):
+        index = parts.index_of(parts.package_parts(REPOSITORY_ROOT))
+        self.assertEqual(parts.INDEX_VERSION, index["schema_version"])
+        text = (
+            REPOSITORY_ROOT / "specs/concorde/distribution/contracts.md"
+        ).read_text()
+        example = json.loads(
+            text.split("The parts index has this form:\n\n```json\n", 1)[1].split(
+                "\n```", 1
+            )[0]
+        )
+        self.assertEqual(index["schema_version"], example["schema_version"])
+        self.assertEqual(
+            index["parts"]["coordination"]["module"],
+            example["parts"]["coordination"]["module"],
+        )
+        for name, entry in index["parts"].items():
+            self.assertEqual(set(example["parts"]["coordination"]), set(entry), name)
+            self.assertTrue(
+                (REPOSITORY_ROOT / "src/concorde" / entry["directory"]).is_dir()
+            )
+            self.assertTrue(all(isinstance(item, str) for item in entry["commands"]))
 
     @verifies("scenario.distribution.build-refuses-name-conflict")
     def test_two_parts_registering_one_name_fail_the_build(self):
@@ -1393,6 +1540,17 @@ class InstallTests(unittest.TestCase):
         )
         registration["install"]["gitignore"] = []
         (retired / "registration.json").write_text(json.dumps(registration))
+        # The copy's own parts index, built when the copy had the part, places it.
+        index_path = project / ".concorde/framework/generated/parts.json"
+        index = json.loads(index_path.read_text())
+        index["parts"]["retired"] = {
+            "module": "module.retired",
+            "directory": "retired",
+            "depends_on": registration["depends_on"],
+            "commands": [],
+            "mcp_tools": [item["name"] for item in registration["mcp_tools"]],
+        }
+        index_path.write_text(json.dumps(index))
         path = project / ".concorde/install.json"
         receipt = json.loads(path.read_text())
         receipt["parts"]["retired"] = receipt["version"]
@@ -2002,6 +2160,53 @@ class InstallTests(unittest.TestCase):
         self.assertNotIn("pi-runtime", left_out["tools"])
         self.assertFalse(left_out["pi_runtime"])
 
+    @verifies("scenario.distribution.install-removes-dropped-tools")
+    def test_the_receipt_owns_the_runtime_and_tools_and_drops_those_left_behind(self):
+        package = package_copy(self)
+        project = package.parent / "project"
+        subprocess.run(["git", "init", "-q", str(project)], check=True)
+        fetch = fake_d2(self, package)
+        calls = []
+        with which(npm="/usr/bin/npm"):
+            receipt = install(
+                project, package, fetch=fetch, run=fake_npm(calls), dependencies=False
+            )
+        d2 = receipt["tools"]["d2"]["path"]
+        for path in (
+            ".concorde/framework/",
+            ".concorde/tools/pi-runtime/",
+            ".concorde/tools/pi-runtime.json",
+            ".concorde/tools/d2.json",
+            d2,
+        ):
+            self.assertIn(path, receipt["files"])
+            self.assertTrue((project / path.rstrip("/")).exists(), path)
+        # Only asked to leave a tool out, an install keeps it while a part needs it.
+        with which():
+            kept = install(
+                project, package, d2=False, pi_runtime=False, dependencies=False
+            )
+        self.assertNotIn("d2", kept["tools"])
+        self.assertIn(d2, kept["files"])
+        self.assertIn(".concorde/tools/pi-runtime/", kept["files"])
+        self.assertTrue((project / d2).is_file())
+        # Without the parts that need them, the tools go.
+        with which():
+            dropped = install(
+                project,
+                package,
+                part_names=["coordination"],
+                pi_runtime=False,
+                dependencies=False,
+            )
+        self.assertNotIn("spec", dropped["parts"])
+        self.assertNotIn("worker harness", dropped["parts"])
+        for path in (d2, ".concorde/tools/d2.json", ".concorde/tools/pi-runtime.json"):
+            self.assertNotIn(path, dropped["files"])
+            self.assertFalse((project / path).exists(), path)
+        self.assertFalse((project / ".concorde/tools/pi-runtime").exists())
+        self.assertIn(".concorde/framework/", dropped["files"])
+
     @verifies("scenario.distribution.install-without-pi-runtime")
     def test_an_install_without_the_pi_runtime_needs_no_npm(self):
         package = package_copy(self)
@@ -2332,6 +2537,41 @@ class InstallTests(unittest.TestCase):
             "environment", refusal("concorde_busy", "busy")["unhandled"]["reason"]
         )
 
+    @verifies("scenario.distribution.install-refusal-link")
+    def test_update_refuses_a_malformed_receipt_and_a_refused_start(self):
+        from concorde.distribution.cli import update_main
+
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        project = Path(directory.name)
+        (project / ".concorde").mkdir()
+
+        def refused(**patches):
+            output = io.StringIO()
+            with contextlib.redirect_stdout(output), contextlib.ExitStack() as stack:
+                for target, effect in patches.items():
+                    stack.enter_context(patch(target, side_effect=effect))
+                status = update_main(["--project-root", str(project)])
+            self.assertEqual(1, status)
+            error = json.loads(output.getvalue())["error"]
+            validate(error, ERROR_SCHEMA)
+            return error["code"], error["unhandled"]["reason"], error["detail"]
+
+        for receipt in ("[]", '{"source": 7}'):
+            with self.subTest(receipt=receipt):
+                (project / ".concorde/install.json").write_text(receipt)
+                code, reason, detail = refused()
+                self.assertEqual(("update_source_missing", "input"), (code, reason))
+                self.assertIn("install.json", detail)
+        (project / ".concorde/install.json").write_text(
+            json.dumps({"source": str(REPOSITORY_ROOT)})
+        )
+        code, reason, detail = refused(
+            **{"subprocess.run": PermissionError(13, "Permission denied")}
+        )
+        self.assertEqual(("update_start_failed", "environment"), (code, reason))
+        self.assertIn("Permission denied", detail)
+
     def test_the_refusal_table_lists_every_refusal_with_its_reason(self):
         text = (REPOSITORY_ROOT / "specs/concorde/distribution/module.md").read_text()
         section = text.split("\n### Refusals\n", 1)[1].split("\n### ", 1)[0]
@@ -2354,7 +2594,7 @@ class InstallTests(unittest.TestCase):
         ):
             raised.update(
                 re.findall(
-                    r'(?:InstallError|ToolError|DevelopError|refusal)\(\s*"([a-z0-9_]+)"',
+                    r'(?:InstallError|ToolError|DevelopError|refusal|refuse)\(\s*"([a-z0-9_]+)"',
                     (REPOSITORY_ROOT / source).read_text(),
                 )
             )

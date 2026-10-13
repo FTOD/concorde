@@ -19,6 +19,7 @@ their form for background Bash.
 from __future__ import annotations
 
 import json
+import os
 import time
 from pathlib import Path
 
@@ -157,6 +158,37 @@ def former_session(former: str | None) -> str:
     return former
 
 
+def _record_changes(primary: Path, task_id: str) -> Changes:
+    """The changes of the task's record in its current folder, watched without ever creating
+    that folder: a close may move it to the history at any moment.
+
+    The folder is opened first and watched through that open descriptor, so the watch follows
+    the folder's inode wherever the close moves it. A folder already gone when it is opened is
+    watched in its place in the history, and the caller's next read finds the task ended."""
+    folder = store.task_folder(primary, task_id)
+    try:
+        descriptor = os.open(folder, os.O_RDONLY | os.O_DIRECTORY)
+    except FileNotFoundError:
+        _, folder = store.load_any(primary, task_id)
+        descriptor = os.open(folder, os.O_RDONLY | os.O_DIRECTORY)
+    except OSError as error:
+        raise TaskError(
+            "wait_failed",
+            f"the wait for task {task_id} cannot open its folder {folder}: {error}",
+        ) from error
+    try:
+        # The descriptor's own path exists, so the watch creates nothing.
+        return Changes(Path(f"/proc/self/fd/{descriptor}"), {store.RECORD})
+    except WatchError as error:
+        raise TaskError(
+            "wait_failed",
+            f"the wait for task {task_id} cannot watch its record: {error}",
+        ) from error
+    finally:
+        # The kernel's watch holds the folder's inode; the descriptor is no longer needed.
+        os.close(descriptor)
+
+
 def wait_rebound(
     primary: Path, task_id: str, former: str, timeout: float | None = None
 ) -> dict:
@@ -164,20 +196,10 @@ def wait_rebound(
     former = former_session(former)
     deadline = _deadline(timeout)
     started = time.monotonic()
-    # Answered before watching too, so that the watch never makes the folder of a task that
-    # already moved to the history.
     found = rebound(primary, task_id, former)
     if found is not None:
         return {**found, "waited_seconds": 0.0}
-    folder = store.task_folder(primary, task_id)
-    try:
-        changes = Changes(folder, {store.RECORD})
-    except WatchError as error:
-        raise TaskError(
-            "wait_failed",
-            f"the wait for task {task_id} cannot watch its record: {error}",
-        ) from error
-    with changes:
+    with _record_changes(primary, task_id) as changes:
         while True:
             found = rebound(primary, task_id, former)
             if found is not None:

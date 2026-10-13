@@ -25,10 +25,10 @@ Every change to a task record SHALL be one
 [file transaction](../../glossary.json#concept.file-transaction) bound to the digest of the record
 bytes it replaces.
 
-A change made before the transaction's digest check is detected. The update is applied again to what
-is there. After three conflicting attempts, the update is refused with `record_conflict`. During the
-transaction, the task's lock excludes a change, not the digest. Every writer of the record holds
-that lock.
+The Task store detects a change that another writer made before the transaction's digest check.
+The Task store then applies the update again to what is there. After three conflicting attempts,
+the Task store refuses the update with `record_conflict`. During the transaction, the task's lock
+excludes a change, not the digest. Every writer of the record holds that lock.
 
 ### req.tasks.records-kept — Records outlive their task
 
@@ -47,8 +47,10 @@ folder keeps its own log, which the copy never replaces.
 ### req.tasks.log-commit-alone — Committing a log commits nothing else
 
 A close that commits a decision log SHALL leave every other change of the primary worktree, staged
-or not, as it was, and refuse with `decision_log_uncommitted`, committing nothing and leaving the
-task's folder current, when Git refuses that commit.
+or not, as it was.
+
+When Git refuses that commit, the close refuses with `decision_log_uncommitted`, committing nothing
+and leaving the task's folder current.
 
 The same close run again commits the log and finishes the close.
 
@@ -111,7 +113,8 @@ Outside the primary worktree, the following commands SHALL refuse to run:
 
 ### req.tasks.worktree-ignored — A worktree inside the primary is ignored there
 
-Tasks SHALL refuse to open a task unless Git ignores its worktree path in the primary worktree.
+Unless Git ignores a task's worktree path in the primary worktree, Tasks SHALL refuse to open the
+task.
 
 ### req.tasks.one-worktree — One branch and one worktree per task
 
@@ -227,8 +230,12 @@ Tasks SHALL move a closed task's folder to the history only under these conditio
 - Tasks holds the task's workspace lock and its workflow lock.
 - For a close without a merge, Tasks first stopped every task session of the task.
 - For a close without a merge, Tasks first stopped every run of the workspace still running or
-  waiting for its lock.
+  waiting for its lock whose run lock a process of this machine holds.
 - Tasks first removed the worktree with its binding.
+
+A run the close cannot reach, such as one waiting in a PID namespace the close cannot see, is not
+stopped. Such a run waits only in Execution's lobby. It is retired as below and never writes into
+the moved folder.
 
 Still holding both locks, the close then removes the workspace lock file and the workflow lock file.
 
@@ -398,8 +405,10 @@ nothing to merge. The merge does the following:
 
 `concorde task merge` and `concorde task close` SHALL hold the task's
 [workspace lock](../../glossary.json#concept.workspace-lock), taken before the merge lock and held
-to the end, waiting for it inside the command up to `--wait` seconds, and refuse with
-`workspace_busy`, naming the lock's holder and changing nothing, when a run still holds it then.
+to the end, waiting for it inside the command up to `--wait` seconds.
+
+When a run still holds the lock after that wait, each refuses with `workspace_busy`, naming the
+lock's holder and changing nothing.
 
 Neither holds the merge lock while it waits for the workspace lock.
 
@@ -538,8 +547,10 @@ result after the `--check` commands it was given, unless they include it.
 
 [Distribution](../../distribution/module.md) promises that nothing merges before an update is
 validated. Otherwise, the checks a merge is given replace the default, so they could leave that
-validation out. A merge that validates clears the mark as any passing validation does. Thus, the
-merge of a task that repairs what the update found still lifts the barrier.
+validation out. A given check includes it when it runs `spec-validation` with no target, at most
+with `--format json`, through a `concorde` command, a `concorde.py` script or `python -m concorde`.
+A merge that validates clears the mark as any passing validation does. Thus, the merge of a task
+that repairs what the update found still lifts the barrier.
 
 ### req.tasks.merge-default-check — A merge without checks runs the Spec validation where it can
 
@@ -633,8 +644,8 @@ While that process still holds the lock, a `session` or `escalate` of the mergin
 Tasks SHALL finish an interrupted merge only on the main agent's request, through these commands:
 
 - `concorde task merge <task-id> --resume`, which reruns the checks that merge recorded when the
-  primary branch's head is still the interrupted merge's commit, and otherwise refuses with
-  `not_resumable`. After those checks it closes the task as merged or undoes the merge exactly as an
+  primary branch's head is still the interrupted merge's commit, and refuses with `not_resumable`
+  when the head is the commit before the merge. After those checks it closes the task as merged or undoes the merge exactly as an
   uninterrupted merge does.
 - `concorde task merge <task-id> --abort`, which resets the primary branch to the commit before the
   merge when its head is the merge commit, and returns the task to delivered.

@@ -15,7 +15,9 @@ guidance:
   ends with an Operation run still running or stopped by the turn's end, the tool waits for it
   and resumes the same session with the notification an interactive session would have received;
 - resuming replays the stopped background command as an empty turn, whose result is not the
-  session's answer.
+  session's answer;
+- what the tool cannot observe fails the session visibly: an invalid workspace binding before the
+  first round, an unreadable progress file or result of a run with ``observation_failed``.
 
 Each round's ``stream-json`` output is kept under the session directory, with ``session.json``
 summarizing the rounds, the wakes and the end.
@@ -90,13 +92,27 @@ SETTINGS = json.dumps({"sandbox": {"enabled": False}})
 TURN_END_SECONDS = 30.0
 ROUNDS = 4
 WAIT_SECONDS = 3600.0
+# How long the driver waits before it reads a run's progress file or result again, once, when the
+# first read found it unreadable: a run's folder exists a moment before its first progress file.
+REREAD_SECONDS = 1.0
 
 
 def stamp(moment: float | None = None) -> str:
-    """The UTC time format of Concorde's progress files, which compares as text."""
+    """The UTC time of ``moment``, to the microsecond, as Execution writes it in progress files."""
     return datetime.fromtimestamp(
         time.time() if moment is None else moment, UTC
-    ).strftime("%Y-%m-%dT%H:%M:%SZ")
+    ).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+
+
+def instant(text: object) -> datetime | None:
+    """The time a progress file's or the session's timestamp names, whatever its precision; None
+    when it names none. Timestamps of different precision never compare as text: ``…:00Z`` sorts
+    after ``…:00.9Z``."""
+    try:
+        value = datetime.fromisoformat(str(text))
+    except ValueError:
+        return None
+    return value if value.tzinfo else value.replace(tzinfo=UTC)
 
 
 def command(
@@ -172,9 +188,10 @@ def read_log(path: Path) -> dict:
                     texts.append(block["text"])
         elif event.get("type") == "result":
             # A resume first replays a stopped background command as a turn of its own, with no
-            # model turn; the round's answer is the last result that has one, and a round with
-            # only such replays has none.
-            if event.get("num_turns"):
+            # model turn: its result's num_turns is 0. The round's answer is the last result with
+            # num_turns of 1 or more, and a round with only such replays has none.
+            turns = event.get("num_turns")
+            if isinstance(turns, int) and not isinstance(turns, bool) and turns >= 1:
                 result = event
     return {
         "session_id": session,
@@ -214,22 +231,41 @@ def _alive(project: Path, run_id: str) -> bool:
 
 def records_of(project: Path) -> Path:
     """The ``.concorde`` of ``project`` that holds its tasks, unbound runs and locks: the one its
-    workspace binding names, or its own when it is unbound."""
-    try:
-        binding = json.loads(
-            (project / ".concorde/workspace.json").read_text(encoding="utf-8")
-        )
-        return Path(binding["concorde"])
-    except (OSError, ValueError, KeyError, TypeError):
+    workspace binding names, or its own when it has no binding. ``binding_invalid`` when a
+    binding is there but names no ``.concorde``: the driver would otherwise watch the wrong
+    store and miss every run of the session."""
+    path = project / ".concorde/workspace.json"
+    if not path.exists():
         return project / ".concorde"
+    try:
+        records = json.loads(path.read_text(encoding="utf-8"))["concorde"]
+    except (OSError, ValueError, KeyError, TypeError) as error:
+        raise E2EError(
+            "binding_invalid",
+            f"the workspace binding {path} cannot be read as one naming its .concorde ({error})",
+            file=str(path),
+        ) from error
+    if not isinstance(records, str) or not records:
+        raise E2EError(
+            "binding_invalid",
+            f"the workspace binding {path} names no .concorde: its concorde is {records!r}",
+            file=str(path),
+        )
+    return Path(records)
 
 
 def run_folders(project: Path) -> list[Path]:
     """The folder of every run of the project's current tasks, started directly or by a
     workflow step, of its unbound runs, and of the runs in the lobby, where a bound run waits
-    for its workspace lock (Tracing's layout)."""
+    for its workspace lock (Tracing's layout).
+
+    The lobby is listed first: a run moves from the lobby into its workspace folder, so a run
+    that moves while the store is listed is found in its workspace folder afterwards. A run
+    listed in the lobby whose folder has moved since is looked up again (``unsettled_runs``)."""
     base = records_of(project)
-    found: list[Path] = []
+    found: list[Path] = sorted(
+        item for item in (base / "lobby").glob("r-*") if item.is_dir()
+    )
     for task in sorted((base / "tasks").glob("*")):
         workspace = task / "workspace"
         found += sorted(
@@ -241,7 +277,6 @@ def run_folders(project: Path) -> list[Path]:
             if item.is_dir()
         )
     found += sorted(item for item in (base / "unbound").glob("r-*") if item.is_dir())
-    found += sorted(item for item in (base / "lobby").glob("r-*") if item.is_dir())
     return found
 
 
@@ -270,22 +305,75 @@ def _result(directory: Path) -> dict | None:
         return None
 
 
+def _observed(directory: Path, name: str, reread: float) -> dict:
+    """The JSON object of ``name`` in a run's folder, read again once after ``reread`` seconds
+    when the first read fails; ``observation_failed`` naming the file when it still cannot be
+    read as one."""
+    path = directory / name
+    for attempt in (0, 1):
+        try:
+            value = json.loads(path.read_text(encoding="utf-8"))
+            if isinstance(value, dict):
+                return value
+            problem = f"it holds {type(value).__name__}, not a JSON object"
+        except (OSError, ValueError) as error:
+            problem = str(error)
+        if attempt == 0:
+            time.sleep(reread)
+    raise E2EError(
+        "observation_failed",
+        f"the driver cannot read {path} as a JSON object ({problem}), so it cannot tell how the "
+        "run ended",
+        file=str(path),
+    )
+
+
+def _moved(project: Path, directory: Path) -> Path:
+    """The folder of a run listed at ``directory``: the same, or, when the run has moved from the
+    lobby into its workspace folder since it was listed, its new folder."""
+    if directory.exists():
+        return directory
+    for folder in run_folders(project):
+        if folder.name == directory.name:
+            return folder
+    return directory
+
+
 def unsettled_runs(
     project: Path,
     since: str,
     round_end: float,
     known: set[str] = frozenset(),
+    reread: float = REREAD_SECONDS,
 ) -> list[dict]:
     """The runs started since ``since`` that the round left unsettled: still running, cancelled
     by the end of the round, or unfinished with their runner gone, such as a detached runner
-    killed with the call that started it. ``known`` runs were reported already."""
+    killed with the call that started it. ``known`` runs were reported already.
+
+    ``observation_failed`` when a run's progress file, or a finished run's result, still cannot
+    be read as a JSON object when read again after ``reread`` seconds, or names no start time:
+    the session would otherwise end idle with the run unobserved."""
+    began = instant(since)
     found = []
-    for directory in run_folders(project):
-        state = _state(directory)
-        if state is None:
+    seen: set[str] = set()
+    for listed in run_folders(project):
+        directory = _moved(project, listed)
+        state = _observed(directory, "status.json", reread)
+        if state.get("kind") not in ("operation", "command"):
             continue
         run_id = state.get("run_id") or directory.name
-        if run_id in known or str(state.get("started_at") or "") < since:
+        if run_id in seen:
+            continue
+        seen.add(run_id)
+        started = instant(state.get("started_at"))
+        if started is None:
+            raise E2EError(
+                "observation_failed",
+                f"the progress file {directory / 'status.json'} names no start time the driver "
+                f"can read: {state.get('started_at')!r}",
+                file=str(directory / "status.json"),
+            )
+        if run_id in known or started < began:
             continue
         if state.get("phase") != "finished":
             if _alive(project, run_id):
@@ -293,13 +381,14 @@ def unsettled_runs(
                 continue
             # A runner releases its run lock only after it finished the progress file: read it
             # again, since the run may have finished between the two reads.
-            state = _state(directory) or {}
+            state = _observed(_moved(project, directory), "status.json", reread)
             if state.get("phase") != "finished":
                 found.append({"run": run_id, "why": "runner_gone"})
                 continue
-        result = _result(directory)
-        code = ((result or {}).get("error") or {}).get("code")
-        written = (directory / "result.json").stat().st_mtime if result else 0.0
+        # A runner writes its result before it marks its progress file finished.
+        result = _observed(directory, "result.json", reread)
+        code = (result.get("error") or {}).get("code")
+        written = (directory / "result.json").stat().st_mtime
         if code == "cancelled" and abs(written - round_end) <= TURN_END_SECONDS:
             found.append({"run": run_id, "why": "stopped_with_turn"})
     return found
@@ -328,16 +417,24 @@ def wait_for(
             time.sleep(poll)
 
 
-def wake_message(project: Path, runs: list[dict]) -> str:
-    """The notification an interactive session would have received for each run."""
+def wake_message(
+    project: Path, runs: list[dict], reread: float = REREAD_SECONDS
+) -> str:
+    """The notification an interactive session would have received for each run;
+    ``observation_failed`` when a run that finished has a result the driver cannot read."""
     lines = [
         "Notification from the end-to-end tool, standing in for the ones an interactive "
         "session receives:"
     ]
     for item in runs:
         directory = run_folder(project, item["run"])
-        result = _result(directory) or {}
-        state = _state(directory) or {}
+        state = _observed(directory, "status.json", reread)
+        # A run whose runner went before it finished has no result to read.
+        result = (
+            _observed(directory, "result.json", reread)
+            if state.get("phase") == "finished"
+            else {}
+        )
         ended = (
             f"ended {result.get('status')}: {result.get('summary')}"
             if result
@@ -370,8 +467,14 @@ def start(
     poll: float = 2.0,
     procedure: str | None = MAIN_PROCEDURE,
     mcp_config: str | None = None,
+    reread: float = REREAD_SECONDS,
 ) -> dict:
-    """Run a headless session in ``project`` until it ends with nothing left to wake it for."""
+    """Run a headless session in ``project`` until it ends with nothing left to wake it for.
+
+    ``binding_invalid`` before the first round when the project's workspace binding names no
+    ``.concorde``. ``wait_exceeded`` and ``observation_failed`` go up after ``session.json`` is
+    written, naming the file concerned."""
+    records_of(project)
     directory.mkdir(parents=True, exist_ok=True)
     began = stamp()
     # Claude Code names its session in its first round's output.
@@ -443,21 +546,32 @@ def start(
         if session is None:
             end = "no_session"
             break
-        runs = unsettled_runs(project, began, round_end, known)
-        if not runs:
-            end = "idle"
-            break
         try:
+            runs = unsettled_runs(project, began, round_end, known, reread)
+            if not runs:
+                end = "idle"
+                break
             wait_for(project, runs, wait_limit, poll)
+            if number == rounds:
+                # No round is left to wake: the runs are kept as left behind, never as woken for.
+                entry["left_behind"] = [item["run"] for item in runs]
+                break
+            message = wake_message(project, runs, reread)
         except E2EError as error:
-            # The session is kept like any other before the failure goes up, naming the run
-            # that outlived the wait.
-            save(error.code, progress=error.evidence.get("progress"))
+            # The session is kept like any other before the failure goes up, naming the run's
+            # progress file that outlived the wait or the file the driver could not read.
+            save(
+                error.code,
+                **{
+                    key: error.evidence[key]
+                    for key in ("progress", "file")
+                    if key in error.evidence
+                },
+            )
             error.evidence["session"] = str(directory / "session.json")
             raise
         entry["woke_for"] = [item["run"] for item in runs]
         known.update(entry["woke_for"])
-        message = wake_message(project, runs)
     return save(end)
 
 

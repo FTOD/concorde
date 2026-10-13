@@ -641,6 +641,16 @@ run must be unbound too. These runs change no [Spec](../../glossary.json#concept
 since an unbound run launches only reading workers. The main agent uses them for a question or a
 review that does not justify a task, such as understanding a Module before a change is agreed.
 
+Where the method part is installed, the guidance also tells the main agent to run `project_review`
+unbound in the primary worktree, in background Bash, when the developer wants to know how the whole
+project stands. One run reviews every registered Module: its checks, a Spec panel and a code review
+per Module, and one architecture review of the whole project, each under its own
+[worker ids](../../glossary.json#concept.worker-id). It skips each part whose Specs and code are
+unchanged since a review last judged them, as its review record keeps. `--full` reviews everything
+again. The run commits that record itself, so nobody edits or commits it by hand. Every finding is
+an Issue where the issues part is installed, so the main agent chooses what to fix from the Issues
+that stand ([Project review](#uses-project-review)).
+
 ## Workflows
 
 For a task that follows a known procedure, the guidance tells the main agent to have its
@@ -919,7 +929,7 @@ replaces itself with `concorde task merge`.
   - The [merge lock](../../glossary.json#concept.merge-lock).
 
   The refusal uses `merge_busy` for the attempt lock or the merge lock and `workspace_busy` for the
-  workspace lock. It names who holds the busy lock:
+  workspace lock. It names the busy lock's file and who holds it:
 
   - The holder's command.
   - The holder's process.
@@ -935,7 +945,12 @@ replaces itself with `concorde task merge`.
   the merge removes the task's workspace lock before the merge has written its answer. The attempt
   lock still keeps another merge of the task out until that answer is complete. The call returns at once with the merge it
   started, not the merge's result. A channel event or the returned wait command delivers the result
-  later.
+  later. After a refusal for the workspace lock or the merge lock, the session registers a wait for
+  that lock with `register_wait` and calls `task_merge` again once woken. `register_wait` takes no
+  attempt lock. After a refusal for the attempt lock, a merge of the task still runs. The session
+  then waits for that merge's end with `concorde task wait <task> --merge` in background Bash. It
+  reads that merge's answer and calls `task_merge` again only when that merge did not close the
+  task.
 - **[Workflow steps](../../glossary.json#concept.workflow-step)**: where the workflow part is
   installed, it registers `workflow_step`. The [step agents](../../glossary.json#concept.step-agent)
   of a [workflow](../../glossary.json#concept.workflow) call it, one call per relay. This makes a
@@ -971,7 +986,7 @@ shape: sequence_diagram
 session: Claude Code session
 server: Project MCP server
 merge: "call process, then\nconcorde task merge"
-busy: "A lock is held by another process" {
+busy: "The workspace lock or the merge lock is held by another process" {
   session -> server: task_merge
   server -> merge: "run the call"
   merge -> server: "workspace_busy or merge_busy,\nnaming the holder"
@@ -979,7 +994,7 @@ busy: "A lock is held by another process" {
   session -> server: register_wait for that lock
   server -> session: "released: a wait_done event, or,\nwithout a channel, the returned\nconcorde task wait in background Bash"
 }
-granted: "Both locks are free" {
+granted: "The three locks are free" {
   session -> server: task_merge again
   server -> merge: "run the call"
   merge -> merge: "take the three locks,\nmake the attempt's folder"
@@ -1323,6 +1338,20 @@ issues part is installed, the guidance relies on it reporting every finding as a
 also relies on it naming the earlier Issues that stand and those it found resolved
 ([Code review](../../method/code-review/module.md#two-scopes)).
 
+<a id="uses-project-review"></a>
+
+**Project review** provides `project_review`, the unbound review of the whole project. The guidance
+relies on it covering every registered Module without `--modules`
+([req.project-review.covered-modules](../../method/project-review/requirements.md#req.project-review.covered-modules)).
+It relies on it launching each worker under the worker id of its seat
+([req.project-review.worker-ids](../../method/project-review/requirements.md#req.project-review.worker-ids)).
+It relies on it skipping each part whose input its review record shows unchanged unless `--full` is
+given
+([req.project-review.skip-unchanged](../../method/project-review/requirements.md#req.project-review.skip-unchanged)).
+It relies on it committing that record itself
+([req.project-review.record-commit](../../method/project-review/requirements.md#req.project-review.record-commit)).
+[Project review](../../method/project-review/module.md) explains the review record and the parts.
+
 <a id="uses-commands"></a>
 
 **Commands** provides the catalog of
@@ -1464,10 +1493,8 @@ The **guidance sources** of Coordination's sections live under `prompts/main-ses
 - `task-session.md` opens the first prompt `concorde task session` gives a task session.
 
 The coordination part's registration registers these sources under `guidance`. Distribution's build
-renders them into `generated/main-session/`. Their tests live under `tests/concorde/main_session/`.
-The tests check that the guidance composed of every part states every rule the
-[scenarios](scenarios.md) describe, whichever part's section says it. What the main agent then does
-is judgment no deterministic test observes.
+renders them into `generated/main-session/`. The guidance states instructions. What an agent then
+does with them is its own judgment, which the guidance cannot guarantee.
 
 <a id="realization.main-session.project-mcp"></a>
 
@@ -1486,12 +1513,7 @@ Each tool maps to Tasks' and Tracing's records. Each has its definition and the 
 the server's instructions. Distribution's
 [host](../../distribution/module.md#realization.distribution.project-mcp) calls them with each call
 in a fresh process of the current Concorde. `task_merge` takes the merge's locks and leaves the host
-the command it becomes. Their tests live under `tests/concorde/project_mcp/`. The tests talk to the
-server over a real stdio connection and watch:
-
-- Real locks.
-- Real merges.
-- Real channel events.
+the command it becomes.
 
 ## Who relies on it
 

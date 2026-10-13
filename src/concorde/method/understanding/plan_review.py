@@ -21,6 +21,7 @@ import difflib
 import hashlib
 import json
 import os
+import re
 from pathlib import Path
 
 from ...execution.context import Continue, RunContext, evidence
@@ -407,6 +408,25 @@ def review(ctx: RunContext):
 # --- step 6: the report ------------------------------------------------------------------------
 
 
+def heading_anchor(text: str) -> str:
+    """The anchor a Markdown renderer gives a heading: its text as a reader sees it, lower case,
+    without punctuation other than ``-`` and ``_``, each space a ``-``."""
+    text = re.sub(r"\[([^\]]*)\]\([^)]*\)", r"\1", text)
+    text = re.sub(r"[^\w\- ]", "", text.lower())
+    return text.replace(" ", "-")
+
+
+def document_anchors(repository: SpecRepository, path: str) -> set[str]:
+    """Every anchor of a Spec document: its readable anchors, such as ``<a id>`` anchors and
+    requirement and scenario identities, and the anchor of each heading."""
+    reading = repository.readings.get(path)
+    if reading is None:
+        return set()
+    return set(reading.anchors) | {
+        heading.anchor or heading_anchor(heading.text) for heading in reading.headings
+    }
+
+
 def unresolved_bases(
     worktree: Path, modules: list[str], findings: list[dict]
 ) -> list[tuple[str, str]]:
@@ -415,7 +435,8 @@ def unresolved_bases(
 
     A basis is a stable identity whose defining document lies in the Spec context of a bound
     Module, a concept whose glossary entry that context selects, wherever its explanation lies,
-    or a document path of that context, optionally followed by ``#anchor``.
+    or a document path of that context, optionally followed by ``#anchor``, an anchor that
+    document has.
     """
     repository = SpecRepository(worktree)
     documents: set[str] = set()
@@ -436,7 +457,10 @@ def unresolved_bases(
                 document is not None and document in documents
             )
         else:
-            known = basis.split("#", 1)[0] in documents
+            path, _, anchor = basis.partition("#")
+            known = path in documents and (
+                not anchor or anchor in document_anchors(repository, path)
+            )
         if not known:
             problems.append((finding["id"], basis))
     return problems
