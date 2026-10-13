@@ -205,9 +205,19 @@ The installer replaces them on every update.
 A survey proposes against the Module as it is. In a workspace where a scaffold already wrote to
 the surveyed Module, a survey never runs. Before any worker starts, it ends `failed` with
 `fresh_workspace_required`. Revising a survey after its scaffold ran requires a fresh workspace,
-a new task in Concorde. In that workspace, the survey runs again with the answers that revise it.
-Nothing the scaffold or a later run wrote in the first workspace is undone. The task level decides
-whether to keep or discard that workspace.
+a new task in Concorde. Nothing the scaffold or a later run wrote in the first workspace is undone.
+The task level decides whether to keep or discard that workspace.
+
+Answers settle only the decisions and questions of a run admitted in their own workspace, and
+Execution admits no run of another workspace. So the first workspace's survey cannot be answered
+in the fresh one. The revision is carried over as follows:
+
+1. In the fresh workspace, the survey runs anew, with `--goal` stating the revision, such as the
+   answers the first survey received.
+2. Its worker proposes against the Module as it is there and lists its own decisions and open
+   questions.
+3. When the new run's decision points still need answers, a survey given `--answers` and that run
+   as `--input` settles them, as before any scaffold.
 
 The host tells a scaffold's writes from the surveyed Module's entry metadata alone. It identifies
 these additions compared with the same metadata at the workspace's base commit:
@@ -216,7 +226,10 @@ these additions compared with the same metadata at the workspace's base commit:
 - An external inclusion it has.
 
 These are exactly the additions a scaffold makes to the Module it applies a proposal to
-([req.adoption.survey-after-scaffold](requirements.md#req.adoption.survey-after-scaffold)).
+([req.adoption.survey-after-scaffold](requirements.md#req.adoption.survey-after-scaffold)). Entry
+metadata absent at the base commit names nothing. So a child the workspace's own scaffold created is
+surveyed as usual there, while metadata that exists at the base commit but cannot be read stops the
+survey.
 
 **Scaffold.** The execution command `concorde scaffold` of
 [Scaffold](../scaffold/module.md) has no worker. It applies exactly one proposal admitted
@@ -318,8 +331,8 @@ The host therefore writes it relative instead of failing the run.
 
 When it prepares the stubs before its worker runs, the code_to_spec host writes Specs itself. It
 therefore checks the answers first. On every way out of the run, it removes every stub left
-unchanged, including after a failed grant or a stopped worker. A run that ends early leaves behind
-only what its worker changed.
+unchanged, including after a failed preparation, a failed grant or a stopped worker. A run that
+ends early leaves behind only what its worker changed.
 
 ## How it is built
 
@@ -348,7 +361,7 @@ The **Survey Operation** realization declares the `SURVEY` provider and its step
 
 | # | Step | Actor | Stops the run when |
 | --- | --- | --- | --- |
-| 1 | Check the answers; in a bound workspace, compare the surveyed Module's entry metadata with the workspace's base commit; write the inventory of the surveyed Module's bound files to the run's trace node | host, Spec core | invalid answers (`failed`, `invalid_answers`); not exactly one Module (`failed`, `invalid_request`); Specs cannot load, now or at the base commit (`failed`, `specs_unloadable`); a scaffold's writes (`failed`, `fresh_workspace_required`) |
+| 1 | Check the answers; in a bound workspace, compare the surveyed Module's entry metadata with the workspace's base commit; write the inventory of the surveyed Module's bound files to the run's trace node | host, Spec core | invalid answers (`failed`, `invalid_answers`); not exactly one Module (`failed`, `invalid_request`); Specs cannot load, or the entry metadata exists at the base commit but cannot be read (`failed`, `specs_unloadable`); a scaffold's writes (`failed`, `fresh_workspace_required`) |
 | 2 | Compute and freeze the `code-to-spec` grant with every writable level withheld | Operation, Spec core | the grant cannot be computed (`failed`, `grant_unavailable`) |
 | 3 | Generate settings, tools and the brief with the inventory file, readable beside the grant, its summary, answers and inputs | Workers | — |
 | 4 | Launch the worker and wait for its result | Workers, worker | launch error or timeout (`failed`); worker `blocked` or `failed` (passed on) |
@@ -368,62 +381,24 @@ The **Code to spec Operation** realization declares the `CODE_TO_SPEC` provider:
 | 4 | Generate settings, tools and the brief with the registered Modules, the structural errors already in the described Modules' documents, answers and inputs | Workers | — |
 | 5 | Launch the worker and wait for its result; after each round validate and, at most twice, resume it with the errors the run is judged by | Workers, worker, host | launch error or timeout (`failed`); worker `blocked` or `failed` (passed on, after step 7) |
 | 6 | Audit and write the [run record](../../glossary.json#concept.run-record) | Workers | a write outside the grant (`failed`, after step 7) |
-| 7 | Remove the stubs left unchanged or deleted through the worker's proposed deletions from their Modules' documents, whatever steps 3 to 6 found; reconcile the registry mirror | host, Spec core | — |
+| 7 | Remove the stubs left unchanged or deleted through the worker's proposed deletions from their Modules' documents, whatever steps 2 to 6 found, a failed write or reconciliation in step 2 included; reconcile the registry mirror | host, Spec core | — |
 | 8 | Validate again and compare with the baseline | host, Spec core | an error the run counts as its own, left after the last round (`blocked`, `new_structural_errors`) |
 | 9 | Write the paths inside the worktree relative to it and record the decisions; check the description against the answers and the bound Modules | host | an inconsistency, a decision without a valid choice or an answer not followed (`failed`, `inconsistent_description`) |
 | 10 | Link the existing tests each scenario was taken from | host | — (a link it cannot make is reported in `unlinked_tests`) |
 | 11 | Return the run result | host | — |
 
-A scenario the worker took from existing tests names them in its promise's `tests`, as
-`path::name` or `path::Class::name`. The worker never edits a test. In step 10, the host adds a
-`verifies` decorator above each named test that exists in a Module's implementation file. Once per
-file, it adds a two-line no-op definition of `verifies` after the file's docstring and imports.
-This keeps the project's tests free of any import of Concorde. They run the same in the project's
-own environment. The coverage check sees which test verifies which scenario.
+A scenario the worker took from existing tests names them in its promise's `tests`. The worker
+never edits a test. In step 10, the host links each named Python test that exists in a Module's
+implementation file:
 
-The host finds a test where the coverage check finds it:
+- It adds a `verifies` decorator above the test.
+- Once per file, it adds a no-op definition of `verifies`, so the project's tests import nothing of
+  Concorde and run the same in the project's own environment.
 
-- In the module body.
-- In a class body.
-- Under a control-flow statement such as a top-level `if` or `try`.
-
-It never finds a test inside a function. When a name is defined more than once in those places, the
-host reports it, since it cannot tell which definition is the test. The host adds nothing else. It adds
-nothing twice. A test that already declares the scenario is linked as it is, but only once its name
-is found exactly once. It leaves every byte already in the file as it was, including its line endings and
-blank lines. What it inserts takes the file's own line ending and indentation. The blank lines it
-adds around the helper only make up the two that set it apart.
-
-When the decorated file would not parse or cannot be written, the host leaves the file untouched.
-It replaces a file only through a new file beside it, so that a failed write leaves the original
-whole. It reports the links of such a file. It links the next file all the same.
-
-When a file already binds `verifies` at module level, the host keeps that binding. This applies to
-bindings by any of these forms:
-
-- A statement.
-- An `except` clause.
-- An assignment expression.
-- A match pattern.
-
-When that existing binding stands at the file's top level before the test and is one of these, the
-host adds only decorators:
-
-- Its own no-op helper, however formatted.
-- An import of Concorde's decorator from `concorde.spec.verification`.
-
-[req.adoption.tests-linked-by-host](requirements.md#req.adoption.tests-linked-by-host) gives the
-precise exceptions. When the existing binding is neither, or follows the test, or stands only in a
-branch, the host leaves the file untouched. It reports each of the file's links in
-`unlinked_tests`. A decorator would call the project's own `verifies`, whatever it does, or find no
-`verifies` at all when the module is imported. A `del verifies` at module level counts as such a
-binding, since a decorator after it would find no `verifies`. So does a `global verifies` anywhere
-in the file, since the function declaring it may rebind the module's name.
-
-A decorator of a method is evaluated in its class body, where a binding of `verifies` in that body
-comes before the module's. So when the body of the class that defines a test binds `verifies`, the
-host leaves that test without a decorator and reports its link with the class and the binding's
-line. It links the file's other tests all the same. Only Python tests are linked.
+The host keeps every byte already in the file. It leaves a file untouched whenever a decorator
+could misbehave there: a test defined more than once, a file it cannot parse or write, or a binding
+of `verifies` of the file's own. It reports each link it did not make in `unlinked_tests`, with the
+reason. [How code_to_spec links tests](test-links.md) gives the exact edits and every case.
 
 Unlike `specify`, every structural error in a described Module's own documents counts as the
 run's, even one the baseline already had. The worker rewrites those documents. A retry must not

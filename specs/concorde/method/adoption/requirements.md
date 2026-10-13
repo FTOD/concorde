@@ -107,17 +107,20 @@ file beside it, so the original stays whole. It goes on to link the next file.
 
 ### req.adoption.no-bash — Adoption workers cannot run code
 
-The survey and code_to_spec workers SHALL NOT be given a tool that runs commands.
+The survey and code_to_spec hosts SHALL give their workers no tool that runs commands.
 
 Reading the code establishes what it does. Running it would make the description depend on the
 environment of one run. It would also let a worker change files through a command.
 
 ### req.adoption.modules-by-host — Only the scaffold adds Modules
 
-A survey or code_to_spec worker SHALL NOT be able to add or remove a
-[Module](../../glossary.json#concept.module), which only the `scaffold`
+The survey and code_to_spec hosts SHALL keep the project registry out of their workers' grants, so
+that no such worker can add or remove a [Module](../../glossary.json#concept.module).
+
+The code_to_spec host regenerates only the mirrored fields of registered Modules
+([req.adoption.mirror-reconciled](#req.adoption.mirror-reconciled)). Only the `scaffold`
 [execution command](../../glossary.json#concept.execution-command) of
-[Scaffold](../scaffold/module.md) does, from an admitted survey.
+[Scaffold](../scaffold/module.md) adds Modules, from an admitted survey.
 
 ### req.adoption.relative-paths — A path inside the worktree is made project-relative
 
@@ -183,8 +186,8 @@ options.
 
 ### req.adoption.unchosen-decision-fails — A decision without a valid choice fails the run
 
-The survey and code_to_spec hosts SHALL end the run `failed`, listing each such decision, when
-either condition holds:
+When either of these conditions holds, the survey and code_to_spec hosts SHALL end the run
+`failed`, listing each such decision:
 
 - The worker names for a decision an identity none of its options has.
 - The worker names none for a decision no answer settles.
@@ -220,11 +223,12 @@ contracts.
 
 ### req.adoption.proposal-checked — A proposal fits the worktree
 
-The survey host SHALL end the run `failed` with every inconsistency listed when the proposal
-names any of these:
+When the proposal names any of these, the survey host SHALL end the run `failed` with every
+inconsistency listed:
 
 - A child identity or title that is already registered or repeated.
 - Two children whose documents would share a folder.
+- A child whose folder already exists, even empty.
 - An entry that the surveyed Module's realizations do not cover.
 - An entry that lies in a directory their exclusion rule skips.
 - An entry that is reached through a symbolic link.
@@ -241,6 +245,13 @@ names any of these:
 - An external a file of which a registered Module other than the surveyed Module binds.
 - A decision or open question identity used twice.
 - An open question's evidence that is an absolute path.
+
+A child's folder is the surveyed Module's entry folder plus the last segment of the child's
+identity, as [Scaffold](../scaffold/module.md#narrowing-the-parent) writes it. The scaffold creates
+files only in folders it creates
+([req.scaffold.no-overwrite](../scaffold/requirements.md#req.scaffold.no-overwrite)). So an
+existing folder, registered or not and whatever it holds, makes the proposal one no scaffold can
+apply. Another identity whose last segment differs avoids it.
 
 ### req.adoption.inventory — The survey worker gets an inventory
 
@@ -261,8 +272,8 @@ installer replaces them on every update.
 
 ### req.adoption.survey-after-scaffold — A scaffold's writes need a fresh workspace
 
-Before launching a worker, the survey host SHALL end a bound survey `failed` with
-`fresh_workspace_required` when both conditions hold:
+When both of these conditions hold for a bound survey, the survey host SHALL end it `failed` with
+`fresh_workspace_required` before launching a worker:
 
 - The surveyed Module's entry metadata names a contained Module or an external inclusion.
 - The same metadata at the workspace's base commit does not name that contained Module or
@@ -270,10 +281,22 @@ Before launching a worker, the survey host SHALL end a bound survey `failed` wit
 
 These are the additions a scaffold makes to the Module it applies a proposal to. The workspace
 therefore already holds a scaffold's writes. The Module is narrowed and its children are
-registered. A survey replayed there would propose against them, while nothing undoes them.
-After its scaffold runs, revising a survey requires a fresh workspace. In that workspace, the
-survey runs again with the answers that revise it. The survey undoes nothing in the first
-workspace. An unbound survey has no workspace a scaffold could have written to.
+registered. A survey replayed there would propose against them, while nothing undoes them. The
+survey undoes nothing in the first workspace. An unbound survey has no workspace a scaffold could
+have written to.
+
+Entry metadata absent at the base commit names nothing. A Module created since then, such as a
+child the workspace's scaffold created, is therefore surveyed as usual. Only metadata that exists
+at the base commit but cannot be read ends the survey `failed` with `specs_unloadable`.
+
+After its scaffold runs, revising a survey requires a fresh workspace. Answers name only the
+decisions and questions of a run admitted in their own workspace
+([req.adoption.answers-first](#req.adoption.answers-first)), so the first workspace's survey
+cannot be answered there. In the fresh workspace, the survey runs anew with `--goal` stating the
+revision. The answers then settle that run's own decision points, in a survey given `--answers`
+and that run as `--input`, as
+[scenario.adoption.survey-revised-elsewhere](scenarios.md#scenario.adoption.survey-revised-elsewhere)
+shows.
 
 ### req.adoption.one-module-surveyed — One Module per survey
 
@@ -293,8 +316,8 @@ stub the worker left unchanged or had deleted, with its place among the Module's
 
 ### req.adoption.answers-first — Answers are checked before anything happens
 
-The survey and code_to_spec hosts SHALL end a run `failed` with `invalid_answers` before writing
-a file or launching a worker when either condition holds:
+When any of these conditions holds, the survey and code_to_spec hosts SHALL end a run `failed`
+with `invalid_answers` before writing a file or launching a worker:
 
 - The run's answers file is unreadable.
 - The run's answers file breaks its contract.

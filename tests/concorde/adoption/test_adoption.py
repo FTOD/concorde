@@ -443,6 +443,66 @@ class AdoptionTests(AdoptionCase):
         status, envelope = self.survey(task=False)
         self.assertEqual(0, status, envelope)
 
+    @verifies("scenario.adoption.survey-revised-elsewhere")
+    def test_a_survey_revised_after_its_scaffold_runs_anew_in_a_fresh_workspace(self):
+        self.scaffolded()
+        self.project.open_task("adopt-2")
+        answer = {
+            "id": "d.db-helper",
+            "question": DB_HELPER["question"],
+            "answer": "a Module of its own",
+            "answered_by": "main-agent",
+        }
+        answers = self.project.answers(answer)
+
+        def survey(output, *extra):
+            return self.project.run(
+                "survey",
+                "--task",
+                "adopt-2",
+                "--modules",
+                "module.shop",
+                "--goal",
+                self.project.plan([{"result": {"output": output}}]),
+                *extra,
+            )
+
+        # The first workspace's survey cannot be answered here: no run of adopt-2 asked.
+        status, envelope = survey(PROPOSAL, "--answers", answers)
+        self.assertEqual((1, "failed"), (status, envelope["status"]))
+        self.assertEqual("invalid_answers", envelope["error"]["code"])
+        self.assertEqual([], envelope["worker_runs"])
+        # The fresh workspace holds no scaffold's writes: the survey runs anew there.
+        status, anew = survey(PROPOSAL)
+        self.assertEqual(0, status, anew)
+        self.assertIn("fresh task", " ".join(self.fresh_options()))
+        # Its own decision points are answered as before any scaffold.
+        followed = json.loads(json.dumps(PROPOSAL))
+        followed["children"].append(
+            {
+                "id": "module.db",
+                "title": "Database",
+                "purpose": "It connects.",
+                "entries": ["src/db.py"],
+                "uses": [],
+            }
+        )
+        followed["decisions"] = [{**DB_HELPER, "chosen": None}]
+        status, envelope = survey(
+            followed, "--answers", answers, "--input", anew["run_id"]
+        )
+        self.assertEqual(0, status, envelope)
+        self.assertEqual(
+            ["a Module of its own"],
+            [item["chosen"] for item in envelope["output"]["decisions"]],
+        )
+
+    def fresh_options(self) -> list[str]:
+        """The options of fresh_workspace_required in the first workspace."""
+        _, envelope = self.survey()
+        self.assertEqual("fresh_workspace_required", envelope["error"]["code"])
+        return envelope["error"]["options"]
+
     def test_an_answered_survey_question_must_be_settled(self):
         self.open()
         asking = json.loads(json.dumps(PROPOSAL))
@@ -465,6 +525,16 @@ class AdoptionTests(AdoptionCase):
             PROPOSAL, "--answers", answers, "--input", first["run_id"]
         )
         self.assertEqual(0, status, settled)
+
+    @verifies("scenario.adoption.survey-inconsistent")
+    def test_a_child_whose_folder_exists_is_refused_even_when_empty(self):
+        worktree = self.open()
+        (worktree / "specs/project/checkout").mkdir()
+        _, envelope = self.survey()
+        self.assertEqual("inconsistent_proposal", envelope["error"]["code"])
+        self.assertIn(
+            "folder specs/project/checkout/ already exists", envelope["error"]["detail"]
+        )
 
     def test_children_whose_documents_share_a_folder_are_refused(self):
         self.open()
@@ -808,6 +878,35 @@ class AdoptionTests(AdoptionCase):
         self.assertEqual(
             ["module.md", "module.md.json"], sorted(p.name for p in folder.iterdir())
         )
+
+    @verifies("scenario.adoption.describe-stubs-cleaned")
+    def test_stubs_are_removed_when_the_preparation_fails_after_writing_them(self):
+        from unittest.mock import patch
+
+        from concorde.spec import registry
+        from concorde.spec.repository_base import SpecError
+
+        self.scaffolded()
+        reconcile = registry.registry_command
+        calls = []
+
+        def failing_once(*arguments, **keywords):
+            # The preparation's reconciliation fails after the stubs were written.
+            calls.append(arguments)
+            if len(calls) == 1:
+                raise SpecError("the registry cannot be written", "system_error")
+            return reconcile(*arguments, **keywords)
+
+        with patch.object(registry, "registry_command", failing_once):
+            _, envelope = self.describe([{}])
+        self.assertEqual("failed", envelope["status"])
+        self.assertEqual([], envelope["worker_runs"])
+        folder = self.worktree / "specs/project/checkout"
+        self.assertEqual(
+            ["module.md", "module.md.json"], sorted(p.name for p in folder.iterdir())
+        )
+        owned = json.loads((folder / "module.md.json").read_text())["module"]["owns"]
+        self.assertEqual(["specs/project/checkout/module.md"], owned)
 
     @verifies("scenario.adoption.invalid-answers")
     def test_unusable_answers_stop_before_anything_runs(self):
