@@ -21,9 +21,10 @@ The formats are the [contracts](contracts.md).
 - AND a worktree whose binding names the workspace `Not A Name`
 - AND a worktree whose binding names a relative workspace folder
 - AND a worktree whose binding names a workspace folder that does not exist
+- AND a worktree whose binding names, as its root, a symbolic link to that worktree
 - WHEN the binding reader reads each
 - THEN it refuses the first with `binding_unreadable`
-- AND it refuses the three others with `binding_invalid`
+- AND it refuses the four others with `binding_invalid`, never with `binding_misplaced`
 - AND each refusal names the file
 - AND the refusal of the invalid name names the field `/workspace`
 - AND it returns no part of any of them
@@ -158,6 +159,17 @@ The formats are the [contracts](contracts.md).
 - THEN it is refused with `permission_denied`
 - AND neither file was written
 
+### scenario.kernel.transaction-exact-allowance — An allowed path covers only itself
+
+- GIVEN the files `notes/a.txt` and `notes/b.txt`
+- AND a transaction that changes `notes/b.txt`
+- AND the transaction allows `notes/a.txt`, `notes` and `notes/*`
+- WHEN the transaction is applied
+- THEN it is refused with `permission_denied`
+- AND the refusal names `notes/b.txt`
+- AND no file was written
+- AND a transaction that changes `notes/a.txt` under the same allowed paths writes that file
+
 ### scenario.kernel.transaction-malformed — A malformed list of changes writes nothing
 
 - GIVEN an empty list of changes
@@ -177,6 +189,15 @@ The formats are the [contracts](contracts.md).
 - THEN the existing file holds its original bytes again
 - AND the new file does not exist
 - AND the caller receives the final check's failure exactly as the check raised it
+
+### scenario.kernel.transaction-killed-restoring — A process killed during restoration keeps what it restored
+
+- GIVEN a transaction that changes `a.txt` and then `b.txt`
+- AND the transaction's final check fails
+- AND the transaction's process is killed after it restored `b.txt` and before it restored `a.txt`
+- WHEN the files are read after the process ended
+- THEN `b.txt` holds its original bytes
+- AND `a.txt` holds the transaction's new content
 
 ### scenario.kernel.transaction-unrestored — A refused restoration is named
 
@@ -224,10 +245,17 @@ The formats are the [contracts](contracts.md).
 ### scenario.kernel.marker-read-back — A written marker is read back whole and removed
 
 - GIVEN a primary worktree without an [unfinished-merge marker](../glossary.json#concept.unfinished-merge-marker)
-- WHEN a process reads the marker, writes a marker that satisfies its contract with `after` null and writes it again with the merge commit as `after`
+- WHEN a process reads the marker
+- AND the process writes a marker that satisfies its contract, with `after` null
+- AND the process writes the marker again, with the merge commit as `after`
 - THEN the first read gives none
 - AND reading the marker now gives the second marker exactly as written
-- AND the account of the merge names the command, the commit merged in, the branch, the commit before the merge, where the head is now and each command that finishes the merge
+- AND the account of the merge names the command
+- AND the account names the commit merged in
+- AND the account names the branch
+- AND the account names the commit before the merge
+- AND the account names where the head is now
+- AND the account names each command that finishes the merge
 - AND removing the marker tells that there was one
 - AND reading the marker afterwards gives none
 - AND removing it again tells that there was none

@@ -23,15 +23,23 @@ whoever checks it must load its owner, as [Typed values](contracts.md#typed-valu
 
 ### req.kernel.binding-whole — A broken binding is refused whole
 
-The Kernel's binding reader SHALL refuse a [workspace binding](../glossary.json#concept.workspace-binding) with `binding_unreadable` or `binding_invalid`, never returning part of it, when any of these conditions holds:
+When any of these conditions holds, the Kernel's binding reader SHALL refuse a [workspace binding](../glossary.json#concept.workspace-binding) with `binding_unreadable` or `binding_invalid`, never returning part of it:
 
 - The binding cannot be read.
-- The binding breaks the [binding contract](contracts.md#contract.kernel.workspace-binding).
+- The binding breaks the [binding contract](contracts.md#contract.kernel.workspace-binding). A
+  `root` that is not an absolute real path breaks it.
 - The binding names a workspace folder that does not exist.
+
+A `root` that is an absolute real path, but not the real path of the worktree the binding lies in,
+breaks no rule of this list. [req.kernel.binding-own-root](#req.kernel.binding-own-root) refuses it.
 
 ### req.kernel.binding-own-root — A copied binding is refused
 
-When a binding's `root` is not the real path of the worktree it lies in, the Kernel's binding reader SHALL refuse it with `binding_misplaced`.
+When a binding's `root` is an absolute real path other than the real path of the worktree the binding lies in, the Kernel's binding reader SHALL refuse it with `binding_misplaced`.
+
+A `root` that is not an absolute real path is no misplaced binding. Examples are a symbolic link
+to the worktree and a path ending in `/.`. The reader refuses such a root with `binding_invalid`, as
+[req.kernel.binding-whole](#req.kernel.binding-whole) says.
 
 ## Delivery commits
 
@@ -53,7 +61,7 @@ A merge commit given the subject is thereby never taken for a delivery, whatever
 
 ### req.kernel.registration-stable — A registration never changes
 
-Registering a type identity already registered with another version or schema SHALL be refused with `duplicate_type`, the existing registration staying in force.
+The Kernel's library SHALL refuse with `duplicate_type` to register a type identity already registered with another version or schema, keeping the existing registration in force.
 
 Registering it again with the same version and an equal schema changes nothing, so that a part's code
 may be loaded twice.
@@ -87,8 +95,9 @@ when the failure is reported, every file holds its original bytes again. An inte
 process receives, such as `KeyboardInterrupt`, is such a failure. The guarantee covers only what
 the transaction's own process observes. As [File transactions](contracts.md#file-transactions) says,
 the guarantee assumes that its caller excludes every other writer of the target files.
-A killed process restores nothing. A killed process may leave its `.concorde-write-` temporary
-files beside the target files. During the transaction, another writer's change may be overwritten.
+A killed process restores nothing more after the kill. Each restoration it completed before the
+kill stays done, and each other file it wrote keeps its new content. A killed process may leave
+its `.concorde-write-` temporary files beside the target files. During the transaction, another writer's change may be overwritten.
 
 ### req.kernel.transaction-unrestored-named — A refused restoration is named
 
@@ -102,7 +111,7 @@ When the operating system refuses a file transaction's restoration, the transact
 
 ### req.kernel.busy-lock-named — A busy lock is refused naming its holder
 
-A taker of the [workspace lock](../glossary.json#concept.workspace-lock) or the [merge lock](../glossary.json#concept.merge-lock) that gives up waiting SHALL be refused with `workspace_busy` or `merge_busy`, naming the holder its holder line names.
+When a taker of the [workspace lock](../glossary.json#concept.workspace-lock) or the [merge lock](../glossary.json#concept.merge-lock) gives up waiting, the Kernel's lock library SHALL refuse it with `workspace_busy` or `merge_busy`, naming the holder its holder line names.
 
 A taker that waited for a workspace lock whose holder removed its file meanwhile, and that asked not
 to take a new file, is refused with `workspace_retired` instead. It is refused so that it never
@@ -126,7 +135,7 @@ made. Thus, a reader that holds the merge lock finds the marker as its writer le
 
 ### req.kernel.marker-refuses-commits — A commit under the merge lock refuses while the marker is present
 
-A part other than the marker's writer that commits on the primary branch while it holds the merge lock SHALL refuse, committing nothing, while the [unfinished-merge marker](../glossary.json#concept.unfinished-merge-marker) it reads first is present or cannot be read.
+While the [unfinished-merge marker](../glossary.json#concept.unfinished-merge-marker) it reads first is present or cannot be read, a part other than the marker's writer that commits on the primary branch while it holds the merge lock SHALL refuse, committing nothing.
 
 The refusal carries the marker's account, or names the file that cannot be read. Thus, no commit
 lands between a merge commit and the checks that decide whether it stays.

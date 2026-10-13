@@ -1,10 +1,13 @@
 """Reading traces: find a node, walk its subtree, roll its usage up, tell a lost run.
 
 Nothing here writes. Nodes are found and listed only among the registered trace roots
-(``roots``), or the roots a caller passes. A node's children are the trace nodes in the folders
-below its own, the nearest ones on each path; a task's ``workspace/`` folder, which Execution fills and which has no
-record of its own, is shown as a ``workspace`` node. A node that says it runs is ``lost`` when it is
-a run whose run lock nobody holds, or lies below such a run, however it was addressed.
+(``roots``), or the roots a caller passes, a folder address included. A node's children are the
+trace nodes in the folders below its own, the nearest ones on each path, whatever the folders are
+named; a task's ``workspace/`` folder, which Execution fills and which has no record of its own,
+is shown as a ``workspace`` node. A node that says it runs is ``lost`` when it is a run whose run
+lock nobody holds, or lies below such a run, however it was addressed. A record below the node
+asked for, or a top node listed, that cannot be read, breaks the node contract or has another
+``schema_version`` is shown as an ``unreadable`` node with its reason, and the reading goes on.
 """
 
 from __future__ import annotations
@@ -16,7 +19,9 @@ from pathlib import Path
 from typing import Iterable
 
 from . import layout, locks
-from .node import USAGE_FIELDS, parse_time, read, seconds_between
+from ..refusal import KernelError
+from ..schema import validate
+from .node import NODE_SCHEMA, USAGE_FIELDS, parse_time, read, seconds_between
 from .roots import LISTINGS, TraceRoot, registered
 
 TOTALS = (
@@ -27,8 +32,8 @@ TOTALS = (
     "cost_usd",
     "turns",
 )
-# Folders below a node that never hold a node of their own.
-NOT_NODES = {"answers", "reports", "runtime", "__pycache__"}
+# The only stored schema_version of a trace node this reader reads; there is no migration.
+SCHEMA_VERSION = 1
 
 
 class ReadError(Exception):
@@ -58,8 +63,6 @@ def _children_folders(folder: Path) -> list[Path]:
     except OSError:
         return found
     for entry in entries:
-        if entry.name in NOT_NODES or entry.name.startswith("."):
-            continue
         if (entry / layout.TRACE).is_file() or _is_workspace(entry):
             found.append(entry)
         else:
@@ -105,6 +108,53 @@ def _workspace_record(folder: Path, children: list[dict]) -> dict:
     }
 
 
+def _record(folder: Path) -> tuple[dict | None, str | None]:
+    """The record of the node in ``folder`` and None, or None and why it is unreadable: it cannot
+    be read, is no JSON object, has another ``schema_version`` or breaks the node contract. A
+    folder without ``trace.json`` gives None and None."""
+    path = Path(folder) / layout.TRACE
+    try:
+        text = path.read_text(encoding="utf-8")
+    except FileNotFoundError:
+        return None, None
+    except (OSError, ValueError) as error:
+        return None, f"{path} cannot be read: {error}"
+    try:
+        value = json.loads(text)
+    except ValueError as error:
+        return None, f"{path} is no JSON: {error}"
+    if not isinstance(value, dict):
+        return None, f"{path} holds no JSON object"
+    if value.get("schema_version") != SCHEMA_VERSION:
+        return None, (
+            f"{path} has schema_version {value.get('schema_version')!r}; this reader reads only "
+            f"{SCHEMA_VERSION}"
+        )
+    try:
+        validate(value, NODE_SCHEMA)
+    except KernelError as error:
+        return None, (
+            f"{path} breaks the node contract at {error.field or 'the top'}: {error}"
+        )
+    return value, None
+
+
+def _unreadable_record(folder: Path) -> dict:
+    """The record an unreadable node is shown with: named after its folder, without a kind."""
+    return {
+        "id": Path(folder).name,
+        "kind": None,
+        "started_at": None,
+        "ended_at": None,
+        "status": "unreadable",
+        "outcome": None,
+        "usage": {name: None for name in USAGE_FIELDS},
+        "error": None,
+        "metadata": {},
+        "references": [],
+    }
+
+
 def _now() -> datetime:
     return datetime.now(UTC)
 
@@ -137,27 +187,39 @@ def view(
     *,
     depth: int | None = None,
     lost: bool | None = None,
+    requested: bool = True,
 ) -> dict:
     """The view of the node in ``folder`` and its subtree (contract.tracing.view).
 
     ``concorde`` is the ``.concorde`` whose ``locks/`` holds the run locks of the runs below.
     ``lost`` says an ancestor run was found lost, which makes every running node below lost too;
     None looks for such a run above ``folder`` first, as for a node addressed directly.
+    ``requested`` says ``folder`` is the node asked for, which is refused with
+    ``node_unreadable`` when its record is unreadable; any other is shown ``unreadable``.
     """
     folder = Path(folder)
     if lost is None:
         lost = _below_lost_run(folder, concorde)
-    record = read(folder)
+    record, reason = _record(folder)
     # A workspace folder has no record of its own: below a task's node, or any folder a binding
     # names that holds runs or a workflow, whoever prepared the workspace.
-    is_workspace = record is None and (
-        _is_workspace(folder)
-        or (folder / "runs").is_dir()
-        or (folder / "workflow").is_dir()
+    is_workspace = (
+        record is None
+        and reason is None
+        and (
+            _is_workspace(folder)
+            or (folder / "runs").is_dir()
+            or (folder / "workflow").is_dir()
+        )
     )
     if record is None and not is_workspace:
-        raise ReadError("node_unreadable", f"{folder} holds no readable {layout.TRACE}")
-    if record is not None:
+        reason = reason or f"{folder} holds no {layout.TRACE}"
+        if requested:
+            raise ReadError("node_unreadable", reason)
+        record = _unreadable_record(folder)
+        status = "unreadable"
+        lost_below = lost
+    elif record is not None:
         status = record.get("status")
         if status == "running" and (
             lost
@@ -169,7 +231,11 @@ def view(
         lost_below = lost
     children = [
         view(
-            child, concorde, depth=None if depth is None else depth - 1, lost=lost_below
+            child,
+            concorde,
+            depth=None if depth is None else depth - 1,
+            lost=lost_below,
+            requested=False,
         )
         for child in _children_folders(folder)
     ]
@@ -208,6 +274,7 @@ def view(
         "metadata": record.get("metadata") or {},
         "references": record.get("references") or [],
         "error": record.get("error"),
+        "reason": reason if status == "unreadable" else None,
         "children": [] if depth is not None and depth <= 0 else children,
     }
 
@@ -327,9 +394,7 @@ def find_below(folder: Path, identity: str) -> Path | None:
     """The folder of the node ``identity`` at any depth below ``folder``: a folder named after
     it, or a step's ``run/`` folder whose node has that identity."""
     for current, names, _ in os.walk(folder):
-        names[:] = sorted(
-            name for name in names if name not in NOT_NODES and not name.startswith(".")
-        )
+        names[:] = sorted(names)
         for name in names:
             candidate = Path(current) / name
             if not _node_folder(candidate):
@@ -357,18 +422,22 @@ def locate(
     """
     roots = _roots(roots)
     candidate = Path(address)
-    if candidate.is_absolute() and candidate.is_dir():
-        owner = next(
-            (root for root in searched if _inside(candidate, root)),
-            searched[0] if searched else candidate,
-        )
-        return candidate, owner
-    if address and address not in (".", ".."):
+    if candidate.is_absolute():
+        if candidate.is_dir():
+            for concorde in searched:
+                if _in_roots(candidate, roots, concorde):
+                    return candidate, concorde
+            for workspace in extra or []:
+                if _inside(candidate, workspace):
+                    return candidate, _owner(candidate, searched)
+    elif address and address not in (".", ".."):
         if "/" in address:
             for concorde in searched:
                 joined = concorde / address
-                if joined.is_dir() and (
-                    (joined / layout.TRACE).is_file() or _is_workspace(joined)
+                if (
+                    joined.is_dir()
+                    and _in_roots(joined, roots, concorde)
+                    and ((joined / layout.TRACE).is_file() or _is_workspace(joined))
                 ):
                     return joined, concorde
         else:
@@ -401,6 +470,11 @@ def locate(
             else ""
         ),
     )
+
+
+def _in_roots(path: Path, roots: tuple[TraceRoot, ...], concorde: Path) -> bool:
+    """Whether ``path`` lies in the folder of a root placed under ``concorde``."""
+    return any(_inside(path, root.path(concorde)) for root in _placed(roots, concorde))
 
 
 def _inside(path: Path, root: Path) -> bool:
@@ -445,7 +519,7 @@ def listing(
                     )
     found.sort(key=lambda entry: entry[:2])
     return [
-        _strip(view(folder, directory, lost=False), 0)
+        _strip(view(folder, directory, lost=False, requested=False), 0)
         for _, _, folder, directory in found
     ]
 
@@ -455,7 +529,7 @@ def render(value: dict, indent: int = 0) -> str:
     status, outcome, duration, rolled-up cost and tokens, what ran and its error's code."""
     rolled = value["rolled_up"]
     parts = [
-        f"{'  ' * indent}{value['kind']} {value['id']}: {value['status']}",
+        f"{'  ' * indent}{value['kind'] or 'node'} {value['id']}: {value['status']}",
     ]
     if value.get("outcome") and value["outcome"] != value["status"]:
         parts.append(f"({value['outcome']})")
@@ -485,6 +559,8 @@ def render(value: dict, indent: int = 0) -> str:
         parts.append(f"[{detail}]")
     if value.get("error"):
         parts.append(f"error {value['error'].get('code')}")
+    if value.get("reason"):
+        parts.append(f"({value['reason']})")
     lines = [" ".join(parts)]
     for child in value["children"]:
         lines.append(render(child, indent + 1))

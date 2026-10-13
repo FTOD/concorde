@@ -28,7 +28,7 @@ from .roots import TraceRoot, registered
 DEFAULTS = {"unbound_days": 7, "history_days": None, "conversation_days": 30}
 _DAYS = {"anyOf": [{"type": "null"}, {"type": "integer", "minimum": 0}]}
 
-# contract.tracing.configuration, version 3
+# contract.tracing.configuration, version 4
 CONFIGURATION_SCHEMA: dict = {
     "type": "object",
     "additionalProperties": False,
@@ -38,7 +38,6 @@ CONFIGURATION_SCHEMA: dict = {
         "retention": {
             "type": "object",
             "additionalProperties": False,
-            "required": ["unbound_days", "history_days"],
             "properties": {
                 "unbound_days": _DAYS,
                 "history_days": _DAYS,
@@ -172,11 +171,38 @@ def _remove(path: Path) -> str | None:
             if entry.name != layout.TRACE:
                 remove(entry)
     if not refused:
-        remove(path)
+        _remove_last(path, remove, refused)
     if not refused:
         return None
     more = f" and {len(refused) - 1} more" if len(refused) > 1 else ""
     return refused[0] + more
+
+
+def _remove_last(path: Path, remove, refused: list[str]) -> None:
+    """Remove ``path``, which holds only its ``trace.json`` now, and restore that record when the
+    folder itself cannot be removed, so that the next prune still finds the node."""
+    if not (path.is_dir() and not path.is_symlink()):
+        remove(path)
+        return
+    record = path / layout.TRACE
+    try:
+        kept = record.read_bytes()
+    except FileNotFoundError:
+        kept = None
+    except OSError as error:
+        refused.append(f"{record}: {error}")
+        return
+    try:
+        if kept is not None:
+            record.unlink()
+        path.rmdir()
+    except OSError as error:
+        refused.append(f"{path}: {error}")
+        if kept is not None and not record.exists():
+            try:
+                record.write_bytes(kept)
+            except OSError as restore:
+                refused.append(f"{record} could not be restored: {restore}")
 
 
 def prune(

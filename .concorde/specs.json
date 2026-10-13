@@ -2326,11 +2326,20 @@
           "target": "module.kernel",
           "meaning": "#uses-kernel",
           "relies_on": [
-            "concept.typed-value"
+            "concept.typed-value",
+            "req.kernel.registration-stable",
+            "req.kernel.registered-dialect",
+            "req.kernel.typed-checked"
           ]
         }
       ],
-      "includes": [],
+      "includes": [
+        {
+          "kind": "document",
+          "target": "document.kernel.contracts",
+          "reason": "the Kernel's typed values and its library table, which give exactly how a producer registers a content type and how the library checks node content against it"
+        }
+      ],
       "participates": []
     },
     {
