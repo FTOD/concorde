@@ -32,7 +32,7 @@ from tests.concorde.support.operation_project import (
     worker_error,
 )
 from tests.concorde.support.paths import REPOSITORY_ROOT
-from tests.concorde.support.spec_project import set_realization
+from tests.concorde.support.spec_project import set_realization, write_checks
 
 FIXED = "def add(a, b):\n    return a + b\n"
 
@@ -289,6 +289,7 @@ class ImplementTests(unittest.TestCase):
 
     @verifies("scenario.implementation.deletion")
     def test_a_proposed_deletion_is_performed_by_the_host(self):
+        (self.worktree / "src/a/sub").mkdir()
         status, envelope = self.implement(
             [
                 {
@@ -296,6 +297,7 @@ class ImplementTests(unittest.TestCase):
                         "proposed_deletions": [
                             f"{self.worktree}/src/a/old.py",
                             f"{self.worktree}/src/bmod/secret.py",
+                            f"{self.worktree}/src/a/sub",
                         ]
                     }
                 }
@@ -306,10 +308,46 @@ class ImplementTests(unittest.TestCase):
         self.assertTrue((self.worktree / "src/bmod/secret.py").exists())
         output = envelope["output"]
         self.assertEqual(["src/a/old.py"], output["deleted_files"])
+        self.assertTrue((self.worktree / "src/a/sub").is_dir())
         self.assertEqual(
-            [f"{self.worktree}/src/bmod/secret.py"], output["refused_deletions"]
+            [f"{self.worktree}/src/bmod/secret.py", f"{self.worktree}/src/a/sub"],
+            output["refused_deletions"],
         )
-        self.assertIn("deletion-refused", self.kinds(envelope))
+        self.assertEqual(2, self.kinds(envelope).count("deletion-refused"))
+
+    @verifies("scenario.implementation.blocked-with-violation")
+    def test_a_write_outside_the_grant_overrides_a_blocked_worker(self):
+        status, envelope = self.implement(
+            [
+                {
+                    "writes": {f"{self.worktree}/src/bmod/secret.py": "SECRET = 2\n"},
+                    "result": {
+                        "status": "blocked",
+                        "error": worker_error("cannot finish within the grant"),
+                    },
+                }
+            ]
+        )
+        self.assertEqual((1, "failed"), (status, envelope["status"]), envelope)
+        self.assertEqual("audit_violation", envelope["error"]["code"])
+        audit = [item for item in envelope["host_evidence"] if item["kind"] == "audit"]
+        self.assertIn("src/bmod/secret.py", audit[0]["detail"])
+
+    @verifies("scenario.implementation.no-result")
+    def test_a_run_without_a_valid_worker_result_has_no_output(self):
+        status, envelope = self.implement(
+            [
+                {
+                    "writes": {f"{self.worktree}/src/a/calc.py": FIXED},
+                    "no_structured": True,
+                }
+            ]
+        )
+        self.assertEqual((1, "failed"), (status, envelope["status"]), envelope)
+        self.assertIsNone(envelope["output"])
+        record = self.record(envelope)
+        self.assertIsNone(record["worker_result"])
+        self.assertIn("src/a/calc.py", record["rounds"][0]["audit"]["changed"])
 
     def test_the_file_lists_are_the_net_change_of_the_run(self):
         # A tracked file already deleted before the run and written again is created; a file
@@ -405,6 +443,38 @@ class NoCheckTests(unittest.TestCase):
         self.assertEqual([], envelope["output"]["checks"])
         [note] = [i for i in envelope["host_evidence"] if i["kind"] == "checks"]
         self.assertIn("no configured check", note["detail"])
+
+
+class ReadinessCheckOnlyTests(unittest.TestCase):
+    @verifies("scenario.implementation.no-check-runs")
+    def test_configured_checks_that_do_not_run_leave_the_checks_empty(self):
+        project = OperationProject(self)
+        write_checks(
+            project.root,
+            [
+                {
+                    "id": "check.a",
+                    "module": "module.a",
+                    "argv": ["{python}", "checks/a_check.py"],
+                    "timeout_seconds": 30,
+                    "inputs": ["checks/a_check.py"],
+                    "when": "readiness",
+                }
+            ],
+        )
+        commit(project.root, "readiness check only")
+        project.open_task("t1")
+        status, envelope = project.run(
+            "implement",
+            "--task",
+            "t1",
+            "--goal",
+            OperationProject.plan([{"result": {"output": {"addresses": []}}}]),
+        )
+        self.assertEqual("ok", envelope["status"], envelope)
+        self.assertEqual([], envelope["output"]["checks"])
+        [note] = [i for i in envelope["host_evidence"] if i["kind"] == "checks"]
+        self.assertIn("no configured check ran", note["detail"])
 
 
 class TestOperationTests(unittest.TestCase):
@@ -577,6 +647,46 @@ class ContractTests(unittest.TestCase):
         }
         self.assertEqual([failed], _latest_checks(record))
         self.assertEqual([], _latest_checks({"rounds": [{"round": 1}]}))
+
+    @verifies("scenario.implementation.resume-not-launched")
+    def test_a_resume_round_that_never_launched_keeps_the_earlier_edits(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            worktree = Path(temporary)
+            (worktree / "edited.py").write_text("EDITED = 1\n")
+            (worktree / "made.py").write_text("MADE = 1\n")
+            ctx = SimpleNamespace(
+                worktree=worktree, arguments=SimpleNamespace(goal="edit")
+            )
+            record = {
+                "rounds": [
+                    {
+                        "round": 1,
+                        "audit": {"changed": ["edited.py", "made.py"]},
+                        "evidence": [
+                            {
+                                "check_id": "check.a",
+                                "module": "module.a",
+                                "status": "failed",
+                                "exit_code": 1,
+                                "log": "/runs/r/checks/check.a/output.log",
+                            }
+                        ],
+                    },
+                    {"round": 2, "prompt": "repair"},
+                ],
+                "worker_result": {"summary": "edited", "output": {"addresses": []}},
+            }
+            change = code_change(ctx, record, {"edited.py"}, "launch failed")
+        self.assertEqual(
+            (["edited.py"], ["made.py"], "edited", 2, "failed"),
+            (
+                change["changed_files"],
+                change["created_files"],
+                change["summary"],
+                change["rounds"],
+                change["checks"][0]["outcome"],
+            ),
+        )
 
     def test_a_dangling_symbolic_link_is_a_file_of_the_change(self):
         with tempfile.TemporaryDirectory() as temporary:

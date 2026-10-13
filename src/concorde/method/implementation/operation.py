@@ -260,9 +260,10 @@ def _latest_checks(record: dict) -> list[dict]:
 def code_change(ctx: RunContext, record: dict, before: set[str], summary: str) -> dict:
     """The code change of the run: its files as the net change from ``before``, the paths the
     worktree held before the run, to the worktree now, over every path the last audit saw
-    changed, which spans every round, and every deletion Workers performed after it."""
+    changed, which spans every round, and every deletion Workers performed after it. A resume
+    round that could not be launched has no audit; the audit of the round before it stands."""
     rounds = record.get("rounds") or []
-    audit = (rounds[-1].get("audit") if rounds else None) or {}
+    audit = next((item["audit"] for item in reversed(rounds) if item.get("audit")), {})
     touched = sorted({*audit.get("changed", []), *(record.get("deleted") or [])})
     present = {path for path in touched if _exists(ctx.worktree, path)}
     worker = record.get("worker_result") or {}
@@ -323,7 +324,11 @@ def implement_step(ctx: RunContext):
     for path in record.get("deleted") or []:
         extra.append(evidence("deleted", path, "proposed by the worker, inside rw"))
     for path in record.get("deletions_refused") or []:
-        extra.append(evidence("deletion-refused", path, "outside the writable paths"))
+        extra.append(
+            evidence(
+                "deletion-refused", path, "refused by the host under Workers' rules"
+            )
+        )
     if record.get("worker_result") is not None:
         summary = outcome.summary if isinstance(outcome, Stop) else "implemented"
         ctx.output = code_change(ctx, record, before, summary)
@@ -333,7 +338,8 @@ def implement_step(ctx: RunContext):
                 evidence(
                     "checks",
                     ", ".join(ctx.modules),
-                    "no configured check: the result carries no check evidence",
+                    "no configured check ran: the checked Modules have none that runs in the work "
+                    "stage, so the result carries no check evidence",
                 )
             )
         return Continue(output=ctx.output, evidence=outcome.evidence + extra)
