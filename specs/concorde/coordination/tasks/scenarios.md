@@ -689,7 +689,10 @@ This illustrates [a merge running the Concorde it started with](requirements.md#
   branch's head
 - WHEN the main agent runs `concorde task merge <task-id> --resume`, with or without `--check`
 - THEN for a task that is not merging, the command fails with `not_merging`
-- AND for a merge commit that is not the head, the command fails with `not_resumable`
+- AND for a head at the commit before the merge, the command fails with `not_resumable`
+- AND for a head that is neither the commit before the merge nor the merge commit, such as a commit
+  made on top of the merge commit, the command fails with `merge_diverged`, naming that head, the
+  commit before the merge and the merge commit
 - AND for `--check` with `--resume`, the command fails with `invalid_input`
 - AND the primary branch and the task record are unchanged
 

@@ -635,8 +635,8 @@ While that process still holds the lock, a `session` or `escalate` of the mergin
 Tasks SHALL finish an interrupted merge only on the main agent's request, through these commands:
 
 - `concorde task merge <task-id> --resume`, which reruns the checks that merge recorded when the
-  primary branch's head is still the interrupted merge's commit, and otherwise refuses with
-  `not_resumable`. After those checks it closes the task as merged or undoes the merge exactly as an
+  primary branch's head is still the interrupted merge's commit, and refuses with `not_resumable`
+  when the head is the commit before the merge. After those checks it closes the task as merged or undoes the merge exactly as an
   uninterrupted merge does.
 - `concorde task merge <task-id> --abort`, which resets the primary branch to the commit before the
   merge when its head is the merge commit, and returns the task to delivered.

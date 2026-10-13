@@ -1465,19 +1465,23 @@ class MergeTests(unittest.TestCase):
         self.assertEqual(0, status, value)
         self.assertEqual("merged", value["record"]["closed"]["outcome"])
 
-    @verifies("scenario.tasks.merge-abort-diverged")
+    @verifies(
+        "scenario.tasks.merge-abort-diverged", "scenario.tasks.merge-resume-refused"
+    )
     def test_abort_refuses_a_primary_branch_that_moved_on(self):
         before, after = self.interrupted()
         (self.root / "notes.txt").write_text("committed on top of the merge\n")
         moved = commit(self.root, "a commit on top of the unchecked merge")
-        error = self.refusal("merge", "t1", "--abort")
-        self.assertEqual(
-            ("merge_diverged", "decision"),
-            (error["code"], error["unhandled"]["reason"]),
-        )
-        for part in (moved, before, after):
-            self.assertIn(part, error["detail"])
-        self.assertEqual((moved, "merging"), (self.head(), self.state()))
+        for option in ("--abort", "--resume"):
+            error = self.refusal("merge", "t1", option)
+            self.assertEqual(
+                ("merge_diverged", "decision"),
+                (error["code"], error["unhandled"]["reason"]),
+                option,
+            )
+            for part in (moved, before, after):
+                self.assertIn(part, error["detail"])
+            self.assertEqual((moved, "merging"), (self.head(), self.state()))
         # A merge in progress that is not the task's is refused before Git aborts it.
         git(self.root, "reset", "--hard", before)
         git(self.root, "branch", "side", before)

@@ -995,8 +995,8 @@ concorde task merge severity --abort
 
 When the primary branch's head is still the merge commit, `--resume` reruns the checks the merge
 recorded on that commit. It then closes the task as merged or undoes the merge and refuses with
-`check_failed` exactly as an uninterrupted merge does. With any other head, it refuses with
-`not_resumable`. `--abort` aborts a `git merge` left in progress. When the primary branch's head is
+`check_failed` exactly as an uninterrupted merge does. When the head is the commit before the
+merge, it refuses with `not_resumable`. `--abort` aborts a `git merge` left in progress. When the primary branch's head is
 the merge commit, it resets the branch to the commit before the merge. When the head already is that
 commit before the merge, it leaves the branch alone. It returns the task to delivered. Both take the
 merge lock and the workspace lock like a merge. When the primary worktree is on another branch or
