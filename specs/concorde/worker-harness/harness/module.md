@@ -128,7 +128,7 @@ replaces the worker settings. The same code generates it from the same grant:
 | Commands | Claude Code's Bash sandbox | `bash` through the same sandbox engine, sandbox-runtime |
 | Network | none, strict allowlist | none, strict allowlist |
 | [Worker result](../../glossary.json#concept.worker-result) | `--json-schema` | the `concorde_result` tool |
-| Limits | `--max-turns`, `--max-budget-usd` | counted and enforced by the extension |
+| Limits | `--max-turns`, `--max-budget-usd` with what the run's earlier rounds left | counted and enforced by the extension against what `CONCORDE_ROUND_LIMITS` leaves the round |
 | Instructions and state | own `CLAUDE_CONFIG_DIR`, no `CLAUDE.md` | own `PI_CODING_AGENT_DIR`, no extensions, context files, skills or templates |
 
 The [pi mechanics](pi.md) give the exact tables.
@@ -388,7 +388,7 @@ generates everything the settings hold.
 | Claude state/instructions | Own `CLAUDE_CONFIG_DIR`, cleared env, `CLAUDE_CODE_DISABLE_CLAUDE_MDS=1`, `CLAUDE_CODE_DISABLE_AUTO_MEMORY=1` | User settings, memory, skills, plugins, transcripts, project instructions |
 | Git | No tool reads or writes a Git administrative path, inside or outside the user's home; diffs belong to Workers and commits to Delivery | A worker inspecting or rewriting history |
 | Changes | Workers audits `git diff`/untracked files against the grant each round | Any remaining write outside `rw` counting as a result |
-| Limits | Timeout, `--max-turns`, `--max-budget-usd`, kill of the process group at round end | Runaway runs and leftover processes |
+| Limits | Timeout per round, `--max-turns` and `--max-budget-usd` with what the whole run has left, kill of the process group at round end | Runaway runs, a run whose rounds together exceed its limits, and leftover processes |
 
 ### Known limits of v1
 
@@ -507,7 +507,8 @@ Harness's files for these promises:
 - the permission extension's configuration
   ([req.workers.pi-only-extension](../workers/pi.md#req.workers.pi-only-extension))
 - the permission extension's limits
-  ([req.workers.pi-limits](../workers/pi.md#req.workers.pi-limits))
+  ([req.workers.pi-limits](../workers/pi.md#req.workers.pi-limits),
+  [req.workers.pi-round-limits](../workers/pi.md#req.workers.pi-round-limits))
 
 The Workers tests run fake workers and the pi path decisions under Node. On request, the tests also
 run live workers.

@@ -4,7 +4,8 @@ The test puts a plan in the worker instructions as ``FAKE-PLAN: <json>``: a list
 with ``writes`` (absolute path to content), ``actions`` (``[tool, arguments]`` pairs reported as
 tool executions), ``result`` (merged over a valid ``ok`` result and reported as the
 ``concorde_result`` tool), ``no_result`` (end without calling it), ``error`` (end with an
-assistant error message), ``limit`` (append a ``concorde-limit`` entry), ``no_transcript`` (write no session file) and
+assistant error message), ``cost`` (the cost of an assistant message reported before the
+result), ``limit`` (append a ``concorde-limit`` entry), ``no_transcript`` (write no session file) and
 ``exit`` (the exit code). The fake records its argument list, environment and prompt per round in its working
 directory and writes a session file where pi would. It enforces nothing: enforcement is the
 permission extension's and is covered by the live test.
@@ -70,6 +71,18 @@ def main() -> int:
             }
         )
         emit({"type": "turn_end", "message": {}, "toolResults": []})
+    if "cost" in step:
+        emit(
+            {
+                "type": "message_end",
+                "message": {
+                    "role": "assistant",
+                    "content": [],
+                    "stopReason": "toolUse",
+                    "usage": {"cost": {"total": step["cost"]}},
+                },
+            }
+        )
     if step.get("limit"):
         emit(
             {

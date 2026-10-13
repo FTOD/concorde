@@ -102,10 +102,11 @@ worker's entries name no model, the worker is refused with `model_unresolved`. S
 Remove a field to inherit it rather than writing null. The file also holds the `limits` of every
 worker launch. These limits are:
 
-- `timeout_seconds`
-- `max_turns`
-- `max_budget_usd`
-- `rounds`
+- `timeout_seconds`, which bounds each round of a worker run.
+- `max_turns` and `max_budget_usd`, which bound the whole worker run. Its resume rounds and retry
+  rounds count together. Each round gets only the turns and budget the earlier rounds left.
+- `rounds`, the resume rounds a worker run may start.
+- `retries`, the retry rounds a worker run may start after transient model-service errors.
 
 The file also holds the `runtime` paths workers may read besides their grant. By default, these
 paths are `.venv` and `node_modules`:

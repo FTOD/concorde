@@ -36,6 +36,7 @@ ENVIRONMENT = {
     "PI_OFFLINE",
     "PI_SKIP_VERSION_CHECK",
     "PI_TELEMETRY",
+    "CONCORDE_ROUND_LIMITS",
 }
 
 
@@ -191,6 +192,59 @@ class PiRunTests(unittest.TestCase):
         )
         self.assertIn("check.a", second["prompt"])
         self.assertEqual(["initial", "repair"], [r["prompt"] for r in record["rounds"]])
+
+    @verifies("scenario.workers.pi-limits-per-run")
+    def test_each_pi_round_gets_what_the_earlier_rounds_left(self):
+        flag = str(self.root / "src/a/flag")
+        record = self.project.run(
+            [
+                {
+                    "writes": {flag: "bad"},
+                    "actions": [["read", {"path": flag}], ["read", {"path": flag}]],
+                    "cost": 0.3,
+                },
+                {"writes": {flag: "ok"}, "cost": 0.25},
+            ],
+            max_turns=10,
+            max_budget_usd=1.0,
+        )
+        self.assertEqual("ok", record["status"], record["error"])
+        first, second = self.project.rounds(record)
+        self.assertEqual(
+            [
+                {"maxTurns": 10, "maxBudgetUsd": 1.0},
+                {"maxTurns": 7, "maxBudgetUsd": 0.7},
+            ],
+            [
+                json.loads(call["env"]["CONCORDE_ROUND_LIMITS"])
+                for call in (first, second)
+            ],
+        )
+        self.assertEqual(
+            [(3, 0.3), (1, 0.25)],
+            [
+                (item["usage"]["turns"], item["usage"]["cost_usd"])
+                for item in record["rounds"]
+            ],
+        )
+        # The permission extension stays the same file for every round; it holds the run's own
+        # limits as their ceiling.
+        kept = self.project.runtime(record)
+        self.assertIn(
+            '"limits": {"maxBudgetUsd": 1.0, "maxTurns": 10}',
+            (kept / "control/permission.ts").read_text(),
+        )
+
+    @verifies("scenario.workers.limits-nothing-left")
+    def test_no_pi_retry_round_starts_when_nothing_is_left(self):
+        record = self.project.run(
+            [{"error": "503 Service Unavailable"}],
+            check_modules=None,
+            max_budget_usd=0.01,
+        )
+        self.assertEqual(1, len(record["rounds"]))
+        self.assertEqual("worker_limit_reached", record["error"]["code"])
+        self.assertIn("no budget is left", record["error"]["detail"])
 
     @verifies("scenario.workers.pi-runtime-missing")
     def test_a_pi_run_without_its_runtime_is_refused(self):
@@ -929,7 +983,9 @@ class PiExtensionTests(unittest.TestCase):
         )
         self.extension = extension
 
-    def probe(self) -> dict:
+    def probe(
+        self, limits: str | None = '{"maxTurns": 10, "maxBudgetUsd": 0.5}'
+    ) -> dict:
         valid = {
             "status": "ok",
             "summary": "done",
@@ -953,6 +1009,10 @@ class PiExtensionTests(unittest.TestCase):
             capture_output=True,
             text=True,
             timeout=120,
+            env={
+                **{k: v for k, v in os.environ.items() if k != "CONCORDE_ROUND_LIMITS"},
+                **({} if limits is None else {"CONCORDE_ROUND_LIMITS": limits}),
+            },
         )
         self.assertEqual(0, completed.returncode, completed.stderr)
         return json.loads(completed.stdout.strip().splitlines()[-1])
@@ -993,6 +1053,29 @@ class PiExtensionTests(unittest.TestCase):
             },
             out["blocked"],
         )
+
+    @verifies("scenario.workers.pi-round-limits")
+    def test_the_extension_stops_the_round_at_what_the_host_left_it(self):
+        for limits, maximum in (
+            ('{"maxTurns": 10, "maxBudgetUsd": 0.2}', 0.2),
+            # Never above the run's own limits, which the policy holds.
+            ('{"maxTurns": 10, "maxBudgetUsd": 5}', 0.5),
+            ('{"maxTurns": 10, "maxBudgetUsd": null}', 0.5),
+            # A missing or malformed value allows nothing.
+            (None, 0),
+            ("not json", 0),
+            ('{"maxTurns": 1.5, "maxBudgetUsd": 0.2}', 0),
+            ('{"maxTurns": 10}', 0),
+        ):
+            with self.subTest(limits=limits):
+                out = self.probe(limits)
+                [entry] = out["entries"]
+                self.assertEqual(
+                    {"limit": "budget", "value": 0.3, "maximum": maximum}
+                    if maximum != 0.5
+                    else {"limit": "budget", "value": 0.6, "maximum": 0.5},
+                    entry["data"],
+                )
 
 
 if __name__ == "__main__":

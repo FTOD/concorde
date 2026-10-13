@@ -4,7 +4,8 @@ The test puts a plan in the worker instructions as ``FAKE-PLAN: <json>``: a list
 with ``writes`` (absolute path to content), ``removes`` (absolute paths to delete), ``chmods``
 (absolute path to mode), ``commands`` (argument lists to run), ``result`` (the structured output,
 merged over a valid ``ok`` result), and optional ``early_session`` (name the session and write its
-transcript first, as Claude Code does, before any ``sleep``), ``sleep``, ``linger`` (seconds to
+transcript first, as Claude Code does, before any ``sleep``), ``version`` (print the init record
+first, naming this Claude Code version), ``sleep``, ``linger`` (seconds to
 sleep after printing the envelope), ``spawn`` (start a detached sleeper that records its PID),
 ``raw`` (print this instead of an envelope), ``stderr`` (text written to standard error before
 any ``sleep``), ``envelope`` (fields merged over the result envelope,
@@ -70,12 +71,13 @@ def main() -> int:
     )
     step = state["plan"][min(number, len(state["plan"])) - 1]
     session = (step.get("envelope") or {}).get("session_id", f"fake-session-{number}")
-    if step.get("early_session"):
-        transcribe(session, number, step)
-        print(
-            json.dumps({"type": "system", "subtype": "init", "session_id": session}),
-            flush=True,
-        )
+    if step.get("early_session") or "version" in step:
+        if step.get("early_session"):
+            transcribe(session, number, step)
+        init = {"type": "system", "subtype": "init", "session_id": session}
+        if "version" in step:
+            init["claude_code_version"] = step["version"]
+        print(json.dumps(init), flush=True)
     for path, content in step.get("writes", {}).items():
         Path(path).parent.mkdir(parents=True, exist_ok=True)
         Path(path).write_text(content)

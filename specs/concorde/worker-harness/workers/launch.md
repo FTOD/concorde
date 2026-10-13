@@ -49,7 +49,7 @@ A run is requested with:
 | round validation | Optionally the caller's callback, called after every round whose worker ended `ok` with a clean audit ([Round validation](#round-validation)) |
 | runtime paths | Extra absolute paths, outside the grant, that every tool of the worker may read and none may write, exactly as the caller lists them: the worker configuration's runtime paths that exist, such as `.venv` or `node_modules`, the directories the project interpreter needs, and the host material the caller admits for this run alone, such as the folder of the check logs its own run recorded ([Reading beside the grant](#reading-beside-the-grant)) |
 | project interpreter | Optionally the absolute path of the project's own Python interpreter, which the caller resolved from the project's configuration as its checks run it; its directory comes first on the worker's `PATH` and the brief names it |
-| limits | Timeout per round, the turn limit, the budget limit when the configuration sets one, the number of [resume rounds](../../glossary.json#concept.resume-round) (default 3), and the number of [retry rounds](#retries) (default 5) with the delay before the first (default 15 seconds) |
+| limits | Timeout per round, the turn limit and the budget limit when the configuration sets one, which bound the whole run ([Limits](#limits)), the number of [resume rounds](../../glossary.json#concept.resume-round) (default 3), and the number of [retry rounds](#retries) (default 5) with the delay before the first (default 15 seconds) |
 | model | The project model name the run worktree's [worker configuration](../../glossary.json#concept.worker-configuration) chooses for the worker's id, which every Operation gives, recorded only |
 | local model, model map | The model's local id on the backend, which the [model map](../../glossary.json#concept.model-map) gives it and which is passed with `--model`, and the path of that map, recorded only |
 | operation, worker, modules | The Operation and the [worker id](../../glossary.json#concept.worker-id) the model was chosen for and the [Modules](../../glossary.json#concept.module) the job is about, labels the caller gives, recorded only |
@@ -361,8 +361,10 @@ claude -p --settings <runtime>/control/settings.json --tools <tool set>
        [--effort <level>]
 ```
 
-Only when the worker configuration sets `max_budget_usd`, the host passes `--max-budget-usd`.
-Without `--max-budget-usd`, the run has no budget limit.
+`<n>` is the number of turns that the run's earlier rounds left of `max_turns`. `<x>` is the budget
+that they left of `max_budget_usd`, with two decimals ([Limits](#limits)). Only when the worker
+configuration sets `max_budget_usd`, the host passes `--max-budget-usd`. Without
+`--max-budget-usd`, the run has no budget limit.
 
 A resume round runs the same command with `--resume <latest session id>` and the round validation's
 repair text as the prompt. A [retry round](#retries) runs the same command with
@@ -393,9 +395,11 @@ round:
 - the session identifier
 - the exit status
 - the tokens
-- the cost
+- the cost, of which a resumed round counts only its own ([Limits](#limits))
 - the turns
 - the schema-validated structured output
+
+The stream's `system` record of the subtype `init` gives the Claude Code version.
 
 The host keeps the round's standard error, up to its last 80,000 bytes, as `stderr.log` of the
 round's node. Thus, no round overwrites another's.
@@ -545,7 +549,8 @@ describes the worktree before these deletions.
 | Worker result and audit | Round validation | Next |
 | --- | --- | --- |
 | the audit could not run, whatever the result | not called | end `failed` with `audit_unavailable`, naming in its detail whatever else ended the round |
-| the agent process ended with a transient model-service error, audit clean, no valid result, a session to continue or no change since the snapshot, retries left | not called | [retry round](#retries) |
+| the agent process ended with a transient model-service error, audit clean, no valid result, a session to continue or no change since the snapshot, retries left, turns and budget left | not called | [retry round](#retries) |
+| the same, but no turn or no cent of the budget left | not called | end `failed` with `worker_limit_reached` ([Limits](#limits)) |
 | the round timed out, or the agent process failed or reached a limit | not called | end `failed` with `worker_timeout`, `worker_limit_reached` or the backend's process failure code, naming any audit violation in its detail |
 | audit violation, whatever the result | not called | end `failed` with `audit_violation` |
 | invalid result, audit clean | not called | end `failed` with `worker_result_invalid` |
@@ -555,9 +560,10 @@ describes the worktree before these deletions.
 | `ok`, audit clean | answers unavailable | end `failed` with the code and causes it names, reason `environment` |
 | `ok`, audit clean | answers a violation | end `failed` with the code and causes it names, reason `permission` |
 | `ok`, audit clean | nothing to repair | end `ok` |
-| `ok`, audit clean | a repair, rounds left | resume round |
+| `ok`, audit clean | a repair, rounds left, turns and budget left | resume round |
 | `ok`, audit clean | a repair that fails the run, no rounds left | end `failed` with the code and causes it names, reason `exhausted` |
-| `ok`, audit clean | a repair that does not fail the run, no rounds left | end `ok`; the caller judges the result |
+| `ok`, audit clean | a repair that fails the run, no turn or no cent of the budget left | end `failed` with `worker_limit_reached` and the causes it names ([Limits](#limits)) |
+| `ok`, audit clean | a repair that does not fail the run, no rounds, turn or cent of the budget left | end `ok`; the caller judges the result |
 
 The rows are tried in this order. The resume prompt is the round validation's repair text.
 Whatever ends its round, a valid worker result is kept as the run's `worker_result`. This includes
@@ -590,6 +596,8 @@ The host starts a **retry round** when all of these conditions hold:
 - The worker returned no valid result.
 - The round named a session to continue, or the worktree has no change since the snapshot.
 - The run has started fewer retry rounds than its `retries` limit.
+- The run's earlier rounds left a turn and, when the run has a budget, a cent of it
+  ([Limits](#limits)).
 
 The retry rounds of a run are counted apart from its resume rounds. Before the `k`-th retry round of
 the run, the host waits `retry_delay_seconds × 2^(k−1)` seconds, multiplied by a factor drawn
@@ -609,6 +617,60 @@ The run's error lists every retry in its `attempts`. Every other ending of a rou
 [Rounds](#rounds) says. In particular, a round whose audit found a violation is never retried. When
 the retries are used up, the run ends `failed` with the backend's process failure code and the
 reason `exhausted`.
+
+## Limits
+
+The worker configuration's `max_turns` and `max_budget_usd` bound the whole worker run, not each
+round. The run's first round, its [resume rounds](../../glossary.json#concept.resume-round) and its
+[retry rounds](#retries) count together. Before each round, the host computes what the run's earlier
+rounds left:
+
+- The turns left are `max_turns` less the turns of every earlier round.
+- When the worker configuration sets `max_budget_usd`, the budget left is `max_budget_usd` less the
+  cost of every earlier round, rounded down to whole cents.
+
+The host reads these turns and costs from the usage of the rounds' nodes ([Run record](#run-record)).
+A figure that a round did not report counts as none. The host gives the round exactly what is left.
+On the Claude Code backend, it passes the turns left with `--max-turns` and the budget left with
+`--max-budget-usd` ([Launch](#launch)). On the pi backend, it passes both in
+`CONCORDE_ROUND_LIMITS` ([the pi run mechanics](pi.md#launch)). Since the host rounds the budget
+down, it never gives a round more than is left. Neither program accepts a turn limit or a budget of
+zero. So, when no turn is left, or less than one cent of the budget, the host starts no further
+round. The round that would have followed decides how the run ends:
+
+- Instead of a retry round, the run ends `failed` with `worker_limit_reached`. Its cause is the
+  agent process's link.
+- Instead of a resume round for a repair that fails the run, the run ends `failed` with
+  `worker_limit_reached`. Its causes are the links that the round validation names.
+- Instead of a resume round for a repair that does not fail the run, the run ends `ok`, as when no
+  rounds are left. The caller judges the result.
+
+A round that uses up what it was given stops as its agent program stops at a limit. Claude Code
+ends the round with `error_max_turns` or `error_max_budget_usd`. On pi, the permission extension
+stops the round ([Harness limits](../harness/pi.md#limits)). The run then ends `failed` with
+`worker_limit_reached`. Both programs check a limit only after a model response. So, the round that
+reaches a limit can exceed it by that last response. Since no round starts once nothing is left,
+only the run's last round can exceed what it was given.
+
+Each round's usage holds only that round's own turns and cost:
+
+- On pi, the host counts each round's turns and cost from that round's own event stream.
+- Claude Code reports in `num_turns` only the turns of the round's own process.
+- Claude Code 2.1.277 and later restore the saved totals of a session they resume. So, the cost
+  that a resumed round's result envelope reports holds the session's earlier spend too. For such a
+  version, the host subtracts from that cost the cost that the session's previous round reported.
+  The difference is the round's cost.
+- When the version is older or unknown, the host counts the reported cost whole. It does so too
+  when the reported cost is below the session's previous total, since then nothing was restored.
+
+A cost counted whole can only make the run's spend higher than it was, never lower.
+
+`timeout_seconds` bounds each round, not the run. The timeout protects the run against a round that
+hangs: when the round's time is up, the host kills the round's process group. The turns and the
+budget measure what the run uses of the model service, which adds up over its rounds. Time does
+not add up the same way. Between the rounds, the host waits before a retry and runs the round
+validation, such as the configured checks, which is no worker's work. The `rounds` and `retries`
+limits bound the number of rounds.
 
 ## Run record
 
@@ -645,7 +707,7 @@ and validation. Its usage holds the following:
 
 - the tokens the agent program reported for the round
 - the cache reads and writes the agent program reported for the round
-- the cost the agent program reported for the round
+- the round's own cost, from what the agent program reported for it ([Limits](#limits))
 - the turns the agent program reported for the round
 - the round's duration
 
@@ -660,8 +722,9 @@ backend, this is the following from the result envelope:
 - its `permission_denials`
 - its `modelUsage`
 - its `duration_api_ms`
+- the Claude Code version that the stream's `init` record named
 
-For each field, when the envelope gave none, its value is null. Otherwise, its value is as the
+For each field, when the envelope or the stream gave none, its value is null. Otherwise, its value is as the
 envelope gave it. The `permission_denials` are the tool calls Claude Code refused under the worker
 settings. They are evidence for telling a refused worker's
 [boundary case](../../glossary.json#concept.boundary-case). The `modelUsage` gives the tokens and
@@ -723,7 +786,7 @@ round also timed out or failed otherwise.
 | `audit_unavailable` | the round, the Git command or file measurement of the audit that failed with its output, and whatever else ended the round: a timeout, the agent process's error or an invalid result | `environment` | the agent process's link, when its process ended with an error |
 | `launch_failed` | the command that could not be started and the operating system's error | `environment` | none |
 | `worker_timeout` | the round and the timeout | `exhausted` | none |
-| `worker_limit_reached` | the round and the limit the agent program reported: on Claude Code its turn or budget subtype, on pi the limit and the value the permission extension names | `exhausted` | the agent process's link: the Claude Code process's link, or the pi process's link with that limit and value |
+| `worker_limit_reached` | the round and the limit the agent program reported: on Claude Code its turn or budget subtype, on pi the limit and the value the permission extension names; or that no turn or no cent of the budget was left for the round that would have followed ([Limits](#limits)); either way, what the run's rounds used of `max_turns` and `max_budget_usd`, and, for a round that reached a limit, what it was given | `exhausted` | the agent process's link: the Claude Code process's link, or the pi process's link with that limit and value; when no round followed, for a retry round the agent process's link, for a repair the links the round validation names |
 | `claude_failed` | the round and the error Claude Code reported, or that it printed no envelope (Claude Code backend); `attempts` lists every [retry](#retries) | `environment`, or `exhausted` when the retries for a transient model-service error are used up | the Claude Code process's link |
 | `pi_runtime_missing`, `pi_failed` | see [the pi run mechanics](pi.md#errors) | `environment`, or for `pi_failed` `exhausted` when the retries for a transient model-service error are used up | the pi process's link for `pi_failed` |
 | `worker_result_invalid` | the schema violation, or the worker's final text when it gave no structured result | `capability` | none |
@@ -1014,6 +1077,38 @@ Only when all of these conditions hold, the host SHALL start a resume round:
 - the worker ended `ok`
 - its audit was clean
 - the caller's round validation reported something to repair
+- the run has a turn and, when it has a budget, a cent of it left
+
+### req.workers.limits-per-run — Turns and budget bound the whole run
+
+The host SHALL count the turns and the cost of every round of a worker run against the run's
+`max_turns` and `max_budget_usd`, resume and retry rounds included.
+
+### req.workers.limits-left-passed — Each round gets what the run has left
+
+For each round, the host SHALL pass the agent program as its turn limit `max_turns` less the turns
+of the run's earlier rounds and, when the worker configuration sets `max_budget_usd`, as its budget
+`max_budget_usd` less the cost of the run's earlier rounds, rounded down to whole cents.
+
+### req.workers.limits-nothing-left — No round starts without turns or budget
+
+When the run's earlier rounds left no turn, or less than one cent of the budget, the host SHALL NOT
+start another round.
+
+### req.workers.limits-nothing-left-outcome — A run without turns or budget left ends at its limit
+
+A run that ends because nothing is left for its next round SHALL end `failed` with
+`worker_limit_reached`, unless the round validation's last repair does not fail the run.
+
+### req.workers.round-own-cost — A round's usage holds its own cost
+
+The host SHALL record as a round's cost the cost its agent program reported, less, for a resumed
+round on a Claude Code version that restores session totals, the cost that the session's previous
+round reported.
+
+### req.workers.timeout-per-round — The timeout bounds each round
+
+The host SHALL apply `timeout_seconds` to each round on its own.
 
 ### req.workers.rounds-limited — A run has at most its configured resume rounds
 
@@ -1032,6 +1127,7 @@ When all of these conditions hold, the host SHALL start a retry round after the 
 - The worker returned no valid result.
 - The round named a session to continue, or the worktree has no change since the snapshot.
 - The run has retries left.
+- The run has a turn and, when it has a budget, a cent of it left.
 
 A retry round never starts from the brief over changes a round made without a session to continue.
 

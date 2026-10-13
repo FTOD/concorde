@@ -743,7 +743,9 @@ When a worker's entries set no model, the worker is refused. It never runs on it
 default model. A backend no entry sets is pi. The same file holds the `limits` of every worker
 launch and the `runtime` paths. The
 [worker configuration contract](contracts.md#contract.workers.worker-configuration) defines the
-limits and runtime paths with their defaults. The caller reads them for each launch:
+limits and runtime paths with their defaults. `max_turns` and `max_budget_usd` bound the whole
+worker run, every round of it together, and `timeout_seconds` bounds each round
+([Limits](launch.md#limits)). The caller reads them for each launch:
 
 ```json
 {

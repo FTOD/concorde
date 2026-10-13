@@ -409,7 +409,9 @@ Here every worker runs on pi with `claude-sonnet-5` at that model's own `medium`
 `spec_panel`'s: `reviewer1` on `claude-opus-5-5` at its own `high`, `reviewer2` on `gpt-6-astra` at
 the `high` of its entry, `reviewer3` on the same model at pi's default level, and the `chair` on
 Claude Code with the model the project calls `opus`. An entry that only puts a worker on Claude
-Code keeps the model and level it would otherwise inherit.
+Code keeps the model and level it would otherwise inherit. `max_turns` and `max_budget_usd` bound a
+whole worker run: its resume and retry rounds share them, and each round gets only what the earlier
+rounds left. `timeout_seconds` bounds each round.
 
 Your **model map** tells your machine how to reach those models: `~/.config/concorde/models.json`
 (or `concorde/models.json` of `$XDG_CONFIG_HOME` when you set it, or the file the environment
