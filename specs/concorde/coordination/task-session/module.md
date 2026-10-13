@@ -354,12 +354,15 @@ These keep the shell inside the task now:
 
 - The task-session [guidance](../../glossary.json#concept.main-session-guidance)
 - Claude Code's `auto` mode
-- At the end, the audit `concorde task merge` runs over what lies outside the task worktree
+- At the end, the check `concorde task merge` runs over the places outside the task worktree whose
+  state no working task accounts for
   ([Tasks](../tasks/module.md#nothing-changed-outside-the-task))
 
 When the primary worktree, or the worktree of a task that ended, holds changes nobody accounts for,
 the merge is refused. The task's own merge refuses an uncommitted change in its worktree, so it
-catches what another session wrote there too.
+catches what another session wrote there too. The check judges working trees, not commits. It does
+not judge the worktree of a task still working or any path of no task. So it catches some mistakes
+but does not prove that a session wrote nothing outside its worktree.
 
 Since nobody answers permission prompts in a background session, the session runs in Claude Code's
 `auto` mode. A classifier approves or refuses each action instead of asking. This is the only check
@@ -597,8 +600,7 @@ starter starts `claude --bg`. It also ends a task's task sessions when Tasks' cl
 - It removes the sessions.
 
 The task-session hook (`session_hook.py`) goes with the session starter. The session's settings
-install the hook. The tests (`test_session.py` under `tests/concorde/tasks/`) run on real Git
-repositories with a fake `claude`.
+install the hook.
 
 A start touches one piece of each provider and its own boundary. The session starter:
 
@@ -641,11 +643,15 @@ than polling.
 
 Where the issues part is installed, **Issues** keeps the project's
 [Issues](../../glossary.json#concept.issue) in the primary worktree's `.concorde/issues/`. Each
-write holds the merge lock and commits its record alone on the primary branch. Task sessions relies
-on an Issue record lying outside every task worktree, so that the session boundary refuses an Issue
-record. Thus, a task session reaches Issues only through the Issue command or the Issue tools, as
-the runs it starts do. Without the issues part there is no Issue to reach, and nothing changes for
-the boundary.
+write holds the merge lock and commits its record alone on the primary branch. These records are
+the project's Issues. They lie outside every task worktree, so the session boundary refuses an Edit
+or Write of one. A task branch also holds a copy of `.concorde/issues/`, that of the commit it
+started from, inside the task worktree. The boundary allows writes there as anywhere in the task
+worktree. The guidance, not the boundary, keeps a task session from changing that copy, since a
+task branch brings no Issue change to its merge
+([Issues](../../issues/module.md#recovering-uncommitted-records)). Thus, a task session changes
+Issues only through the Issue command or the Issue tools, as the runs it starts do. Without the
+issues part there is no Issue to reach, and nothing changes for the boundary.
 
 <a id="uses-workers"></a>
 

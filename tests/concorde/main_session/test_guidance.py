@@ -238,7 +238,14 @@ class GuidanceTests(unittest.TestCase):
         self.assertIn("Nothing else about your session is restricted", self.session)
         self.assertIn("your commands run under no sandbox", self.session)
         self.assertIn("prepare your worktree yourself", self.session)
-        self.assertIn("`concorde task merge` audits this at the end", self.session)
+        self.assertIn(
+            "`concorde task merge` checks part of this at the end", self.session
+        )
+        self.assertIn(
+            "It does not check commits, the worktree of a task still working or any other "
+            "path. So a merge that succeeds does not prove that you stayed inside your worktree.",
+            self.session,
+        )
         self.assertIn(
             "Edit and Write refuse any path outside the task worktree and its decision log",
             self.session,
@@ -435,6 +442,16 @@ class GuidanceTests(unittest.TestCase):
             "`task_merge` again once you are woken: you may be refused again.",
             self.skill,
         )
+        self.assertIn(
+            "For the task's merge attempt lock, `locks/attempts/<task>.lock` (`merge_busy`), a "
+            "merge of the task still runs. `register_wait` takes no such lock. Run "
+            "`concorde task wait <task> --merge` in background Bash.",
+            self.skill,
+        )
+        self.assertIn(
+            "Call `task_merge` again only when that merge did not close the task.",
+            self.skill,
+        )
 
     @verifies("scenario.main-session.merge-conflict")
     def test_a_merge_conflict_goes_back_to_the_task_session(self):
@@ -450,6 +467,21 @@ class GuidanceTests(unittest.TestCase):
         )
         self.assertIn("It is the only merge you make.", session)
         self.assertIn("merge the primary branch into its task branch", self.block)
+
+    @verifies(
+        "scenario.main-session.change-through-task",
+        "scenario.main-session.merge-conflict",
+    )
+    def test_without_the_method_part_a_session_delivers_with_task_deliver(self):
+        self.assertIn(
+            "Where the method part is installed, you deliver with its `delivery`, as its "
+            "section below says. Otherwise, deliver with `concorde task deliver <task>",
+            self.session,
+        )
+        self.assertIn(
+            'Then validate and deliver again with the commands "Deliver" above names',
+            self.session,
+        )
 
     @verifies("scenario.main-session.update-merge")
     def test_an_update_reaches_the_open_tasks_through_their_sessions(self):
@@ -735,7 +767,10 @@ class GuidanceTests(unittest.TestCase):
                 session,
                 "The `concorde issues` command from your shell records the main agent instead",
             ),
-            (session, "Read and write them with these tools of the project MCP server"),
+            (
+                session,
+                "Read and write the Issues with these tools of the project MCP server",
+            ),
             (session, "append to that Issue rather than create another"),
             (session, "carries its `tier`"),
         ):

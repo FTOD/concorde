@@ -1079,6 +1079,39 @@ class EndOfTaskTests(unittest.TestCase):
         self.assertEqual([], node["artifacts"])
         self.assertIsNone(node["content"]["data"]["unreadable_lines"])
 
+    @verifies("scenario.task-session.keep-failed")
+    def test_a_session_node_that_cannot_be_written_only_warns(self):
+        self.claude_session("aaaa1111")
+        self.transcript("aaaa1111")
+
+        def unwritable(source, target):
+            raise PermissionError(13, "Permission denied", str(target))
+
+        mkstemp = trace.tempfile.mkstemp
+
+        def refused(*arguments, **options):
+            if "aaaa1111" in str(options.get("dir", "")):
+                raise PermissionError(13, "Permission denied", options["dir"])
+            return mkstemp(*arguments, **options)
+
+        with (
+            patch.object(session.shutil, "copyfile", unwritable),
+            patch.object(trace.tempfile, "mkstemp", refused),
+        ):
+            status, value = self.command("close", "t1", "--completed", "--note", "done")
+        self.assertEqual(0, status, value)
+        self.assertEqual("closed", value["record"]["state"])
+        [warning] = value["warnings"]
+        for text in (
+            "aaaa1111",
+            "the node could not be written",
+            "Permission denied",
+            "`claude rm aaaa1111`",
+        ):
+            self.assertIn(text, warning)
+        self.assertNotIn(["rm", "aaaa1111"], [item["argv"] for item in self.calls()])
+        self.assertEqual([], self.node("aaaa1111")["artifacts"])
+
     def test_a_node_written_before_version_2_is_finished(self):
         self.claude_session("aaaa1111")
         source = self.transcript("aaaa1111")

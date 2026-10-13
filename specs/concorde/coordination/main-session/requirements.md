@@ -495,7 +495,7 @@ The merge's own result and refusals are the command's. They arrive later in eith
 Before the start, only these refuse the call:
 
 - Its arguments.
-- A busy lock ([The server never waits for a lock](#req.main-session.project-mcp-no-wait)).
+- A busy lock ([Coordination's tools never wait for a task's lock](#req.main-session.project-mcp-no-wait)).
 - A failed start.
 
 ### req.main-session.project-mcp-merge-output — A merge's output stays with its attempt
@@ -523,14 +523,19 @@ merge-end wait returns only once that answer is complete
 
 When what it waits for already happened, its answer carries the value that command would print.
 
-### req.main-session.project-mcp-no-wait — The server never waits for a workspace or merge lock
+### req.main-session.project-mcp-no-wait — Coordination's tools never wait for a task's lock
 
-A tool of the server that needs a [workspace lock](../../glossary.json#concept.workspace-lock) or
-the [merge lock](../../glossary.json#concept.merge-lock) SHALL be refused at once, with
-`workspace_busy` or `merge_busy`, when another process holds it, naming the lock file and the
-holder's command, process, start time, Claude Code session and task as the holder line gives them.
+When another process holds a lock that one of
+[Coordination's tools](module.md#coordination-tools) needs, that tool SHALL refuse the call at once,
+with `workspace_busy` or `merge_busy`, naming the lock file and the holder's command, process, start
+time, Claude Code session and task as the holder line gives them.
 
-The tool takes those locks without waiting. A
+Such a lock is a task's merge attempt lock, a task's
+[workspace lock](../../glossary.json#concept.workspace-lock) or the
+[merge lock](../../glossary.json#concept.merge-lock). The tool takes those locks without waiting. A
+tool another part registers on the same server states its own waiting. For example, Workflows'
+`workflow_step` may wait a bounded time for a workspace lock
+([Workflows](../../workflows/contracts.md#mcp-tools)). A
 refused call releases every lock it took. A task's record lock is no such lock. Every change of a
 task record holds its record lock for that one update only. For that reason, a short write waits for
 the record lock as the command does, briefly. At worst, the short write waits while a close asks
