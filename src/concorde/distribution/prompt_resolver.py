@@ -358,7 +358,8 @@ def find_unreachable_prompts(
         {
             path.relative_to(root).as_posix()
             for path in (root / "prompts").rglob("*.md")
-            if path.is_file() and not path.is_symlink()
+            # A symbolic link counts too: no include reaches a prompt through one.
+            if path.is_symlink() or path.is_file()
         }
         if (root / "prompts").is_dir()
         else set()

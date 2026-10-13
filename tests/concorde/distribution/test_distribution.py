@@ -206,12 +206,10 @@ class BuildTests(unittest.TestCase):
         everything = parts.package_parts(root)
 
         def composed(kind):
-            return (
-                "\n\n".join(
-                    (root / path).read_text().strip("\n")
-                    for path in guidance.sections(everything, kind)
-                )
-                + "\n"
+            # Each render byte for byte, one blank line between two renders.
+            return "\n".join(
+                (root / path).read_text()
+                for path in guidance.sections(everything, kind)
             )
 
         # Coordination's working method first, then the other parts in the parts table's order.
@@ -290,6 +288,17 @@ class BuildTests(unittest.TestCase):
             three["claude_md"],
         )
         self.assertNotIn("issues", "".join(three.values()))
+        # A render's own blank lines at its edges stay.
+        padded = lambda path: f"\n<{path}>\n\n"  # noqa: E731
+        self.assertEqual(
+            "\n<generated/main-session/task-session.md>\n\n\n"
+            "\n<generated/guidance/spec/task-session.md>\n\n",
+            guidance.compose(
+                {name: everything[name] for name in ("spec", "coordination")},
+                "task_session",
+                padded,
+            ),
+        )
 
     @verifies("scenario.distribution.composed-guidance-without-coordination")
     def test_the_guidance_without_coordination_is_the_given_sections_alone(self):
@@ -350,6 +359,35 @@ class BuildTests(unittest.TestCase):
         )
 
     @verifies("scenario.distribution.build-check-stale")
+    def test_checking_the_build_writes_no_import_cache(self):
+        # A copy without caches whose own .venv is this one, so that the command, started on
+        # the base interpreter, runs again on the copy's .venv as in a prepared checkout.
+        root = package_copy(self)
+        venv = Path(sys.prefix)
+        (root / ".venv/bin").mkdir(parents=True)
+        shutil.copy2(venv / "pyvenv.cfg", root / ".venv/pyvenv.cfg")
+        (root / ".venv/lib").symlink_to(venv / "lib")
+        (root / ".venv/bin/python").symlink_to(venv / "bin/python")
+        before = sorted(str(path) for path in root.rglob("*"))
+        done = subprocess.run(
+            [
+                getattr(sys, "_base_executable", sys.executable),
+                str(root / "scripts/concorde.py"),
+                "--project-root",
+                str(root),
+                "build",
+                "--check",
+            ],
+            cwd=root,
+            capture_output=True,
+            text=True,
+            env={**os.environ, "PYTHONDONTWRITEBYTECODE": ""},
+        )
+        self.assertEqual(0, done.returncode, done.stdout + done.stderr)
+        self.assertEqual("success", json.loads(done.stdout)["status"])
+        self.assertEqual(before, sorted(str(path) for path in root.rglob("*")))
+
+    @verifies("scenario.distribution.build-check-stale")
     def test_a_stale_build_is_reported_without_writing(self):
         root = package_copy(self)
         path = root / "prompts/main-session/skill.md"
@@ -380,6 +418,12 @@ class BuildTests(unittest.TestCase):
         with self.assertRaises(BuildError) as raised:
             write_build(root)
         self.assertIn("unreachable", str(raised.exception))
+        orphan.unlink()
+        # A link to a prompt is a prompt of its own, which no include can reach.
+        orphan.symlink_to(root / "prompts/main-session/skill.md")
+        with self.assertRaises(BuildError) as raised:
+            write_build(root)
+        self.assertIn("prompts/orphan.md", str(raised.exception))
         orphan.unlink()
         cycle = root / "prompts/main-session/skill.md"
         (root / "prompts/loop.md").write_text(

@@ -77,7 +77,9 @@ def compose(
     paths = sections(registrations, kind)
     if not paths or (kind == "task_session" and "coordination" not in registrations):
         return None
-    body = "\n\n".join(read(path).strip("\n") for path in paths) + "\n"
+    # Each render byte for byte, one blank line after each render but the last.
+    renders = [read(path) for path in paths]
+    body = "\n".join(text if text.endswith("\n") else text + "\n" for text in renders)
     if kind == "skill":
         return skill_header(SKILL, DESCRIPTIONS["coordination" in registrations]) + body
     return body
