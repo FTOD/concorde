@@ -89,9 +89,11 @@ other rules, whatever the order in which a backend's tables try them.
 
 The **[write hook](../../glossary.json#concept.write-hook)** makes `rw` the exact write allowlist.
 It judges a write by the file it would change, through any symbolic link. It denies any other Edit
-or Write with a reason naming the path's level. For a path outside the grant, the reason says that a
-file no Module declares needs a `specify` task first. For that path, the reason also says that a
-file another Module declares needs that Module bound.
+or Write with a reason naming the path's level. For a path outside the grant, the reason says that
+the task level creates a new file outside the bound directories and binds it to a Module before a
+worker fills it. For that path, the reason also says that a file another Module binds needs that
+Module bound to the task. The [write hook table](claude-code.md#write-hook) gives the exact
+reasons.
 
 The hook says nothing about `rw`. It never governs reads. Except for `ro` and `rw` files and runtime
 paths outside those Git paths, the Bash sandbox denies reading these paths:

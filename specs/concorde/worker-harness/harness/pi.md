@@ -49,7 +49,7 @@ The extension registers exactly these tools, replacing pi's built-ins of the sam
 | --- | --- |
 | `read` | Checks the path with the read table below, then runs pi's own `read`, whose file operations check again the exact path it opens |
 | `write`, `edit` | Check the path with the write table below, then run pi's own tool |
-| `grep` | Runs `rg` inside the sandbox; files the sandbox hides do not exist for it |
+| `grep` | Runs `rg` inside the sandbox; files the sandbox hides do not exist for it. It reads `rg`'s output line by line and stops `rg` at the match limit. A line too long to read whole is shown as such, and a line it cannot read is reported, so an incomplete reading never answers that nothing matched |
 | `find` | Runs `fd` inside the sandbox |
 | `ls` | Lists a directory inside the sandbox |
 | `bash` | Runs the command inside the sandbox |
@@ -106,7 +106,10 @@ specific. Else, the longest directory entry above the path is the most specific.
 keeps system directories readable, as on the Claude Code backend. A runtime path inside the task
 worktree, such as `.venv` or `node_modules`, is readable to `read` as to the sandbox. The sandbox
 lists the runtime path in `allowRead`. A search rooted at the runtime path, or at a directory
-holding one, is allowed too.
+holding one, is allowed too, inside the task worktree or outside it, such as in the primary
+worktree or the user's home. A search root in a Git administrative path or in the runtime
+directory's `control/` or `config/` stays denied. The sandbox still hides everything below the
+root that the read table denies.
 
 ### Write table
 

@@ -299,9 +299,10 @@ the run. [The run mechanics](launch.md) give these exact details:
 
 ### scenario.workers.malformed-grant-refused — A malformed grant is refused before launch
 
-- GIVEN a grant whose entries are not a list, or with an entry that is not an object, has a field
-  other than `path` and `level`, has no path, an absolute path or one leaving the task worktree
-  through `..`, or a level other than `rw`, `ro` and `names`
+- GIVEN a grant whose entries are not a list, or with an entry that breaks the shape of the
+  [grant input](contracts.md#contract.workers.grant-input)
+- AND such an entry is not an object, has a field besides `path` and `level`, has no path, an
+  absolute path or one leaving the task worktree through `..`, or an unknown level
 - WHEN the host is asked to start the worker, or generates its settings
 - THEN settings generation raises `grant_malformed` naming the entry and what is wrong with it
 - AND the host refuses before launch with `grant_malformed` and the reason `input`
@@ -539,9 +540,9 @@ the run. [The run mechanics](launch.md) give these exact details:
 - GIVEN a worker round whose agent process ends normally, within its timeout and limits
 - AND the agent process ends with no process error of its backend
 - AND the worker round changes nothing outside the grant's `rw` list
-- AND the worker round ends without a structured result that satisfies the worker result schema:
-  with none, with a status other than `ok`, `blocked` and `failed`, with a `blocked` or `failed`
-  result without an error, or with an `ok` result with one
+- AND the worker round ends without a structured result that satisfies the worker result schema
+- AND that result is missing, has a status other than `ok`, `blocked` and `failed`, is `blocked`
+  or `failed` without an error, or is `ok` with one
 - WHEN the host reads its output
 - THEN the run ends `failed` with `worker_result_invalid` and the schema violation or the worker's
   final text in its error
@@ -653,12 +654,15 @@ the run. [The run mechanics](launch.md) give these exact details:
 ### scenario.workers.pi-file-tools-denied — pi file tools explain every denial
 
 - GIVEN a running pi worker
-- WHEN it reads a `names` file, an ungranted file, the task worktree's `.git`, a submodule's `.git`,
-  a file of the common Git directory, a source file of the primary worktree outside the task
-  worktree, with that primary worktree outside the user's home, a file of its runtime directory's
-  `config/`, or a granted name that does not exist whose other spelling, such as its NFD form, is an
-  ungranted file pi's `read` would open instead, or writes a `ro` file, an undeclared file or a
-  submodule's `.git`
+- WHEN it reads a `names` file or an ungranted file of the task worktree
+- AND it reads the task worktree's `.git`, a submodule's `.git` or a file of the common Git
+  directory
+- AND it reads a source file of the primary worktree outside the task worktree, with that primary
+  worktree outside the user's home
+- AND it reads a file of its runtime directory's `config/`
+- AND it reads a granted name that does not exist whose other spelling, such as its NFD form, is an
+  ungranted file pi's `read` would open instead
+- AND it writes a `ro` file, an undeclared file or a submodule's `.git`
 - THEN each call is denied with the reason the Harness's read or write table gives, prefixed
   `Concorde grant:`
 - AND no file changes
@@ -676,6 +680,16 @@ the run. [The run mechanics](launch.md) give these exact details:
 - AND bash can write `rw` files
 - AND bash's temporary files go to the run's private `TMPDIR`
 - AND bash can write that `TMPDIR`
+
+### scenario.workers.pi-grep-incomplete-output — pi's grep never takes an incomplete reading for no match
+
+- GIVEN a running pi worker
+- AND `rg` reports a match on a line longer than the extension reads whole
+- WHEN the worker greps for it
+- THEN the answer names the file and says that the matching line is too long to show
+- AND the answer never says that nothing matched
+- AND when a line of `rg`'s output cannot be read, the answer says so
+- AND when the matches reach the limit, the extension stops `rg` and says that the limit was reached
 
 ### scenario.workers.pi-runtime-missing — A pi run without its runtime is refused
 
@@ -888,10 +902,11 @@ the run. [The run mechanics](launch.md) give these exact details:
 
 ### scenario.workers.model-refused — Validation refuses invalid entries
 
-- GIVEN a configuration with invalid structure, an Operation or worker name its caller does not
-  declare, a malformed `enabled_models` entry, an enabled model named by one program's id such as
-  `local-openai/gpt-6` rather than a project model name, or a reasoning level outside the effective
-  backend's vocabulary
+- GIVEN a configuration with one defect of its structure, its names or its levels
+- AND a defect of its structure is invalid structure or a malformed `enabled_models` entry
+- AND a defect of its names is an Operation or worker name its caller does not declare, or an
+  enabled model named by one program's id, such as `local-openai/gpt-6`, not a project model name
+- AND a defect of its levels is a reasoning level outside the effective backend's vocabulary
 - WHEN the shared validator checks it
 - THEN it is refused with `config_invalid`
 

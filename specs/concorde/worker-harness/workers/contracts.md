@@ -192,7 +192,7 @@ The [grant](../../glossary.json#concept.grant) is data a caller hands the worker
 The worker harness owns this format. It computes nothing in the format. The worker harness never
 does any of these:
 
-- derive a grant from Specs
+- derive a grant from [Specs](../../glossary.json#concept.spec)
 - widen a grant
 - read where a grant came from
 
@@ -776,7 +776,7 @@ contents are these values.
 ```concorde-contract
 {
   "id": "contract.workers.worker-round-trace",
-  "version": 5,
+  "version": 6,
   "schema": {
     "type": "object",
     "additionalProperties": false,
@@ -919,7 +919,7 @@ contents are these values.
       }
     }
   },
-  "semantics": "The data of the typed value concorde-worker-round-trace, the content of one worker round's trace node. round is its number from 1; prompt says what the worker was given: the brief (initial), what the caller's round validation reported to repair (repair), or, after a round a transient model-service error ended, the retry prompt that continues its session or, with no session to continue and nothing changed, the brief again (retry). session is the agent session the round ran in, exit the agent process's exit status (null when it could not be started), audit the host's audit after the round, or null when the round ended before it: verdict is clean or violation, changed lists every worktree-relative path created, changed or deleted since the snapshot, and violations each violation as a string, HEAD or index for a changed Git state, the path of a file created or changed outside rw and the path followed by a space and (deleted) for a deleted file (launch.md#audit); evidence the values the caller's round validation returned to keep with the round, in the caller's own shape, such as Concorde's check results with their logs as paths relative to this node's folder, empty when none ran, and validation the outcome of the round validation (clean, the text to repair, or why it could not validate), null when none ran. transient is null unless the agent program ended the round with a transient model-service error (launch.md#retries); then error is the error message it reported, retried whether the host started a retry round after it, and delay_seconds how long the host waited before that retry round, null when it started none. agent is what the agent program reported about the round, as its backend reads it: under claude, the result envelope's subtype, is_error, num_turns, total_cost_usd, permission_denials (the tool calls Claude Code refused, each with its tool name, tool use id and input), modelUsage (each model's tokens and cost) and duration_api_ms, each as the envelope gave it and null when it gave none; or under pi, its last stop reason, turn count and cost. The round's tokens, cost, turns and duration are its usage; its standard error is the artifact stderr.log, and the nodes the round validation placed in its folder, such as check nodes, lie below it. A behaviour or field change increments the version.",
+  "semantics": "The data of the typed value concorde-worker-round-trace, the content of one worker round's trace node. round is its number from 1; prompt says what the worker was given: the brief (initial), what the caller's round validation reported to repair (repair), or, after a round a transient model-service error ended, the retry prompt that continues its session or, with no session to continue and nothing changed, the brief again (retry). session is the agent session the round ran in, exit the agent process's exit status (null when it could not be started), audit the host's audit after the round, or null when the round ended before it or the audit could not run (launch.md#audit): verdict is clean or violation, changed lists every worktree-relative path created, changed or deleted since the snapshot, and violations each violation as a string, HEAD or index for a changed Git state, the path of a file created or changed outside rw and the path followed by a space and (deleted) for a deleted file (launch.md#audit); evidence the values the caller's round validation returned to keep with the round, in the caller's own shape, such as Concorde's check results with their logs as paths relative to this node's folder, empty when none ran, and validation the outcome of the round validation (clean, the text to repair, or why it could not validate), null when none ran. transient is null unless the agent program ended the round with a transient model-service error (launch.md#retries); then error is the error message it reported, retried whether the host started a retry round after it, and delay_seconds how long the host waited before that retry round, null when it started none. agent is what the agent program reported about the round, as its backend reads it: under claude, the result envelope's subtype, is_error, num_turns, total_cost_usd, permission_denials (the tool calls Claude Code refused, each with its tool name, tool use id and input), modelUsage (each model's tokens and cost) and duration_api_ms, each as the envelope gave it and null when it gave none; or under pi, its last stop reason, turn count and cost. The round's tokens, cost, turns and duration are its usage; its standard error is the artifact stderr.log, and the nodes the round validation placed in its folder, such as check nodes, lie below it. A behaviour or field change increments the version.",
   "example": {
     "round": 1,
     "prompt": "initial",
@@ -943,7 +943,7 @@ contents are these values.
         "log_digest": "sha256:7777777777777777777777777777777777777777777777777777777777777777"
       }
     ],
-    "validation": null,
+    "validation": "The host ran the configured checks after your last round and some failed. Fix the code within your boundary and end with a new structured result.\n\n## check.http.tests (failed, exit code 1)\n\nFAILED tests/test_retry.py::test_backoff - AssertionError\n",
     "transient": null,
     "agent": {
       "claude": {

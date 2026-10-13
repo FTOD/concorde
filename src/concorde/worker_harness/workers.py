@@ -106,7 +106,7 @@ register(
         },
     },
 )
-# contract.workers.worker-round-trace, version 5
+# contract.workers.worker-round-trace, version 6
 WORKER_ROUND_TRACE = "concorde-worker-round-trace"
 WORKER_ROUND_TRACE_SCHEMA = {
     "type": "object",
@@ -167,7 +167,7 @@ WORKER_ROUND_TRACE_SCHEMA = {
         "agent": _OBJECT,
     },
 }
-register(WORKER_ROUND_TRACE, 5, WORKER_ROUND_TRACE_SCHEMA)
+register(WORKER_ROUND_TRACE, 6, WORKER_ROUND_TRACE_SCHEMA)
 register_kinds(
     NodeKind(
         "worker-run",

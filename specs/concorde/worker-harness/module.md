@@ -67,6 +67,32 @@ other actions:
   [resume rounds](../glossary.json#concept.resume-round)
 - writes the [run record](../glossary.json#concept.run-record)
 
+A caller hands its job to Workers, which asks the Harness for the worker's agent harness, launches
+the worker under it and returns the run record:
+
+```d2 illustrative
+direction: right
+caller: "Caller\n(in Concorde, a Method step)" {
+  grant: "Grant as data"
+  instructions: "Task instructions"
+  validation: "Round validation"
+}
+wh: Worker harness {
+  harness: "Harness:\nsettings or permission\nextension, tool set"
+  workers: "Workers:\nbrief, launch, audit,\nresume, record"
+  workers -> harness: "asks for the\nworker's harness"
+}
+program: "Worker\nclaude -p or pi -p"
+record: "Run record\n(trace node)"
+caller.grant -> wh.workers
+caller.instructions -> wh.workers
+wh.workers -> program: launches, resumes
+wh.workers -> caller.validation: "after each clean round"
+caller.validation -> wh.workers: "evidence, what to repair"
+wh.workers -> record: writes
+wh.workers -> caller: "returned run record"
+```
+
 What a launch is given is the one idea this entry adds.
 
 ### What a launch is given
@@ -167,7 +193,8 @@ A caller that uses the worker harness alone, without Method, goes through two st
    - the user's model map
 
    The caller declares the Operations and worker ids it may launch. It asks the
-   [configuration reader](workers/module.md#choosing-worker-models) for these worker settings:
+   [configuration reader](workers/module.md#choosing-worker-models), the Python module
+   `concorde.worker_harness.models`, for these worker settings:
    - backend
    - model
    - reasoning level
@@ -181,7 +208,11 @@ A caller that uses the worker harness alone, without Method, goes through two st
 
    No run directory or record is made. The caller turns the refusal into its own error link
    ([Refusals before a run](workers/launch.md#refusals-before-a-run)).
-2. **Launch and read the record.** The caller hands the host the resolved inputs with these inputs:
+   The reader's entry points are `models.load`, `models.check_mapped`, `models.worker_choice`,
+   `models.limits` and `models.runtime`.
+2. **Launch and read the record.** The caller calls `workers.run_worker` of
+   `concorde.worker_harness.workers` with a `workers.WorkerRequest`. The request carries the
+   resolved settings with these inputs:
    - the grant
    - the instructions
    - the worktree
@@ -203,8 +234,19 @@ A caller that uses the worker harness alone, without Method, goes through two st
    - the rounds used
    - the transcript
 
-   After the last round's validation, the host makes the deletions a worker proposes. That
-   validation's evidence therefore describes the worktree before those deletions
+   [Calling Workers](workers/launch.md#calling-workers) gives every entry point with its calling
+   contract and one complete call, from the configuration to the returned record.
+
+   When the last round's audit was clean and its worker returned a valid result, the host makes
+   the deletions that worker proposes once the round ends. It does so whatever the run's outcome,
+   also in these cases:
+   - a `blocked` or `failed` worker
+   - a round that timed out or whose agent process failed after the result
+   - a round validation that failed the run or could not validate
+
+   It makes none after a round validation
+   that answered a violation, after an interrupted run or after an audit that found a violation or
+   could not run. Any validation evidence therefore describes the worktree before those deletions
    ([Proposed deletions](workers/launch.md#proposed-deletions)). When a run does not end `ok`, it
    carries Workers' error link with its causes.
 
@@ -217,7 +259,7 @@ Each child's failure becomes something the caller sees in one of three ways. Wor
 - **In the run record**, `failed` with Workers' error link. This outcome covers these failures:
   - a run that could not start its worker
   - a round that timed out or reached its turn or budget limit, or ended with an invalid worker result
-  - an [audit](workers/launch.md#audit) violation
+  - an [audit](workers/launch.md#audit) violation, or an audit that could not run
   - a round validation that answers a violation, that cannot validate, or whose repair still stands
     when the rounds are used up and it says so
   - a proposed deletion that failed
@@ -227,6 +269,8 @@ Each child's failure becomes something the caller sees in one of three ways. Wor
   - a missing grant, which Workers refuses
   - a malformed grant, which the Harness refuses to generate settings from
   - a misplaced worktree
+  - a runtime path that meets the grant's `names` or `rw` entries, Git metadata or the host's own
+    directories
   - a runtime directory the deny rules would cover
   - a snapshot or a launch that failed
   - a backend program or runtime that is missing or fails
@@ -243,35 +287,11 @@ A round may lead to another round in two ways only, each with its own limit:
   round named one, up to the run's retry rounds. The retry rounds are counted apart from the resume
   rounds. The exact eligibility and delays are in [Retries](workers/launch.md#retries).
 
-Every outcome that fits neither way ends the run at once. An audit violation is never retried.
+Every outcome that fits neither way ends the run at once. An audit violation is never retried, nor
+is a round whose audit could not run.
 Whatever the outcome, the host never reverts or commits what a worker wrote. What the run leaves
 in the worktree is the caller's to keep or discard. The grant stays frozen for the whole run.
 Before its validation, every round is audited ([Requirements](workers/launch.md#requirements)).
-
-## Overview
-
-```d2 illustrative
-direction: right
-caller: "Caller\n(in Concorde, a Method step)" {
-  grant: "Grant as data"
-  instructions: "Task instructions"
-  validation: "Round validation"
-}
-wh: Worker harness {
-  harness: "Harness:\nsettings or permission\nextension, tool set"
-  workers: "Workers:\nbrief, launch, audit,\nresume, record"
-  workers -> harness: "asks for the\nworker's harness"
-}
-program: "Worker\nclaude -p or pi -p"
-record: "Run record\n(trace node)"
-caller.grant -> wh.workers
-caller.instructions -> wh.workers
-wh.workers -> program: launches, resumes
-wh.workers -> caller.validation: "after each clean round"
-caller.validation -> wh.workers: "evidence, what to repair"
-wh.workers -> record: writes
-wh.workers -> caller: "returned run record"
-```
 
 ## How it is built
 
@@ -395,6 +415,13 @@ round, Workers calls the round validation
 Workers never retries a violation
 ([req.workers.violation-ends-run](workers/launch.md#req.workers.violation-ends-run)). Workers
 reports every failure as a link of the [error chain](../glossary.json#concept.error-chain)
-([req.workers.error-chain](workers/launch.md#req.workers.error-chain)). Every run leaves a final
-record ([req.workers.always-recorded](workers/launch.md#req.workers.always-recorded)), with the
-outcomes [When a launch fails](#when-a-launch-fails) lists.
+([req.workers.error-chain](workers/launch.md#req.workers.error-chain)). Every run returns its final
+record to its caller, with the outcomes [When a launch fails](#when-a-launch-fails) lists. Workers
+also writes that record to the run's trace node
+([req.workers.always-recorded](workers/launch.md#req.workers.always-recorded)). That write is
+best-effort. A write the operating system refuses changes neither the run nor its status. The
+returned record lists such a failure in its `trace_failures`. A caller therefore reads the returned
+record's `trace_failures` before it relies on the saved record. A host killed without a chance to
+act, such as by `SIGKILL`, leaves its run's saved record `running`
+([Where a run's files live](workers/module.md#where-a-runs-files-live)). Such a saved record says
+nothing about whether the worker finished.

@@ -478,6 +478,106 @@ console.log(JSON.stringify(out));
 """
 
 
+GREP_PROBE = """
+import { LineSplitter, RipgrepReader } from %(source)s;
+const out = {};
+for (const [name, case_] of Object.entries(%(cases)s)) {
+  const reader = new RipgrepReader("/w", case_.limit, case_.cap);
+  const splitter = new LineSplitter(case_.cap, (line, cut) => reader.read(line, cut));
+  let stopped = false;
+  for (const chunk of case_.chunks) if (!splitter.push(chunk)) { stopped = true; break; }
+  if (!stopped) splitter.end();
+  out[name] = { answer: reader.answer((text) => text), stopped };
+}
+console.log(JSON.stringify(out));
+"""
+
+
+def rg_event(kind: str, path: str, number: int, text: str) -> str:
+    return json.dumps(
+        {
+            "type": kind,
+            "data": {
+                "path": {"text": path},
+                "lines": {"text": text + "\\n"},
+                "line_number": number,
+            },
+        },
+        separators=(",", ":"),
+    )
+
+
+@unittest.skipUnless(shutil.which("node"), "Node is needed to run pi_policy.ts")
+class PiGrepTests(unittest.TestCase):
+    """The grep tool's reading of ripgrep's output, run by Node."""
+
+    def answers(self, cases: dict) -> dict:
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        probe = Path(directory.name) / "probe.mts"
+        probe.write_text(
+            GREP_PROBE
+            % {
+                "source": json.dumps(POLICY_SOURCE.as_posix()),
+                "cases": json.dumps(cases),
+            }
+        )
+        completed = subprocess.run(
+            ["node", "--experimental-strip-types", "--no-warnings", str(probe)],
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
+        self.assertEqual(0, completed.returncode, completed.stderr)
+        return json.loads(completed.stdout)
+
+    @verifies("scenario.workers.pi-grep-incomplete-output")
+    def test_a_match_too_long_to_read_is_never_reported_as_no_match(self):
+        long_match = rg_event("match", "/w/min.js", 1, "x" * 5000 + "NEEDLE")
+        normal = rg_event("match", "/w/a.py", 3, "NEEDLE = 1")
+        out = self.answers(
+            {
+                # The match is split across chunks and longer than the cap.
+                "long": {
+                    "limit": 10,
+                    "cap": 1000,
+                    "chunks": [long_match[:700], long_match[700:] + "\n"],
+                },
+                "mixed": {
+                    "limit": 10,
+                    "cap": 1000,
+                    "chunks": [normal[:20], normal[20:] + "\n" + long_match + "\n"],
+                },
+                "unreadable": {
+                    "limit": 10,
+                    "cap": 1000,
+                    "chunks": ['{"type":"match", broken\n'],
+                },
+                "limited": {
+                    "limit": 1,
+                    "cap": 1000,
+                    "chunks": [normal + "\n" + normal + "\n" + normal + "\n"],
+                },
+                "none": {
+                    "limit": 10,
+                    "cap": 1000,
+                    "chunks": ['{"type":"summary","data":{}}\n'],
+                },
+            }
+        )
+        self.assertIn(
+            "min.js:?: [a line longer than 0KB, not shown]", out["long"]["answer"]
+        )
+        self.assertNotIn("No match", out["long"]["answer"])
+        self.assertIn("a.py:3: NEEDLE = 1", out["mixed"]["answer"])
+        self.assertIn("min.js:?:", out["mixed"]["answer"])
+        self.assertIn("No readable match", out["unreadable"]["answer"])
+        self.assertIn("could not be read", out["unreadable"]["answer"])
+        self.assertTrue(out["limited"]["stopped"])
+        self.assertIn("1 matches limit reached", out["limited"]["answer"])
+        self.assertEqual("No matches found", out["none"]["answer"])
+
+
 @unittest.skipUnless(shutil.which("node"), "Node is needed to run pi_policy.ts")
 class PiPolicyTests(unittest.TestCase):
     """The read, write and search tables of the pi run mechanics, run by Node."""
@@ -634,6 +734,30 @@ class PiPolicyTests(unittest.TestCase):
         self.assertIn("holds nothing this task may read", out["search:b-only"])
         self.assertIn("Git metadata", out["search:git"])
         self.assertIn("Git metadata", out["search:common-git"])
+
+    @verifies("scenario.workers.runtime-paths-readable")
+    def test_a_search_may_start_at_a_parent_of_a_runtime_path(self):
+        logs = self.primary / ".concorde/tasks/t/checks"
+        logs.mkdir(parents=True)
+        home_tool = self.base / "user/.local/tool"
+        home_tool.mkdir(parents=True)
+        self.policy["runtime"] = [logs.as_posix(), home_tool.as_posix()]
+        out = self.decide(
+            searches={
+                "logs": logs.as_posix(),
+                "logs-parent": logs.parent.as_posix(),
+                "primary": self.primary.as_posix(),
+                "home-parent": (self.base / "user/.local").as_posix(),
+                "other": (self.primary / "src").as_posix(),
+                "git": f"{self.primary}/.git",
+            }
+        )
+        self.assertIsNone(out["search:logs"])
+        self.assertIsNone(out["search:logs-parent"])
+        self.assertIsNone(out["search:primary"])
+        self.assertIsNone(out["search:home-parent"])
+        self.assertIn("outside this task's boundary", out["search:other"])
+        self.assertIn("Git metadata", out["search:git"])
 
     @verifies("scenario.workers.write-through-link")
     def test_a_write_through_a_link_is_judged_by_its_target(self):

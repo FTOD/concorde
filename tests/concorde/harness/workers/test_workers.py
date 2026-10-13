@@ -2088,7 +2088,7 @@ class WorkerRunTests(unittest.TestCase):
             for fence in text.split("```concorde-contract\n")[1:]
             if '"contract.workers.worker-round-trace"' in fence.split("```", 1)[0]
         ]
-        self.assertEqual(5, contract["version"])
+        self.assertEqual(6, contract["version"])
         validate(contract["example"], contract["schema"])
         self.assertEqual(
             sorted(contract["schema"]["required"]),
