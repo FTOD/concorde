@@ -6,7 +6,8 @@ with ``writes`` (absolute path to content), ``removes`` (absolute paths to delet
 merged over a valid ``ok`` result), and optional ``early_session`` (name the session and write its
 transcript first, as Claude Code does, before any ``sleep``), ``sleep``, ``linger`` (seconds to
 sleep after printing the envelope), ``spawn`` (start a detached sleeper that records its PID),
-``raw`` (print this instead of an envelope), ``envelope`` (fields merged over the result envelope,
+``raw`` (print this instead of an envelope), ``stderr`` (text written to standard error before
+any ``sleep``), ``envelope`` (fields merged over the result envelope,
 such as an error subtype), ``no_structured`` (omit the structured output), ``no_transcript``
 (write no transcript) or ``actions``
 (``[tool, input]`` pairs printed first as ``stream-json`` assistant tool uses). Like Claude Code it
@@ -89,6 +90,9 @@ def main() -> int:
             [sys.executable, "-c", "import time; time.sleep(120)"],
         )
         Path(step["spawn"]).write_text(str(child.pid))
+    if step.get("stderr"):
+        sys.stderr.write(step["stderr"])
+        sys.stderr.flush()
     if step.get("sleep"):
         time.sleep(step["sleep"])
     for tool, arguments in step.get("actions", []):

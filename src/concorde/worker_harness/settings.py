@@ -159,12 +159,14 @@ class GrantView:
     """Levels of concrete paths under one frozen grant (project-relative entries).
 
     Raises ``SettingsError`` (``grant_malformed``) naming the first malformed entry and what is
-    wrong with it, so nothing is generated from a grant whose entries cannot be read.
+    wrong with it, so nothing is generated from a grant whose entries cannot be read. An entry
+    naming a path an earlier entry named is malformed too: each path has exactly one level.
     """
 
     def __init__(self, entries):
         self.exact: dict[str, str] = {}
         self.directories: list[tuple[str, str]] = []
+        listed: dict[str, int] = {}
         if not isinstance(entries, list):
             raise SettingsError(
                 "grant_malformed",
@@ -180,6 +182,14 @@ class GrantView:
                     f"{problem}",
                 )
             path, level = entry["path"], entry["level"]
+            if path in listed:
+                raise SettingsError(
+                    "grant_malformed",
+                    f"grant entry {index} ({json.dumps(entry)}) is malformed: its path "
+                    f"{path!r} is listed again; entry {listed[path]} already lists it, and "
+                    "each path has exactly one entry",
+                )
+            listed[path] = index
             if path.endswith("/"):
                 self.directories.append((path, level))
             else:
@@ -237,6 +247,7 @@ class GrantView:
             for path, level in self.directories
             if directory.startswith(path)
         ]
+        # Paths are listed once, so one directory entry is the longest.
         return max(covering)[1] if covering else None
 
     def uniform_below(self, directory: str, level: str) -> bool:

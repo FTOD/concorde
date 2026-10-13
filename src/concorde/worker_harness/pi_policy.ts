@@ -4,7 +4,8 @@
  * Pure functions over the run's policy (see the Workers Module's pi run mechanics): how a tool's
  * path argument resolves, and whether a read, a write or a search root is allowed. They import only
  * Node's own modules so the host's tests can run them under Node without pi. Every function returns
- * `null` to allow, or the reason of a denial as the worker should read it.
+ * `null` to allow, or the reason of a denial as the worker should read it. The reading of
+ * ripgrep's output for the grep tool lives here too, for the same reason.
  */
 
 import {
@@ -20,6 +21,7 @@ import {
   isAbsolute,
   join,
   normalize,
+  relative as relativePath,
   resolve,
   sep,
 } from "node:path";
@@ -224,7 +226,8 @@ function readableBelow(policy: Policy, relative: string): boolean {
 
 /**
  * Decide the root of a search or listing. A directory of the task worktree is allowed when a
- * readable path lies below it; the sandbox then hides everything else below it.
+ * readable path lies below it, and a directory elsewhere when a runtime path lies at or below it;
+ * the sandbox then hides everything else below it.
  */
 export function searchDecision(policy: Policy, path: string): string | null {
   const lexical = normalize(path);
@@ -248,8 +251,148 @@ export function searchDecision(policy: Policy, path: string): string | null {
         return `${relative || policy.worktree} holds nothing this task may read`;
       continue;
     }
+    if (directory && !inGit(policy, candidate)) {
+      // A directory outside the task worktree that holds a runtime path, such as the folder of
+      // the check logs below the primary worktree, may root a search; the host's own directories
+      // stay denied below.
+      if (
+        !policy.hidden.some((base) => within(candidate, base)) &&
+        policy.runtime.some((base) => within(base, candidate))
+      )
+        continue;
+    }
     const denied = readOne(policy, candidate);
     if (denied) return denied;
   }
   return null;
+}
+
+/**
+ * Split text that arrives in chunks into lines for `onLine`, each cut at `cap` characters with
+ * `cut` true. Once `onLine` answers false, `push` answers false and reads nothing more.
+ */
+export class LineSplitter {
+  cap: number;
+  onLine: (line: string, cut: boolean) => boolean;
+  pending = "";
+  cut = false;
+  done = false;
+
+  constructor(cap: number, onLine: (line: string, cut: boolean) => boolean) {
+    this.cap = cap;
+    this.onLine = onLine;
+  }
+
+  push(chunk: string): boolean {
+    if (this.done) return false;
+    const parts = chunk.split("\n");
+    for (const [index, part] of parts.entries()) {
+      const room = this.cap - this.pending.length;
+      if (part.length > room) this.cut = true;
+      this.pending += part.slice(0, Math.max(0, room));
+      if (index === parts.length - 1) break;
+      const [line, cut] = [this.pending, this.cut];
+      this.pending = "";
+      this.cut = false;
+      if (!this.onLine(line, cut)) {
+        this.done = true;
+        return false;
+      }
+    }
+    return true;
+  }
+
+  /** Hand over the last line when the text did not end with a newline. */
+  end(): void {
+    if (!this.done && this.pending) this.onLine(this.pending, this.cut);
+    this.pending = "";
+  }
+}
+
+/**
+ * The grep tool's reading of ripgrep's `--json` lines. A line cut at the splitter's cap, such as a
+ * match on a minified line, is shown as a line too long to show, and a line that cannot be read is
+ * counted, so that an incomplete reading never answers that nothing matched.
+ */
+export class RipgrepReader {
+  root: string;
+  limit: number;
+  cap: number;
+  lines: string[] = [];
+  matches = 0;
+  limited = false;
+  unread = 0;
+
+  constructor(root: string, limit: number, cap: number) {
+    this.root = root;
+    this.limit = limit;
+    this.cap = cap;
+  }
+
+  /** Read one line; false once the match limit is reached. */
+  read(raw: string, cut: boolean): boolean {
+    if (!raw.trim()) return true;
+    let event: {
+      type?: string;
+      data?: {
+        path?: { text?: string };
+        line_number?: number;
+        lines?: { text?: string };
+      };
+    };
+    if (cut) {
+      // Only the start of the event is at hand: its type and its file's name come first.
+      const type = /^\{\s*"type"\s*:\s*"(\w+)"/.exec(raw)?.[1];
+      const quoted = /"path"\s*:\s*\{\s*"text"\s*:\s*("(?:[^"\\]|\\.)*")/.exec(
+        raw,
+      )?.[1];
+      let file = "";
+      try {
+        file = quoted ? JSON.parse(quoted) : "";
+      } catch {
+        file = "";
+      }
+      event = { type, data: { path: { text: file } } };
+    } else {
+      try {
+        event = JSON.parse(raw);
+      } catch {
+        this.unread++;
+        return true;
+      }
+    }
+    if (event.type !== "match" && event.type !== "context") return true;
+    if (event.type === "match" && this.matches >= this.limit) {
+      this.limited = true;
+      return false;
+    }
+    const file = event.data?.path?.text ?? "";
+    const shown = file
+      ? relativePath(this.root, file) || file
+      : "(a file ripgrep did not name)";
+    const number = event.data?.line_number ?? "?";
+    const text = cut
+      ? `[a line longer than ${Math.floor(this.cap / 1024)}KB, not shown]`
+      : (event.data?.lines?.text ?? "").replace(/\r?\n$/, "");
+    if (event.type === "match") {
+      this.matches++;
+      this.lines.push(`${shown}:${number}: ${text}`);
+    } else {
+      this.lines.push(`${shown}-${number}- ${text}`);
+    }
+    return true;
+  }
+
+  /** The tool's answer, its matches cut by `truncate`, with what could not be read. */
+  answer(truncate: (text: string) => string): string {
+    const notice = this.unread
+      ? `\n\n[${this.unread} line(s) of ripgrep's output could not be read; more matches may exist]`
+      : "";
+    if (this.matches === 0)
+      return (this.unread ? "No readable match" : "No matches found") + notice;
+    let output = truncate(this.lines.join("\n")) + notice;
+    if (this.limited)
+      output += `\n\n[${this.limit} matches limit reached. Use limit=${this.limit * 2} for more, or refine pattern]`;
+    return output;
+  }
 }

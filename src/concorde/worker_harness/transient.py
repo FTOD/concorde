@@ -13,8 +13,19 @@ import re
 
 # Exhausted accounts: never transient, whatever else the message says.
 _LASTING = re.compile(
-    r"insufficient_quota|quota exceeded|out of budget|billing|usage limit reached"
-    r"|available balance|UsageLimitError",
+    "|".join(
+        (
+            r"insufficient.?quota",
+            # A quota or usage limit named exceeded, exhausted, used up or reached, either way round.
+            r"(?:quota|usage.?limit|credits?)\b.{0,40}\b(?:exceed|exhaust|used up|reached|depleted)",
+            r"(?:exceed|exhaust|used up|reached|depleted)\w*\b.{0,40}\b(?:quota|usage.?limit|credits?)",
+            r"out of (?:budget|credits?|quota)",
+            r"billing",
+            r"available balance",
+            r"insufficient (?:balance|credits?|funds)",
+            r"UsageLimitError",
+        )
+    ),
     re.IGNORECASE,
 )
 _TRANSIENT = re.compile(
