@@ -372,13 +372,14 @@ def _prepare(chosen: Provider, context: RunContext, node: Node) -> Stop | None:
 
 
 def _refused(chosen: Provider, context: RunContext, refusal) -> Stop:
+    below: list[dict] = []
     if isinstance(refusal, Refused):
         reason, explanation, options = (
             refusal.reason,
             refusal.explanation,
             refusal.options,
         )
-        actor = refusal.actor
+        actor, below = refusal.actor, refusal.causes
     else:
         reason, explanation, options = REFUSALS.get(refusal.code, INPUT_REFUSAL)
         actor = (
@@ -401,6 +402,7 @@ def _refused(chosen: Provider, context: RunContext, refusal) -> Stop:
                 str(refusal),
                 "input",
                 "the runner refuses a run whose workspace, Modules or inputs do not admit it",
+                causes=below,
             )
         ],
         options=options,

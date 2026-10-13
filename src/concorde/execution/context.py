@@ -71,7 +71,9 @@ class Refused(Exception):
     """A definition's admission refusing a run before its steps begin.
 
     ``actor`` is the component that refused, such as the providing part's admission; the reason,
-    explanation and options say why the run cannot handle the refusal and what the caller may do.
+    explanation and options say why the run cannot handle the refusal and what the caller may do;
+    ``causes`` are the links of the errors below that made the actor refuse, such as Spec core's
+    error translated by the providing part.
     """
 
     def __init__(
@@ -84,10 +86,12 @@ class Refused(Exception):
         explanation: str = "the Modules named for the run are refused and only the caller can "
         "correct them",
         options=("correct the command line and run it again",),
+        causes=(),
     ):
         super().__init__(message)
         self.code, self.actor = code, actor
         self.reason, self.explanation, self.options = reason, explanation, list(options)
+        self.causes = list(causes)
 
 
 def command(name: str, steps, **fields) -> Provider:

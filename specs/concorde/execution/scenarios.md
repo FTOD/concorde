@@ -292,6 +292,18 @@ and commands.
 - AND the cause of that link is the admission's own `Method (Module admission)` link with the code
   `unknown_module`, naming `module.nowhere`
 
+### scenario.execution.admission-refusal-causes — An admission's refusal keeps its causes
+
+- GIVEN a definition that admits its Modules itself through Method's admission
+- AND Spec core refuses to load the bound workspace's Specs with its own error, which has a cause
+- WHEN a run of it is started there without `--modules`
+- THEN no step runs
+- AND the result is `failed` with the runner's `refused` link
+- AND the cause of that link is the admission's `Method (Module admission)` link with the code
+  `specs_unloadable`
+- AND below that link is Spec core's error as a `component` link, with its own cause nested below
+  it
+
 ### scenario.execution.modules-removed — A binding whose Modules were all removed
 
 - GIVEN a binding

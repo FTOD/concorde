@@ -342,8 +342,9 @@ The **Definitions** realization holds what Method's definitions share around the
 - `specs.py` holds the admission of a run's Modules against the workspace's registry. With
   `removed-module` evidence, it leaves out the binding's Modules the workspace no longer registers.
   As [Execution's runner](../execution/runner.md#runner) lets a definition's admission do, it refuses
-  `modules_removed`, `specs_unloadable` and `unknown_module`. For a command that diagnoses the Specs
-  itself, it begins anyway. It also holds the translation of Spec tooling's errors into links of
+  `modules_removed`, `specs_unloadable` and `unknown_module`. A `specs_unloadable` refusal carries
+  Spec core's error, translated as [the worker sequence](workers.md#errors-of-the-worker-sequence)
+  says, as its cause. For a command that diagnoses the Specs itself, it begins anyway. It also holds the translation of Spec tooling's errors into links of
   the [error chain](../glossary.json#concept.error-chain).
 - `checks.py` selects these for [Check execution](#uses-checks):
   - The Modules a change concerns and every Module that uses one of them.
