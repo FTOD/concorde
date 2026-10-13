@@ -117,9 +117,12 @@ these to the `concorde` commands and the MCP tools:
 - The other task worktrees.
 - Concorde's own records.
 
-`concorde task merge` audits this at the end. When the primary worktree holds changes nobody
-accounts for, it refuses to merge your task. It also refuses when the worktree of a task that ended
-holds such changes. It warns about a change in the worktree of a task that has delivered and waits.
+`concorde task merge` checks part of this at the end. When the primary worktree holds changes
+nobody accounts for, it refuses to merge your task. It also refuses when the worktree of a task that
+ended holds such changes. It warns about a change in the worktree of a task that has delivered and
+waits. It checks only those working trees. It does not check commits, the worktree of a task still
+working or any other path. So a merge that succeeds does not prove that you stayed inside your
+worktree.
 
 ## Decide within the task, escalate the rest
 
@@ -181,9 +184,9 @@ below:
 
 For a merge conflict or the new Protocol copy, merge the primary branch it names into your task
 branch. Use `git merge <branch>` in the task worktree. Resolve the conflicts within the task's goal.
-Verify the result and commit the merge. Then validate and deliver again and report as at the end of
-the task. Instead, after validating, a task not delivered yet goes on with its work and delivers
-when it is done. It is the only merge you make.
+Verify the result and commit the merge. Then validate and deliver again with the commands "Deliver"
+above names, and report as at the end of the task. Instead, after validating, a task not delivered
+yet goes on with its work and delivers when it is done. It is the only merge you make.
 
 Record every escalation the task needs first. Then report them all at once, as "Report" below
 says. In one report, give every printed `rendered` chain with its question and name each escalation

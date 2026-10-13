@@ -24,7 +24,8 @@ guides.
 
 ### scenario.main-session.change-through-task — The guidance routes an agreed change through a task session
 
-- GIVEN the rendered [main-session guidance](../../glossary.json#concept.main-session-guidance)
+- GIVEN the rendered [main-session guidance](../../glossary.json#concept.main-session-guidance) of
+  a project where the execution and method parts are installed
 - WHEN a main agent reads how to carry out a change agreed with the developer
 - THEN the main agent is told to open a task with its own branch and worktree for the Modules
   involved
@@ -43,6 +44,8 @@ guides.
 - AND that a second run while one runs is refused with `workspace_busy`
 - BUT the main agent is told never to change Specs or code in the primary worktree beyond a small
   change the developer approved
+- AND where the method part is not installed, the task-session guidance tells the session to
+  deliver with `concorde task deliver` instead of `task-validation` and `delivery`
 
 ### scenario.main-session.small-change — The guidance makes a small change only with the developer's approval
 
@@ -172,8 +175,13 @@ illustrates [answers naming their reports](requirements.md#req.main-session.answ
   worktree: dependencies, submodules and build outputs
 - AND the task session is told that because its commands run under no sandbox, it probes the machine
   it runs on itself
-- AND the task session is told that `concorde task merge` audits at the end that nothing outside the
-  task worktree changed
+- AND the task session is told that `concorde task merge` checks at the end the working trees of
+  the primary worktree and of the tasks that ended or delivered, refusing or warning about changes
+  nobody accounts for
+- AND the task session is told that this check does not judge commits, the worktree of a task still
+  working or any other path
+- AND the task session is told that a merge that succeeds therefore does not prove it stayed inside
+  its worktree
 - AND the task session is told to let every run of its workspace finish and to stop every other
   background command it started, confirming each ended, before `task-validation` and `delivery`
 - AND the task session is told to edit and commit nothing in its worktree while a run of it runs,
@@ -291,14 +299,20 @@ also illustrates
 - THEN it is told that `task_merge` never waits for a lock
 - AND it returns at once with the merge it started, or is refused at once with `workspace_busy` or
   `merge_busy` naming the holder
-- AND on such a refusal, to register a wait for the busy lock with `register_wait`
+- AND on such a refusal for the task's workspace lock or the merge lock, to register a wait for the
+  busy lock with `register_wait`
 - AND without a channel, alternatively to run the `concorde task wait` command it returns in
   background Bash
 - AND once woken, to call `task_merge` again, which may be refused again
+- AND on `merge_busy` for the task's merge attempt lock, which `register_wait` does not take, to run
+  `concorde task wait <task> --merge` in background Bash
+- AND once it returns, to read the answer of the merge that held that lock
+- AND to call `task_merge` again only when that merge did not close the task
 
 ### scenario.main-session.merge-conflict — A merge conflict goes back to the task session
 
-- GIVEN the rendered main-session and task-session guidance
+- GIVEN the rendered main-session and task-session guidance of a project where the method part is
+  installed
 - WHEN merging a delivered task fails with `merge_conflict`
 - THEN the main agent is told to answer the task's session, starting one again if it has ended
 - AND to tell the task's session to merge the primary branch into its task branch
@@ -307,10 +321,13 @@ also illustrates
 - AND to tell the task's session to report
 - AND the task session is told to make that merge in its task worktree
 - AND that it is the only merge the task session makes
+- AND where the method part is not installed, the task session is told to validate and deliver
+  again with `concorde task deliver` instead
 
 ### scenario.main-session.update-merge — An update reaches the open tasks through their sessions
 
-- GIVEN the rendered main-session and task-session guidance
+- GIVEN the rendered main-session and task-session guidance of a project where the method part is
+  installed
 - WHEN a `concorde update` that installed a new
   [Protocol copy](../../glossary.json#concept.protocol-copy) asks to merge the primary branch into
   each open task it lists
@@ -575,6 +592,12 @@ and [severity deciding what is fixed first](requirements.md#req.main-session.iss
 - AND it is told never to edit or commit the review record by hand
 - AND it is told to choose what to fix from the Issues that stand
 
+The parts, their worker ids, the skipping and the review record are
+[Project review's](../../method/project-review/requirements.md#req.project-review.worker-ids)
+([skipping](../../method/project-review/requirements.md#req.project-review.skip-unchanged),
+[the record](../../method/project-review/requirements.md#req.project-review.record-commit)), on
+which [the guidance relies](module.md#uses-project-review).
+
 ### scenario.main-session.review-issues — The guidance acts on a review's Issues
 
 - GIVEN the rendered main-session and task-session guidance
@@ -659,7 +682,8 @@ This illustrates [Issue recovery](requirements.md#req.main-session.issues-recove
 
 ### scenario.main-session.project-mcp-session — The server declares its tools and the channel capability
 
-- GIVEN a Claude Code session that starts the
+- GIVEN a project where every part is installed
+- AND a Claude Code session that starts the
   [project MCP server](../../glossary.json#concept.project-mcp-server), `concorde project-mcp`
 - WHEN it initializes the session and lists the tools
 - THEN the server answers with a protocol version it supports, the tools capability and the
@@ -668,6 +692,10 @@ This illustrates [Issue recovery](requirements.md#req.main-session.issues-recove
   `task_open`, `task_escalate`, `task_rebind`, `task_report`, `task_answer`, `task_close`,
   `task_resolve`, `task_merge`, `register_wait`, `workflow_step`, `issue_list`, `issue_show`,
   `issue_check`, `issue_report`, `issue_close` and `issue_reopen`
+
+Where a part is not installed, the server lists none of the tools that part registers or needs, as
+[Distribution's scenario](../../distribution/scenarios.md#scenario.distribution.part-missing) shows
+for the issues and execution parts.
 
 ### scenario.main-session.project-mcp-queries — Queries answer the project from any worktree
 

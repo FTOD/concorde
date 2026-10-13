@@ -27,8 +27,10 @@ change only the task worktree and its [decision log](../../glossary.json#concept
 
 The file-writing tools are those the [task-session settings](contracts.md#task-session-settings)
 list. The [session boundary](../../glossary.json#concept.session-boundary)'s hook checks every one
-of them. The hook leaves reads open. An [Issue](../../glossary.json#concept.issue) record is outside the task
-worktree, so these tools never write one. The session writes Issues through the Issue tools or the
+of them. The hook leaves reads open. An [Issue](../../glossary.json#concept.issue) record of the primary worktree
+is outside the task worktree, so these tools never write one. The copy of the Issue records that
+the task branch holds lies inside the task worktree. The hook does not refuse it, and the guidance
+tells the session to leave it unchanged. The session writes Issues through the Issue tools or the
 Issue command, as the runs it starts do.
 
 ### req.task-session.no-sandbox — A task session's shell is not restricted
@@ -39,10 +41,13 @@ network host the machine offers.
 
 A task session must change nothing outside its task worktree. Nothing else about the session is
 restricted. The task-session [guidance](../../glossary.json#concept.main-session-guidance) and
-Claude Code's `auto` mode keep its shell inside the task. At the end, `concorde task merge` audits
-that nothing outside the task worktree changed
-([req.tasks.merge-nothing-outside](../tasks/requirements.md#req.tasks.merge-nothing-outside)). So
-the session does the following:
+Claude Code's `auto` mode keep its shell inside the task. At the end, `concorde task merge` checks
+the places outside the task worktree whose state no working task accounts for: the primary worktree
+and the worktrees of other tasks that ended or delivered
+([req.tasks.merge-nothing-outside](../tasks/requirements.md#req.tasks.merge-nothing-outside)). That
+check judges working trees, not commits, and it does not judge the worktree of a task still working
+or any path of no task. A merge that succeeds therefore does not prove that the session wrote
+nothing outside its worktree. So the session does the following:
 
 - Prepares its own worktree.
 - Probes the machine it runs on.
@@ -131,7 +136,7 @@ delivered task's session has reported and waits.
 When a task ends, Task sessions SHALL copy the transcript of each of its task sessions into that
 session's [trace node](../../glossary.json#concept.trace-node) before the task's folder moves to the
 [history](../../glossary.json#concept.history), naming in the close's warnings, without failing the
-close, each transcript it cannot find, copy or read.
+close, each transcript it cannot find, copy or read and each session node it cannot write.
 
 The transcript is found by the session's full session id, which Claude Code's own list of sessions
 gives. It is never found by a pattern that could match another session's. A failed copy leaves no

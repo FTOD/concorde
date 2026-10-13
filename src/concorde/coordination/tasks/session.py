@@ -12,8 +12,9 @@ which the close removes, and guards against mistakes, not a malicious session:
   only the task worktree and its decision log;
 - nothing else is restricted. The session's shell runs under no operating-system sandbox: it
   reaches every path, process, socket and host its commands need, and what keeps it inside its
-  task is the task-session guidance, Claude Code's ``auto`` mode and, at the end, the audit
-  ``concorde task merge`` runs over everything outside the task worktree. The developer chose
+  task is the task-session guidance, Claude Code's ``auto`` mode and, at the end, the check
+  ``concorde task merge`` runs over the working trees outside the task worktree that no working
+  task accounts for. The developer chose
   this after a sandbox had cost fourteen problems in a week, most of them answered by a
   workaround rather than by a rule: a task session must change nothing outside its task worktree,
   and nothing else about it is restricted;
@@ -814,10 +815,17 @@ def finish_sessions(
                 "schema_version": type_version(store.SESSION_TRACE),
                 "data": data,
             }
+            # Writing the node touches the filesystem too, so its OSError only warns, as a
+            # failed copy does: the task's close goes on, and the session stays listed.
             try:
                 trace.write(folder, record)
-            except trace.TraceError as error:
-                problem = _failed(error, _discard(folder, shown))
+            except (trace.TraceError, OSError) as error:
+                failed = _failed(error, _discard(folder, shown))
+                problem = (
+                    f"{problem}; then the node could not be written: {failed}"
+                    if problem
+                    else failed
+                )
             if problem is not None:
                 warnings.append(
                     f"the transcript of the Claude Code task session {short} "

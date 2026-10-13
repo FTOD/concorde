@@ -5,7 +5,9 @@ audience: shared
 ## Issues
 
 The primary worktree keeps the project's Issues, its durable records of concrete problems.
-Read and write them with these tools of the project MCP server:
+A task worktree also holds its task branch's copy of `.concorde/issues/`.
+Never change that copy: every Issue write goes to the primary worktree's records.
+Read and write the Issues with these tools of the project MCP server:
 
 - `issue_list`
 - `issue_show`

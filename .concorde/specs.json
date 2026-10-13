@@ -1221,6 +1221,16 @@
           ]
         },
         {
+          "target": "module.project-review",
+          "meaning": "#uses-project-review",
+          "relies_on": [
+            "req.project-review.covered-modules",
+            "req.project-review.worker-ids",
+            "req.project-review.skip-unchanged",
+            "req.project-review.record-commit"
+          ]
+        },
+        {
           "target": "module.workers",
           "meaning": "#uses-workers",
           "relies_on": [
