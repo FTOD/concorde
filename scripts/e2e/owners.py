@@ -166,8 +166,11 @@ def known_runs(records: Path) -> set[str]:
 
 
 def run_folder(records: Path, run_id: str) -> Path:
+    """The folder of the run ``run_id``: one named by the run, or else a workflow step's whose
+    progress file names it. A run rewrites its progress file as it ends, so the name decides
+    first."""
     for folder in _run_folders(records):
-        if _run_id(folder) == run_id:
+        if folder.name == run_id or _run_id(folder) == run_id:
             return folder
     return records / "unbound" / run_id
 

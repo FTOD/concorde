@@ -17,8 +17,8 @@ Dogfood scenarios serve the people developing Concorde only. The checkout itself
 
 A scenario's fault never lies in Concorde's Issue system: the Issue store, `concorde issues` or the
 [project MCP server](../../glossary.json#concept.project-mcp-server)'s Issue tools.
-Dogfooding sends such a defect as a bare [error chain](../../glossary.json#concept.error-chain), never as
-a defect report.
+A fault there is a failure of the Issue system, which Dogfooding sends as a bare
+[error chain](../../glossary.json#concept.error-chain), never as a defect report.
 The evaluation checks defect reports with that same Issue system.
 So a scenario of such a defect would fail even when the session follows Dogfooding exactly.
 
