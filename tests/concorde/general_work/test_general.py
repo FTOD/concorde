@@ -10,6 +10,7 @@ import hashlib
 import json
 import sys
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 
 from concorde.execution.operations.catalog import OPERATIONS
@@ -291,6 +292,23 @@ class GeneralTests(unittest.TestCase):
         readable = brief.split("You may read these paths")[1].split("You may know")[0]
         self.assertIn("/src/a/", readable)
 
+    @verifies("scenario.general-work.type-sets-boundary-only")
+    def test_the_task_type_gives_no_job_of_its_own(self):
+        self.bound()
+        for task_type in ("code-to-spec", "review-code"):
+            self.script()
+            _, envelope = self.run_general(
+                "--type", task_type, "--read-only", "--instruction", "What does add do?"
+            )
+            self.assertEqual("ok", envelope["status"], envelope)
+            worker, reviewer = self.records(envelope)
+            for record in (worker, reviewer):
+                brief = self.brief(record)
+                self.assertNotIn("is your task", brief)
+                self.assertNotIn("`spec-gap` finding", brief)
+            self.assertIn("Say so in `answer`", self.brief(worker))
+            self.assertIn("Name what the Spec leaves open", self.brief(reviewer))
+
     @verifies("scenario.general-work.unbound-write")
     def test_a_writing_run_needs_a_workspace(self):
         self.script()
@@ -336,6 +354,35 @@ class GeneralTests(unittest.TestCase):
         self.assertEqual("blocked", envelope["status"], envelope)
         self.assertEqual(1, len(envelope["worker_runs"]))
         self.assertIsNotNone(link_at(envelope["error"], "worker"))
+        kinds = [item["kind"] for item in envelope["host_evidence"]]
+        self.assertIn("tree-before", kinds)
+        self.assertNotIn("change", kinds)
+
+    @verifies("scenario.general-work.after-unobservable")
+    def test_a_change_git_cannot_record_gets_no_review(self):
+        from concorde.method.general_work import operation as general
+
+        self.bound()
+        self.script()
+        real = general.record_tree
+        calls = []
+
+        def record_tree(worktree):
+            calls.append(worktree)
+            if len(calls) > 1:
+                raise general.GitFailure("git write-tree failed")
+            return real(worktree)
+
+        with patch.object(general, "record_tree", side_effect=record_tree):
+            _, envelope = self.run_general(
+                "--type", "specify", "--instruction", "Restyle the module document."
+            )
+        self.assertEqual("failed", envelope["status"], envelope)
+        self.assertEqual(
+            ("change_unobservable", "environment"),
+            (envelope["error"]["code"], envelope["error"]["unhandled"]["reason"]),
+        )
+        self.assertEqual(1, len(envelope["worker_runs"]))
 
     @verifies("scenario.general-work.no-instruction")
     def test_an_empty_instruction_launches_nothing(self):

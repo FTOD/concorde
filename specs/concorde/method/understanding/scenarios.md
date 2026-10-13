@@ -117,4 +117,5 @@ is in the [contracts](contracts.md).
 - GIVEN a reviewer whose finding cites an identity the bound Modules' Spec context does not define, or a `violation` without a basis
 - WHEN the Operation checks the review
 - THEN the result has status `failed` with `unresolved_basis` naming the finding
+- AND a finding that cites a document of that context with an anchor the document does not have is named too
 - BUT a finding that cites a concept whose glossary entry the Spec context selects is not named, even when the concept's explanation lies outside the context's documents

@@ -67,11 +67,39 @@ change and the test report are in the
 
 ### scenario.implementation.deletion — A proposed deletion is performed by the Operation
 
-- GIVEN a worker whose result proposes deleting one file inside its writable paths and one outside
+- GIVEN a worker whose result proposes deleting one file inside its writable paths, one file outside them and one directory inside them
 - AND a write audit of its round that found no change outside the writable paths
 - WHEN the Operation processes the result after the audit
 - THEN it deletes the file inside the writable paths
-- BUT it refuses the other deletion and reports it as host evidence
+- BUT it refuses the other two deletions, reports them as host evidence and lists both in the code change's `refused_deletions`
+
+### scenario.implementation.blocked-with-violation — A write outside the grant overrides a blocked worker
+
+- GIVEN an implement worker that writes a file outside the grant's writable paths and then returns `blocked`
+- WHEN the Operation evaluates the round
+- THEN the result has status `failed` with `audit_violation` and the offending path as host evidence
+- BUT not the worker's status `blocked`
+
+### scenario.implementation.resume-not-launched — Earlier edits stay in the code change when a resume round cannot start
+
+- GIVEN an implement run whose first round wrote files and failed a configured check
+- WHEN the resume round's worker cannot be launched
+- THEN the result has status `failed`
+- AND its code change lists the files the first round wrote, from the first round's write audit, with the worker's claims of the first round
+
+### scenario.implementation.no-result — A run without a valid worker result has no output
+
+- GIVEN an implement worker that ends without a valid [worker result](../../glossary.json#concept.worker-result), such as an answer that does not match the result schema
+- WHEN the run ends
+- THEN the result has status `failed` and no output
+- BUT the [run record](../../glossary.json#concept.run-record) keeps the write audit of the round
+
+### scenario.implementation.no-check-runs — Configured checks that do not run leave the checks empty
+
+- GIVEN a bound Module whose only configured check is marked to run at readiness
+- WHEN an implement run's worker ends `ok` with a clean audit
+- THEN the result has status `ok` with an empty `checks` list
+- AND its host evidence states that no configured check ran
 
 ## Test
 

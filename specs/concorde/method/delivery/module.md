@@ -35,15 +35,13 @@ one producer of delivery commits that validates the whole workspace first.
 
 A delivery commit Delivery makes has subject `concorde: deliver <workspace>`. That subject marks it
 as a delivery. It has the goal as body, as the Kernel's convention requires. Its parent is the branch
-head Delivery validated. It contains the cleared markers and every uncommitted change, with these
-exceptions:
+head Delivery validated. It contains every uncommitted change, with these exceptions:
 
 - What Git ignores.
 - The untracked paths Validation's input measurement leaves out, such as a sandbox's `/dev/null`
   mounts and placeholder files.
 
-When every step was already committed, the delivery commit contains only any cleared markers. It
-may therefore contain nothing. A workspace may be delivered several times, with another `implement`
+When every step was already committed, the delivery commit changes nothing. A workspace may be delivered several times, with another `implement`
 after a code review, say. Each delivery is a new commit on top, never amended. The delivery commits
 are the only record of the deliveries. Delivery writes no
 [task record](../../glossary.json#concept.task-record). It keeps no list of its own. It reads its
@@ -78,9 +76,10 @@ keeps what the task decided along the way in Git. In Concorde, Tasks commits the
 
 A run of `delivery` goes through eleven steps. Every step before 8 leaves the workspace as it was.
 A blocked delivery, or one that reports a delivery commit it found, therefore changes nothing.
-When step 9 fails, Delivery gives back the index step 8 recorded. When a commit does not verify in
-step 10, Delivery takes it off the branch again. This leaves the index and the worktree as the
-commit left them:
+When step 9 fails, Delivery gives back the index step 8 recorded, or says which part it could not
+give back. When a commit does not verify in step 10, Delivery takes it off the branch again while
+the branch still points at it with the validated head as its parent. Otherwise the commit stays,
+and the error says why. Either way, the index and the worktree stay as the commit left them:
 
 ```d2 illustrative
 direction: down
@@ -115,7 +114,7 @@ ready -> blocked: "no: not_ready" {style.stroke-dash: 3}
 tests -> blocked: "no: unverified_scenarios" {style.stroke-dash: 3}
 index -> failed: "index_unrecorded" {style.stroke-dash: 3}
 commit -> failed: "Git refuses, or staging changed\nvalidated content: the index given back" {style.stroke-dash: 3}
-verify -> failed: "mismatch: commit_unverified,\nthe commit taken off the branch" {style.stroke-dash: 3}
+verify -> failed: "mismatch: commit_unverified,\nthe commit taken off the branch when safe" {style.stroke-dash: 3}
 ```
 
 [The steps](#the-steps) gives each step's actor and stopping rule.
@@ -234,7 +233,9 @@ both conditions hold, the task level counts a task as delivered in Concorde:
 - Its worktree is clean.
 
 It merges only such a head. Since the subject alone marks a delivery, Delivery keeps a rejected
-commit from becoming such a record. It takes a commit it rejected off the branch in the same run.
+commit from becoming such a record. It takes a commit it rejected off the branch in the same run,
+when the branch still points at that commit with the validated head as its parent. Otherwise the
+commit stays, and the run's error says why, for the task level to repair the branch.
 Before reporting a delivery commit it finds at the head, it validates that commit again. The commit
 as the record also keeps Delivery ignorant of tasks, as every part below the task level is. The
 commit names the workspace, which the binding names, and nothing else.
@@ -252,7 +253,7 @@ commit names the workspace, which the binding names, and nothing else.
 | 7 | Report the delivery commit step 2 noted, numbered among the delivery commits on the branch | host | it noted one (`ok`, `recovered`) |
 | 8 | Record the index with Git | host, Git | the index cannot be recorded (`failed`, `index_unrecorded`) |
 | 9 | Stage every change; record the staged tree; require a checkout of it to give back what the readiness examined; commit, taking the commit Git names | host, Git | Git refuses, or staging changed what the readiness examined (`failed`, `staged_unvalidated`; the index restored, a hook's worktree edits kept and named) |
-| 10 | Verify the commit is head, its tree the staged tree, its subject the delivery subject, parent validated, worktree clean | host, read-only Git | mismatch (`failed`, `commit_unverified`; the commit taken off the branch) |
+| 10 | Verify the commit is head, its tree the staged tree, its subject the delivery subject, parent validated, worktree clean | host, read-only Git | mismatch (`failed`, `commit_unverified`; the commit taken off the branch when that is safe, otherwise left with the reason) |
 | 11 | Return the commit as the output, numbered after the delivery commits on the branch | host | — |
 
 Every step before 8 leaves the workspace as it was. Validation writes its check nodes and the
@@ -283,23 +284,14 @@ names every path whose mode or content is not what the readiness examined. It ke
 When there is none, the workspace is again what the readiness describes. The next delivery
 validates whatever the worktree then holds.
 
-Step 8 records the index with Git's own means rather than a copy Delivery would keep:
-
-- `git write-tree` records the index's entries.
-- `git ls-files` lists the paths. Those the tree lacks are intent-to-add entries a tree cannot hold.
-- `git ls-files -v` shows the skip-worktree and assume-unchanged flags.
-
-Delivery restores the recorded parts with these commands:
-
-- `git read-tree` restores the index's entries.
-- `git add -N` marks the intent-to-add entries again.
-- `git update-index` sets the flags again.
-
-So changes staged before the delivery stay staged, including a staged version the worktree has
-changed since. Even when another restoration fails, Delivery attempts to restore the intent-to-add
-entries and each kind of flag. When Git refuses to read the recorded tree back into the index,
-Delivery attempts none of those restorations. They apply only to an index that was read back. In
-that case, the run's summary and detail say that they were not restored.
+Step 8 records the index with Git's own means rather than a copy Delivery would keep. It records
+three parts: the index's entries, the intent-to-add entries a tree cannot hold, and the
+skip-worktree and assume-unchanged flags. Restoring gives back each part. So changes staged before
+the delivery stay staged, including a staged version the worktree has changed since.
+[Delivery's Git procedures](git.md#recording-and-restoring-the-index) give the exact commands and
+the order of the restorations. Restoring the entries comes first, since the other parts apply only
+to an index that was read back. When it fails, the run's summary and detail say that the other
+parts were not restored.
 
 The run's summary and detail name each part that fails:
 
@@ -356,14 +348,12 @@ subject. This would leave a commit without the subject that marks a delivery. St
 the commit's subject with the delivery subject. It names the subject the commit carries. Delivery
 accepts a hook that only adds to the body, such as a `Change-Id` trailer.
 
-Step 10 verifies the commit that `git commit` names on its standard output as the one it created.
-The run's trace node references that same commit. Once its post-commit hook runs, Git prints the
-commit it created. Git gives every hook's standard output to its standard error. Thus, a
-post-commit hook that commits again on top cannot pass its commit off as the delivery commit.
-The branch head would let it do so. Since a repository may switch off its reflog, the branch's
-reflog would not do. The first commit on top of the validated head would not do either. A hook
-amending the commit replaces it. When Git names no commit, the run fails `commit_unverified`. It
-moves nothing.
+Step 10 verifies the commit that `git commit` names as the one it created, never the branch head.
+The run's trace node references that same commit. Thus, a post-commit hook that commits again on
+top cannot pass its commit off as the delivery commit.
+[Delivery's Git procedures](git.md#identifying-the-commit) explain how Git names it and why no
+other source would do. When Git names no commit, the run fails `commit_unverified`. It moves
+nothing.
 
 In step 2, Delivery recognises a delivery commit by its subject alone, which any commit can carry.
 Delivery reports the head as delivered only when both conditions hold:

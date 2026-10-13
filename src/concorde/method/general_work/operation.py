@@ -369,6 +369,19 @@ def grant_line(ctx: RunContext, read_only: bool) -> str:
     return f"Task type of your boundary: {ctx.arguments.task_type}{withheld}\n\n"
 
 
+# The rules about promises the Spec does not state that replace the task type's: the caller's
+# instruction is the job, never the task type's own job or result format.
+WORKER_UNSTATED = (
+    "- When the instruction needs a promise the Spec does not state, do not infer it from "
+    "code. Say so in `answer`. Return `blocked` when you cannot do the work without it.\n"
+)
+REVIEWER_UNSTATED = (
+    "- When judging the result needs a promise the Spec does not state, do not infer it from "
+    "code. Judge against the instruction and the files as they are. Name what the Spec leaves "
+    "open in `summary`.\n"
+)
+
+
 def inputs_material(ctx: RunContext) -> str:
     if not ctx.inputs:
         return ""
@@ -405,6 +418,7 @@ def work(ctx: RunContext):
         checks=False,
         rounds=0,
         grants=grants,
+        unstated=WORKER_UNSTATED,
     )
 
 
@@ -463,6 +477,7 @@ def review(ctx: RunContext):
         checks=False,
         rounds=0,
         frozen=ctx.state["grants"][0],
+        unstated=REVIEWER_UNSTATED,
     )
 
 

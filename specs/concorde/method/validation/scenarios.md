@@ -80,6 +80,14 @@ readiness is defined in the [contracts](contracts.md).
 - THEN `.bashrc` is no changed path and no blocking finding, and it alone is no uncommitted change
 - BUT `notes/empty.txt` and `notes/frozen.txt` are changed paths, each reported as `unbound`
 
+### scenario.validation.placeholder-signature — A task's file with the placeholder's signature is left out until staged
+
+- GIVEN a workspace with an uncommitted change
+- AND an untracked empty `notes/marker` with no write bits and one link, which the task created
+- WHEN `task-validation` runs
+- THEN `notes/marker` is no changed path, like a sandbox's placeholder
+- BUT once the task stages it with `git add`, it is a changed path, reported as `unbound`
+
 ### scenario.validation.ignored-leftover — An untracked file kept under an ignore rule is measured as deleted
 
 - GIVEN a base that tracks the symbolic link `tools/link`, which no Module binds
@@ -127,6 +135,14 @@ readiness is defined in the [contracts](contracts.md).
 - THEN the result has status `failed` with `inputs_changed`
 - AND no readiness is issued
 - AND when a configured check noticed the change, the error's cause is Check execution's `stale_evidence` link
+
+### scenario.validation.check-trace-refused — A finished check whose trace write was refused has no result
+
+- GIVEN a call of Check execution that fails after one of its checks finished
+- AND the operating system refused that check's final trace write, so its [trace node](../../glossary.json#concept.trace-node) records no end
+- WHEN Validation reads the finished checks back from their trace nodes
+- THEN the readiness lists no result for that check
+- AND the failed call's blocking finding stands, so the workspace is not ready
 
 ### scenario.validation.wrong-branch — The workspace is not on its bound branch
 

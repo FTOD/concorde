@@ -9,6 +9,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -525,6 +526,7 @@ class DeliveryTests(unittest.TestCase):
         self.assertEqual(status_lines(self.worktree), "M  src/a/calc.py\n")
         self.assertEqual(self.project.deliveries(), [])
 
+    @verifies("scenario.delivery.hook-trailer")
     def test_a_commit_message_hook_that_adds_a_trailer_is_accepted(self):
         hook = self.project.root / ".git/hooks/commit-msg"
         hook.write_text("#!/bin/sh\nprintf '\\nChange-Id: I1\\n' >> \"$1\"\n")
@@ -541,6 +543,7 @@ class DeliveryTests(unittest.TestCase):
         ).stdout
         self.assertTrue(message.startswith("concorde: deliver t1\n"), message)
         self.assertIn("Change-Id: I1", message)
+        self.assertEqual(self.head(), envelope["output"]["commit"])
 
     @verifies("scenario.delivery.hook-edits-kept")
     def test_a_failing_hooks_worktree_edits_are_kept_and_named(self):
@@ -743,6 +746,7 @@ class DeliveryTests(unittest.TestCase):
         self.assertIn("refuse", envelope["error"]["causes"][0]["detail"])
         self.assert_undone(envelope, index)
 
+    @verifies("scenario.delivery.restore-failed")
     def test_a_failed_undo_names_what_it_could_not_restore(self):
         with tempfile.TemporaryDirectory() as directory:
             worktree = Path(directory)
@@ -767,6 +771,24 @@ class DeliveryTests(unittest.TestCase):
             str(undone),
         )
         self.assertNotIn("the rest of the index was restored", str(undone))
+
+    def test_a_worktree_that_cannot_be_measured_again_is_said_so(self):
+        from concorde.method.delivery import command as delivery
+        from concorde.method.validation.measurement import MeasurementError
+
+        def unreadable(worktree, base):
+            raise MeasurementError("path_unreadable", "src/a/calc.py cannot be read")
+
+        ctx = SimpleNamespace(
+            worktree=self.worktree,
+            base_commit=self.base,
+            delivery=State(readiness={"inputs": {"changed": []}}),
+        )
+        with patch.object(delivery, "measure", unreadable):
+            undone = undo(ctx)
+        self.assertEqual([], undone.kept)
+        self.assertEqual("path_unreadable", undone.unmeasured["code"])
+        self.assertIn("could not be compared", str(undone))
 
     @verifies("scenario.delivery.unmerged-index")
     def test_an_unmerged_index_is_refused_before_anything_changes(self):

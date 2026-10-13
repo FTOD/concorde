@@ -43,17 +43,33 @@ The `general` Operation SHALL give the instruction to the worker in its
 The instruction never replaces the system prompt or the rules of the boundary that the worker
 harness gives every worker.
 
+### req.general-work.instruction-is-the-job — The task type sets only the boundary
+
+The `general` Operation SHALL give each of its workers General work's own rule for a promise the
+Spec does not state, never the rule of the task type `--type` names.
+
+The task type's rule may set that type's own job or result format, which the instruction and
+General work's result contract do not ask for.
+
 ### req.general-work.change-observed — The host observes the change
 
-The `general` Operation SHALL report the change from Git trees of the worktree that it records
-before the worker launches and after the worker ends, never from the worker's account.
+When the worker ends `ok` and its audit is clean, the `general` Operation SHALL report the change
+from Git trees of the worktree that it records before the worker launches and after the worker
+ends, never from the worker's account.
+
+A worker that does not end `ok`, or whose audit is not clean, gets no observed change. The run's
+host evidence then keeps the tree recorded before the worker launched.
 
 ## The review
 
 ### req.general-work.independent-review — A second worker reviews every result
 
-When the worker ends `ok` and its audit is clean, the `general` Operation SHALL launch the
-reviewer as a separate worker, which shares no session with the worker.
+When the worker ends `ok`, its audit is clean and the Operation recorded the worktree after the
+worker, the `general` Operation SHALL launch the reviewer as a separate worker, which shares no
+session with the worker.
+
+When Git cannot record the worktree after the worker, the run ends `failed` with
+`change_unobservable` and no reviewer launches.
 
 ### req.general-work.reviewer-reads-only — The reviewer changes nothing
 
