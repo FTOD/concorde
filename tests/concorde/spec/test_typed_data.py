@@ -415,11 +415,12 @@ class TypedDataTests(unittest.TestCase):
         (cause,) = raised.exception.record()["causes"]
         self.assertEqual("/minLength", cause["location"]["field"])
 
-    def test_an_artifact_array_is_checked_only_by_its_schema(self):
+    def test_an_artifact_array_lists_each_artifact_once(self):
         one = {"id": "a", "path": "a.txt", "digest": "sha256:" + "0" * 64}
-        check_schema([one, one, {**one, "id": "b"}], array(ARTIFACT))
-        with self.assertRaises(TypedDataError):
-            check_schema([one, one], array(ARTIFACT, unique=True))
+        check_schema([one, {**one, "id": "b", "path": "b.txt"}], array(ARTIFACT))
+        for repeated in ({**one, "path": "b.txt"}, {**one, "id": "b"}):
+            with self.subTest(repeated=repeated), self.assertRaises(TypedDataError):
+                check_schema([one, repeated], array(ARTIFACT))
 
 
 if __name__ == "__main__":

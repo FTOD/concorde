@@ -321,6 +321,12 @@ def check_schema(value: Any, schema: dict | bool, field: str = "") -> None:
             raise TypedDataError("invalid_field", field, "items must be unique")
         for index, item in enumerate(value):
             check_schema(item, schema.get("items", True), _pointer(field, index))
+        if schema.get("items") == ARTIFACT:
+            for key in ("id", "path"):
+                if len({item[key] for item in value}) != len(value):
+                    raise TypedDataError(
+                        "invalid_field", field, f"artifact {key} values must be unique"
+                    )
     elif isinstance(value, str):
         if schema.get("minLength") and not value.strip():
             raise TypedDataError("invalid_field", field, "string must not be empty")

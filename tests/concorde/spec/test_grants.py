@@ -664,6 +664,21 @@ class GrantTests(unittest.TestCase):
         self.assertEqual(first, identity())
         update_glossary_entry(self.root, "concept.b.answer", definition="What B gives.")
         self.assertNotEqual(first, identity())
+        # A selected entry counts by its value: reformatting the glossary keeps the ordinary
+        # identity, while the architecture review's identity follows the file's bytes.
+        before = identity()
+        architecture = self.grant(["module.a"], "review-architecture")[
+            "context_identity"
+        ]
+        glossary = self.root / "specs/glossary.json"
+        glossary.write_text(
+            json.dumps(json.loads(glossary.read_text()), indent=4) + "\n"
+        )
+        self.assertEqual(before, identity())
+        self.assertNotEqual(
+            architecture,
+            self.grant(["module.a"], "review-architecture")["context_identity"],
+        )
 
     @verifies("scenario.spec.grant-invalid")
     def test_the_grant_command_prints_the_envelope(self):

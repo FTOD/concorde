@@ -1919,7 +1919,8 @@
       "title": "Spec tooling",
       "entry": "specs/concorde/spec-tooling/module.md",
       "owns": [
-        "specs/concorde/spec-tooling/module.md"
+        "specs/concorde/spec-tooling/module.md",
+        "specs/concorde/spec-tooling/contracts.md"
       ],
       "contains": [
         {

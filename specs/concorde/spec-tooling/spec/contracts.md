@@ -178,6 +178,18 @@ On any of these problems, a repository opened for consumers refuses the project,
 - A `contains`, `uses` or `includes` whose target is unknown.
 - A failure of `CHK.contains.single-parent` or `CHK.contains.acyclic`.
 
+The configuration's own problems are checked in this order, and the first one found is raised:
+
+1. A configuration that is not a JSON object (`invalid_spec`).
+2. A field of an earlier profile (`invalid_spec`). The error names where each such setting lives
+   now, whatever the configuration's `profile_version`.
+3. A `profile_version` that is missing or other than `19` (`unsupported_profile`).
+4. A missing `protocol` or a field other than `profile_version`, `protocol` and `python`
+   (`invalid_spec`).
+
+Thus a configuration of an earlier profile that still holds its moved fields learns where they
+live before it learns its profile is unsupported.
+
 When the [Spec](../../glossary.json#concept.spec) structure is at fault, the error:
 
 - Counts the fatal problems.
@@ -616,12 +628,32 @@ Where the block declares `glossary`, the command also rewrites the record's `glo
 It keeps the records' order and their `id` and `entry`. It adds or removes no record.
 It writes through a [file
 transaction](../../glossary.json#concept.file-transaction).
-When nothing differs, it reports `unchanged`.
-With `--check`, the command writes nothing and reports one `CHK.registry.mirror` finding per record
-that differs.
+With `--check`, the command writes nothing.
 
-When the registry or an entry cannot be read, the command fails and writes nothing.
-The failure has the [error record](errors.md) naming the registry or the entry and its cause.
+The command prints the common command-line envelope ([validation result](#validation-result)) with
+`tool: "registry"`, `target: "."` and `artifacts: [".concorde/specs.json"]`.
+Its outcomes are:
+
+| Outcome | `status` | `result` | `findings` | Exit code |
+| --- | --- | --- | --- | --- |
+| `--write` rewrote the registry | `success` | `{"regenerated": [<identities of the records that differed>]}` | none | 0 |
+| `--write` found nothing to rewrite | `unchanged` | `{}` | none | 0 |
+| `--check` found every record equal to its entry | `success` | `{"stale": []}` | none | 0 |
+| `--check` found records that differ | `invalid` | `{"stale": [<their identities>]}` | one `CHK.registry.mirror` error per such record, with the record's identity as `subject_id` | 1 |
+| the registry or an entry cannot be read | `failed` | `{}` | none | 3 |
+
+The identities keep the registry's order.
+On failure, the command writes nothing.
+Its `error` is the [error record](errors.md) naming the registry or the entry and its cause.
+On every other outcome, `error` is `null`.
+For example, a check that finds one stale record prints:
+
+```json
+{"artifacts":[".concorde/specs.json"],"error":null,"findings":[{"message":"registry record module.checkout differs from its entry's module block","remediation":"Run `concorde.py registry --write`.","rule_id":"CHK.registry.mirror","source":".concorde/specs.json","strictness":"error","subject_id":"module.checkout"}],"result":{"stale":["module.checkout"]},"schema_version":4,"status":"invalid","target":".","tool":"registry"}
+```
+
+The write that repairs it prints `"status":"success"` and `"result":{"regenerated":["module.checkout"]}`
+with no findings.
 
 ## Verification declarations {#verification-declarations}
 
@@ -752,8 +784,10 @@ When registered, a schema with any of these fails with `invalid_input`:
   and `allOf`.
 - A list of types.
 - A `$ref` other than `typed_schema`'s.
+- A keyword whose value has the wrong shape, such as `properties` that is not an object.
 
-No registered type therefore promises more than its values are checked for.
+The `invalid_input` error has the offline subset's `ContractError` as its cause when the subset
+refused the schema. No registered type therefore promises more than its values are checked for.
 
 The shared building blocks are:
 
@@ -764,6 +798,10 @@ The shared building blocks are:
 - `PATH`: a canonical project-relative path.
 - `DIGEST`: `sha256:` and 64 lowercase hexadecimal digits.
 - `ARTIFACT`: `{id, path, digest}`.
+
+As in the Kernel's format, an array whose `items` schema is `ARTIFACT` lists each artifact once.
+Two of its items with the same `id` or the same `path` fail with `invalid_field`, whether or not
+the array's schema sets `uniqueItems`.
 
 ```python
 decode(text: str) -> Any
@@ -802,21 +840,32 @@ validate(value, schema, field: str = "", *, root: dict | None = None, depth: int
 ```
 
 A schema is an object or a boolean.
-The admitted keywords are `$schema`, `$id`, `$defs`, `$ref`, `title`, `description`, `examples`,
-`default`, `type`, `properties`, `required`, `additionalProperties`, `items` and `minItems`.
-The subset also admits `maxItems`, `uniqueItems`, `minLength`, `maxLength`, `pattern`, `minimum`,
-`maximum`, `enum`, `const`, `anyOf`, `oneOf`, `allOf` and `format`.
+The subset admits these keywords:
+
+- Annotations and structure: `$schema`, `$id`, `$defs`, `$ref`, `title`, `description`,
+  `examples` and `default`.
+- Objects: `type`, `properties`, `required` and `additionalProperties`.
+- Arrays: `items`, `minItems`, `maxItems` and `uniqueItems`.
+- Strings: `minLength`, `maxLength`, `pattern` and `format`.
+- Numbers: `minimum` and `maximum`.
+- Values: `enum` and `const`.
+- Alternatives: `anyOf`, `oneOf` and `allOf`.
 
 In a contract fence, `$ref` must be `#/$defs/<name>` into the same root schema.
 Any other reference is refused, so no schema can load a Spec document or a remote resource.
 The only `format` is `project-path`, checked by `safe_path`.
 Integers satisfy `number`. Booleans do not.
-These problems fail admission with a `ContractError(ValueError)` carrying the JSON pointer of the
-problem:
+These problems fail admission with a `ContractError(ValueError)`:
 
 - Unknown keywords.
+- A keyword whose value has the wrong shape, such as `properties` that is not an object or a
+  `type` that is not a type name.
 - Invalid bounds.
 - Unresolved references.
+
+The error's `field` is the JSON pointer of the offending keyword, such as
+`/properties/value/minLength`. Admission checks each keyword's shape before it uses the keyword,
+so a malformed schema raises no other exception.
 
 When nesting is deeper than 100 levels, validation fails with a `ContractError(ValueError)`.
 The error carries the JSON pointer of the problem.
@@ -825,9 +874,23 @@ The error carries the JSON pointer of the problem.
 
 Instruction files begin with a constrained YAML front matter block.
 `concorde.spec.frontmatter.parse_document` reads the block.
-The block supports space-indented keys, scalars, lists, nested maps and JSON-style inline collections.
-Tags, anchors, aliases, merge keys, block scalars and duplicate keys are refused with a
-`FrontMatterError` naming the file and line.
+The block supports these constructs:
+
+- Space-indented keys.
+- Scalars, plain or quoted.
+- Lists.
+- Nested maps.
+- JSON-style inline collections.
+
+A list item is a map only where a colon followed by a space, or ending the item, separates its key.
+A quoted scalar or an inline collection is a value whatever colons it holds.
+So `- https://example.com` is a string.
+
+The block refuses these constructs with a `FrontMatterError` naming the file and line:
+
+- Tags, anchors, aliases and merge keys.
+- Block scalars.
+- Duplicate keys.
 
 ## File transactions {#file-transactions}
 
@@ -1072,6 +1135,30 @@ Apply writes only these files, with `permission_denied` otherwise:
 It writes through one file transaction whose final check validates the project.
 When a proposal destination appeared since the proposal, apply fails with `stale_proposal`.
 A validation error rolls every file back.
+
+Every failure apply observes restores its files ([file transactions](#file-transactions)).
+Only two cases leave a project partly initialized:
+
+- A killed apply.
+- A failure whose restore the operating system refused. Its `system_error` names the files.
+
+Such a project holds some of the proposal's files, and `.concorde-write-` temporary files may remain
+beside them. Every file apply writes was absent before, because apply refuses a destination that
+exists. Then neither call succeeds again:
+
+- Once the configuration exists, propose fails with `already_initialized`.
+- Apply fails with `stale_proposal` for each destination that now exists.
+
+The caller recovers as follows:
+
+1. It removes each of the proposal's paths that exists and still holds the proposal's content.
+   A path that holds other content was written by someone else after the kill. The caller keeps
+   that file and decides about it itself.
+2. It removes the `.concorde-write-` temporary files beside those paths.
+3. It runs propose and apply again.
+
+Removing those files gives back the project as it was before apply. Spec core provides no command
+for this recovery.
 
 ## Protocol manifest and binding {#protocol-manifest}
 
