@@ -665,6 +665,7 @@
       "title": "End-to-end testing",
       "entry": "specs/concorde/e2e/module.md",
       "owns": [
+        "specs/concorde/e2e/mechanics.md",
         "specs/concorde/e2e/module.md",
         "specs/concorde/e2e/requirements.md",
         "specs/concorde/e2e/scenarios.md"
