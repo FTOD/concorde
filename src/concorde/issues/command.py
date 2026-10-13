@@ -16,6 +16,7 @@ chain in the decision log, escalation or run result instead.
 
 from __future__ import annotations
 
+import functools
 import json
 import re
 import subprocess
@@ -33,6 +34,7 @@ from .store import (
     RECORD_NAME,
     IssueError,
     archive_issues,
+    check_report_target,
     dispose_issue,
     issue_path,
     list_issues,
@@ -156,6 +158,18 @@ def guarded(action, *arguments, **keywords):
         ) from error
 
 
+def action(function):
+    """``function`` as a shared action of the command and the Issue tools: every failure it does
+    not refuse itself, such as an operating-system error while it inspects the record files,
+    becomes the ``Refusal`` ``guarded`` makes of it, so that both faces refuse it alike."""
+
+    @functools.wraps(function)
+    def shared(*arguments, **keywords):
+        return guarded(function, *arguments, **keywords)
+
+    return shared
+
+
 def unexpected(error: BaseException) -> dict:
     """An error no rule foresaw, as the Issues component's link."""
     return from_exception(ACTOR, error)
@@ -186,6 +200,7 @@ def issues_root(root: Path) -> Path:
 # --- reads ------------------------------------------------------------------------------------
 
 
+@action
 def list_action(
     root: Path,
     *,
@@ -210,6 +225,7 @@ def list_action(
     }
 
 
+@action
 def show_action(root: Path, issue_id: str) -> dict:
     record, revision, path = guarded(locate_issue, issues_root(project(root)), issue_id)
     return {"issue": record, "revision": revision, "path": path}
@@ -247,6 +263,7 @@ def registry(root: Path) -> tuple[str, bytes, list[dict]] | None:
         ) from error
 
 
+@action
 def check(root: Path) -> tuple[dict, int]:
     """Every record file of ``root`` reads and lies in the folder its status names, once; where
     the spec part is installed, an open Issue must name an owner the registry of ``root`` still
@@ -266,7 +283,7 @@ def check(root: Path) -> tuple[dict, int]:
                 path=REGISTRY, consequence="no Issue's owner was checked against one"
             )
         )
-    places = {}
+    places, read = {}, {}
     for folder in (DIRECTORY, CLOSED):
         directory = root / folder
         if directory.is_symlink() or not directory.is_dir():
@@ -294,6 +311,7 @@ def check(root: Path) -> tuple[dict, int]:
             except (ValueError, OSError, KernelError) as error:
                 problems.append(f"{relative} is invalid: {error}")
                 continue
+            read[relative] = record
             expected = issue_path(record["id"], record["status"])
             if relative != expected:
                 problems.append(
@@ -309,21 +327,65 @@ def check(root: Path) -> tuple[dict, int]:
             (problems if record["status"] == "open" else notes).append(message)
     for identifier, paths in sorted(places.items()):
         if len(paths) > 1:
-            problems.append(
-                f"Issue {identifier} is recorded twice, as {' and '.join(paths)}, but an Issue "
-                "lives in exactly one place: keep the record whose reports and dispositions "
-                "begin with the other's, remove the other with `git rm` and commit that removal "
-                "alone"
-            )
+            problems.append(doubled(identifier, paths, read))
     return {"errors": problems, "notes": notes}, 1 if problems else 0
 
 
+def doubled(identifier: str, paths: list[str], read: dict[str, dict]) -> str:
+    """The error of an Issue recorded at both ``paths``, with its repair: when one copy's history
+    begins with the other's, keep that copy and remove the other; otherwise remove neither, since
+    each copy may hold what the other lacks, and have the copies reconciled by hand."""
+    found = (
+        f"Issue {identifier} is recorded twice, as {' and '.join(paths)}, but an Issue lives in "
+        "exactly one place: "
+    )
+    unread = [path for path in paths if path not in read]
+    if not unread:
+        a, b = paths
+        # Of two equal copies, the one in the folder its status names is kept.
+        for keep, other in sorted(
+            ((a, b), (b, a)),
+            key=lambda pair: pair[0] != issue_path(identifier, read[pair[0]]["status"]),
+        ):
+            if extends(read[keep], read[other]):
+                return (
+                    f"{found}keep {keep}, whose reports and dispositions begin with the "
+                    f"other's, remove {other} with `git rm` and commit that removal alone"
+                )
+        why = (
+            "their histories diverge, since neither copy's reports and dispositions begin with "
+            "the other's"
+        )
+    else:
+        why = (
+            f"their histories cannot be compared, since {' and '.join(unread)} "
+            f"{'does' if len(unread) == 1 else 'do'} not read as a valid record"
+        )
+    return (
+        f"{found}{why}. Remove neither copy, since each may hold what the other lacks. The main "
+        "agent or the developer reconciles them by hand into one record that holds every report "
+        "of both copies, once each, and dispositions consistent with its final status, and "
+        "commits that record together with the other copy's removal, alone"
+    )
+
+
+def extends(longer: dict, shorter: dict) -> bool:
+    """Whether the record ``longer`` begins its reports and its dispositions with those of
+    ``shorter``."""
+    return all(
+        longer[field][: len(shorter[field])] == shorter[field]
+        for field in ("reports", "dispositions")
+    )
+
+
+@action
 def recover_action(root: Path, *, wait: float = MERGE_WAIT) -> dict:
     """Put back, under the merge lock, the records Issue writes published in the primary worktree
     but did not commit; name each record change left because no Issue write made it."""
     return guarded(recover_issues, issues_root(project(root)), wait=wait)
 
 
+@action
 def archive_action(root: Path, *, wait: float = MERGE_WAIT) -> dict:
     """Move, under the merge lock and in one commit, every committed record of the primary
     worktree whose folder does not match its status into the folder it names; name each move and
@@ -432,6 +494,7 @@ def head(root: Path) -> str | None:
     return result.stdout.strip() or None
 
 
+@action
 def report_action(
     root: Path,
     *,
@@ -509,7 +572,11 @@ def report_action(
             )
     if check_only:
         # The same checks as a recording, so a report that passes here is refused later only
-        # for what differs between the two projects: the owner's registry or its evidence.
+        # for what differs between the two projects, the owner's registry or its evidence, or
+        # for what changed in between, such as the revision of the Issue it appends to. The
+        # Issue a report with an origin appends to is the recording project's, not this one's.
+        if "origin" not in report:
+            guarded(check_report_target, primary, report)
         return {
             "valid": True,
             **({"file": str(file)} if file is not None else {}),
@@ -548,6 +615,7 @@ def disposition_arguments(note: str, evidence: list[str]) -> None:
         )
 
 
+@action
 def dispose(
     root: Path,
     issue_id: str,

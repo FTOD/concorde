@@ -137,14 +137,56 @@ class Refusal(Exception):
         )
 
 
-def _reporter(primary: Path, where: Path) -> tuple[Path, str, str | None]:
+class BindingRefusal(Exception):
+    """The session's worktree holds a workspace binding the tool cannot trust, so it cannot tell
+    whom to record the write as; the Kernel's refusal is its cause."""
+
+    def __init__(self, tool: str, root: Path, error: KernelError):
+        detail = (
+            f"the session's worktree {root} holds a workspace binding that cannot be read or "
+            f"breaks its contract, so {tool} cannot tell whether the session is a task session "
+            f"and wrote nothing: {error}"
+        )
+        super().__init__(detail)
+        self.link = link(
+            "component",
+            f"{ACTOR} ({tool})",
+            "invalid_binding",
+            detail,
+            reason="environment",
+            explanation="an Issue tool records a session as a task session only from a "
+            "workspace binding that satisfies its contract, and never repairs one",
+            options=[
+                "restore the binding by preparing the workspace again (for a task, from its "
+                "record), or remove the broken file, then repeat the call"
+            ],
+            causes=[
+                link(
+                    "component",
+                    "Kernel (workspace binding)",
+                    error.code,
+                    str(error) + (f" (at {error.field})" if error.field else ""),
+                    reason="input",
+                    explanation="every part that reads a workspace binding refuses one that "
+                    "breaks its contract",
+                )
+            ],
+        )
+
+
+def _reporter(tool: str, primary: Path, where: Path) -> tuple[Path, str, str | None]:
     """The session's worktree, whom its Issue writes are recorded as and its task: a bound task
-    worktree's session is its task's task session, any other the main agent."""
+    worktree's session is its task's task session, any other the main agent. A session outside a
+    worktree is the main agent's; a binding that cannot be read or breaks its contract is
+    refused, never taken for an absent one."""
     try:
         root = binding_file.toplevel(where)
-        bound = binding_file.load(root)
     except KernelError:
         return primary, "main-agent", None
+    try:
+        bound = binding_file.load(root)
+    except KernelError as error:
+        raise BindingRefusal(tool, root, error) from error
     if bound is None or root == primary:
         return root, "main-agent", None
     return root, "task-session", bound["workspace"]
@@ -165,7 +207,7 @@ def _call(name: str, primary: Path, where: Path, arguments: dict):
     if name == "issue_check":
         return issues.check(primary)[0]
     if name == "issue_report":
-        root, agent, task = _reporter(primary, where)
+        root, agent, task = _reporter(name, primary, where)
         if ("report" in arguments) == ("file" in arguments):
             raise Refusal(
                 name,
@@ -181,7 +223,7 @@ def _call(name: str, primary: Path, where: Path, arguments: dict):
             agent=agent,
             wait=0.0,
         )
-    actor = _reporter(primary, where)[1]
+    actor = _reporter(name, primary, where)[1]
     if name == "issue_close":
         return issues.dispose(
             primary,
@@ -223,8 +265,10 @@ def answer(envelope: dict) -> dict:
             ) from None
         primary = Path(envelope["primary"])
         value = _call(name, primary, Path(envelope.get("where") or primary), arguments)
-    except (Refusal, issues.Refusal) as refusal:
+    except (Refusal, BindingRefusal, issues.Refusal) as refusal:
         return {"error": refusal.link}
+    except Exception as error:  # noqa: BLE001 -- the command's link for what no rule foresaw
+        return {"error": issues.unexpected(error)}
     return {"value": value}
 
 

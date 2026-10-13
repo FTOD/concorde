@@ -10,7 +10,13 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from concorde.issues.store import dispose_issue, read_issue, report_issue
+from concorde.issues.store import (
+    dispose_issue,
+    disposition_record,
+    read_issue,
+    render,
+    report_issue,
+)
 from concorde.spec.verification import verifies
 from tests.concorde.support.issue_reports import git_project, report, source
 from tests.concorde.support.spec_project import PACKAGE, project
@@ -180,12 +186,68 @@ class StoreCheckTests(unittest.TestCase):
                     "archive` in the primary worktree, which moves it there",
                     f"Issue {twice} is recorded twice, as .concorde/issues/{twice}.md and "
                     f".concorde/issues/closed/{twice}.md, but an Issue lives in exactly one "
-                    "place: keep the record whose reports and dispositions begin with the "
-                    "other's, remove the other with `git rm` and commit that removal alone",
+                    f"place: keep .concorde/issues/closed/{twice}.md, whose reports and "
+                    f"dispositions begin with the other's, remove .concorde/issues/{twice}.md "
+                    "with `git rm` and commit that removal alone",
                 ]
             ),
             sorted(value["errors"]),
         )
+
+    @verifies("scenario.issues.store-check-divergent")
+    def test_an_issue_recorded_twice_with_divergent_histories_is_kept_whole(self):
+        receipt = report_issue(
+            self.root,
+            report(owner_target_id="service.transfer", evidence=[]),
+            source(target_id="service.transfer"),
+        )
+        identifier = receipt["issue_id"]
+        first, revision = read_issue(self.root, identifier)
+        report_issue(
+            self.root,
+            report(
+                report_key="later",
+                owner_target_id="service.transfer",
+                evidence=[],
+                issue_id=identifier,
+                expected_revision=revision,
+            ),
+            source(target_id="service.transfer"),
+        )
+        # A copy that closed the Issue from its first report alone: neither history begins
+        # with the other.
+        closed = self.root / f".concorde/issues/closed/{identifier}.md"
+        closed.parent.mkdir()
+        closed.write_text(
+            render(
+                disposition_record(
+                    first,
+                    reason="resolved",
+                    note="Fixed",
+                    evidence=["commit abc123"],
+                    actor="main-agent",
+                )
+            )
+        )
+        before = {
+            path: path.read_bytes() for path in (closed, self.root / receipt["path"])
+        }
+        status, value = self.run_check()
+        self.assertEqual(1, status)
+        self.assertEqual(
+            [
+                f"Issue {identifier} is recorded twice, as .concorde/issues/{identifier}.md "
+                f"and .concorde/issues/closed/{identifier}.md, but an Issue lives in exactly "
+                "one place: their histories diverge, since neither copy's reports and dispositions "
+                "begin with the other's. Remove neither copy, since each may hold what the "
+                "other lacks. The main agent or the developer reconciles them by hand into one "
+                "record that holds every report of both copies, once each, and dispositions "
+                "consistent with its final status, and commits that record together with the "
+                "other copy's removal, alone"
+            ],
+            value["errors"],
+        )
+        self.assertEqual(before, {path: path.read_bytes() for path in before})
 
 
 if __name__ == "__main__":

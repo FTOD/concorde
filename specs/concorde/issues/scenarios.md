@@ -88,10 +88,12 @@ This illustrates [checked error chains](requirements.md#req.issues.report-error-
 
 - GIVEN an initialized project and a report file that fails a check of `report`
 - AND that failure is, for example, a missing required field or an evidence path absent from the project
+- AND that failure is, for another example, an append to an unknown Issue, to a closed Issue or at a stale revision
 - WHEN the main agent runs `report --file` with that file and `--check`
-- THEN the command refuses it exactly as `report` would, with the same code
-- AND the refusal message names the file and field
-- BUT no Issue is recorded
+- THEN the command refuses it exactly as `report` would, with the same code and message
+- AND for a missing field or absent evidence, the refusal message names the file and field
+- AND for an append, the refusal message names the Issue
+- BUT no Issue is recorded or changed
 
 ### scenario.issues.command-report-check-origin — A defect report is checked without the spec part
 
@@ -470,6 +472,30 @@ This illustrates [recovering uncommitted records](requirements.md#req.issues.unc
 
 This illustrates [the Issue system never reporting itself](requirements.md#req.issues.own-failures).
 
+### scenario.issues.command-check-io-error — An unreadable Issue folder refuses the command and the tool alike
+
+- GIVEN a project whose `.concorde/issues/` folder the operating system will not list
+- WHEN the main agent runs `check`
+- AND a session calls `issue_check`
+- THEN the command prints the error code `io_error` with the reason `environment`
+- AND the error names the folder and the operating system's reason
+- AND the options say never to report the error chain as an Issue
+- AND the command exits with status 1
+- AND the tool answers with the same error link
+
+This illustrates [tools that answer as the command](requirements.md#req.issues.tools-as-command).
+
+### scenario.issues.tools-invalid-binding — A binding the tools cannot trust refuses their writes
+
+- GIVEN a linked worktree whose [workspace binding](../glossary.json#concept.workspace-binding) is no JSON, or names another worktree as its root
+- WHEN a session in that worktree calls `issue_report` or `issue_close`
+- THEN the tool refuses with the error code `invalid_binding` and the reason `environment`
+- AND the refusal names the worktree
+- AND the refusal's cause is the Kernel's refusal of the binding
+- BUT no record is written or changed
+
+This illustrates [trusted bindings](requirements.md#req.issues.tools-binding-trusted).
+
 ## Records
 
 ### scenario.issues.store-report — Save a report once
@@ -531,7 +557,7 @@ This illustrates [the Issue system never reporting itself](requirements.md#req.i
 - GIVEN an Issue recorded in the primary worktree and a linked worktree of the same repository
 - WHEN `project_root` is asked for either worktree
 - THEN `project_root` names the primary worktree
-- AND every worktree reads the primary worktree's records
+- AND a read given `project_root` of the linked worktree reads the primary worktree's committed records
 - BUT a disposition written with the linked worktree as root is refused with `not_primary`
 - AND the Issue stays open
 
@@ -822,13 +848,13 @@ This illustrates [revision-checked writes](requirements.md#req.issues.revision-c
 - THEN the close commits the record at `.concorde/issues/closed/<id>.md` and its removal from `.concorde/issues/<id>.md` in one commit
 - AND that commit holds only those paths
 - AND the commit's trailer names the Issue
-- AND reads find the closed record in `closed/`
-- AND `list` finds the closed record in `closed/`
-- AND the located path finds the closed record in `closed/`
-- AND the reopening moves the record back in one commit of both paths
-- AND the append leaves the record there
-- BUT the other staged change stays staged
-- AND the Issue directory is clean
+- AND after the close and before the reopening, reads find the closed record in `closed/`
+- AND after the close and before the reopening, `list` finds the closed record
+- AND after the close and before the reopening, the located path is in `closed/`
+- AND the reopening moves the record back to `.concorde/issues/<id>.md` in one commit of both paths
+- AND the append leaves the record at `.concorde/issues/<id>.md`
+- BUT after the append, the other staged change stays staged
+- AND after the append, the Issue directory is clean
 
 This illustrates [records in the folder of their status](requirements.md#req.issues.status-folder)
 and [commits of the record alone](requirements.md#req.issues.commit-alone).
@@ -851,13 +877,25 @@ This illustrates [records in the folder of their status](requirements.md#req.iss
 - AND the close is repeated
 - THEN the killed close's record is restored at `.concorde/issues/<id>.md`
 - AND the copy in `closed/` is removed
-- AND reads show the open committed record throughout
+- AND from the killed close until the repeated close commits, reads show the open committed record
 - AND the repeated close moves the record at the committed revision
 - BUT the record deleted by hand, with no copy in the other folder, is left
 - AND a write of its Issue is refused with `uncommitted_change`
 
 This illustrates [recovering uncommitted records](requirements.md#req.issues.uncommitted-recovered)
 and [kept foreign changes](requirements.md#req.issues.foreign-change-kept).
+
+### scenario.issues.store-move-check-failed — A move that cannot check its committed record puts its record back
+
+- GIVEN an open Issue whose committed record file the operating system will not read
+- WHEN the store closes the Issue
+- THEN the close fails with the operating system's error
+- AND the record it published in `closed/` is removed
+- AND the committed record stays at `.concorde/issues/<id>.md`
+- AND the primary branch, the index and the Issue directory are as they were
+- BUT the Issue reads as open, at its revision
+
+This illustrates [refusals that record nothing](requirements.md#req.issues.refusal-writes-nothing).
 
 ### scenario.issues.store-archive — Archive moves every misplaced record in one commit
 
@@ -947,8 +985,8 @@ This illustrates [durable receipts](requirements.md#req.issues.durable-receipt) 
 - THEN the first write is refused with `recovery_failed`
 - AND the refusal names Git's refusal and the failure to put the published record back
 - AND the refusal says no read shows the record
-- AND the record stays in the directory
-- AND the record is not listed
+- AND after the first write and before the second, the record stays in the directory
+- AND after the first write and before the second, the record is not listed
 - AND the second write removes the record first
 - AND then the second write commits only its own record
 - AND the second write leaves the Issue directory clean
@@ -1010,6 +1048,19 @@ This illustrates [kept foreign changes](requirements.md#req.issues.foreign-chang
 
 This illustrates [Issue writes under the merge lock](requirements.md#req.issues.merge-lock).
 
+### scenario.issues.store-recovery-partial — A record recovery cannot inspect does not stop the rest
+
+- GIVEN a killed report's uncommitted record
+- AND an uncommitted record file the operating system will not read
+- WHEN the store recovers
+- AND the file becomes readable and the store recovers again
+- THEN the first recovery removes the killed report's record
+- AND the first recovery keeps the unreadable file
+- AND the first recovery is refused with `recovery_failed`, naming the file it could not inspect
+- AND the second recovery lists the file as left, since it is no valid record
+
+This illustrates [recovering uncommitted records](requirements.md#req.issues.uncommitted-recovered).
+
 ## The store check
 
 ### scenario.issues.store-check-pass — Valid records pass the store check
@@ -1043,8 +1094,24 @@ This illustrates [Issue writes under the merge lock](requirements.md#req.issues.
 - THEN it reports one error per misplaced record
 - AND each misplaced record's error names its status and its place
 - AND each misplaced record's error says that `concorde issues archive` moves it
-- AND the store check reports one error naming both paths of the doubled Issue and its repair
+- AND the store check reports one error naming both paths of the doubled Issue
+- AND that error names the copy to keep, whose reports and dispositions begin with the other's
+- AND that error says to remove the other copy with `git rm` in a commit of its own
 - AND it exits with a nonzero status
+
+This illustrates [records in the folder of their status](requirements.md#req.issues.status-folder).
+
+### scenario.issues.store-check-divergent — The store check keeps both copies of a divergent doubled record
+
+- GIVEN an open Issue with two reports in `.concorde/issues/`
+- AND a copy in `closed/` that holds only its first report and a closing disposition
+- WHEN the configured store check runs
+- THEN it reports one error naming both paths
+- AND the error says that the histories diverge
+- AND the error says to remove neither copy
+- AND the error says that the main agent or the developer reconciles them by hand into one record
+- AND it exits with a nonzero status
+- BUT both copies stay as they were
 
 This illustrates [records in the folder of their status](requirements.md#req.issues.status-folder).
 

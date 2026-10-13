@@ -22,8 +22,33 @@ A report is one of these:
 - What another caller passes to the store directly together with the provenance it vouches for.
 
 It is at most 64 KiB as canonical JSON. Large logs are referenced by path, not copied.
-**Canonical JSON** here and below is the sorted, compact JSON of the Kernel's
-[typed values](../kernel/contracts.md#typed-values): keys sorted, no whitespace between tokens.
+
+**Canonical JSON** here and below is the sorted, compact JSON text of the Kernel's
+[typed values](../kernel/contracts.md#typed-values). The store writes it with these rules:
+
+- The keys of each object are sorted by code point.
+- `,` separates items and `:` separates a key from its value. No other whitespace stands between
+  tokens.
+- `NaN`, `Infinity` and `-Infinity` are refused.
+- An integer is written in decimal digits. Any other number is a float, written as Python's
+  `repr` of it.
+- In a string, `"` is written as `\"` and `\` as `\\`.
+- In a string, backspace, form feed, line feed, carriage return and tab are written as `\b`, `\f`,
+  `\n`, `\r` and `\t`.
+- In a string, every other character outside U+0020 to U+007E is written as `\u` and four
+  lowercase hex digits. A character above U+FFFF is written as the two escapes of its UTF-16
+  surrogate pair.
+- Every other character is written as itself.
+
+The text is therefore ASCII. Its bytes are its ASCII encoding. These bytes, and no other spelling
+of the same value, are what Issues measures and digests:
+
+- The record identity, derived from the canonical JSON of `[invocation_id, report_key]`.
+- Each report's `id`, the digest of the canonical JSON of `{report, source}`.
+- The 64 KiB limit of a report.
+
+For example, the report key `clé` is written as `"cl\u00e9"`. These rules are the ones every
+record already written was derived with, so no identity or digest changes.
 
 ```concorde-contract
 {
@@ -142,8 +167,9 @@ values:
 A report's **reporting Module** is its provenance `target_id`, the Module its caller vouches for as
 reporting it. When the report's owner is `null`, the report command sets the reporting Module to
 the root Module. Otherwise, the report command sets the reporting Module to the report's owner.
-The root Module is the one registered Module that no other Module contains. Apart from `context_id`,
-the fields are free strings. The store records them as given. The store derives the
+The root Module is the one registered Module that no other Module contains. `change_id` and `head`
+are strings or `null`. `context_id` is a digest. The other fields are strings. The store records
+them as given. The store derives the
 [Issue](../glossary.json#concept.issue) identity from `invocation_id` and the report key.
 
 When a caller vouches for its own provenance, it gives the whole provenance with
@@ -278,7 +304,10 @@ These are library operations in `concorde.issues.store`. None launches a model. 
 repository `path` lies in. When `path` lies outside a repository, `project_root(path)` refuses with `not_a_repository`.
 When a root is not the primary worktree, every write refuses with `not_primary`. This includes a directory inside the
 primary worktree. Reads take the committed records of `root`'s `HEAD` from Git
-(`git ls-tree` and `git cat-file`), never its files. When `root` lies in no repository, reads
+(`git ls-tree` and `git cat-file`), never its files. They never resolve the primary worktree
+themselves. A caller that wants the project's Issues passes `project_root(path)` as `root`. The
+bookkeeping command and the Issue tools do so. `read_record_file` alone reads a file on disk
+instead, for the store check. When `root` lies in no repository, reads
 refuse with `not_a_repository`. An unborn `HEAD` holds no records. A record's revision is the
 digest of its committed bytes. Writes run Git to commit the record they wrote. They also run Git
 to put back uncommitted records. They fail in these ways:
@@ -332,12 +361,15 @@ to put back uncommitted records. They fail in these ways:
   with `uncommitted_change`. The error names the record file.
 
 The bookkeeping command reports a Kernel error as `invalid_issue`.
-It reports a `system_error` or an `OSError` as `io_error`.
+It reports a `system_error` or an `OSError` as `io_error`. This includes an `OSError` of an action
+itself, such as `check` listing a folder it cannot read. The Issue tools refuse such an error with
+the same link.
 
 | Operation | Behaviour |
 | --- | --- |
 | `record_report(root, report, source, wait)` | Records the report as `report_issue` does and returns `{receipt, revision}`, where `revision` is the revision of the record the receipt names as the write left it, or as it found it when it returned an existing receipt, taken under the merge lock. |
 | `report_issue(root, report, source, wait)` | Returns the receipt of `record_report`. Validates, then under the merge lock, after recovery: returns the existing receipt when the committed record already holds identical content for the same `(invocation_id, report_key)`, so that receipt names a committed report; fails with `issue_key_conflict` for different content, and when any other committed record, open or closed, already holds a report of that pair, so that one pair names one observation in the whole collection; otherwise creates the record or, for an append, checks that the Issue exists (`unknown_issue`), `expected_revision` (`stale_issue`) and open status (`closed_issue`) and appends. |
+| `check_report_target(root, report)` | Validates the report, then, without a lock or a write, checks the Issue an append names against the committed records of `root` as `report_issue` does: that it exists (`unknown_issue`), still has `expected_revision` (`stale_issue`) and is open (`closed_issue`). A report that creates an Issue passes. A later write repeats these checks under the merge lock. |
 | `read_issue(root, id)` | Returns the committed record, at either of its paths, and its revision; `invalid_issue` for a malformed identity, `unknown_issue` when `HEAD` holds it at neither path, even when an uncommitted file does, `invalid_issue` when it is committed at both, malformed, oversized or committed as anything but a regular file. |
 | `locate_issue(root, id)` | Returns what `read_issue` returns and the path the record is committed at, refusing as `read_issue` does. |
 | `read_record_file(root, path)` | Returns the record file at `path` of `root`, either path of an Issue, as it is on disk, committed or not, and the digest of its bytes, refusing as `read_issue` does and with `invalid_issue` for a path that is neither; the store check alone reads this way. |
@@ -347,6 +379,24 @@ It reports a `system_error` or an `OSError` as `io_error`.
 | `dispose_issue(root, id, expected_revision, reason, note, evidence, actor, duplicate_of, duplicate_revision, created_at, wait)` | Refuses a `duplicate` without `duplicate_of`, naming the Issue itself, or another reason with `duplicate_of` (`invalid_issue`). Under the lock, checks the revision (`stale_issue`), refuses closing a closed Issue (`closed_issue`) and reopening an open one (`open_issue`), and for `duplicate` that the other Issue exists (`unknown_issue`), is open (`invalid_issue`) and, when the caller gives `duplicate_revision`, the revision it read of that other Issue, still has it (`stale_issue`); appends the disposition, moves the record into the place of its new status and returns the new revision. `duplicate_of` and `duplicate_revision` default to `null`; `created_at` defaults to the time of acceptance; the bookkeeping command never gives `duplicate_revision`. |
 | `archive_issues(root, wait)` | Under the merge lock, as a write holds it, after recovery: moves every misplaced committed record into its place, its bytes unchanged so its revision stays, refusing with `stale_issue` and moving none when another program changed one of them since it read it, publishing all of them through one file transaction and committing them in one commit as a write commits, and returns `{"moved": [{issue_id, from, to}], "left": [{path, reason}]}`, sorted by identity. It leaves, with the reason, both paths of an Issue committed at both and a misplaced record whose path or place holds a change recovery left. Nothing to move commits nothing. Refuses as a write does. |
 | `recover_issues(root, wait)` | Under the merge lock, as a write holds it, runs the recovery below without writing an Issue and returns `{"recovered": [{path, action}], "left": [{path, reason}]}`: each record put back (`action` `restored` to its committed version, or `removed` when no commit holds it) or temporary file removed (`removed`), and each record change left because no write made it, with the reason. Refuses as a write does, with `not_primary`, `merge_busy`, `merge_incomplete`, `unreadable_merge_marker` or `recovery_failed`. |
+
+Every write checks its request in two phases. Before it takes the merge lock, it checks what no
+record decides:
+
+- The report against its contract, and the provenance against its shape.
+- A disposition's argument rules, such as a `duplicate` without `duplicate_of`.
+- That `root` is the primary worktree.
+
+A refusal in this first phase takes no lock and runs no recovery. It leaves every file as it was.
+While the write holds the lock, it acts in this order:
+
+1. It reads the unfinished-merge marker.
+2. It recovers.
+3. It checks its request against the committed records: the Issue's existence, its revision, its
+   status and a report's key.
+4. It publishes and commits the record.
+
+A refusal in step 3 keeps what recovery did in step 2.
 
 When a `root` is not the primary worktree, every write refuses it with `not_primary`.
 The write then holds the primary worktree's merge lock, `.concorde/locks/merge.lock`.
@@ -443,8 +493,13 @@ This is how a write moving the record leaves those entries.
 Recovery puts each such record back:
 
 - When `HEAD` holds the entry at its path, recovery uses `git checkout HEAD -- <path>`.
-- Otherwise, recovery uses `git rm --cached` and removes the file.
+- Otherwise, recovery removes the entry's index entry with `git rm --cached`, when the index holds
+  one, and then removes the file, when it exists.
 
+An interrupted write may never have staged its file. An index entry or a file that is already
+absent is already put back, so its absence is no failure.
+Recovery restores the committed half of a move before it removes the other half. When the
+committed half cannot be restored, recovery keeps the other half.
 Recovery removes each temporary.
 It leaves every other record entry as it is, with the reason:
 
@@ -456,7 +511,10 @@ It leaves every other record entry as it is, with the reason:
 - The file equals the committed record at its path while its index entry does not.
 
 It commits nothing.
-When something cannot be put back or removed, recovery tries the rest.
+When recovery cannot inspect a record entry, such as a file the operating system will not read,
+it keeps that entry. It also keeps the other changed path of the same Issue, which may be the
+other half of a move.
+When something cannot be inspected, put back or removed, recovery tries the rest.
 It then refuses with `recovery_failed`, naming each failure.
 
 ## Bookkeeping command
@@ -508,7 +566,7 @@ as the provenance above says and as a disposition's actor. `recover` and `archiv
 | `archive` | Runs `archive_issues` on the primary worktree, waiting for the merge lock, and prints its `{"moved": [...], "left": [...]}` |
 | `report --file <report.json> [--task <task-id>]` | Records the report in the file with the provenance above through `record_report` and prints what it returns, `{"receipt": <receipt>, "revision": <digest>}` |
 | `report --file <report.json> --provenance <provenance.json>` | Records the report in the file with the provenance in the provenance file, `{invocation_id, agent, operation, phase, target_id, context_id, change_id, head}`, which its caller vouches for, exactly as `record_report` records it for a library caller, and prints what it returns, `{"receipt": <receipt>, "revision": <digest>}` |
-| `report --file <report.json> --check` | Runs every check `report` runs on the file, but resolves no reporting Module for a report with an `origin`, records nothing and prints `{"valid": true, "file", "report_key", "reporting_module"}`, `reporting_module` being `null` for a report with an `origin` |
+| `report --file <report.json> --check` | Runs every check `report` runs on the file, including, through `check_report_target`, the existence, revision and status of the Issue an append names. For a report with an `origin`, it resolves no reporting Module and checks no Issue it appends to, since the recording project keeps that Issue. It records nothing and prints `{"valid": true, "file", "report_key", "reporting_module"}`, `reporting_module` being `null` for a report with an `origin` |
 | `close <id> --reason resolved\|duplicate\|not-actionable --note <text> --evidence <item>... [--duplicate-of <id>]` | Closes the open Issue at its current revision, moving its record into `closed/`, and prints `{"issue_id", "status": "closed", "revision", "path"}` |
 | `reopen <id> --note <text> --evidence <item>...` | Reopens the closed Issue at its current revision, moving its record back into `.concorde/issues/`, and prints `{"issue_id", "status": "open", "revision", "path"}` |
 
@@ -581,8 +639,11 @@ Every refusal has these effects:
 A refusal writes nothing of its own either, with one exception. A write refused with
 `recovery_failed`, or a process killed while writing, may leave an uncommitted record in the
 primary worktree. The next write or `recover` puts that record back, so a refused write may be
-repeated. A write runs recovery before it checks its request. That recovery puts back only what
-earlier writes left uncommitted. The recovery stays done whatever the request's outcome.
+repeated. A write checks its arguments and their shapes before it takes the merge lock, so a
+malformed request is refused before any recovery. A write runs recovery before it checks its
+request against the committed records, as [store operations](#store-operations) order it. That
+recovery puts back only what earlier writes left uncommitted. The recovery stays done whatever
+the request's outcome.
 The link is a `component` link of the Framework's
 [error chain](../kernel/tracing/contracts.md#contract.tracing.error) with the actor
 `Issues (concorde issues)`. Its code is the refusal code. Its detail states what is wrong.
@@ -637,9 +698,20 @@ of `--root`, except hidden files such as `.gitignore`. It reads these entries as
 
 For a misplaced record, the error names its status and place. It says to run
 `concorde issues archive` in the primary worktree, which moves the record to its place.
-For an Issue recorded in both folders, the error names both paths and the repair.
-The repair is to keep the record whose reports and dispositions begin with the other's.
-It also removes the other record with `git rm` in a commit of its own.
+For an Issue recorded in both folders, the error names both paths and the repair. `check`
+compares the two copies:
+
+- When one copy's reports and dispositions begin with the other's, the error names that copy.
+  The repair keeps it and removes the other copy with `git rm` in a commit of its own. Of two
+  equal copies, the error names the one in the folder its status names.
+- Otherwise, the error says that the histories diverge, or that they cannot be compared because
+  a copy does not read as a valid record. It says to remove neither copy, since each may hold
+  what the other lacks.
+
+In the second case, the main agent or the developer reconciles the copies by hand into one record.
+This is the one edit of a record by hand that Issues admits. That record
+holds every report of both copies, once each, and dispositions consistent with its final status.
+It is committed together with the other copy's removal, and nothing else.
 A closed Issue with an unknown owner produces the same text as a note, which does not change the
 exit status. Without the spec part, `check` does the following:
 
@@ -659,7 +731,15 @@ The issues part registers these tools with the
 [bookkeeping command](#bookkeeping-command)'s action it names. Each refuses with that action's
 link. Its writes never wait for the merge lock. Each records the calling session as reporter and
 actor. In a task worktree bound as a workspace, it records `task-session` and its task.
-Otherwise, it records `main-agent` without a task. Each write tool's description also explains:
+Otherwise, it records `main-agent` without a task. A session outside every worktree is recorded as
+`main-agent` too. When the session's worktree holds a
+[workspace binding](../glossary.json#concept.workspace-binding) that cannot be read or breaks the
+Kernel's [binding contract](../kernel/contracts.md#contract.kernel.workspace-binding), each write
+tool refuses with `invalid_binding` and writes nothing. The refusal names the worktree. It
+carries the Kernel's refusal as its cause. A tool never takes such a binding for an absent one,
+since it would then record a
+[task session](../glossary.json#concept.task-session)'s report as the main agent's.
+Each write tool's description also explains:
 
 - That the write first puts back what a killed Issue write left.
 - How its `recovery_failed` refusals are put right.
@@ -693,6 +773,7 @@ Recovery itself is `concorde issues recover`'s alone.
 | `io_error` | a file operation failed |
 | `usage` | the arguments do not form a request of the command |
 | `invalid_input` | an Issue tool's arguments are not an object, do not match its input schema, or, for `issue_report`, name both or neither of `report` and `file`; the tool refuses the call before running the command |
+| `invalid_binding` | an Issue write tool's session worktree holds a workspace binding that cannot be read or breaks the Kernel's binding contract, so the tool cannot tell whom to record the write as; the link's reason is `environment`, and its cause is the Kernel's refusal |
 | `not_a_project` | `--root` has neither `.concorde/config.json` nor `.concorde/install.json` |
 | `unreadable_file` | the report file cannot be read as UTF-8 text |
 | `not_a_repository` | `--root` lies in no Git repository, whose primary worktree would keep the Issues |

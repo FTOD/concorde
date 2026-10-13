@@ -146,6 +146,47 @@ class IssueStoreTests(unittest.TestCase):
             "Retry ownership is unspecified", (self.root / receipt["path"]).read_text()
         )
 
+    def test_identities_digests_and_the_size_limit_use_the_canonical_ascii_bytes(self):
+        """Canonical JSON writes every character outside printable ASCII as a lowercase \\u
+        escape, one above U+FFFF as its UTF-16 surrogate pair, so its bytes are ASCII."""
+        import hashlib
+
+        from concorde.kernel.schema import canonical
+
+        # The identity of an existing record stays what it was.
+        known = report_issue(self.root, report(), source())
+        self.assertEqual("I-525efdf09cbe5b698e27a1b11b0f41d1", known["issue_id"])
+        key = "cl\u00e9 \u2615 \U0001d11e"
+        self.assertEqual(
+            '["worker-1","cl\\u00e9 \\u2615 \\ud834\\udd1e"]',
+            canonical(["worker-1", key]),
+        )
+        answered = record_report(
+            self.root, report(report_key=key, title="Caf\u00e9 \u2615"), source()
+        )
+        receipt = answered["receipt"]
+        self.assertEqual("I-e7e64d31728553f585c2c63b55551b15", receipt["issue_id"])
+        record, _ = read_issue(self.root, receipt["issue_id"])
+        observation = record["reports"][0]
+        text = canonical(
+            {"report": observation["report"], "source": observation["source"]}
+        )
+        self.assertTrue(text.isascii())
+        self.assertIn('"title":"Caf\\u00e9 \\u2615"', text)
+        self.assertEqual(
+            "sha256:" + hashlib.sha256(text.encode("ascii")).hexdigest(),
+            receipt["report_id"],
+        )
+        # The limit counts the escaped bytes: 11000 two-byte UTF-8 characters are 66000 bytes.
+        with self.assertRaises(IssueError) as raised:
+            report_issue(
+                self.root,
+                report(report_key="large", description="\u00e9" * 11000),
+                source(),
+            )
+        self.assertEqual("invalid_issue", raised.exception.code)
+        self.assertIn("64 KiB", str(raised.exception))
+
     @verifies("scenario.issues.store-empty")
     def test_listing_without_issues_creates_nothing(self):
         self.assertEqual([], list_issues(self.root))
@@ -1268,6 +1309,40 @@ class IssueRecoveryTests(unittest.TestCase):
             store.recover_issues(self.root)["left"],
         )
         self.assertEqual("open", read_issue(self.root, edited["issue_id"])[0]["status"])
+
+    @verifies("scenario.issues.store-recovery-partial")
+    def test_a_record_that_cannot_be_inspected_does_not_stop_the_rest(self):
+        from concorde.issues import store
+
+        name = self.leave_killed_report()
+        unreadable = self.root / store.DIRECTORY / ("I-" + "b" * 32 + ".md")
+        unreadable.write_text("# not a record\n")
+        read_bytes = Path.read_bytes
+
+        def reading(path):
+            if path == unreadable:
+                raise PermissionError(errno.EACCES, "Permission denied", str(path))
+            return read_bytes(path)
+
+        with (
+            patch.object(Path, "read_bytes", reading),
+            self.assertRaises(IssueError) as raised,
+        ):
+            store.recover_issues(self.root)
+        self.assertEqual("recovery_failed", raised.exception.code)
+        self.assertIn(
+            f"inspecting {store.DIRECTORY}/{unreadable.name}", str(raised.exception)
+        )
+        self.assertIn("Permission denied", str(raised.exception))
+        # The killed report's record was put back all the same; the unreadable one is kept.
+        self.assertNotIn(name, self.issue_files())
+        self.assertTrue(unreadable.is_file())
+        # Readable again, it is judged like any other change: no write left it.
+        recovery = store.recover_issues(self.root)
+        self.assertEqual([], recovery["recovered"])
+        [left] = recovery["left"]
+        self.assertEqual(f"{store.DIRECTORY}/{unreadable.name}", left["path"])
+        self.assertIn("no valid record", left["reason"])
 
     @verifies("scenario.issues.store-recover")
     def test_recovery_holds_the_merge_lock(self):

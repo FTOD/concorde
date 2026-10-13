@@ -31,7 +31,7 @@ Whether a problem stops the task is decided separately.
 
 ### req.issues.caller-provenance — Provenance comes from the command
 
-The bookkeeping command SHALL supply every provenance field of a report itself, unless its caller gives the whole provenance in a provenance file of its own with `--provenance`, and never take one from the report file.
+The bookkeeping command SHALL never take a provenance field from the report file and, unless its caller gives the whole provenance in a provenance file of its own with `--provenance`, supply every provenance field of a report itself.
 
 A report file with a provenance field is refused as malformed, because a report has no such field.
 A caller that gives `--provenance` vouches for it, as a library caller of the store does.
@@ -150,7 +150,9 @@ shows.
 It writes nothing of its own either, with one exception. A write refused with `recovery_failed`
 leaves its published record uncommitted until the next recovery puts it back. The reason is that
 the record it published could not be put back.
-Before a write checks its request, it runs [recovery](#req.issues.uncommitted-recovered).
+A write checks its arguments and their shapes before it takes the merge lock. A malformed
+request is therefore refused before any recovery. After it takes the lock, and before it checks its
+request against the committed records, a write runs [recovery](#req.issues.uncommitted-recovered).
 That recovery puts back only what earlier writes published but did not commit. The recovery stays
 done whatever the request's outcome.
 
@@ -164,9 +166,11 @@ Every program write of these kinds SHALL go through the Issue store:
 - A write that appends to an Issue record.
 - A write that disposes an Issue record.
 
-Nobody edits a record by hand. Git operations that move committed record files are not store
-writes. One such operation merges a branch that still carries a record an earlier Concorde wrote
-there.
+Nobody edits a record by hand, with one exception. The main agent or the developer reconciles by
+hand an Issue recorded in both folders whose copies have divergent histories ([store
+check](interface.md#bookkeeping-command)). Git operations that move committed record files are not
+store writes. One such operation merges a branch that still carries a record an earlier Concorde
+wrote there.
 
 ### req.issues.project-level — The primary worktree keeps the project's Issues
 
@@ -252,7 +256,13 @@ tier. This is so that whoever chooses what to fix next can start from the most s
 
 ### req.issues.committed-visible — Reads show only committed records
 
-The Issue store's reads SHALL return only the records the primary worktree's last commit holds, never a record file that is not committed or differs from its committed version.
+The bookkeeping command's reads and the Issue tools' reads SHALL return only the records the primary worktree's last commit holds, never a record file that is not committed or differs from its committed version.
+
+The command and the tools resolve the primary worktree first. The store's own reads return the
+committed records of the `HEAD` of the root their caller gives
+([store operations](interface.md#store-operations)). The store check reads the record files on
+disk, committed or not, through `read_record_file`, since it must inspect them. Neither `check` nor
+`read_record_file` is such a read.
 
 A record is visible exactly when its write is committed, which is before the write is acknowledged.
 In these cases, a reader sees the records as they were committed:
@@ -309,7 +319,7 @@ As a result, writes never overlap any of these:
 
 ### req.issues.no-write-during-merge — No Issue write while a merge is unfinished
 
-The Issue store SHALL refuse every write, whether it took the merge lock or its caller holds it, while the Kernel's [unfinished-merge marker](../glossary.json#concept.unfinished-merge-marker) of the primary worktree is present or cannot be read.
+While the Kernel's [unfinished-merge marker](../glossary.json#concept.unfinished-merge-marker) of the primary worktree is present or cannot be read, the Issue store SHALL refuse every write, whether it took the merge lock or its caller holds it.
 
 As a result, a write never commits between a merge commit and the checks that decide whether it
 stays. The store learns of an unfinished merge from the marker alone. It reads no
@@ -327,6 +337,15 @@ The tools are the issues part's own. The issues part registers them through its
 [part registration](../glossary.json#concept.part-registration). Where the issues part is not
 installed none of them exists ([MCP tools](interface.md#mcp-tools)). The calling session alone is
 theirs, as reporter and actor ([attribution](#req.issues.main-agent-actor)).
+
+### req.issues.tools-binding-trusted — The Issue tools refuse a binding they cannot trust
+
+When the session's worktree holds a [workspace binding](../glossary.json#concept.workspace-binding) that cannot be read or breaks the Kernel's binding contract, each Issue tool that writes SHALL refuse the call with `invalid_binding` and write nothing.
+
+A tool records a [task session](../glossary.json#concept.task-session) only from its binding. Taking
+a broken binding for an absent one would record a task session's report as the main agent's
+([attribution](#req.issues.main-agent-actor)). The refusal carries the Kernel's refusal as its
+cause.
 
 ### req.issues.tools-no-wait — The Issue tools never wait for the merge lock
 

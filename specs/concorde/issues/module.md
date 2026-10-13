@@ -276,6 +276,29 @@ tools -> actions: calls with the same arguments
 actions -> store
 ```
 
+### One report, start to finish
+
+A worker's run finds that the payments Module describes retries but gives no retry limit. The
+session that receives the run's result follows the problem through these steps:
+
+1. It runs `list --module module.payments --status open`. No Issue tracks the problem yet. For a
+   possible match, it would read `show <id>`.
+2. It writes the report as JSON, with its tier, severity, description, impact, basis and evidence.
+   The [report contract](interface.md#contract.issues.report) shows this very report.
+3. It runs `concorde issues report --file <report.json>`, or calls `issue_report`. The command
+   supplies the provenance. The store creates the Issue and commits its record on the primary
+   branch.
+4. The reply gives a [receipt](interface.md#contract.issues.receipt) and the record's revision.
+   The receipt names that one report for good.
+5. A later observation of the same problem names the Issue's identity and that revision. The
+   store appends it to the Issue instead of creating another.
+6. The task that fixes the problem names the Issue with `--resolves`. The task's merge closes the
+   Issue as `resolved`.
+
+The sections below explain what keeps each step safe: where the records live, how a failed write
+is put back and how an Issue moves between `open` and `closed`.
+[Recording and following up](#recording-and-following-up) gives the commands in full.
+
 ### Where Issues are kept
 
 Issues are project-level. The primary worktree keeps them, like tasks. The following read and
@@ -285,9 +308,11 @@ write the same records:
 - Every session.
 - Every run.
 
-From any worktree of the repository, the store resolves the primary worktree. The store reads the
-records there. It writes only there. Before it answers, each write holds the primary worktree's
-[merge lock](../glossary.json#concept.merge-lock) throughout these steps:
+From any worktree of the repository, the bookkeeping command and the Issue tools resolve the primary
+worktree. They read the records there. The store writes only there. The store's own reads take the
+committed records of whatever root their caller gives ([store
+operations](interface.md#store-operations)). Before it answers, each write holds the primary
+worktree's [merge lock](../glossary.json#concept.merge-lock) throughout these steps:
 
 - It publishes the record in the folder its status names.
 - It commits that one record on the primary branch in a commit of its own.
@@ -300,12 +325,14 @@ committed. A write never lands between a task's merge commit and the checks that
 the merge stays. Where the coordination part is installed, no write occurs while a task's merge
 is unfinished.
 
-Only committed records count. Every read takes the records of the primary worktree's last commit,
-never its files. So a record is visible exactly when it is committed. A receipt names a report
-the commit holds. A write that fails after publishing its record puts it back before it refuses.
-A record stays published but not committed only when that putting back fails or the writing
-process is killed. In that case, no read shows the record. Before any further write acts, the
-record is put back, as [recovering uncommitted records](#recovering-uncommitted-records) explains.
+Only committed records count. Every read of the command and the tools takes the records of the
+primary worktree's last commit, never its files. The store check alone reads the record files on
+disk, since it must inspect them. So a record is visible exactly when it is committed. A receipt
+names a report the commit holds. A write that fails after publishing its record puts it back before
+it refuses. A record stays published but not committed only when that putting back fails or the
+writing process is killed. In that case, no read shows the record. Before any further write acts,
+the record is put back, as [recovering uncommitted records](#recovering-uncommitted-records)
+explains.
 
 ### Recovering uncommitted records
 
@@ -429,8 +456,11 @@ record moved by hand. Like any other record, a misplaced record is:
 
 A write of a misplaced record moves it into the folder of its status in that write's commit. `check` reports a misplaced record. Under the merge lock,
 `concorde issues archive` moves every misplaced record into its place, unchanged, in one commit.
-An Issue lives in exactly one place. Until someone removes the copy that is not its whole
-history, every read refuses an Issue committed in both folders.
+An Issue lives in exactly one place. Every read refuses an Issue committed in both folders until
+the doubled record is repaired. When one copy's history begins with the other's, the repair
+removes the shorter copy. When the histories diverge, each copy may hold what the other lacks.
+Then nobody removes either copy alone. The main agent or the developer reconciles them by hand
+into one record, as `check` explains ([bookkeeping command](interface.md#bookkeeping-command)).
 
 ### A repair
 
@@ -524,8 +554,11 @@ These tools answer and refuse exactly as the command does. `recover` and `archiv
 command's alone. A session, either the main agent or a [task session](../glossary.json#concept.task-session), uses those tools.
 
 The reason is that the tools record the calling session as reporter and actor, which the command
-cannot know. The command serves a task session's shell and the runs it starts as well. Whichever
-worktree a call starts from, it acts on the primary worktree's records.
+cannot know. A tool learns that a session is a task session from its worktree's [workspace
+binding](../glossary.json#concept.workspace-binding). When that binding cannot be read or breaks its
+contract, the tool refuses the write instead of guessing. The command serves a task session's shell
+and the runs it starts as well. Whichever worktree a call starts from, it acts on the primary
+worktree's records.
 
 ### Recording and following up
 
@@ -670,7 +703,8 @@ Issues' design has an outside: the Modules it relies on and those that rely on i
 Its design has an inside: the store and the bookkeeping command that divide its work.
 ### Around it
 
-No program but the store writes a record. Nobody edits one by hand. Main session declares
+No program but the store writes a record. Nobody edits one by hand, except to reconcile the
+divergent copies of an Issue recorded in both folders. Main session declares
 `session -> issues` in the [structure](#structure) diagram. Its
 [guidance](../coordination/main-session/module.md) says when sessions do the following:
 
@@ -835,8 +869,10 @@ without an envelope:
 
 No other part knows the types.
 
-The view below follows one write and what each refusal leaves. When a refusal occurs before
-publication, it leaves the record as it was committed.
+The view below follows one write and what each refusal leaves. The write checks its arguments and
+their shapes before it takes the lock. It checks its request against the committed record only
+after recovery. When a refusal occurs before publication, it leaves the record as it was
+committed.
 
 ```d2 illustrative
 direction: down
@@ -863,7 +899,7 @@ lock -> refused: merge_busy
 merge -> refused: merge_incomplete, unreadable_merge_marker
 recover -> refused: uncommitted_change
 recover -> failed: a record not put back
-revision -> refused: stale_issue, closed_issue, open_issue
+revision -> refused: unknown_issue, stale_issue, closed_issue, open_issue
 publish -> putback: failure
 commit -> putback: commit_failed
 putback -> refused: put back
