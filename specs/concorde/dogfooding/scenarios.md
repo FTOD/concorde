@@ -98,7 +98,9 @@ worktree whose `HEAD` is detached is refused as a linked worktree.
 - AND outside a task to write that link by hand in the shape of the [error contract](../kernel/tracing/contracts.md#contract.tracing.error)
 - AND for a defect seen outside a task to keep the report only under `.concorde/runs/defects/` and name it to the developer, opening no task for it
 - AND to check it with `concorde issues report --check` before handing it over
-- BUT for a defect of the Issue system itself to write no defect report and to hand over instead its [error chain](../glossary.json#concept.error-chain) with its own link on top, under `.concorde/runs/defects/`
+- BUT for a failure of the Issue system itself to write no defect report and to hand over instead its [error chain](../glossary.json#concept.error-chain) with its own link on top, under `.concorde/runs/defects/`
+- AND that such a failure is a crash, a wrong result or a wrong refusal of the Issue store, `concorde issues` or the Issue tools
+- AND for a design limitation of the Issue system that the working Issue system can record to write an ordinary defect report
 - AND that a refusal whose reason is `environment` is no defect, and that after `merge_busy` it waits and writes again
 - AND that for every other such refusal, such as `commit_failed` or `recovery_failed`, it removes the cause the options name, or escalates it, before it writes again
 - AND to take the fix with `concorde update` while nothing runs, and to start nothing until the update ends

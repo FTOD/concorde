@@ -318,21 +318,31 @@ It names the report to the developer
 }
 ```
 
-### A defect of the Issue system
+### A failure of the Issue system
 
-The main agent never writes a defect of Concorde's Issue system itself as a defect report
-([requirements](requirements.md#req.dogfooding.issue-system-defect)). Such defects include crashes
-or wrong results of these components:
+The main agent never writes a failure of Concorde's Issue system itself as a defect report
+([requirements](requirements.md#req.dogfooding.issue-system-failure)). Such a failure is a crash,
+a wrong result or a wrong refusal of these components:
 
 - The Issue store.
 - `concorde issues`.
 - The [project MCP server](../glossary.json#concept.project-mcp-server)'s Issue tools.
 
-They include `concorde issues report --check` refusing a correct report.
+A wrong refusal is, for example, `concorde issues report --check` refusing a correct report.
 A defect report is an Issue report. The Concorde repository records it with its own Issue system.
 Since the system that failed cannot be trusted to record its failure, nobody records that failure
 as an Issue ([Issues](../issues/module.md#failures-of-the-issue-system)).
-Such a defect travels as every other failure does, as its
+
+The exception covers failures only. A design limitation of Issues is a Concorde defect like any
+other when the Issue system works and can record a report about it. An example is a report field
+that Issues lacks and that a legitimate report needs. The main agent writes such a limitation as an
+ordinary defect report
+([requirements](requirements.md#req.dogfooding.issue-design-limitation-reported)), as
+[Issues](../issues/module.md#failures-of-the-issue-system) records a design gap of Issues as an
+ordinary Issue. When the Issue system fails while the main agent checks or writes that report, that
+failure goes as a failure of the Issue system.
+
+A failure of the Issue system travels as every other failure does, as its
 [error chain](../glossary.json#concept.error-chain). The main agent puts its own link, reason
 `scope`, on top of the failure's chain. In a task, it uses `concorde task escalate`.
 That command also records the chain in the task. The main agent names the failure with one of
@@ -343,9 +353,9 @@ these options:
 
 Outside a task, the main agent writes its link by hand.
 It writes that chain to `.concorde/runs/defects/<name>.error.json`
-([requirements](requirements.md#req.dogfooding.issue-system-defect-kept)).
+([requirements](requirements.md#req.dogfooding.issue-system-failure-kept)).
 It names the file to the developer
-([requirements](requirements.md#req.dogfooding.issue-system-defect-named)).
+([requirements](requirements.md#req.dogfooding.issue-system-failure-named)).
 
 A refusal whose reason is `environment` is no defect
 ([requirement](requirements.md#req.dogfooding.environment-refusal-handled)). Only a busy lock is
@@ -539,8 +549,9 @@ facts hold:
 
 The project never writes into the Concorde repository.
 To be installed from, the Concorde repository's primary worktree must stay clean.
-The one defect Issues cannot carry is a defect of the Issue system itself.
-Because that system cannot be trusted to record it, the defect travels as its bare error chain.
+The one defect Issues cannot carry is a failure of the Issue system itself.
+Because that system cannot be trusted to record it, the failure travels as its bare error chain.
+A design limitation of Issues needs no such exception: the working Issue system records it.
 That chain is the value every report would have carried anyway.
 
 **Only a clean primary worktree is a source.** Since every later update installs from the receipt's

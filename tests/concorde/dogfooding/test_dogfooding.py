@@ -391,15 +391,23 @@ class GuidanceTests(unittest.TestCase):
             "A defect you saw outside a task",
             "opens no task. Keep its report only under `.concorde/runs/defects/`",
             "Name that file to the developer",
-            # A defect of the Issue system travels as its error chain, never as an Issue report.
-            "A defect of the Issue system itself** is never written as a defect report",
-            "This includes `concorde issues report --check` refusing a correct report",
+            # A failure of the Issue system travels as its error chain, never as an Issue report;
+            # a design limitation the working Issue system can record is an ordinary report.
+            "A failure of the Issue system itself** is never written as a defect report",
+            "crash, a wrong result or a wrong refusal of any of these",
+            "A wrong refusal is, for example, `concorde issues report --check` refusing a correct "
+            "report",
+            "The exception covers failures only",
+            "Write such a limitation as an ordinary defect report",
+            "When the Issue system fails while you check or write that report, that failure is a "
+            "failure of the Issue system",
             "A refusal whose reason is `environment`, such as `merge_busy`, is no defect",
             "for `merge_busy`, wait for the lock and write again",
             "Follow those options, as the Issues guidance says, before you write again",
             "For `recovery_failed`, fix the cause it names, then run `concorde issues recover`",
             "A new write without removing the cause meets the same refusal",
-            "Hand such a defect over as its error chain alone, with your own link on top",
+            "Hand a failure of the Issue system over as its error chain alone, with your own link on "
+            "top",
             "`.concorde/runs/defects/<name>.error.json`",
             "It is never a report to record as an Issue",
         ):
