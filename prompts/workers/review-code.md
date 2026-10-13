@@ -76,7 +76,7 @@ The review below has one of two scopes:
     better. Say which in `suggestion`.
   - `decision-needed`: a **blocking** problem that is unclear, or whose fix changes what a Module
     promises. For such a problem, someone above the task must decide it.
-    A `spec-challenge` is usually `decision-needed`.
+    Every `spec-challenge` is `decision-needed`.
     So is a `spec-gap` whose answer is not obvious.
 - `severity`: how much the problem matters, whoever fixes it. The project's Issues rate every
   problem as follows, most severe first:

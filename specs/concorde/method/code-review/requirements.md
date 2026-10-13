@@ -84,6 +84,14 @@ A reviewer that judges a requirement, scenario or contract of its reviewed Modul
 unrealizable SHALL report it as a finding of kind `spec-challenge` whose basis is that promise and
 whose problem says why, rather than as a defect of the code.
 
+### req.code-review.challenge-decided-above — Every Spec challenge is decision-needed
+
+The code review Operation SHALL give every finding of kind `spec-challenge` the tier
+`decision-needed`, whatever tier its reviewer chose.
+
+Changing what a Module promises is decided above the task, so no task fixes a Spec challenge
+alone. The `challenge-tier` host evidence names each finding whose tier the Operation corrected.
+
 ### req.code-review.evidence-resolves — A finding whose evidence does not hold is not reported
 
 The code review Operation SHALL report no finding that, after the reviewer's one

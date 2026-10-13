@@ -879,6 +879,18 @@ def judge(
     findings = [item for index, item in enumerate(findings) if index not in unresolved]
     for finding in findings:
         finding["issue"] = None
+        # Changing what a Module promises is decided above the task, whatever tier the reviewer
+        # gave its challenge.
+        if finding["kind"] == "spec-challenge" and finding["tier"] != "decision-needed":
+            found.append(
+                evidence(
+                    "challenge-tier",
+                    f"{finding['module']} {finding['title']}",
+                    f"the reviewer gave the Spec challenge the tier {finding['tier']}; "
+                    "every Spec challenge is decision-needed",
+                )
+            )
+            finding["tier"] = "decision-needed"
     for review in reviews:
         review.findings = [item for item in findings if item["module"] == review.module]
     resolved = list(output.get("resolved") or [])

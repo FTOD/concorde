@@ -66,8 +66,8 @@ in the [contracts](contracts.md).
 
 - GIVEN a Module whose requirement cannot be realized with what the Module may use, and whose code therefore does not keep it
 - WHEN its reviewer judges the Module
-- THEN it reports a finding of kind `spec-challenge`, usually `decision-needed`, whose basis is that requirement, whose problem says why it cannot be realized and whose locations show the code concerned
-- AND the Operation reports it as an Issue of the Module like any other finding
+- THEN it reports a finding of kind `spec-challenge` whose basis is that requirement, whose problem says why it cannot be realized and whose locations show the code concerned
+- AND the Operation reports it as an Issue of the Module of tier `decision-needed`, also when the reviewer gave it another tier, which `challenge-tier` host evidence names
 
 ### scenario.code-review.unbound-module-review — A Module review of the primary worktree
 

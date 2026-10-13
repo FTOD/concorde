@@ -94,7 +94,9 @@ Module's code. Thus, a disputed finding traces to a written promise and to the c
 A finding's tier says who may act on it, as for every Issue. For code that keeps its promises but
 could serve them better, the tier is `suggestion`. Otherwise, it is a blocking tier, `obvious-fix`,
 `preferred-fix` or `decision-needed`. Since changing what a Module promises is decided above the
-task, a Spec challenge is usually `decision-needed`. Its severity says, independently, how much
+task, every Spec challenge is `decision-needed`. The Operation gives a Spec challenge that tier
+whatever tier the reviewer chose, and names each such correction as `challenge-tier` host
+evidence. Its severity says, independently, how much
 the problem matters to the callers and the later tasks relying on the code. It ranges from
 `critical`, such as wrong results or lost data, down to `low`, something cosmetic.
 

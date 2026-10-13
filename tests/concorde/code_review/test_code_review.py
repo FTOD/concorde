@@ -702,7 +702,7 @@ class CodeReviewTests(unittest.TestCase):
         challenge = finding(
             "scenario.a.answer",
             kind="spec-challenge",
-            tier="decision-needed",
+            tier="preferred-fix",
             problem="The scenario asks A to answer every question, which no function can.",
         )
         _, envelope = self.review(
@@ -720,6 +720,14 @@ class CodeReviewTests(unittest.TestCase):
             (report["tier"], report["type"], report["subtype"]),
         )
         self.assertIn("spec-challenge", report["basis"])
+        # Whatever tier the reviewer gave it, a Spec challenge is decided above the task.
+        self.assertEqual("decision-needed", item["tier"])
+        [corrected] = [
+            entry
+            for entry in envelope["host_evidence"]
+            if entry["kind"] == "challenge-tier"
+        ]
+        self.assertIn("preferred-fix", corrected["detail"])
 
     @verifies("scenario.code-review.unbound-module-review")
     def test_an_unbound_module_review_reports_to_the_projects_issues(self):
