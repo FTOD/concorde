@@ -17,7 +17,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, TypeVar
 
-from .errors import SpecError
+from .errors import SpecError, system_cause
 from .typed_data import TypedDataError, checked_path
 
 DECORATOR = "verifies"
@@ -63,11 +63,12 @@ class DeclarationError(SpecError):
 
     DEFAULT_CODE = "invalid_declaration"
 
-    def __init__(self, path: str, line: int | None, message: str):
+    def __init__(self, path: str, line: int | None, message: str, *, causes=()):
         super().__init__(
             f"{path}:{line}: {message}" if line else f"{path}: {message}",
             path=path,
             line=line,
+            causes=causes,
         )
 
 
@@ -283,7 +284,14 @@ def _file_declarations(root: Path, relative: str) -> list[Verification]:
         data = target.read_bytes()
     except (OSError, TypedDataError) as error:
         raise DeclarationError(
-            relative, None, f"cannot read the test file: {error}"
+            relative,
+            None,
+            f"cannot read the test file: {error}",
+            causes=[
+                error
+                if isinstance(error, SpecError)
+                else system_cause(error, path=relative)
+            ],
         ) from error
     if typescript:
         return _typescript_declarations(
@@ -296,6 +304,7 @@ def _file_declarations(root: Path, relative: str) -> list[Verification]:
             relative,
             getattr(error, "lineno", None),
             f"cannot parse Python source: {error.msg if hasattr(error, 'msg') else error}",
+            causes=[system_cause(error, path=relative)],
         ) from error
     return _declarations(relative, tree)
 

@@ -885,8 +885,12 @@ A failure then propagates as follows:
   When the first failure is a `SpecError`, it stays unchanged.
   Otherwise, the first cause is its `system_error` or `unexpected_error` record.
 
-These guarantees hold for failures the process observes as an exception.
-A killed or interrupted process restores nothing:
+These guarantees hold for failures the process observes.
+They include an interruption the process receives, such as `KeyboardInterrupt` or `SystemExit`.
+Once every file is restored, the transaction raises the interruption again unchanged.
+When a restore is refused, the transaction fails with the `system_error` above, whose first cause
+is the interruption's `unexpected_error` record.
+A killed process restores nothing:
 
 - Each file already renamed into place keeps its new content.
 - Every other file keeps its original bytes.

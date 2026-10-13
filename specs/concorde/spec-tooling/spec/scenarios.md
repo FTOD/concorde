@@ -851,6 +851,16 @@ A `review-spec` grant for the same Module is equal to it apart from its task typ
 - THEN every written file is restored
 - AND the exception the caller receives is the one the final check raised
 
+### scenario.spec.transaction-interrupted — An observed interruption restores and is raised again
+
+- GIVEN a file transaction of two files whose final check receives `KeyboardInterrupt` or
+  `SystemExit`
+- AND every restore of a written file succeeds
+- WHEN it is applied
+- THEN every written file is restored
+- AND files that did not exist are removed
+- AND the exception the caller receives is that interruption, unchanged
+
 ### scenario.spec.transaction-stale — A changed file stops a transaction before it writes
 
 - GIVEN a file transaction whose expected digest for one file no longer matches that file's bytes

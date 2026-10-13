@@ -9,10 +9,14 @@ from tests.concorde.support.paths import RUNTIME_ROOT
 
 sys.path.insert(0, str(RUNTIME_ROOT))
 
+from concorde.spec.schema import ContractError, admit
 from concorde.spec.typed_data import (
+    ARTIFACT,
     STRING,
     TypedDataError,
+    array,
     artifact,
+    check_schema,
     data_schema,
     decode,
     obj,
@@ -364,6 +368,58 @@ class TypedDataTests(unittest.TestCase):
         for value in ('{"x":1,"x":2}', '{"x":NaN}', '{"x":Infinity}', '{"x":1e999}'):
             with self.subTest(value=value), self.assertRaises(TypedDataError):
                 decode(value)
+
+    def test_schema_admission_names_the_pointer_of_the_problem(self):
+        for schema, field in (
+            (
+                {"properties": {"value": {"minLength": -1}}},
+                "/properties/value/minLength",
+            ),
+            ({"items": {"unknown": 1}}, "/items/unknown"),
+            ({"anyOf": [True, {"maximum": "x"}]}, "/anyOf/1/maximum"),
+            ({"$defs": {"a": {"$ref": "#/$defs/b"}}}, "/$defs/a/$ref"),
+            ({"properties": {"a~b/c": {"type": "word"}}}, "/properties/a~0b~1c/type"),
+            ({"minLength": 3, "maxLength": 1}, "/minLength"),
+        ):
+            with self.subTest(schema=schema):
+                with self.assertRaises(ContractError) as raised:
+                    admit(schema)
+                self.assertEqual(field, raised.exception.field)
+                self.assertEqual(field, raised.exception.record()["location"]["field"])
+
+    @verifies("scenario.spec.typed-value-reject")
+    def test_a_malformed_schema_is_refused_with_the_tooling_error(self):
+        for schema in (
+            {"properties": []},
+            {"type": {}},
+            {"type": [[]]},
+            {"anyOf": {}},
+            {"$defs": [], "$ref": "#/$defs/a"},
+            {"required": [{}]},
+            {"items": {"pattern": 1}},
+        ):
+            with self.subTest(schema=schema), self.assertRaises(ContractError):
+                admit(schema)
+        for schema in ({"properties": []}, {"type": {}}, {"anyOf": 3}, {"items": []}):
+            with self.subTest(registered=schema):
+                with self.assertRaises(TypedDataError) as raised:
+                    register("concorde-fixture-malformed", 1, schema)
+                self.assertEqual("invalid_input", raised.exception.code)
+
+    def test_a_wrapped_failure_keeps_its_cause_in_the_record(self):
+        with self.assertRaises(TypedDataError) as raised:
+            decode("{not json")
+        self.assertEqual("system_error", raised.exception.record()["causes"][0]["code"])
+        with self.assertRaises(TypedDataError) as raised:
+            register("concorde-fixture-caused", 1, {"minLength": -1})
+        (cause,) = raised.exception.record()["causes"]
+        self.assertEqual("/minLength", cause["location"]["field"])
+
+    def test_an_artifact_array_is_checked_only_by_its_schema(self):
+        one = {"id": "a", "path": "a.txt", "digest": "sha256:" + "0" * 64}
+        check_schema([one, one, {**one, "id": "b"}], array(ARTIFACT))
+        with self.assertRaises(TypedDataError):
+            check_schema([one, one], array(ARTIFACT, unique=True))
 
 
 if __name__ == "__main__":

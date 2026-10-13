@@ -310,6 +310,24 @@ class SpecMcpTests(unittest.TestCase):
         value, error = client.call_with({"name": "modules"})
         self.assertFalse(error, value)
 
+    @verifies("scenario.spec-mcp.malformed-message")
+    def test_a_malformed_message_is_answered_and_the_session_goes_on(self):
+        client = self.client(root=self.root)
+        for line, code in (
+            ("{not json", -32700),
+            ("null", -32600),
+            ("7", -32600),
+            ('[{"jsonrpc": "2.0", "id": 99, "method": "ping"}]', -32600),
+        ):
+            with self.subTest(line=line):
+                client.process.stdin.write(line + "\n")
+                client.process.stdin.flush()
+                answer = json.loads(client.process.stdout.readline())
+                self.assertIsNone(answer["id"])
+                self.assertEqual(code, answer["error"]["code"])
+                value, error = client.call("modules")
+                self.assertFalse(error, value)
+
     @verifies("scenario.spec-mcp.boundary")
     def test_boundary_is_spec_cores_grant(self):
         before = self.snapshot()

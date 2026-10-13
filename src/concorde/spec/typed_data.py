@@ -18,14 +18,14 @@ from pathlib import Path, PurePosixPath
 from typing import Any
 
 from . import schema as _subset
-from .errors import SpecError
+from .errors import SpecError, system_cause
 
 
 class TypedDataError(SpecError):
     """A typed value, path or JSON text that its registered type or schema refuses."""
 
-    def __init__(self, code: str, field: str, message: str):
-        super().__init__(message, code, field)
+    def __init__(self, code: str, field: str, message: str, *, causes=()):
+        super().__init__(message, code, field, causes=causes)
 
     def to_dict(self) -> dict[str, str]:
         return {"code": self.code, "field": self.field, "message": str(self)}
@@ -71,24 +71,34 @@ _TYPES: dict[str, tuple[int, dict]] = {}
 _UNCHECKED = frozenset({"$schema", "$id", "$defs", "oneOf", "allOf"})
 
 
-def _evaluated(schema: Any) -> None:
-    """Refuse a schema using a keyword that ``check_schema`` would not evaluate."""
+def _evaluated(schema: Any, field: str = "") -> None:
+    """Refuse a schema using a keyword that ``check_schema`` would not evaluate.
+
+    A keyword of the wrong shape is left to the subset's admission, which refuses it."""
     if not isinstance(schema, dict):
         return
     unchecked = sorted(_UNCHECKED & schema.keys())
     if unchecked or isinstance(schema.get("type"), list):
         raise TypedDataError(
             "invalid_input",
-            "",
+            _subset.pointer(field, unchecked[0] if unchecked else "type"),
             "a registered schema uses only keywords the typed-value checker evaluates,"
             f" not {unchecked or ['a list of types']}",
         )
-    for child in schema.get("properties", {}).values():
-        _evaluated(child)
+    properties = schema.get("properties")
+    if isinstance(properties, dict):
+        for key, child in properties.items():
+            _evaluated(
+                child, _subset.pointer(_subset.pointer(field, "properties"), key)
+            )
     for name in ("items", "additionalProperties"):
-        _evaluated(schema.get(name))
-    for child in schema.get("anyOf", ()):
-        _evaluated(child)
+        _evaluated(schema.get(name), _subset.pointer(field, name))
+    alternatives = schema.get("anyOf")
+    if isinstance(alternatives, list):
+        for position, child in enumerate(alternatives):
+            _evaluated(
+                child, _subset.pointer(_subset.pointer(field, "anyOf"), position)
+            )
 
 
 def _admissible(schema: Any) -> Any:
@@ -151,7 +161,7 @@ def register(type_id: str, version: int, schema: dict) -> None:
         _subset.admit(_admissible(schema))
     except _subset.ContractError as error:
         raise TypedDataError(
-            "invalid_input", type_id, f"schema is not admitted: {error}"
+            "invalid_input", type_id, f"schema is not admitted: {error}", causes=[error]
         ) from error
     existing = _TYPES.get(type_id)
     if existing is not None:
@@ -231,7 +241,9 @@ def decode(text: str) -> Any:
             text, object_pairs_hook=pairs, parse_constant=constant, parse_float=number
         )
     except (ValueError, TypeError, RecursionError) as error:
-        raise TypedDataError("invalid_json", "", str(error)) from error
+        raise TypedDataError(
+            "invalid_json", "", str(error), causes=[system_cause(error)]
+        ) from error
 
 
 def _pointer(field: str, key: Any) -> str:
@@ -309,12 +321,6 @@ def check_schema(value: Any, schema: dict | bool, field: str = "") -> None:
             raise TypedDataError("invalid_field", field, "items must be unique")
         for index, item in enumerate(value):
             check_schema(item, schema.get("items", True), _pointer(field, index))
-        if schema.get("items") == ARTIFACT:
-            for key in ("id", "path"):
-                if len({item[key] for item in value}) != len(value):
-                    raise TypedDataError(
-                        "invalid_field", field, f"artifact {key} values must be unique"
-                    )
     elif isinstance(value, str):
         if schema.get("minLength") and not value.strip():
             raise TypedDataError("invalid_field", field, "string must not be empty")
