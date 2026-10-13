@@ -4,7 +4,7 @@
 {
   "schema_version": 4,
   "id": "I-693b8b3bc8d05f2ca9d32c03bf6bc8db",
-  "status": "open",
+  "status": "closed",
   "reports": [
     {
       "id": "sha256:bfb1916a4ff739e14157cc11d3dc2c0ca85befe993e8f0c459af5b46f0dfe411",
@@ -39,6 +39,18 @@
       }
     }
   ],
-  "dispositions": []
+  "dispositions": [
+    {
+      "reason": "resolved",
+      "note": "Fixed by task r3-workflows-issues-root, merged into the primary branch at 1f79093b41fb82fa2d5f0cc23e4b363291d354bb.",
+      "evidence": [
+        "merge commit 1f79093b41fb82fa2d5f0cc23e4b363291d354bb",
+        "task r3-workflows-issues-root"
+      ],
+      "duplicate_of": null,
+      "actor": "main-agent",
+      "created_at": "2026-10-13T15:19:46.103724+00:00"
+    }
+  ]
 }
 ```
