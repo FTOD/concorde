@@ -429,6 +429,13 @@ under `protocol/`. A change of a prompt adds no new style problem to it.
 - AND dependency installation and generated files stay inside that copy
 - AND the command returns the compiler's exit status and removes the copy
 
+### scenario.concorde.check-docsite-complete-install — The docsite type check uses only a complete install
+
+- GIVEN a docsite install that lacks a package the lockfile asks for on this platform, such as esbuild's optional platform package
+- WHEN `scripts/development/check-docsite-types.py` runs
+- THEN it does not use that install, and it installs the dependencies in the copy again, at most three times in all, until the install holds every such package
+- AND when no attempt holds every such package, it names the missing packages, does not run the compiler and exits with status 1
+
 ## Part dependency check
 
 Each [part](glossary.json#concept.part)'s code is one directory of `src/concorde/`:
