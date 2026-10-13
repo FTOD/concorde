@@ -41,8 +41,14 @@ A delivery commit Delivery creates verifies further when all of these conditions
 - Its tree is the tree `git write-tree` recorded from the index after staging.
 
 These conditions ensure that no commit hook changed what was committed or its mark. When such a
-commit does not verify, Delivery takes it off the branch again in the same run. Since only the
-subject marks a delivery, a commit message hook may add to the body, such as a trailer.
+commit does not verify, Delivery takes it off the branch again in the same run. It does so only
+while the branch still points at the commit and the validated head is its only parent
+([req.delivery.rejected-removed](requirements.md#req.delivery.rejected-removed)). Otherwise, or when Git
+refuses the move, the commit stays on the branch. The run's error then says that it stays and why,
+naming the commit the branch points at or Git's account
+([req.delivery.rejected-reported](requirements.md#req.delivery.rejected-reported)). Repairing the
+branch is then the task level's decision. Since only the subject marks a delivery, a commit message
+hook may add to the body, such as a trailer.
 
 ## Output
 
