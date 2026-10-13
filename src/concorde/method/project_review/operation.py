@@ -136,7 +136,7 @@ _COUNTS = {
     },
 }
 
-# contract.project-review.report, version 1 (contracts.md); a test keeps the two equal.
+# contract.project-review.report, version 2 (contracts.md); a test keeps the two equal.
 PAYLOAD_SCHEMA: dict = {
     "type": "object",
     "additionalProperties": False,
@@ -649,15 +649,33 @@ def deterministic(ctx: RunContext):
     root = repository.root_module
     unowned = findings.unowned_paths(repository)
     if unowned is None:
-        # Git could not list the tracked files: no unowned problem is known, none resolved.
-        found.append(
-            evidence(
-                "unowned",
-                root,
-                "the tracked files could not be listed, so the files bound to no Module "
-                "were not examined",
-            )
+        # Git could not list the tracked files: no unowned problem is known, none resolved,
+        # and the root Module, which owns them, cannot take its outcome from its Issues.
+        stop = ctx.fail(
+            "failed",
+            "unowned_unavailable",
+            "The tracked files could not be listed.",
+            f"Git could not list the files tracked in {ctx.worktree}, so the files bound to "
+            "no Module were not examined and their earlier Issues are carried",
+            reason="environment",
+            explanation="the Operation finds the files bound to no Module through Git's "
+            "listing and cannot repair the repository",
+            evidence=[
+                evidence(
+                    "unowned",
+                    root,
+                    "the tracked files could not be listed, so the files bound to no "
+                    "Module were not examined",
+                )
+            ],
+            options=[
+                f"run git ls-files in {ctx.worktree} to see why Git cannot list the files, "
+                "repair it, then run project_review again"
+            ],
         )
+        state.deterministic_stops.append(stop)
+        state.unrecorded.add(root)
+        found.extend(stop.evidence)
     else:
         state.unowned = unowned
         examined["unowned"] = {root}
@@ -670,7 +688,13 @@ def deterministic(ctx: RunContext):
             )
         )
     state.problems = problems
-    reported, settlement, stop = findings.settle_and_report(ctx, problems, examined)
+    unexamined = {
+        "check": set(covered) - examined.get("check", set()),
+        "unowned": {root} - examined.get("unowned", set()),
+    }
+    reported, settlement, stop = findings.settle_and_report(
+        ctx, problems, examined, unexamined
+    )
     found.extend(reported)
     state.settlement = settlement if state.issues else None
     if stop is not None:

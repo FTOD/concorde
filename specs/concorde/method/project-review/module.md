@@ -137,6 +137,7 @@ Three problems need no worker to establish:
   declarations of every file a Module binds, as structural validation does. It counts a scenario of
   a Module without code too.
 - The files Git tracks that no Module binds. When Git cannot list them, they are not examined.
+  The root Module, which owns those files, and the project are then `incomplete`.
 
 Each is reported as an Issue of a fixed title, tier and severity, which
 [req.project-review.deterministic-issues](requirements.md#req.project-review.deterministic-issues)
@@ -225,7 +226,8 @@ owns it. A Module's outcome has these values:
 - `accepted`, otherwise.
 
 A Module is also `incomplete` when its checks could not run, when one of its deterministic
-problems could not be written, or when an architecture finding about it could not be written.
+problems could not be written, or when an architecture finding about it could not be written. The
+root Module is also `incomplete` when Git could not list the tracked files.
 
 `--modules` narrows which Modules the run covers. The Issues that stand are counted for the covered
 Modules alone. An architecture finding about a Module the run does not cover stands for that Module.
@@ -237,6 +239,7 @@ The project's verdict is the highest Module outcome in the order `accepted`, `ch
 
 - The architecture review stopped.
 - The checks could not run.
+- Git could not list the tracked files.
 - The deterministic findings could not all be written.
 - The Issues that stand could not be read.
 
@@ -309,7 +312,7 @@ It may run unbound, since it launches only reading workers.
 | --- | --- | --- | --- |
 | 1 | Admit every worker against the worker configuration and the [model map](../../glossary.json#concept.model-map) | Method | a worker cannot be configured (`failed`) |
 | 2 | Validate the whole project. Compute each covered Module's identities and the architecture's. Read the review record. Decide what is skipped. The Operation's admission does this work before step 1 and the step returns what it found | Operation, Spec core | every worker part skipped (refused with `nothing_to_review` before any step); Specs that do not load, Issues that cannot be read (`failed`); a Module with a structural error or no grant is `incomplete` and not reviewed; a record that cannot be read skips nothing |
-| 3 | Run every covered Module's configured checks of the work stage. Find the uncovered scenarios and the unowned files. Settle them with their earlier Issues and report them | Operation, Check execution, Issues | — (checks that cannot run, or a refusal of the Issue store, make the project and the Modules concerned `incomplete`) |
+| 3 | Run every covered Module's configured checks of the work stage. Find the uncovered scenarios and the unowned files. Settle them with their earlier Issues and report them | Operation, Check execution, Issues | — (checks that cannot run, tracked files Git cannot list, or a refusal of the Issue store, make the project and the Modules concerned `incomplete`) |
 | 4 | Unless skipped or left out, run the architecture review: read its earlier Issues, run the panel graph without reviewers, report the chair's findings with phase `architecture` | Operation, Workers, Issues | — (a stop, a grant that cannot be computed or LangGraph missing makes the project `incomplete`) |
 | 5 | Run every Spec panel and code review not skipped, at most `--parallel` at once. A Spec panel runs as `spec_panel` runs one Module's panel without architects, with phase `spec-panel`. A code review runs as `code_review --scope module` reviews one Module, with phase `code-review` | Operation, Workers, Issues | — (a stop makes that Module `incomplete`) |
 | 6 | Merge the completed parts into the review record and commit it on the primary branch | Operation, Kernel | — (a refusal fails the run with `record_unpublished`; the verdict stands) |
