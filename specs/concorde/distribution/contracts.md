@@ -345,7 +345,7 @@ A call of a tool served `threaded` is answered on a thread of its own.
 Every other call is answered on the thread that reads the session, in the order it arrives.
 The `--tools` process and the process of every call but long work may take 300 seconds.
 After 300 seconds, the process is stopped. The call is then refused with `call_failed`.
-A `workflow_step` call waits at most 100 seconds, so it fits in that time limit.
+A `workflow_step` call's process takes at most 220 seconds, its longest wait and the time it allows the step command beyond it ([Workflows](../workflows/contracts.md#starting-a-workflow-step)), so it fits in that time limit.
 When an answer's `tools` differs from the digest of the listing the server last gave its session,
 the server performs these actions:
 

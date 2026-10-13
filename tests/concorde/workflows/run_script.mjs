@@ -1,7 +1,8 @@
 // Runs a rendered Concorde workflow script under a stand-in for Claude Code's workflow runtime.
 //
 // Standard input: {"script": <path>, "args": {...},
-//                  "outcomes": {<key>: <step outcome> | null}, "report": {status, summary}}
+//                  "outcomes": {<key>: <step outcome> | null},
+//                  "report": {status, summary} | {error} | <anything a relay may return>}
 // A step whose key has no outcome gets null (its agent "returned nothing"). With
 // "execute": {"cwd": <dir>, "concorde": <command>} every agent does what its prompt asks in that
 // directory and returns what came back: a step agent's call of the project MCP server's
@@ -86,8 +87,12 @@ try {
     if (options.label === "report") {
       calls.push({ key: "report", lost: lostOf(prompt), options })
       if (!input.execute) return Promise.resolve(input.report)
+      // As the report relay is told: the result's status and summary, or the command's error.
       const value = executed(prompt)
-      return Promise.resolve(value && { status: value.status, summary: value.summary })
+      if (value && typeof value.status === "string") {
+        return Promise.resolve({ status: value.status, summary: value.summary })
+      }
+      return Promise.resolve(value && value.error ? { error: value.error } : null)
     }
     const values = argumentsOf(prompt)
     const request = values.request

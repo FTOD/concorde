@@ -166,34 +166,8 @@ When that base key has no `ok` run, the answered step has no input.
 The **[workflow record](../glossary.json#concept.workflow-record)** of a workspace is the
 `trace.json` of the workflow's [trace node](../glossary.json#concept.trace-node).
 That node is `workflow/` of the workspace folder its binding names.
-The record sits beside these items:
-
-- The answers passed to steps (`answers/`).
-- The saved reports (`reports/`).
-- The step nodes (`steps/`).
-
-The record names the workflow once, at its first step.
-For a workflow whose first step was lost before anything was recorded, the record names the
-workflow at its first report instead.
-The record carries the mode of the latest recorded step.
-Its content lists every report and every step.
-For each step, it lists these details:
-
-- Its key.
-- The name of its Operation or command.
-- Its run (none yet while the step is starting) or refusal.
-- Its mode.
-- Its node.
-- Whether it was superseded.
-
-Each step records its own mode, so a relaunch may change the mode.
-The script stops by its own mode, and passes that mode to the report, which judges by it.
-Each step's node records when the step started.
-Once a step or report command saw the step's run end, the step's node records when the step ended
-and how.
-A step command that cannot take the workflow lock within its bound leaves this to the next step or
-report command that sees the run ended.
-The run's own node lies inside the step's node.
+The record lists every step and every report of the workspace's workflow.
+[The record's layout](#the-records-layout) gives what the record and the step nodes hold.
 A workspace runs at most one workflow.
 Only the step and report commands write the record and the step nodes.
 They write only while they hold the workflow lock.
@@ -208,88 +182,8 @@ That command builds the **[workflow result](../glossary.json#concept.workflow-re
 ([contract](contracts.md#contract.workflows.result)) from the workflow record and the saved
 [run results](../glossary.json#concept.run-result).
 It never builds the result from what a step agent relayed.
-The report cannot see where the procedure stopped, only what was recorded and the mode the script
-ran in. It judges by the mode given with `--mode`. Without one, such as for a report run by hand,
-it judges by the latest recorded step's mode.
-The current steps are in the procedure's order, since an answered or retried step supersedes every
-later step. From them, the report finds the **judged step**:
-
-- In interactive mode, it is the first current step that did not end `ok`, declared itself
-  blocking or has decision points its answers did not settle. The interactive script stops there,
-  whether it ran that step now or found it finished by an earlier launch in another mode.
-- Otherwise, and when no current step is such a step, it is the latest current step in recorded
-  order.
-
-The result's status follows this order of precedence:
-
-- For a report taken before the end, the status is `running` when either condition holds:
-  - Any current step's run is still running.
-  - A step still starting may yet get its run.
-- When the script reported a key lost whose base key has no current step, the status is `failed`,
-  with the code `step_lost`.
-- When any of these cases applies to the judged step, the status is `failed`:
-  - It ended `failed`.
-  - It was refused.
-  - It was lost.
-- When the judged step ended `blocked` or its output declared it blocking, the status is
-  `blocked`.
-  One example is a task validation that found the workspace not ready.
-- When both conditions hold, the status is `awaiting_decision`:
-  - The report judges in interactive mode.
-  - The judged step's output has decision points its answers did not settle.
-- Even if earlier steps reported problems the procedure could go past, the status is `ok`
-  when both conditions hold:
-  - The judged step is the procedure's last step, which the workflow names, such as
-    `delivery` in the brownfield workflow.
-  - The judged step ended `ok`.
-- Otherwise, the status is `failed` with the code `incomplete`.
-  This includes either case:
-  - The recorded steps end before the procedure's last step, such as a report taken after a
-    script ended early.
-  - No installed part registers the workflow.
-
-From the current steps, every result lists every item of these kinds that the runs declared:
-
-- Decision.
-- Decision point.
-- Deviation.
-- Note.
-
-The result lists the items as the runs declared them, with each item's step and run.
-Examples are a review's verdict or the checks a survey proposed for the developer to configure.
-Every result also lists each current step that did not end `ok` as a problem with its error chain unchanged.
-Superseded steps are listed apart, with their runs.
-They contribute nothing else.
-When the status is not `ok`, `error` is the workflow's own
-[error chain](../glossary.json#concept.error-chain) link, level `workflow`.
-That link's causes are the errors of the steps that stopped the workflow, unchanged.
-For `awaiting_decision`, the link's evidence names every pending point.
-The report is saved in the workflow's node as `reports/<n>.json`, with a Markdown rendering
-`reports/<n>.md`.
-The report is listed in the record.
-It is written into no decision log.
-Decisions a no-ask workflow took without the developer belong in the decision log of whoever
-started it.
-For that reason, the task level copies them from the rendering into the task's log itself.
-When a step agent returned nothing, the script reports with `--lost <key>`.
-For a key whose base key has a current step, the record wins, so the key keeps what that step's
-run shows:
-
-- Finished.
-- Still running.
-- Lost.
-
-Any other key is reported lost.
-A workspace whose first step was lost before anything was recorded has no record.
-In that case, the report builds its result from these inputs:
-
-- `--workflow`.
-- `--mode`.
-- The lost key.
-
-The report then creates the workflow's node to save the result in
-([req.workflows.lost-first](requirements.md#req.workflows.lost-first)).
-Anyone can run the report command in the workspace again at any time.
+The result has a status, judged at one step of the procedure. It lists what the runs declared.
+[Reading the result](#reading-the-result) says how the report judges and what the result lists.
 
 ### Scripts and step agents
 
@@ -321,28 +215,13 @@ The adapter's step function's **[step agent](../glossary.json#concept.step-agent
 that calls the tool `workflow_step` once with the step request.
 The workflow part registers that tool with the
 [project MCP server](../glossary.json#concept.project-mcp-server).
-The step agent waits at most 100 seconds.
-It returns the step outcome the tool answered.
+The run wait of each call, its `wait`, is 100 seconds.
+A call that starts a run adds at most the 90 seconds of its launch allowance
+([req.workflows.bounded-wait](requirements.md#req.workflows.bounded-wait)).
+The step agent returns the step outcome the tool answered.
 As long as the run is still running, the step function itself asks again.
-It makes up to 200 calls for one step as a guard against a run that never ends.
-Once an outcome names the step's run, the step function leaves `retry` out.
-The step function treats an outcome as no answer in either case:
-
-- The outcome names another step key.
-- The outcome names a finished or lost step without a well-formed run.
-
-The server runs the step command as a process of its own, as
-[Steps in Claude Code](#steps-in-claude-code) explains.
-A model copies the request.
-A live headless run showed a model dropping a field of the request.
-The step command then refused that request as `invalid_request`.
-For that reason, after an outcome that is no answer, the step function asks again, three times
-in a row at most.
-It can ask again because the same key never starts a run twice.
-A step still without an answer is reported lost.
-The script's result carries what its agents relayed last as `relayed`, marked unverified.
-It does so to keep the step command's own refusal in the error chain.
-The report is relayed the same way, by one more such subagent.
+[Steps in Claude Code](#steps-in-claude-code) gives the step function's guards against a run
+that never ends and against a relay that brings no answer.
 A step agent only relays.
 What counts is what the runs recorded.
 
@@ -449,7 +328,8 @@ A step passes through four participants below the task level:
 - The script asks for a key.
 - A step agent relays it once through the `workflow_step` tool of the project MCP server.
   The server runs the step command as a process of the server.
-  The server waits at most 100 seconds.
+  The command waits for the run at most 100 seconds, the run wait (`wait`). A call that starts a
+  run adds at most the 90 seconds of its launch allowance.
 - When the key is not yet recorded, and only then, the workflow commands start the run.
   Otherwise, the workflow commands wait for the recorded run.
 - The Execution runner runs the run. The Execution runner saves its result.
@@ -533,15 +413,117 @@ The build renders each registered workflow as a Claude Code workflow.
 `.claude/workflows/concorde-<name>.js`. Claude Code offers it as the command `/concorde-<name>`.
 Whoever works a workspace starts the workflow inside the bound worktree, with the workflow's
 arguments as one JSON object. In Concorde, the task session starts it in its task worktree.
-For `/concorde-brownfield`, one such object is `{"module": "module.shop", "mode": "no-ask"}`.
 The arguments name no workspace, since every step runs in the workspace the worktree's binding
-names. The workflow then runs its steps one after another. It ends with its report: the
-[workflow result](../glossary.json#concept.workflow-result). The workflow result is saved in the
-workflow's node as `workflow/reports/<n>.json` of the workspace folder. The workflow returns the
-workflow result's status and summary. The `workflow_report` tool reads the workflow result again
-at any time. [Running the brownfield
-workflow](../method/brownfield.md#running-the-brownfield-workflow) follows one such workflow through
-a project.
+names.
+
+A no-ask run of the brownfield workflow goes on its normal path as follows:
+
+1. The task session starts `/concorde-brownfield` in its task worktree with the arguments
+   `{"module": "module.shop", "mode": "no-ask"}`.
+2. The script asks for its first step, `survey`. A step agent relays the request to the
+   `workflow_step` tool. The step command starts the survey run and records it under the key
+   `survey`.
+3. While the run runs, each call returns an outcome with state `running`. The script asks again
+   with the same key, which only waits for the same run.
+4. Once the run finishes, the outcome carries the run's status and the `data` the run handed the
+   script. The script goes on to its next step.
+5. After the procedure's last step, `delivery`, the script runs `concorde workflow report`.
+6. The report builds the [workflow result](../glossary.json#concept.workflow-result) from the
+   record. It saves the result in the workflow's node as `workflow/reports/<n>.json` of the
+   workspace folder.
+7. The workflow returns the workflow result's status and summary to the task session. When the
+   report command refused, it returns that refusal instead.
+8. The task session reads the whole workflow result with the `workflow_report` tool, at that time
+   or later.
+
+[Running the brownfield workflow](../method/brownfield.md#running-the-brownfield-workflow) follows
+one such workflow through a project. The sections below give the result's status, the arguments,
+the step command and what happens when a step is repeated, lost or refused.
+
+### Reading the result
+
+The report cannot see where the procedure stopped, only what was recorded and the mode the script
+ran in. It judges by the mode given with `--mode`. Without one, such as for a report run by hand,
+it judges by the latest recorded step's mode.
+The current steps are in the procedure's order, since an answered or retried step supersedes every
+later step. From them, the report finds the **judged step**:
+
+- In interactive mode, it is the first current step that did not end `ok`, declared itself
+  blocking or has decision points its answers did not settle. The interactive script stops there,
+  whether it ran that step now or found it finished by an earlier launch in another mode.
+- Otherwise, and when no current step is such a step, it is the latest current step in recorded
+  order.
+
+The result's status follows this order of precedence:
+
+- For a report taken before the end, the status is `running` when either condition holds:
+  - Any current step's run is still running.
+  - A step still starting may yet get its run.
+- When the script reported a key lost whose base key has no current step, the status is `failed`,
+  with the code `step_lost`.
+- When any of these cases applies to the judged step, the status is `failed`:
+  - It ended `failed`.
+  - It was refused.
+  - It was lost.
+- When the judged step ended `blocked` or its output declared it blocking, the status is
+  `blocked`.
+  One example is a task validation that found the workspace not ready.
+- When both conditions hold, the status is `awaiting_decision`:
+  - The report judges in interactive mode.
+  - The judged step's output has decision points its answers did not settle.
+- Even if earlier steps reported problems the procedure could go past, the status is `ok`
+  when both conditions hold:
+  - The judged step is the procedure's last step, which the workflow names, such as
+    `delivery` in the brownfield workflow.
+  - The judged step ended `ok`.
+- Otherwise, the status is `failed` with the code `incomplete`.
+  This includes either case:
+  - The recorded steps end before the procedure's last step, such as a report taken after a
+    script ended early.
+  - No installed part registers the workflow.
+
+From the current steps, every result lists every item of these kinds that the runs declared:
+
+- Decision.
+- Decision point.
+- Deviation.
+- Note.
+
+The result lists the items as the runs declared them, with each item's step and run.
+Examples are a review's verdict or the checks a survey proposed for the developer to configure.
+Every result also lists each current step that did not end `ok` as a problem with its error chain unchanged.
+Superseded steps are listed apart, with their runs.
+They contribute nothing else.
+When the status is not `ok`, `error` is the workflow's own
+[error chain](../glossary.json#concept.error-chain) link, level `workflow`.
+That link's causes are the errors of the steps that stopped the workflow, unchanged.
+For `awaiting_decision`, the link's evidence names every pending point.
+The report is saved in the workflow's node as `reports/<n>.json`, with a Markdown rendering
+`reports/<n>.md`.
+The report is listed in the record.
+It is written into no decision log.
+Decisions a no-ask workflow took without the developer belong in the decision log of whoever
+started it.
+For that reason, the task level copies them from the rendering into the task's log itself.
+When a step agent returned nothing, the script reports with `--lost <key>`.
+For a key whose base key has a current step, the record wins, so the key keeps what that step's
+run shows:
+
+- Finished.
+- Still running.
+- Lost.
+
+Any other key is reported lost.
+A workspace whose first step was lost before anything was recorded has no record.
+In that case, the report builds its result from these inputs:
+
+- `--workflow`.
+- `--mode`.
+- The lost key.
+
+The report then creates the workflow's node to save the result in
+([req.workflows.lost-first](requirements.md#req.workflows.lost-first)).
+Anyone can run the report command in the workspace again at any time.
 
 ### A workflow's arguments
 
@@ -609,10 +591,18 @@ hold:
 - No run lies in the step's node.
 - A run of the workspace holds the workspace lock or waits in the lobby for it.
 
-This is because that run may be the step's. Otherwise the step's run never started. In that case,
-the call ends the step's node lost. It starts the run anew under the same key. The new attempt
-supersedes the starting one
+This is because that run may be the step's. Otherwise no run of the step entered the step's node.
+In that case, the call ends the step's node lost. It starts the run anew under the same key. The
+new attempt supersedes the starting one
 ([req.workflows.key-idempotent](requirements.md#req.workflows.key-idempotent)).
+
+This recovery does not find every run of the step. A run that was refused before it took the
+workspace lock, such as with `workspace_busy`, never entered the step's node. When the interrupted
+step command could not record that run's identity, the call does not adopt the run. That run did
+no work and changed nothing. Its result stays in Execution's lobby, where the step command does not
+look. The relaunch under the same key supersedes the starting step. So the step history omits that
+refusal
+([scenario.workflows.step-lobby-refusal](scenarios.md#scenario.workflows.step-lobby-refusal)).
 
 The command prints the [step outcome](contracts.md#contract.workflows.step). Its exit status
 follows these rules:
@@ -641,7 +631,9 @@ the bound, by at most 90 seconds
 ([req.workflows.bounded-wait](requirements.md#req.workflows.bounded-wait)). When its recorded run
 has no result and no living runner, a step is **lost**. When the runner rejects the command line
 or the detached runner does not start, a step is **refused**. This includes a launcher that could
-not be run or gave no answer within 90 seconds. The command then records the step without a run
+not be run or gave no answer within 90 seconds. It also includes a workspace whose worktree has no
+`concorde` of its own, neither `.concorde/bin/concorde` nor `scripts/concorde.py`. The command
+never starts the run with another Concorde instead. The command then records the step without a run
 and with that error. Before anything is recorded or started, the workflow record refuses either
 of these cases with a `step_rejected` link over the refusal:
 
@@ -657,7 +649,9 @@ step's outcome with the report, as
 <a id="retired-workspace"></a>
 
 **A retired workspace.** Whoever retires a workspace, as closing a task does, holds the workflow
-lock throughout these actions:
+lock throughout these actions. Tasks promises this of every close in
+[req.tasks.close-when-ended](../coordination/tasks/requirements.md#req.tasks.close-when-ended) and
+[req.tasks.workflow-lock-last](../coordination/tasks/requirements.md#req.tasks.workflow-lock-last):
 
 - Removing its worktree with the binding.
 - Moving the workspace folder away.
@@ -734,14 +728,40 @@ for arbitrary platform workflows or free-form plans.
 
 The procedure lives in Claude Code's workflow runtime because that runtime runs the procedure in the
 background while the task level stays responsive. That runtime has no shell, so a step agent carries
-each step. That agent is a model. Every tool call by that model is meant to end within two minutes.
-Unless it asks for more, a Bash call ends within that time. A run may take much longer. So a step
-starts a [detached run](../glossary.json#concept.detached-run). Each call waits at most 100 seconds.
+each step. That agent is a model. Each tool call by that model is meant to be short. Unless it
+asks for more, a Bash call ends within two minutes. A run may take much longer. So a step
+starts a [detached run](../glossary.json#concept.detached-run). The run wait of each call is
+100 seconds. A call that starts a run adds at most the 90 seconds of its launch allowance
+([req.workflows.bounded-wait](requirements.md#req.workflows.bounded-wait)).
 The repetition is the script's, not the model's. The reason is that a live headless run showed a
 step agent that was handed a longer wait and told to repeat. That agent let its command go to the
 background and returned an invented outcome instead. Because a key maps to one recorded run,
 repeating a call or relaunching the whole workflow never starts a run twice. For the same reason, a
 relaunched interactive workflow replays its finished steps at once.
+
+The step function makes up to 200 calls for one step as a guard against a run that never ends.
+Once an outcome names the step's run, the step function leaves `retry` out.
+The step function treats an outcome as no answer in either case:
+
+- The outcome names another step key.
+- The outcome names a finished or lost step without a well-formed run.
+
+The server runs the step command as a process of its own, as
+[Steps through the server](#steps-through-the-server) explains.
+A model copies the request.
+A live headless run showed a model dropping a field of the request.
+The step command then refused that request as `invalid_request`.
+For that reason, after an outcome that is no answer, the step function asks again, three times
+in a row at most.
+It can ask again because the same key never starts a run twice.
+A step still without an answer is reported lost.
+The script's result carries what its agents relayed last as `relayed`, marked unverified.
+It does so to keep the step command's own refusal in the error chain.
+The report is relayed the same way, by one more such subagent.
+When the report command refuses, or its relay brings no usable answer, no saved workflow result is
+known.
+The script's result then carries the refusal as `report_refused`
+([the script's result](contracts.md#the-scripts-result)).
 
 <a id="steps-through-the-server"></a>
 
@@ -792,6 +812,37 @@ runs rather than the session's own shell, as
 The result is assembled by a deterministic command from what the runs recorded. A step agent might
 drop or paraphrase what it relays. The report reads each saved run result itself. So, whatever happened in between, the chain the developer finally reads is the runs' own.
 Whatever happened in between, the workflow's link is on top.
+
+### The record's layout
+
+The record sits beside these items:
+
+- The answers passed to steps (`answers/`).
+- The saved reports (`reports/`).
+- The step nodes (`steps/`).
+
+The record names the workflow once, at its first step.
+For a workflow whose first step was lost before anything was recorded, the record names the
+workflow at its first report instead.
+The record carries the mode of the latest recorded step.
+Its content lists every report and every step.
+For each step, it lists these details:
+
+- Its key.
+- The name of its Operation or command.
+- Its run (none yet while the step is starting) or refusal.
+- Its mode.
+- Its node.
+- Whether it was superseded.
+
+Each step records its own mode, so a relaunch may change the mode.
+The script stops by its own mode, and passes that mode to the report, which judges by it.
+Each step's node records when the step started.
+Once a step or report command saw the step's run end, the step's node records when the step ended
+and how.
+A step command that cannot take the workflow lock within its bound leaves this to the next step or
+report command that sees the run ended.
+The run's own node lies inside the step's node.
 
 ### Why Workflows keeps its own record
 
@@ -938,7 +989,9 @@ the workflow lock throughout these actions, as [A retired workspace](#retired-wo
 - Moving the workspace folder.
 - Removing the lock file.
 
-The task level retires a workspace when it closes a task. When the runner rejects a command line,
+The task level retires a workspace when it closes a task. Tasks states that obligation of its close
+in [req.tasks.close-when-ended](../coordination/tasks/requirements.md#req.tasks.close-when-ended).
+When the runner rejects a command line,
 such as an unknown argument, the step is refused. Its cause is the runner's message. When a detached
 runner did not start, the step is refused with the `detach_failed` link as the cause.
 A `detach_failed` runner

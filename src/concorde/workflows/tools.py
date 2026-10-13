@@ -11,7 +11,6 @@ raises ``ToolRefusal`` with an error link, which the server returns unchanged.
 from __future__ import annotations
 
 import json
-import os
 import shlex
 import subprocess
 from pathlib import Path
@@ -21,13 +20,15 @@ from ..kernel import errors
 from ..kernel.refusal import KernelError
 from ..kernel.schema import validate
 from ..kernel.tracing import layout
-from .step import concorde_command
+from .step import workspace_concorde
 
 ACTOR = "Concorde project MCP server"
-# The longest a workflow_step call waits for its run, so that the call returns within two minutes.
+# The longest a workflow_step call waits for its run: the run wait the step command is given.
 STEP_WAIT = 100
-# What a workflow_step call adds to its wait before it gives up on the step command itself.
-STEP_GRACE = 60
+# What a workflow_step call adds to its wait before it gives up on the step command itself: more
+# than the step command's launch allowance (step.LAUNCH_WAIT, 90 seconds), so that a launch the
+# command may still finish is never cut short by the tool.
+STEP_GRACE = 120
 
 
 class ToolRefusal(Exception):
@@ -92,20 +93,6 @@ TOOLS: dict[str, dict] = {
 }
 
 
-def concorde_of(worktree: Path) -> tuple[list[str], dict]:
-    """The worktree's own ``concorde`` command line and the environment to run it with: its
-    installed command, or its checkout's script, or else this package itself."""
-    command = concorde_command(worktree)
-    environment = dict(os.environ)
-    if command[1:3] == ["-m", "concorde"]:
-        # This package itself: make it importable for the child.
-        environment["PYTHONPATH"] = os.pathsep.join(
-            [str(Path(__file__).resolve().parents[2])]
-            + ([environment["PYTHONPATH"]] if environment.get("PYTHONPATH") else [])
-        )
-    return command, environment
-
-
 def _bound(tool: str, where: Path) -> tuple[Path, dict]:
     """The root and binding of the session's worktree; ``unbound_worktree`` without one."""
     try:
@@ -151,7 +138,21 @@ def workflow_step(where: Path, arguments: dict) -> dict:
     tool = "workflow_step"
     root, _ = _bound(tool, where)
     wait = arguments.get("wait", STEP_WAIT)
-    command, environment = concorde_of(root)
+    command = workspace_concorde(root)
+    if command is None:
+        raise own(
+            tool,
+            "step_failed",
+            f"the session's worktree {root} has neither its installed command "
+            ".concorde/bin/concorde nor a source checkout's scripts/concorde.py, so it has no "
+            "step command of its own",
+            reason="environment",
+            explanation="the server runs only the worktree's own step command, never another "
+            "Concorde",
+            options=[
+                "install Concorde in the project again, then ask for the step again"
+            ],
+        )
     command += [
         "workflow",
         "step",
@@ -165,7 +166,6 @@ def workflow_step(where: Path, arguments: dict) -> dict:
         done = subprocess.run(
             command,
             cwd=root,
-            env=environment,
             stdin=subprocess.DEVNULL,
             capture_output=True,
             text=True,
@@ -315,5 +315,4 @@ __all__ = [
     "TOOLS",
     "ToolRefusal",
     "answer",
-    "concorde_of",
 ]

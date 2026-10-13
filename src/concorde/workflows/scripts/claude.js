@@ -74,8 +74,9 @@ function stepPrompt(argumentsText) {
     "",
     "If the tool is not loaded yet, load it first with ToolSearch and the query",
     "\"select:" + STEP_TOOL + "\". Copy the arguments character for character. The tool answers",
-    "within two minutes with one JSON object, or with an error. Return the fields of that object",
-    "exactly as answered. Do not call it again, use no other tool and change no file.",
+    "with one JSON object, or with an error. It may take up to four minutes: wait for its answer.",
+    "Return the fields of that object exactly as answered. Do not call it again, use no other",
+    "tool and change no file.",
   ].join("\n")
 }
 
@@ -142,6 +143,32 @@ function step(key, argv) {
   return once()
 }
 
+// The link the adapter gives a report relay that brought neither the workflow result's status and
+// summary nor the report command's own error: a component link of the error contract.
+function unanswered(command, value) {
+  return {
+    level: "component",
+    actor: "Workflows (Claude Code step adapter)",
+    code: "report_unanswered",
+    detail:
+      "the report relay of workflow " + WORKFLOW + " brought neither the workflow result's status " +
+      "and summary nor the report command's error; it relayed: " +
+      (value === null || value === undefined ? "nothing" : JSON.stringify(value)),
+    evidence: [{ kind: "command", ref: command, detail: "" }],
+    attempts: [],
+    unhandled: {
+      reason: "environment",
+      explanation: "the adapter learns the report command's answer only through its relay, which brought none",
+    },
+    options: [
+      "run `" + command + "` in the workspace, which prints the workflow result and saves it",
+      "read the latest saved workflow result with the workflow_report tool",
+    ],
+    recommendation: "",
+    causes: [],
+  }
+}
+
 function report(lost) {
   // The workflow and mode name the result of a workspace whose first step was lost before
   // anything was recorded.
@@ -152,18 +179,26 @@ function report(lost) {
     command,
     [
       "It prints the workflow result as one JSON object, whatever its exit status. Return its",
-      "status and summary unchanged. Run no other command and change no file.",
+      "status and summary unchanged. When it printed {\"error\": {...}} with no status instead,",
+      "return that error object unchanged as error. Run no other command and change no file.",
     ],
     "report",
     {
       type: "object",
-      required: ["status", "summary"],
-      properties: { status: { type: "string" }, summary: { type: "string" } },
+      properties: { status: { type: "string" }, summary: { type: "string" }, error: { type: "object" } },
     }
   ).then(function (value) {
-    // The whole result is saved beside the workspace's workflow record; `concorde workflow
-    // report` prints it again at any time.
-    const result = { workflow: WORKFLOW, reported: value }
+    const result = { workflow: WORKFLOW }
+    if (value && typeof value.status === "string" && typeof value.summary === "string") {
+      // The whole result is saved beside the workspace's workflow record; `concorde workflow
+      // report` prints it again at any time.
+      result.reported = { status: value.status, summary: value.summary }
+    } else if (value && value.error && typeof value.error === "object" && !Array.isArray(value.error)) {
+      // The report command refused and saved no workflow result: its own link, unchanged.
+      result.report_refused = value.error
+    } else {
+      result.report_refused = unanswered(command, value)
+    }
     // Unverified: what a step agent said, not what a host recorded, kept so that a refusal of
     // the step command (such as a mistyped request) is not lost from the error chain.
     // The key is kept even when the last relay returned nothing, whose outcome is then null.

@@ -1609,8 +1609,14 @@ Method's [brownfield workflow](../glossary.json#concept.brownfield-workflow) is 
 
 Registering the same definition again changes nothing. When a name is already registered,
 registering a different definition under that name is refused. The refusal names the module that
-registered the name first. When a registration's script is missing, the build refuses the render
-with `invalid_workflow`.
+registered the name first. The build refuses the render with `invalid_workflow` in either of these
+cases:
+
+- A registration's script is missing.
+- Any workflow is registered and Workflows' step adapter is missing. The refusal names the missing
+  adapter.
+
+When no workflow is registered, the render writes no file, whether or not the adapter is present.
 
 ### What the script is given
 
@@ -1666,8 +1672,10 @@ The adapter defines three functions for the procedure:
 
   Asking again for the same key never starts a second run.
 - `report(lost)` runs `concorde workflow report --workflow <WORKFLOW> --mode <args.mode>`.
-  When `lost` names a key, the command includes `--lost <key>`. The function returns a promise of
-  the script's result.
+  When `lost` names a key, the command includes `--lost <key>`. Its relay returns either the
+  printed workflow result's `status` and `summary` or, when the command printed
+  `{"error": <link>}`, that error object unchanged. The function returns a promise of
+  [the script's result](#the-scripts-result).
 - `note(text)` shows progress. It records nothing.
 
 ### The script's result
@@ -1677,12 +1685,19 @@ Every path of the procedure ends by returning what `report` resolved to, which i
 | Field | Meaning |
 | --- | --- |
 | `workflow` | the workflow's name |
-| `reported` | `{status, summary}` of the saved workflow result, as the report's relay returned them |
+| `reported` | present only when the report command saved a workflow result: `{status, summary}` of that result, as the report's relay returned them |
+| `report_refused` | present only when no saved workflow result is known: the report command's own error link, unchanged, when it printed `{"error": <link>}`, such as `workspace_retired`; otherwise, when the relay brought neither a status and summary nor an error object, the adapter's `component` link `report_unanswered` ([Errors](#errors)) |
 | `relayed` | present only when `report` was given a key whose last relays brought no answer: `{key, attempts, outcome}`, that key, the number of relays in a row that were no answer and the last thing they relayed, unverified, so that a refusal of the step command, such as a mistyped request, stays in sight |
 | `rejected` | added by the procedure, as below |
 
-The workflow result itself is the saved report. The script's result only points at the workflow
-result. A procedure stops at a step whose outcome is `null`. It reports that step's key as lost.
+Exactly one of `reported` and `report_refused` is present. The workflow result itself is the saved
+report. With `reported`, the script's result only points at the workflow result. With
+`report_refused`, no workflow result was saved, or the adapter cannot tell that one was. The
+script's result then carries the refusal itself, beside `relayed` and `rejected`, so that whoever
+started the workflow still receives every error. That caller receives the script's result as what
+the workflow returns. It can run the report command in the workspace again at any time.
+
+A procedure stops at a step whose outcome is `null`. It reports that step's key as lost.
 A step whose outcome carries a `step_rejected` or `workspace_retired` link is in no workflow record.
 A step with `step_unrecorded` is recorded without its run. Because of these recording limits, the
 report cannot see what the step ran. For this reason, the procedure does the following, as Method's
@@ -1717,14 +1732,19 @@ one that cannot be read, `workflow_step` is refused with `unbound_worktree`. In 
 nothing. Otherwise, it runs that worktree's own `concorde` as
 `concorde workflow step --json <request> --wait <wait>`. This is the worktree's
 `.concorde/bin/concorde` or, in Concorde's source checkout, its `scripts/concorde.py` with the server's
-Python. The command runs with these settings:
+Python. When the worktree has neither, `workflow_step` is refused with `step_failed` and runs
+nothing. It never runs another Concorde's step command instead. The command runs with these
+settings:
 
 - From the worktree's root.
 - As a child of the call's process.
 - With the server's environment.
 - With no standard input.
 
-The tool waits for the command at most `wait` plus 60 seconds. The command is a process of the
+The tool waits for the command at most `wait` plus 120 seconds. Those 120 seconds cover the
+90 seconds by which the command may outlast its `--wait` to launch a run
+([req.workflows.bounded-wait](requirements.md#req.workflows.bounded-wait)). So the tool never stops
+a command that may still announce a run. The command is a process of the
 server's, so the [detached run](../glossary.json#concept.detached-run) it starts for a new step is a
 process of its own. Since the command is a process of the server's, that detached run lives until
 its run ends, whatever becomes of these:
@@ -1734,8 +1754,8 @@ its run ends, whatever becomes of these:
 - The session's server.
 
 The server answers these calls each on a thread of its own, so a waiting step never holds up the
-session's other calls. The server allows a call's process `wait` plus 120 seconds before it stops
-that process.
+session's other calls. Each call's process is bound by the server's
+[call time limit](../distribution/contracts.md#calls).
 
 Whatever the command's exit status, the answer is the JSON object the command printed, unchanged.
 It is a [step outcome](#contract.workflows.step) in one of these states:
@@ -1754,7 +1774,7 @@ object, it is refused with `step_failed`.
 | Code | Reason | When |
 | --- | --- | --- |
 | `unbound_worktree` | `environment` | `workflow_step`, or `workflow_report` without `folder`, in a session whose worktree has no usable [workspace binding](../glossary.json#concept.workspace-binding), such as the primary worktree; the detail names the worktree and, for a binding that cannot be read, its code |
-| `step_failed` | `environment` | `concorde workflow step` printed no JSON object, or gave no answer within its wait and 60 seconds more; the detail carries the command, its exit status and the end of its output |
+| `step_failed` | `environment` | the session's worktree has no `concorde` of its own, `concorde workflow step` printed no JSON object, or it gave no answer within its wait and 120 seconds more; the detail carries the command, its exit status and the end of its output |
 | `no_report` | `input` | `workflow_report` finds no saved workflow result in the folder, or not the one named |
 | any Workflows code | as here | `concorde workflow step` refused the request or the workspace with `{"error": <link>}` and no step outcome, such as `invalid_request`; that link unchanged |
 
@@ -2002,7 +2022,7 @@ causes.
 | `step_blocked` | result | `decision` | the procedure stopped at a step that ended `blocked`, its error the cause, or at a step whose output declared it [blocking](#contract.workflows.step-output), with that declaration's code and detail as evidence |
 | `step_failed` | result | `decision` | the procedure stopped at a step that ended `failed`; the step's error is the cause |
 | `step_lost` | step outcome, result | `environment` | a step's run has no result and no living runner, its link carrying the end of the runner's output `host.out` as evidence and as its one cause, a `component` link of the actor `Execution runner of <run-id>` with the code `host_ended` and reason `environment`, whose detail says the runner ended without a result and gives the end of that output, `(nothing)` when it wrote none; a step recorded as starting whose run never entered its node while no run of the workspace runs, without evidence or cause; or the script reported the key with nothing recorded |
-| `step_refused` | step outcome, result | `input` | the runner rejected the step's command line (its message is the cause), the detached runner did not start (the `detach_failed` link is the cause), or the launcher could not be run or gave no answer within 90 seconds and was ended (a `component` link `run_not_started` of reason `environment` is the cause) |
+| `step_refused` | step outcome, result | `input` | the runner rejected the step's command line (its message is the cause), the detached runner did not start (the `detach_failed` link is the cause), or no run could be launched (a `component` link `run_not_started` of reason `environment` is the cause): the launcher could not be run, gave no answer within 90 seconds and was ended, or is missing, since the workspace's worktree has neither `.concorde/bin/concorde` nor `scripts/concorde.py` |
 | `step_running` | result | `exhausted` | a report was taken while a current step still runs |
 | `step_rejected` | step outcome | `input` | the workflow record refused the step (`workflow_conflict`, `step_conflict`, `record_unreadable`), its `Workflows (workflow record)` link the cause; nothing was started or recorded, and the outcome has state `refused` |
 | `step_unrecorded` | step outcome | `environment` | a run started but the workflow record could not record it, its `Workflows (workflow record)` link (such as `record_unwritable`) the cause; the link names the live run, and the step stays recorded as starting, for the next call to adopt the run |
@@ -2034,6 +2054,18 @@ exit status 1. The codes apply in these cases:
   `record_unreadable`.
 - When the workspace was retired while the report waited for the workflow lock, the report
   answers with `workspace_retired` with reason `environment`, as for a step.
+
+When the report's relay brings neither the workflow result's `status` and `summary` nor the report
+command's error object, the step adapter builds a `component` link with these details:
+
+- The actor `Workflows (Claude Code step adapter)`.
+- The code `report_unanswered`.
+- The reason `environment`.
+- A detail that names the workflow and what the relay brought, `nothing` when it brought nothing.
+- The report command as evidence of kind `command`.
+- No causes.
+
+The script's result carries that link as `report_refused`.
 
 When either of these conditions holds, the command line is answered with the response below:
 
