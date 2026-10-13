@@ -358,6 +358,50 @@ class BuildTests(unittest.TestCase):
             "generated/workflows/claude/concorde-brownfield.js", " ".join(differences)
         )
 
+    @verifies("scenario.distribution.build-include-values")
+    def test_an_includes_values_fill_the_prompt_it_includes_alone(self):
+        from concorde.distribution.prompt_resolver import (
+            PromptResolverError,
+            resolve_role_prompt,
+        )
+
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        root = Path(directory.name)
+        (root / "prompts").mkdir()
+
+        def prompt(name, body, audience="shared"):
+            (root / f"prompts/{name}.md").write_text(
+                f"---\naudience: {audience}\n---\n\n{body}\n"
+            )
+
+        prompt("root", "Root.\n\n@prompts/middle.md NAME=value", "worker")
+        prompt(
+            "middle", "Middle {NAME} shows {{NAME}}.\n\n@prompts/leaf.md NAME={NAME}"
+        )
+        prompt("leaf", "Leaf {NAME}, {not a value}.")
+        body = resolve_role_prompt(root, "prompts/root.md").body
+        self.assertIn("Middle value shows {NAME}.", body)
+        self.assertIn("Leaf value, {not a value}.", body)
+        # A value never reaches the prompts the included prompt includes by itself.
+        prompt("middle", "Middle {NAME}.\n\n@prompts/leaf.md")
+        with self.assertRaises(PromptResolverError) as raised:
+            resolve_role_prompt(root, "prompts/root.md")
+        self.assertIn("prompts/leaf.md", str(raised.exception))
+        self.assertIn("{NAME}", str(raised.exception))
+        # A key named twice on one line.
+        prompt("root", "Root.\n\n@prompts/middle.md NAME=a NAME=b", "worker")
+        with self.assertRaises(PromptResolverError) as raised:
+            resolve_role_prompt(root, "prompts/root.md")
+        self.assertIn("duplicate", str(raised.exception))
+        # A front matter key but the audience.
+        (root / "prompts/root.md").write_text(
+            "---\naudience: worker\ndescription: x\n---\n\nRoot.\n"
+        )
+        with self.assertRaises(PromptResolverError) as raised:
+            resolve_role_prompt(root, "prompts/root.md")
+        self.assertIn("description", str(raised.exception))
+
     @verifies("scenario.distribution.build-check-stale")
     def test_checking_the_build_writes_no_import_cache(self):
         # A copy without caches whose own .venv is this one, so that the command, started on
@@ -521,6 +565,7 @@ class ProtocolTests(unittest.TestCase):
         "scenario.distribution.protocol-manifest-bind",
         "scenario.distribution.protocol-manifest-report",
         "scenario.distribution.protocol-manifest-single-flag",
+        "scenario.distribution.protocol-manifest-write-alone",
     )
     def test_a_changed_protocol_is_accepted_explicitly(self):
         root = package_copy(self)

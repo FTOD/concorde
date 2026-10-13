@@ -54,6 +54,19 @@ Every Markdown file under `prompts/` is a prompt. The Protocol's own chapters un
 prompts too. Together with the prompts under `prompts/protocol/`, those chapters are its Protocol
 prompts.
 
+The values of an include line obey these rules:
+
+- They fill only the included prompt's own text, never the prompts that prompt includes.
+- They are filled before that prompt's own include lines are read. So a prompt passes a value on
+  with `KEY={KEY}` on its own include line.
+- A value is inserted as it is. A `{KEY}` in it is not filled again.
+- An include line names each key once. A key named twice fails the build.
+- A value the included prompt does not use is passed over.
+- A `{KEY}` that its prompt's include line does not give fails the build. So a `{KEY}` in a root's
+  own text always fails it, and so does a `{KEY}` that a value brings into the output.
+- After every include is expanded, each `{{name}}` becomes the literal text `{name}`.
+- Braces that are not `{name}` or `{{name}}` stay as they are.
+
 ### req.distribution.safe-includes — Only a safe include is expanded
 
 The build SHALL refuse an include when any of these conditions holds:
@@ -70,11 +83,13 @@ The build SHALL refuse any of these:
 
 - A prompt under `prompts/` whose front matter declares no audience among `worker`, `ambient` and
   `shared`.
+- A prompt under `prompts/` whose front matter holds any key but `audience`.
 - A root whose audience is not `worker` or `shared`.
 - A root that reaches through its includes a prompt whose audience is neither `shared` nor the
   root's own.
 
-A root is resolved as instructions an agent reads. For this reason, text meant for another audience,
+A prompt's front matter is a fenced block of `key: value` lines that holds `audience` alone, so that a
+mistyped key never passes unnoticed. A root is resolved as instructions an agent reads. For this reason, text meant for another audience,
 such as an `ambient` prompt, is never pulled into the root.
 The Protocol's own chapters are plain Markdown. They count as `shared`.
 

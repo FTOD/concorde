@@ -14,6 +14,17 @@ Concrete situations that show the [requirements](requirements.md) at work.
 - AND `generated/build-manifest.json` records the digest of every source and output
 - AND a following `build --check` reports no differences
 
+### scenario.distribution.build-include-values — Fill an include's values in the prompt it includes alone
+
+- GIVEN a root that includes a prompt with `NAME=value`
+- AND that prompt passes the value on to a prompt it includes with `NAME={NAME}` and shows `{{NAME}}` to its reader
+- WHEN the developer runs `build`
+- THEN every `{NAME}` of both included prompts is written as `value`
+- AND the `{{NAME}}` is written as the literal `{NAME}`
+- BUT when the second prompt is included without a value for `NAME`, or an include line names `NAME` twice, the build fails
+
+This illustrates [including a prompt by a line of its own](requirements.md#req.distribution.prompt-includes).
+
 ### scenario.distribution.build-skills — Render every skill with its front matter
 
 - GIVEN a checkout whose parts register their guidance sections
@@ -100,8 +111,9 @@ This illustrates [a prompt reached at most once within one root](requirements.md
 ### scenario.distribution.build-removes-own-leftover — Remove an output the build no longer produces
 
 - GIVEN an output the previous build wrote and whose prompt root was removed since
+- AND the output's bytes still match the previous manifest
 - WHEN the developer runs `build`
-- THEN the leftover output is removed because its bytes match the previous manifest
+- THEN the leftover output is removed
 
 ### scenario.distribution.build-keeps-edited-leftover — Keep a leftover output edited by hand
 
@@ -153,9 +165,15 @@ This illustrates [reaching a part only through its registration](requirements.md
 - THEN the result is `failed` with `protocol_mismatch`
 - AND the configuration is bound to the tracked manifest
 - AND `.concorde/protocol/` is left as it was
-- AND when the developer then runs `protocol-manifest --write`, the tracked manifest is rewritten with the new digests
-- AND when the developer then runs `protocol-manifest --write`, the result of that command names the changed assets
-- AND when the developer then runs `protocol-manifest --write`, the configuration's binding is unchanged
+
+### scenario.distribution.protocol-manifest-write-alone — Write the manifest without binding
+
+- GIVEN a Protocol chapter that changed and a fresh build
+- AND the developer ran `protocol-manifest --bind-project`, which failed with `protocol_mismatch`
+- WHEN the developer runs `protocol-manifest --write` once
+- THEN the tracked manifest is rewritten with the new digests
+- AND the result names the changed assets
+- AND the configuration's binding is unchanged
 
 ### scenario.distribution.protocol-manifest-refused — Write nothing without a fresh build and a readable manifest
 
