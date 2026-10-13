@@ -8,7 +8,8 @@ entries a registration names (``<module>:<attribute>``, relative to the part's o
 entry never leaves its part), and only for an installed part. In a source checkout every part the
 package builds is installed; in a project, the parts the receipt ``.concorde/install.json`` beside
 the Framework copy names under ``parts``, every part when it names none. The build's parts index,
-``generated/parts.json``, records what every part of the package registers, so that a command or
+``generated/parts.json``, records what every part of the package registers and the directory it
+lives in, so that a project reads the registrations of its installed parts alone, and a command or
 tool of a part that is not installed is refused naming that part without loading its registration.
 """
 
@@ -26,6 +27,8 @@ SOURCE = "src/concorde"
 REGISTRATION = "registration.json"
 # The build's record of every part of the package with the names it registers.
 INDEX = "generated/parts.json"
+# The version of the parts index this code writes and reads.
+INDEX_VERSION = 2
 # The receipt of an installed Concorde, beside its Framework copy `.concorde/framework`.
 RECEIPT = "install.json"
 
@@ -277,17 +280,24 @@ def check(data, path: str) -> dict:
     return data
 
 
+def read(package: Path, directory: str) -> Registration:
+    """The registration of the part whose code is the directory ``directory`` of
+    ``src/concorde/``."""
+    path = package / SOURCE / directory / REGISTRATION
+    relative = path.relative_to(package).as_posix()
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, ValueError) as error:
+        raise _fail(relative, f"cannot be read as JSON: {error}") from error
+    return Registration(check(data, relative), directory)
+
+
 def package_parts(package: Path = PACKAGE) -> dict[str, Registration]:
     """Every part the package builds, by name, read from the registrations of its directories."""
     found: dict[str, Registration] = {}
     source = package / SOURCE
     for path in sorted(source.glob(f"*/{REGISTRATION}")):
-        relative = path.relative_to(package).as_posix()
-        try:
-            data = json.loads(path.read_text(encoding="utf-8"))
-        except (OSError, UnicodeError, ValueError) as error:
-            raise _fail(relative, f"cannot be read as JSON: {error}") from error
-        registration = Registration(check(data, relative), path.parent.name)
+        registration = read(package, path.parent.name)
         if registration.part in found:
             raise RegistrationError(
                 "name_conflict",
@@ -399,35 +409,66 @@ def closure(everything: dict[str, Registration], names) -> dict[str, Registratio
 
 
 def installed(package: Path = PACKAGE) -> dict[str, Registration]:
-    """The installed parts, by name; Distribution is installed with any part."""
-    everything = package_parts(package)
+    """The installed parts, by name; Distribution is installed with any part. Where the receipt
+    names the installed parts, only their registrations are read, found through the parts index;
+    a part the package does not build is passed over."""
     names = installed_names(package)
     if names is None:
-        return everything
-    return {
-        name: registration
-        for name, registration in everything.items()
-        if name in names or name == "distribution"
-    }
+        return package_parts(package)
+    found = index(package)
+    if not found:
+        raise RegistrationError(
+            "stale_build",
+            f"{package / INDEX} is missing, unreadable or not of version {INDEX_VERSION}, so "
+            "the registrations of the installed parts cannot be found",
+            INDEX,
+        )
+    chosen: dict[str, Registration] = {}
+    for name in sorted({*names, "distribution"}):
+        entry = found.get(name)
+        if entry is None:
+            continue
+        directory = entry.get("directory") if isinstance(entry, dict) else None
+        if not isinstance(directory, str) or not MODULE_PATH.match(directory):
+            raise RegistrationError(
+                "stale_build",
+                f"{package / INDEX} names no directory of src/concorde/ for the part {name!r}",
+                INDEX,
+            )
+        registration = read(package, directory)
+        if registration.part != name:
+            raise RegistrationError(
+                "stale_build",
+                f"{package / INDEX} places the part {name!r} in {registration.path}, which "
+                f"registers the part {registration.part!r}",
+                INDEX,
+            )
+        chosen[name] = registration
+    return chosen
 
 
 def index(package: Path = PACKAGE) -> dict:
-    """The build's parts index, ``{part: {"commands", "mcp_tools"}}``; empty when unreadable."""
+    """The parts of the build's parts index, ``{part: {"module", "directory", "depends_on",
+    "commands", "mcp_tools"}}``; empty when it is unreadable or of another version."""
     try:
         value = json.loads((package / INDEX).read_text(encoding="utf-8"))
     except (OSError, UnicodeError, ValueError):
         return {}
-    parts = value.get("parts") if isinstance(value, dict) else None
+    if not isinstance(value, dict) or value.get("schema_version") != INDEX_VERSION:
+        return {}
+    parts = value.get("parts")
     return parts if isinstance(parts, dict) else {}
 
 
 def index_of(parts: dict[str, Registration]) -> dict:
-    """The parts index the build records: what each part registers, by name."""
+    """The parts index the build records: what each part registers, by name, and the directory of
+    ``src/concorde/`` it lives in."""
     return {
-        "schema_version": 1,
+        "schema_version": INDEX_VERSION,
         "parts": {
             name: {
                 "module": registration.data["module"],
+                "directory": registration.directory,
                 "depends_on": list(registration.data["depends_on"]),
                 "commands": [item["name"] for item in registration.data["commands"]],
                 "mcp_tools": [item["name"] for item in registration.data["mcp_tools"]],
@@ -477,6 +518,7 @@ def load(parts: dict[str, Registration]) -> None:
 
 __all__ = [
     "INDEX",
+    "INDEX_VERSION",
     "PACKAGE",
     "Registration",
     "RegistrationError",
@@ -493,6 +535,7 @@ __all__ = [
     "ordered",
     "owner_of",
     "package_parts",
+    "read",
     "receipt_path",
     "version",
 ]

@@ -8,6 +8,7 @@ import re
 import unittest
 
 from concorde.distribution import parts
+from concorde.distribution.prompt_resolver import resolve_role_prompt
 from concorde.spec.verification import verifies
 from tests.concorde.support.paths import REPOSITORY_ROOT
 
@@ -73,7 +74,11 @@ def unguarded() -> list[str]:
         if kind == "task_session":
             # Task sessions are Coordination's: its prompt is composed only beside it.
             present = present | closure(everything, ["coordination"])
-        text = (REPOSITORY_ROOT / path).read_text(encoding="utf-8")
+        # The section as the build renders generated/<path> from prompts/<path>, without
+        # reading the checkout's build outputs.
+        text = resolve_role_prompt(
+            REPOSITORY_ROOT, "prompts/" + path.removeprefix("generated/")
+        ).body
         for paragraph in re.split(r"\n\s*\n", text):
             paragraph = " ".join(paragraph.split())
             named = named_parts(paragraph)

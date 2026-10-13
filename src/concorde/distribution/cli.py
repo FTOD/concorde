@@ -422,26 +422,33 @@ def update_main(words, root=None) -> int:
         help="parts to install besides those the receipt names, with the parts they depend on",
     )
     parser.add_argument("--project-root", default=str(root or "."))
-    try:
-        arguments = parser.parse_args(list(words))
-    except InstallError as error:
+
+    def refuse(code: str, detail: str) -> int:
         sys.stdout.write(
             json.dumps(
-                {"error": refusal(error.code, str(error), actor="concorde update")},
-                indent=2,
+                {"error": refusal(code, detail, actor="concorde update")}, indent=2
             )
             + "\n"
         )
         return 1
-    project = Path(arguments.project_root).resolve()
+
     try:
-        receipt = json.loads((project / ".concorde/install.json").read_text())
+        arguments = parser.parse_args(list(words))
+    except InstallError as error:
+        return refuse(error.code, str(error))
+    project = Path(arguments.project_root).resolve()
+    path = project / ".concorde/install.json"
+    try:
+        receipt = json.loads(path.read_text())
     except (OSError, ValueError) as error:
-        receipt = {}
-        problem = f"{project / '.concorde/install.json'} cannot be read ({error})"
+        receipt, problem = {}, f"{path} cannot be read ({error})"
     else:
         problem = None
+        if not isinstance(receipt, dict):
+            receipt, problem = {}, f"{path} is not a JSON object"
     source = arguments.source or receipt.get("source")
+    if source is not None and not isinstance(source, str):
+        source, problem = None, f"{path} names its source as {source!r}, not a path"
     installer = Path(source or ".") / "scripts/install-concorde.py"
     if not source or not installer.is_file():
         detail = problem or (
@@ -449,24 +456,20 @@ def update_main(words, root=None) -> int:
             if not source
             else f"{installer} does not exist"
         )
-        sys.stdout.write(
-            json.dumps(
-                {
-                    "error": refusal(
-                        "update_source_missing",
-                        f"{detail}; pass the checkout with --from",
-                        actor="concorde update",
-                    )
-                },
-                indent=2,
-            )
-            + "\n"
+        return refuse(
+            "update_source_missing", f"{detail}; pass the checkout with --from"
         )
-        return 1
     command = [sys.executable, str(installer), str(project), "--update"]
     for value in arguments.parts or []:
         command += ["--parts", value]
-    return subprocess.run(command, check=False).returncode
+    try:
+        return subprocess.run(command, check=False).returncode
+    except OSError as error:
+        return refuse(
+            "update_start_failed",
+            f"the operating system refused to start {installer}: "
+            f"{type(error).__name__}: {error}",
+        )
 
 
 # --- routing ----------------------------------------------------------------------------------

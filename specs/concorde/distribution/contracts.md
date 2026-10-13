@@ -205,15 +205,45 @@ The installation, the binding and the mark stay, so only the update result is lo
 
 The build records what every part of the package registers in the **parts index**
 `generated/parts.json`. The parts index has this form:
-`{"schema_version": 1, "parts": {<part>: {"module", "depends_on",
-"commands", "mcp_tools"}}}`.
-This lets a project's `concorde` and [project MCP server](../glossary.json#concept.project-mcp-server)
-name the part of a command or tool that is not installed.
-They can do this without reading that part's registration.
+
+```json
+{
+  "schema_version": 2,
+  "parts": {
+    "coordination": {
+      "module": "module.coordination",
+      "directory": "coordination",
+      "depends_on": ["kernel"],
+      "commands": ["task"],
+      "mcp_tools": ["task_list", "task_show", "task_merge", "register_wait"]
+    }
+  }
+}
+```
+
+The index has one entry for each part of the package, by its part name. Each entry is a projection
+of the part's registration:
+
+- `module` is the registration's `module`.
+- `directory` is the part's directory of `src/concorde/`, which holds its registration.
+- `depends_on` is the registration's `depends_on`.
+- `commands` holds the `name` of each of the registration's `commands`, in their order.
+- `mcp_tools` holds the `name` of each of the registration's `mcp_tools`, in their order.
+
+The example shows a few of Coordination's tools. A change of the form increments `schema_version`.
 In a source checkout, the installed parts are every part the package builds.
 In a project, the installed parts are the parts the receipt names under `parts`.
 That field is an object whose keys are the part names.
 When the receipt names none, every part is installed. Distribution is installed with any part.
+A project reads the registrations of its installed parts alone. It finds each in the directory the
+index names, and it passes over a part the index does not name. When the index is missing,
+unreadable or of another `schema_version`, a project whose receipt names its parts cannot find
+them. Then its `concorde` refuses every command with `stale_build`, and its project MCP server
+presents no tool.
+The index also lets a project's `concorde` and
+[project MCP server](../glossary.json#concept.project-mcp-server) name the part of a command or tool
+that is not installed. They can do this without reading that part's registration. An index they
+cannot read names no part, and the command or tool is refused as unknown.
 
 ## Project MCP server
 
@@ -288,6 +318,11 @@ For a refusal, `isError` is true.
 ### Calls
 
 The server runs none of its tools itself. It runs the `concorde` of a worktree.
+The server and the process of a call speak one **protocol**, numbered `1` today.
+Every [call object](#contract.distribution.mcp-call) names it as `protocol`. A call object that
+names none is of protocol `1`.
+A change of the call object, of the answer line or of the reroute that a server of the earlier
+protocol cannot read increments it.
 It chooses the program in this order:
 
 - When the worktree's `.concorde/bin/concorde` exists, it runs that program.
@@ -310,6 +345,7 @@ never commands for anyone else:
     - `long_work`
     - `threaded`
   - `instructions` gives the instructions.
+  The object only gains fields, so a server of any protocol reads it.
   The server answers `tools/list` with this object. When the process prints no such object,
   the server answers with no tool. When a call names a tool its last listing lacks, the server
   also fetches the object to learn how the tool is served. It then gives the session nothing.
@@ -318,6 +354,9 @@ never commands for anyone else:
   The process performs these steps:
   - It reads the [call object](#contract.distribution.mcp-call) without `tool` as one JSON object
     on its standard input.
+  - When the call object names another `protocol` than its own, it runs nothing. It
+    loads no part's code. It prints `{"error": <link>}` refusing the call with `host_outdated`.
+    Every protocol reads that line the same way.
   - It loads the installed parts' registering code.
   - It calls the tool's entry with the call object.
   - It prints one JSON line on its standard output.
@@ -338,20 +377,30 @@ When the server does not find the tool there, it routes the call with these sett
 The call's process compares the call object's `served` with its own registration of the tool.
 When they differ, the process runs nothing. Instead, it prints
 `{"reroute": <serving>, "tools": <digest>}`, with `serving` as `--tools` gives it.
-For that reroute, the server takes that serving as its own. It routes the call again, once.
-When the tool is now served `threaded`, the server routes the call on a thread of its own.
+For that reroute, the server takes that serving as its own. It routes the call again, once for
+the whole call:
+
+- When the tool is now served `threaded` and the call is on the session's thread, the call goes on
+  on a thread of its own.
+- When the tool is no longer served `threaded` and the call is on a thread of its own, the call
+  goes back to the session's thread. It runs there after the work that thread already has.
+- Either way, the call has used its reroute. A second reroute refuses the call with `call_failed`.
 
 A call of a tool served `threaded` is answered on a thread of its own.
-Every other call is answered on the thread that reads the session, in the order it arrives.
+Every other call is answered on the session's thread, one at a time, in the order it arrives.
+A thread of the server reads the session and hands each message to the session's thread.
 The `--tools` process and the process of every call but long work may take 300 seconds.
 After 300 seconds, the process is stopped. The call is then refused with `call_failed`.
 A `workflow_step` call waits at most 100 seconds, so it fits in that time limit.
-When an answer's `tools` differs from the digest of the listing the server last gave its session,
-the server performs these actions:
+When an answer's `tools` differs from both of these digests, the server sends
+`notifications/tools/list_changed`:
 
-- It sends `notifications/tools/list_changed`.
-- It takes that digest as listed.
-- It answers its next `tools/list` with the current tools.
+- The digest of the tools the server last listed to its session.
+- The digest it last told the session of since that listing.
+
+The server keeps that digest as the one it told. Only an answer to the session's `tools/list`
+changes the digest listed, and it clears the digest told. Telling the session lists nothing to it.
+The server answers its next `tools/list` with the current tools.
 
 ### Waits and long work
 
@@ -429,10 +478,10 @@ Long work goes on and keeps its locks until it ends.
 ```concorde-contract
 {
   "id": "contract.distribution.mcp-call",
-  "version": 1,
+  "version": 2,
   "schema": {
     "type": "object",
-    "required": ["tool", "arguments", "primary", "where", "session", "channel", "served"],
+    "required": ["tool", "arguments", "primary", "where", "session", "channel", "served", "protocol"],
     "additionalProperties": false,
     "properties": {
       "tool": {"type": "string", "minLength": 1},
@@ -441,6 +490,7 @@ Long work goes on and keeps its locks until it ends.
       "where": {"type": "string", "minLength": 1},
       "session": {"type": ["string", "null"]},
       "channel": {"type": "boolean"},
+      "protocol": {"type": "integer", "minimum": 1},
       "served": {
         "type": "object",
         "required": ["worktree", "long_work", "threaded"],
@@ -459,7 +509,7 @@ Long work goes on and keeps its locks until it ends.
       }
     }
   },
-  "semantics": "The call object an MCP tool's entry is called with. The server writes it, without tool, to the standard input of concorde project-mcp --call <tool>, whose process adds tool, the name the call is for. arguments are the tools/call arguments as the session gave them, unchecked: the entry checks them against its input schema. primary is the absolute path of the primary worktree; where the session's folder, CLAUDE_PROJECT_DIR or else the server's working directory; session the Claude Code session the server serves, CLAUDE_CODE_SESSION_ID, or null; channel whether the server judged its session a channel. served is how the server routed the call, which the call's process compares with its own registration of the tool before anything runs. long_work is present only for a call routed as long work and names under call the file receiving the call's process's standard error until it becomes the work. A behaviour or field change increments the version.",
+  "semantics": "The call object an MCP tool's entry is called with. The server writes it, without tool, to the standard input of concorde project-mcp --call <tool>, whose process adds tool, the name the call is for. arguments are the tools/call arguments as the session gave them, unchecked: the entry checks them against its input schema. primary is the absolute path of the primary worktree; where the session's folder, CLAUDE_PROJECT_DIR or else the server's working directory; session the Claude Code session the server serves, CLAUDE_CODE_SESSION_ID, or null; channel whether the server judged its session a channel. protocol is the protocol the server speaks with the process of a call; a call object that names none is of protocol 1, and the process answers only its own protocol, refusing every other with host_outdated before anything runs. served is how the server routed the call, which the call's process compares with its own registration of the tool before anything runs. long_work is present only for a call routed as long work and names under call the file receiving the call's process's standard error until it becomes the work. A behaviour or field change increments the version.",
   "example": {
     "tool": "task_merge",
     "arguments": {"task": "fix-checkout"},
@@ -467,6 +517,7 @@ Long work goes on and keeps its locks until it ends.
     "where": "/home/dev/shop",
     "session": "4f6c2a1e-8b3d-4c5e-9f70-1a2b3c4d5e6f",
     "channel": true,
+    "protocol": 1,
     "served": {"worktree": "primary", "long_work": true, "threaded": false},
     "long_work": {"call": "/tmp/concorde-project-mcp-x1y2z3/1-task_merge.log"}
   }
@@ -547,6 +598,7 @@ links of the [error contract](../kernel/tracing/contracts.md#contract.tracing.er
 | `invalid_input` | `input` | no part of the package registers the tool; the detail names the tools there are. With reason `environment`, the call's process received no readable call object or one without the session's provenance |
 | `invalid_answer` | `environment` | the tool's entry answered neither `value` nor `error` |
 | `start_failed` | `environment` | the operating system refused to start the command a long work's process was to become; its locks were released |
+| `host_outdated` | `environment` | the call object names another protocol than the call's process speaks: the server started before an update changed that protocol; nothing ran, and the options are to reconnect the server with `/mcp` or to restart the session |
 | `call_failed` | `environment` | the process of a call could not be started, exited or was stopped after its time without printing an answer, or asked twice to route the call otherwise; the detail names the command and worktree, its exit status and the end of what it printed |
 | any other code | `capability` | an unexpected error of the host, or of loading the installed parts' code, as a link built from the exception |
 
@@ -614,7 +666,7 @@ and only then, the printed result adds `binding_error`. The receipt file never h
 ```concorde-contract
 {
   "id": "contract.distribution.install-result",
-  "version": 4,
+  "version": 5,
   "schema": {
     "type": "object",
     "required": [
@@ -726,7 +778,7 @@ and only then, the printed result adds `binding_error`. The receipt file never h
       }
     }
   },
-  "semantics": "The result of a successful install, equal to the receipt .concorde/install.json it wrote except for binding_error. version is the installed package's version from concorde.json; parts names every installed part, the parts asked for with every part they depend on and Distribution, each mapped to the version it carries, which is the package's version for every part; source the absolute path of the Concorde checkout installed from, which concorde update installs from again; mode normal, or develop for a develop install; source_commit the commit installed, the develop source check's commit in a develop install and otherwise the checkout's HEAD, or null outside a Git checkout. framework and command are where the Framework runtime and the command lie. python names Concorde's own environment: its path, the Python requirement concorde.json names under runtime.python, the interpreter uv chose (base, an absolute path) and that interpreter's version. dependencies is null when the install left Concorde's Python dependencies out, and otherwise names the requirements file exported from the package's uv.lock, the SHA-256 of that lock and the number of packages installed. dependencies is also null when no installed part needs a Python dependency. tools holds d2 when the pinned d2 is placed (its release, platform key, the archive's pinned SHA-256 and the program's path), which happens only where the spec part is installed, and pi-runtime when the pi runtime is placed (the package, its locked version, the SHA-256 of the lockfile and its folder), only where the worker harness part is; a tool left out has no key. pi_runtime is false when the install was made with --without-pi-runtime, a choice concorde update keeps. files lists, sorted, every file Concorde owns in the project, a default an earlier install wrote included; defaults lists, sorted, those of them that are Concorde-owned defaults, which hold the project's own data: the defaults of the installed parts and every default an earlier receipt recorded that is still in place, whether or not this install's parts or this package still declare it, so that no later install removes it; amended lists the project's own files the installer only amends (.gitignore, CLAUDE.md, .mcp.json and, once written, .claude/settings.json); permissions lists the permission rules of .claude/settings.json the installer added and owns; hooks lists the hooks of .claude/settings.json the installer owns, those the installed parts register, each by its event, its matcher and its command line, \"$CLAUDE_PROJECT_DIR\"/.concorde/bin/concorde followed by the registered arguments. binding_error is present only when Spec core refused to bind the installed files after the receipt was written: it is Spec core's error record (contract.spec.error) and the install has still succeeded. A behaviour or field change increments the version.",
+  "semantics": "The result of a successful install, equal to the receipt .concorde/install.json it wrote except for binding_error. version is the installed package's version from concorde.json; parts names every installed part, the parts asked for with every part they depend on and Distribution, each mapped to the version it carries, which is the package's version for every part; source the absolute path of the Concorde checkout installed from, which concorde update installs from again; mode normal, or develop for a develop install; source_commit the commit installed, the develop source check's commit in a develop install and otherwise the checkout's HEAD, or null outside a Git checkout. framework and command are where the Framework runtime and the command lie. python names Concorde's own environment: its path, the Python requirement concorde.json names under runtime.python, the interpreter uv chose (base, an absolute path) and that interpreter's version. dependencies is null when the install left Concorde's Python dependencies out, and otherwise names the requirements file exported from the package's uv.lock, the SHA-256 of that lock and the number of packages installed. dependencies is also null when no installed part needs a Python dependency. tools holds d2 when the pinned d2 is placed (its release, platform key, the archive's pinned SHA-256 and the program's path), which happens only where the spec part is installed, and pi-runtime when the pi runtime is placed (the package, its locked version, the SHA-256 of the lockfile and its folder), only where the worker harness part is; a tool left out has no key. pi_runtime is false when the install was made with --without-pi-runtime, a choice concorde update keeps. files lists, sorted, every file Concorde owns in the project, a default an earlier install wrote included, a directory Concorde owns whole named once as its path ending with /: the Framework copy .concorde/framework/, which holds Concorde's own environment and what the parts' install services prepared there, and the pi runtime's folder; the tools' programs and records are among the files, and a tool an installed part needs that this install only left out stays among them while it is in place; defaults lists, sorted, those of them that are Concorde-owned defaults, which hold the project's own data: the defaults of the installed parts and every default an earlier receipt recorded that is still in place, whether or not this install's parts or this package still declare it, so that no later install removes it; amended lists the project's own files the installer only amends (.gitignore, CLAUDE.md, .mcp.json and, once written, .claude/settings.json); permissions lists the permission rules of .claude/settings.json the installer added and owns; hooks lists the hooks of .claude/settings.json the installer owns, those the installed parts register, each by its event, its matcher and its command line, \"$CLAUDE_PROJECT_DIR\"/.concorde/bin/concorde followed by the registered arguments. binding_error is present only when Spec core refused to bind the installed files after the receipt was written: it is Spec core's error record (contract.spec.error) and the install has still succeeded. A behaviour or field change increments the version.",
   "example": {
     "version": "9.0.0",
     "parts": {

@@ -14,6 +14,17 @@ Concrete situations that show the [requirements](requirements.md) at work.
 - AND `generated/build-manifest.json` records the digest of every source and output
 - AND a following `build --check` reports no differences
 
+### scenario.distribution.build-include-values — Fill an include's values in the prompt it includes alone
+
+- GIVEN a root that includes a prompt with `NAME=value`
+- AND that prompt passes the value on to a prompt it includes with `NAME={NAME}` and shows `{{NAME}}` to its reader
+- WHEN the developer runs `build`
+- THEN every `{NAME}` of both included prompts is written as `value`
+- AND the `{{NAME}}` is written as the literal `{NAME}`
+- BUT when the second prompt is included without a value for `NAME`, or an include line names `NAME` twice, the build fails
+
+This illustrates [including a prompt by a line of its own](requirements.md#req.distribution.prompt-includes).
+
 ### scenario.distribution.build-skills — Render every skill with its front matter
 
 - GIVEN a checkout whose parts register their guidance sections
@@ -100,8 +111,9 @@ This illustrates [a prompt reached at most once within one root](requirements.md
 ### scenario.distribution.build-removes-own-leftover — Remove an output the build no longer produces
 
 - GIVEN an output the previous build wrote and whose prompt root was removed since
+- AND the output's bytes still match the previous manifest
 - WHEN the developer runs `build`
-- THEN the leftover output is removed because its bytes match the previous manifest
+- THEN the leftover output is removed
 
 ### scenario.distribution.build-keeps-edited-leftover — Keep a leftover output edited by hand
 
@@ -111,6 +123,17 @@ This illustrates [a prompt reached at most once within one root](requirements.md
 - WHEN the developer runs `build`
 - THEN the build stops with an error naming the edited output
 - BUT the edited output is kept as it is
+
+### scenario.distribution.registration-only-installed — A project reads only its installed parts' registrations
+
+- GIVEN a project whose receipt names its installed parts
+- AND whose Framework copy holds the registration of a part the receipt does not name, which is not even JSON
+- WHEN the developer runs `concorde --help`, a command of an installed part or the project MCP server lists its tools
+- THEN the commands and tools of the installed parts answer
+- AND a command of the part not installed is refused with `part_missing`
+- BUT when the parts index is of another version, every command is refused with `stale_build`
+
+This illustrates [reaching a part only through its registration](requirements.md#req.distribution.registration-only).
 
 ### scenario.distribution.build-refuses-name-conflict — Refuse a name two parts register
 
@@ -142,9 +165,15 @@ This illustrates [a prompt reached at most once within one root](requirements.md
 - THEN the result is `failed` with `protocol_mismatch`
 - AND the configuration is bound to the tracked manifest
 - AND `.concorde/protocol/` is left as it was
-- AND when the developer then runs `protocol-manifest --write`, the tracked manifest is rewritten with the new digests
-- AND when the developer then runs `protocol-manifest --write`, the result of that command names the changed assets
-- AND when the developer then runs `protocol-manifest --write`, the configuration's binding is unchanged
+
+### scenario.distribution.protocol-manifest-write-alone — Write the manifest without binding
+
+- GIVEN a Protocol chapter that changed and a fresh build
+- AND the developer ran `protocol-manifest --bind-project`, which failed with `protocol_mismatch`
+- WHEN the developer runs `protocol-manifest --write` once
+- THEN the tracked manifest is rewritten with the new digests
+- AND the result names the changed assets
+- AND the configuration's binding is unchanged
 
 ### scenario.distribution.protocol-manifest-refused — Write nothing without a fresh build and a readable manifest
 
@@ -344,6 +373,18 @@ This illustrates [refusing a part the package does not build](requirements.md#re
 - THEN the file stays as the developer left it each time
 - AND each receipt still names the file under `files` and `defaults`
 
+### scenario.distribution.install-removes-dropped-tools — The receipt owns the runtime and the tools
+
+- GIVEN a project installed with every part, the pinned `d2` and the pi runtime
+- AND its receipt names under `files` the Framework copy `.concorde/framework/`, the pi runtime's folder `.concorde/tools/pi-runtime/` and the programs and records of both tools
+- AND Concorde was installed again with `--without-d2` and `--without-pi-runtime`, which left both tools in place and named in the receipt
+- WHEN Concorde is then installed with the coordination part alone
+- THEN both tools are removed
+- AND the receipt no longer names them
+- AND the receipt still names the Framework copy `.concorde/framework/`
+
+This illustrates [the receipt naming every owned file](requirements.md#req.distribution.receipt-complete).
+
 ### scenario.distribution.install-settings-kept — A developer's settings survive the installer
 
 - GIVEN a project whose `.claude/settings.json` has its own permission rules
@@ -391,9 +432,28 @@ This illustrates [refusing unusable settings first](requirements.md#req.distribu
 - WHEN the current code's registration serves it in the session's worktree, or as long work, or on a thread of its own, and the session calls it without listing its tools again
 - THEN the call's process answers how the current code serves every tool, running nothing
 - AND the server runs the call again in the session's worktree, or hands on its long work in that worktree, or answers it on a thread of its own
-- AND a call routed twice otherwise is refused with `call_failed`
+- AND a call routed twice otherwise is refused with `call_failed`, also when its first reroute moved it to a thread of its own
 
 This illustrates [serving a call as the current code registers its tool](requirements.md#req.distribution.mcp-current-serving).
+
+### scenario.distribution.mcp-reroute-to-session-thread — A call no longer threaded goes back to the session's thread
+
+- GIVEN a server that listed a tool as served on a thread of its own
+- AND the session called another tool, served on the session's thread, after it
+- WHEN the current code's registration no longer serves the tool on a thread of its own, and the session calls it
+- THEN the call's process answers how the current code serves every tool, running nothing
+- AND the server answers the call on the session's thread, after the call already there, never beside it
+
+This illustrates [serving a call as the current code registers its tool](requirements.md#req.distribution.mcp-current-serving).
+
+### scenario.distribution.mcp-host-outdated — A server of another protocol is told to reconnect
+
+- GIVEN a server that started before an update changed the protocol between the server and the process of a call
+- WHEN the session calls a tool
+- THEN the call's process runs nothing and loads no part's code
+- AND the call is refused with `host_outdated`, reason `environment`, whose options are to reconnect the server with `/mcp` or to restart the session
+
+This illustrates [refusing a server of another protocol](requirements.md#req.distribution.mcp-host-protocol).
 
 ### scenario.distribution.mcp-call-failed — A call without an answer keeps what its process printed
 
@@ -418,6 +478,16 @@ This illustrates [the session hearing that its tools changed](requirements.md#re
 - GIVEN a server whose fetch of the tools failed when its session listed them, so that the session was given no tools
 - WHEN a later call's answer names the current code's tools
 - THEN the server tells its session that its tools changed
+
+This illustrates [the session hearing that its tools changed](requirements.md#req.distribution.mcp-tools-changed).
+
+### scenario.distribution.mcp-tools-changed-once — Telling the session of a change lists nothing to it
+
+- GIVEN a server that told its session that its tools changed, after an answer named tools it was not listed
+- WHEN another answer names the same tools before the session lists its tools again
+- THEN the server does not tell the session again
+- AND when an answer names yet other tools, the server tells the session again
+- AND the tools the server compares with stay those it last listed to the session
 
 This illustrates [the session hearing that its tools changed](requirements.md#req.distribution.mcp-tools-changed).
 
