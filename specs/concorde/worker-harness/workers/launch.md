@@ -171,6 +171,18 @@ to every tool ([Claude Code mechanics](../harness/claude-code.md#deny-rules),
 [pi mechanics](../harness/pi.md#read-table)). The runtime paths change neither the grant nor its context identity. They reach the generated worker
 settings or permission extension. The run record keeps the digest of those settings or extension.
 
+A runtime path never weakens a protection of the grant. Before it generates anything, Workers
+refuses the launch with `runtime_path_overlap` when a runtime path, as given or with its symbolic
+links resolved, meets any of these:
+
+- It is or holds the task worktree, the primary worktree, the user's home or the runtime directory.
+- It is or lies below a Git administrative path that [Placement](#placement) lists.
+- Inside the task worktree, it is, holds or lies below a `names` or `rw` entry of the grant.
+
+A runtime path may meet a `ro` entry, since both are read-only. With these overlaps refused, no
+runtime path makes a `names` path, Git metadata or the host's own directories readable, and no
+runtime path is writable.
+
 When a caller lets a worker read host material, it lists the folder that holds only that material.
 The full logs of checks the caller's own run recorded are one example. The caller never lists
 the trace node or task folder around the material. Since the brief lists only the grant, the
@@ -326,7 +338,7 @@ worker -> finished: the command could not be started
 worker -> audit: the round ended
 audit -> waiting: a transient model-service error, retries left
 waiting -> worker: the delay passed
-audit -> finished: timeout, limit, process failure, violation, invalid result, blocked or failed
+audit -> finished: audit unavailable, timeout, limit, process failure, violation, invalid result, blocked or failed
 audit -> validation: ok, clean, a round validation given
 audit -> finished: "ok, clean, no round validation: status ok"
 validation -> worker: a repair, rounds left
@@ -481,7 +493,14 @@ Each round records its audit as an object with:
 | `violations` | each violation as one string, in path order after any Git state: `HEAD` for a `HEAD` that names another branch or commit and `index` for a changed index; the path of a file created or changed outside `rw`; and the path followed by ` (deleted)` for a deleted file |
 
 A round whose audit did not run, such as one whose command could not be started, has `audit` null
-in its node. The [returned run record](contracts.md#contract.workers.worker-run-record)'s example shows an
+in its node.
+
+After a round whose agent process started, the audit is **unavailable** when its read-only Git or
+the measurement of a file fails. An unavailable audit is never clean, since any change of the
+worktree may then be the worker's. The round's `audit` is null. The run ends `failed` with
+`audit_unavailable` at once, whatever else ended the round, and the error's detail names that too.
+No round validation, retry round, resume round or proposed deletion follows. A valid worker result
+is still kept as the run's `worker_result`. The [returned run record](contracts.md#contract.workers.worker-run-record)'s example shows an
 audit with violations.
 
 ### Proposed deletions
@@ -525,7 +544,8 @@ describes the worktree before these deletions.
 
 | Worker result and audit | Round validation | Next |
 | --- | --- | --- |
-| the agent process ended with a transient model-service error, audit clean, no valid result, retries left | not called | [retry round](#retries) |
+| the audit could not run, whatever the result | not called | end `failed` with `audit_unavailable`, naming in its detail whatever else ended the round |
+| the agent process ended with a transient model-service error, audit clean, no valid result, a session to continue or no change since the snapshot, retries left | not called | [retry round](#retries) |
 | the round timed out, or the agent process failed or reached a limit | not called | end `failed` with `worker_timeout`, `worker_limit_reached` or the backend's process failure code, naming any audit violation in its detail |
 | audit violation, whatever the result | not called | end `failed` with `audit_violation` |
 | invalid result, audit clean | not called | end `failed` with `worker_result_invalid` |
@@ -695,10 +715,12 @@ round also timed out or failed otherwise.
 | Code | Detail | Reason | Causes |
 | --- | --- | --- | --- |
 | `grant_unavailable` | which of the task type, grant, context identity or entries is missing | `input` | none |
-| `grant_malformed` | the first grant entry that is not an object with a worktree-relative path and a level of `rw`, `ro` or `names`, and what is wrong with it | `input` | none |
+| `grant_malformed` | the first grant entry that is not an object with exactly a worktree-relative path and a level of `rw`, `ro` or `names`, or that names a path an earlier entry names, and what is wrong with it | `input` | none |
 | `worktree_misplaced` | the worktree, the primary worktree's `.claude/worktrees/` where it must lie directly, or what Git said when it found no primary worktree | `environment` | none |
 | `run_directory_denied` | the deny rule that would cover the worker's own directories of the runtime directory | `environment` | none |
+| `runtime_path_overlap` | the first runtime path that meets protected material, and the material or grant entry it meets | `input` | none |
 | `snapshot_failed` | the Git command that failed and its output | `environment` | none |
+| `audit_unavailable` | the round, the Git command or file measurement of the audit that failed with its output, and whatever else ended the round: a timeout, the agent process's error or an invalid result | `environment` | the agent process's link, when its process ended with an error |
 | `launch_failed` | the command that could not be started and the operating system's error | `environment` | none |
 | `worker_timeout` | the round and the timeout | `exhausted` | none |
 | `worker_limit_reached` | the round and the limit the agent program reported: on Claude Code its turn or budget subtype, on pi the limit and the value the permission extension names | `exhausted` | the agent process's link: the Claude Code process's link, or the pi process's link with that limit and value |
@@ -899,6 +921,13 @@ interpreter to run the project's code and tests with.
 
 The host SHALL hand the Harness the request's runtime paths exactly as given, adding none, beside a grant and context identity left as the request gave them.
 
+### req.workers.runtime-overlap-refused — A runtime path never meets protected material
+
+Before it generates any settings or extension, the host SHALL refuse with `runtime_path_overlap` a
+run whose runtime path holds the task worktree, the primary worktree, the user's home or the
+runtime directory, lies in a Git administrative path, or meets a `names` or `rw` entry of the
+grant.
+
 ### req.workers.configured-model — A worker's model comes from its worker configuration alone
 
 The configuration reader SHALL resolve every worker's model and reasoning level from the worktree's [worker configuration](../../glossary.json#concept.worker-configuration) alone, never from the developer's own agent settings.
@@ -964,8 +993,15 @@ that [Placement](#placement) lists to the worker's file tools and sandbox.
 
 ### req.workers.audit-every-round — Every round is audited
 
-The host SHALL audit the worktree against the grant after every round and before its round
-validation runs.
+The host SHALL audit the worktree against the grant after every round whose agent process started,
+and before its round validation runs.
+
+A round whose command could not be started has no audit, since no worker ran in it.
+
+### req.workers.audit-unavailable — A round that cannot be audited ends the run
+
+When the audit of a round cannot run, the host SHALL end the run `failed` with `audit_unavailable`
+without a round validation, a retry round, a resume round or a proposed deletion.
 
 ### req.workers.violation-ends-run — A violation is never retried
 
@@ -989,9 +1025,15 @@ Each resume round SHALL continue the run's latest session: on the Claude Code ba
 
 ### req.workers.transient-retried — A transient model-service error is retried
 
-When the agent process ends a round with a [transient model-service error](#retries), the round's
-audit is clean, the worker returned no valid result and the run has retries left, the host SHALL
-start a retry round after the round's delay.
+When all of these conditions hold, the host SHALL start a retry round after the round's delay:
+
+- The agent process ended the round with a [transient model-service error](#retries).
+- The round's audit is clean.
+- The worker returned no valid result.
+- The round named a session to continue, or the worktree has no change since the snapshot.
+- The run has retries left.
+
+A retry round never starts from the brief over changes a round made without a session to continue.
 
 ### req.workers.retry-continues-session — A retry continues the session
 
@@ -1010,9 +1052,11 @@ Before the `k`-th retry round of a run, the host SHALL wait the configured retry
 
 ### req.workers.retry-only-transient — Any other error ends the run at once
 
-The host SHALL NOT retry a round that a timeout, a limit or an error other than a transient
-model-service error ended, a round whose audit found a violation, or a round whose worker returned
-a valid result.
+The host SHALL NOT retry any of these rounds:
+
+- a round that a timeout, a limit or an error other than a transient model-service error ended
+- a round whose audit found a violation or could not run
+- a round whose worker returned a valid result
 
 ### req.workers.retry-recorded — Every retry is recorded
 
@@ -1079,18 +1123,27 @@ run is finished.
 
 ### req.workers.recorded-at-start — A run is recorded before its launch
 
-Before it launches the worker, the host SHALL write the run record of every run it was asked to
-start, with status `running`.
+Before it launches the worker, the host SHALL attempt to write the run record of every run it was
+asked to start, with status `running`.
+
+A write the operating system refuses changes neither the run nor its status. The host reports it as
+[req.workers.trace-failures-reported](#req.workers.trace-failures-reported) requires.
 
 ### req.workers.always-recorded — Every run leaves a final record
 
-Once the run's node exists, the host SHALL write the final run record of every run it was asked to start when the run ends, a run refused before launch included.
+Once the run's node exists, the host SHALL attempt to write the final run record of every run it was asked to start when the run ends, a run refused before launch included.
 
-A run whose node could not be written still has its runtime directory removed.
+A write the operating system refuses changes neither the run nor its status. The host reports it as
+[req.workers.trace-failures-reported](#req.workers.trace-failures-reported) requires. A run whose
+node could not be written still has its runtime directory removed.
 
 ### req.workers.transcript-kept — The transcript is kept before the runtime directory goes
 
-Before it removes the run's runtime directory, the host SHALL move the latest session's transcript into the run directory, also when the run was interrupted while its last round ran.
+When a session existed, the host SHALL attempt, before it removes the run's runtime directory, to move the latest session's transcript into the run directory, also when the run was interrupted while its last round ran.
+
+A run without a session has no transcript, and its `transcript` is null. A transcript the host
+expected and could not keep is a failed cleanup
+([req.workers.cleanup-reported](#req.workers.cleanup-reported)).
 
 ### req.workers.cleanup-reported — A cleanup that failed fails the run
 
@@ -1102,7 +1155,10 @@ When the host cannot keep the transcript or remove the runtime directory, the ru
 
 ### req.workers.runtime-removed — Nothing but the trace outlives a worker
 
-When a worker run ends, however it ends, the host SHALL remove its runtime directory with its credential copies, unless the host process itself is killed without a chance to act.
+When a worker run ends, however it ends, the host SHALL attempt to remove its runtime directory with its credential copies, unless the host process itself is killed without a chance to act.
+
+A removal the operating system refuses is a failed cleanup
+([req.workers.cleanup-reported](#req.workers.cleanup-reported)), whose error names what remains.
 
 ### req.workers.trace-failures-reported — A failed trace write is reported, never silent
 
@@ -1114,4 +1170,4 @@ The host SHALL report every refused write of the worker run's or a round's `trac
 ### req.workers.stderr-per-round — Every round keeps its standard error
 
 The host SHALL keep each round's standard error in that round's node, never overwriting an
-earlier round's.
+earlier round's, also the standard error a round wrote before the run was interrupted.

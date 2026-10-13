@@ -560,15 +560,23 @@ class SettingsTests(unittest.TestCase):
         self,
     ):
         root = self.project.root
+        added = [
+            {"path": "src/bmod/", "level": "ro"},
+            {"path": "src/a/notes.txt", "level": "names"},
+            {"path": "src/bmod/secret.py", "level": "names"},
+            {"path": "src/bmod/inner/", "level": "names"},
+            {"path": "src/bmod/inner/back.py", "level": "ro"},
+        ]
+        # A grant lists each path once: the added entries replace the fixture's for their paths.
         grant_value = {
             **self.project.grant,
             "entries": [
-                *self.project.grant["entries"],
-                {"path": "src/bmod/", "level": "ro"},
-                {"path": "src/a/notes.txt", "level": "names"},
-                {"path": "src/bmod/secret.py", "level": "names"},
-                {"path": "src/bmod/inner/", "level": "names"},
-                {"path": "src/bmod/inner/back.py", "level": "ro"},
+                *(
+                    entry
+                    for entry in self.project.grant["entries"]
+                    if entry["path"] not in {item["path"] for item in added}
+                ),
+                *added,
             ],
         }
         lists = sandbox_filesystem(root, grant_value, self.run, home=self.project.home)
@@ -626,7 +634,10 @@ class SettingsTests(unittest.TestCase):
             shlex.split(command),
         )
 
-    @verifies("scenario.workers.malformed-grant-refused")
+    @verifies(
+        "scenario.workers.malformed-grant-refused",
+        "scenario.workers.duplicate-grant-path-refused",
+    )
     def test_a_malformed_grant_raises_a_detailed_settings_error(self):
         entries = self.project.grant["entries"]
         for bad, expected in (
@@ -645,6 +656,22 @@ class SettingsTests(unittest.TestCase):
             (
                 [*entries, {"path": "src/x.py", "level": "ro", "why": "x"}],
                 "field(s) why",
+            ),
+            (
+                [
+                    *entries,
+                    {"path": "src/x.py", "level": "ro"},
+                    {"path": "src/x.py", "level": "rw"},
+                ],
+                f"grant entry {len(entries) + 1}",
+            ),
+            (
+                [
+                    *entries,
+                    {"path": "src/x/", "level": "rw"},
+                    {"path": "src/x/", "level": "rw"},
+                ],
+                "is listed again",
             ),
         ):
             with self.subTest(expected=expected):
@@ -806,6 +833,21 @@ class WorkerRunTests(unittest.TestCase):
         self.assertIn("a known task type", error["detail"])
         self.assertEqual([], unknown["rounds"])
         self.assertTrue((Path(unknown["run_directory"]) / "trace.json").exists())
+
+    @verifies("scenario.workers.unknown-task-type-refused")
+    def test_an_empty_task_type_is_refused_with_a_final_record(self):
+        empty = self.project.run([{}], task_type="", check_modules=None)
+        self.assertEqual("grant_unavailable", empty["error"]["code"])
+        self.assertIn("''", empty["error"]["detail"])
+        self.assertIsNone(empty["task_type"])
+        folder = Path(empty["run_directory"])
+        node = json.loads((folder / "trace.json").read_text())
+        self.assertEqual("failed", node["status"])
+        self.assertIsNone(node["content"]["data"]["task_type"])
+        self.assertNotIn("task_type", node["metadata"])
+        status = json.loads((folder / "status.json").read_text())
+        self.assertEqual(("finished", "failed"), (status["phase"], status["status"]))
+        self.assertFalse(Path(empty["runtime_directory"]).exists())
 
     def test_the_progress_file_follows_a_claude_run(self):
         command = f"pytest -q {self.root}/tests\nsecond line"
@@ -1326,6 +1368,32 @@ class WorkerRunTests(unittest.TestCase):
         self.assertEqual(frozen, kept)
         self.assertEqual(frozen["context_identity"], record["context_identity"])
 
+    @verifies("scenario.workers.runtime-path-overlap-refused")
+    def test_a_runtime_path_that_meets_protected_material_is_refused(self):
+        writable = self.root / "src/a"
+        primary_git = Path(
+            git(
+                self.root, "rev-parse", "--path-format=absolute", "--git-common-dir"
+            ).strip()
+        )
+        for runtime, expected in (
+            (self.project.base, "holds the task worktree"),
+            (self.project.home, "holds the user's home"),
+            (primary_git / "objects", "lies in the Git administrative path"),
+            (writable, "meets the grant's rw entry src/a/"),
+            (self.root / "src", "meets the grant's rw entry src/a/"),
+        ):
+            with self.subTest(runtime=runtime):
+                record = self.project.run([{}], check_modules=None, runtime=(runtime,))
+                self.assertEqual("failed", record["status"])
+                error = record["error"]
+                self.assertEqual(
+                    ("runtime_path_overlap", "input"),
+                    (error["code"], error["unhandled"]["reason"]),
+                )
+                self.assertIn(expected, error["detail"])
+                self.assertEqual([], record["rounds"])
+
     @verifies("scenario.workers.validation-reads-result")
     def test_the_round_validation_receives_the_rounds_result(self):
         seen = []
@@ -1412,7 +1480,7 @@ class WorkerRunTests(unittest.TestCase):
             self.assertTrue((run / name).is_file(), name)
         node = json.loads((run / "trace.json").read_text())
         self.assertEqual(
-            ("worker-run", "ok", "concorde-worker-run-trace", 5, 2),
+            ("worker-run", "ok", "concorde-worker-run-trace", 6, 2),
             (
                 node["kind"],
                 node["status"],
@@ -1582,7 +1650,13 @@ class WorkerRunTests(unittest.TestCase):
             signal.alarm(2)
             with self.assertRaises(Interrupt):
                 self.project.run(
-                    [{"early_session": True, "sleep": 30}],
+                    [
+                        {
+                            "early_session": True,
+                            "stderr": "warming up the model\n",
+                            "sleep": 30,
+                        }
+                    ],
                     check_modules=None,
                     started=started.append,
                 )
@@ -1594,6 +1668,20 @@ class WorkerRunTests(unittest.TestCase):
         self.assertEqual("interrupted", record["error"]["code"])
         self.assertIsNotNone(record["transcript"])
         self.assertTrue(Path(record["transcript"]).is_file())
+        # The standard error the round wrote before the interruption is kept with the round.
+        [round_folder] = (Path(record["run_directory"]) / "rounds").iterdir()
+        self.assertEqual(
+            "warming up the model\n", (round_folder / "stderr.log").read_text()
+        )
+        self.assertIn(
+            "stderr",
+            {
+                a["id"]
+                for a in json.loads((round_folder / "trace.json").read_text())[
+                    "artifacts"
+                ]
+            },
+        )
 
     @verifies("scenario.workers.cleanup-failed")
     def test_a_runtime_directory_left_behind_fails_the_run(self):
@@ -1834,6 +1922,41 @@ class WorkerRunTests(unittest.TestCase):
             ["src/bmod/secret.py"], record["rounds"][0]["audit"]["violations"]
         )
 
+    @verifies("scenario.workers.audit-unavailable")
+    def test_an_audit_that_cannot_run_fails_the_run_without_deletions(self):
+        doomed = self.root / "src/a/old.py"
+        doomed.write_text("OLD = 1\n")
+        validated = []
+
+        def broken(*_arguments, **_options):
+            raise subprocess.CalledProcessError(
+                128, ["git", "status"], stderr=b"fatal: index file corrupt"
+            )
+
+        with patch("concorde.worker_harness.workers.audit", broken):
+            record = self.project.run(
+                [
+                    {
+                        "result": {
+                            "proposed_deletions": [doomed.as_posix()],
+                        }
+                    }
+                ],
+                round_validation=lambda *_: validated.append(1),
+                check_modules=None,
+            )
+        self.assertEqual("failed", record["status"])
+        error = record["error"]
+        self.assertEqual("audit_unavailable", error["code"])
+        self.assertEqual("environment", error["unhandled"]["reason"])
+        self.assertIn("could not run", error["detail"])
+        [round_] = record["rounds"]
+        self.assertIsNone(round_["audit"])
+        self.assertEqual([], validated)
+        self.assertEqual("ok", record["worker_result"]["status"])
+        self.assertEqual([], record["deleted"])
+        self.assertTrue(doomed.exists())
+
     @verifies("scenario.workers.violation-and-invalid-result")
     def test_a_write_outside_rw_outranks_an_invalid_result(self):
         record = self.project.run(
@@ -1899,6 +2022,30 @@ class WorkerRunTests(unittest.TestCase):
         self.assertNotIn("transient", second)
         argv = self.project.rounds(record)[1]["argv"]
         self.assertEqual("fake-session-1", argv[argv.index("--resume") + 1])
+
+    @verifies("scenario.workers.transient-sessionless-change-not-retried")
+    def test_a_transient_error_without_a_session_over_changes_is_not_retried(self):
+        record = self.project.run(
+            [
+                {
+                    "writes": {f"{self.root}/src/a/flag": "half done\n"},
+                    "no_structured": True,
+                    "envelope": {
+                        "session_id": None,
+                        "is_error": True,
+                        "result": 'API Error: 529 {"type":"overloaded_error"}',
+                    },
+                },
+                {},
+            ],
+            check_modules=None,
+        )
+        self.assertEqual("failed", record["status"])
+        self.assertEqual("claude_failed", record["error"]["code"])
+        [only] = record["rounds"]
+        self.assertEqual("clean", only["audit"]["verdict"])
+        self.assertEqual(["src/a/flag"], only["audit"]["changed"])
+        self.assertFalse(only["transient"]["retried"])
 
     @verifies("scenario.workers.claude-error")
     def test_an_error_of_claude_code_itself_is_reported_with_its_limit(self):
@@ -1974,6 +2121,9 @@ class RetryRuleTests(unittest.TestCase):
             "",
             "insufficient_quota: You exceeded your current quota",
             "Monthly usage limit reached, please retry later",
+            "429: quota exhausted; retry later",
+            "429 Too Many Requests: you have exhausted your quota, try again later",
+            "503: credits depleted",
             "invalid model id gpt-x",
             "400 Bad Request: messages: text content blocks must be non-empty",
         ):

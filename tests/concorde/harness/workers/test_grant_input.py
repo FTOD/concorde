@@ -37,6 +37,9 @@ class GrantInputContractTests(unittest.TestCase):
                 for value in (computed, withhold_writes(computed)):
                     projected = grant_input(value)
                     validate(projected, SCHEMA)
+                    # Each path is listed once, as the grant input requires.
+                    paths = [entry["path"] for entry in projected["entries"]]
+                    self.assertEqual(len(paths), len(set(paths)))
                     self.assertEqual(
                         {name: value[name] for name in GRANT_FIELDS}, projected
                     )

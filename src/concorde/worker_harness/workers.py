@@ -56,11 +56,11 @@ _PATHS = {"type": "array", "items": {"type": "string", "minLength": 1}}
 _NULLABLE_TEXT = {"anyOf": [{"type": "null"}, {"type": "string", "minLength": 1}]}
 # A free-form object: the typed-value check closes an object without additionalProperties.
 _OBJECT = {"type": "object", "additionalProperties": {}}
-# contract.workers.worker-run-trace, version 5
+# contract.workers.worker-run-trace, version 6
 WORKER_RUN_TRACE = "concorde-worker-run-trace"
 register(
     WORKER_RUN_TRACE,
-    5,
+    6,
     {
         "type": "object",
         "additionalProperties": False,
@@ -80,7 +80,7 @@ register(
             "rounds",
         ],
         "properties": {
-            "task_type": {"type": "string", "minLength": 1},
+            "task_type": _NULLABLE_TEXT,
             "backend_source": _NULLABLE_TEXT,
             "local_model": _NULLABLE_TEXT,
             "model_map": _NULLABLE_TEXT,
@@ -423,9 +423,13 @@ def _unretried(
     )
 
 
-def _launch(request, paths, command, environment, prompt: str, on_line) -> dict:
+def _launch(
+    request, paths, command, environment, prompt: str, on_line, on_stderr
+) -> dict:
     """One round: run the command in its own process group, reading standard output as it
-    arrives, and always kill the group after."""
+    arrives, and always kill the group after. ``on_stderr`` receives the round's standard error
+    however the round ends, an interruption included, before the round's outcome is returned or
+    the interruption goes on."""
     started = time.monotonic()
     try:
         process = subprocess.Popen(
@@ -438,6 +442,7 @@ def _launch(request, paths, command, environment, prompt: str, on_line) -> dict:
             start_new_session=True,
         )
     except OSError as error:
+        on_stderr(b"")
         return {
             "error": "launch_failed",
             "detail": str(error),
@@ -479,9 +484,10 @@ def _launch(request, paths, command, environment, prompt: str, on_line) -> dict:
         timed_out = True
     finally:
         _kill_group(process)
-    process.wait()
-    for thread in threads:
-        thread.join(timeout=10)
+        process.wait()
+        for thread in threads:
+            thread.join(timeout=10)
+        on_stderr(b"".join(stderr))
     return {
         "stdout": b"".join(stdout),
         "stderr": b"".join(stderr)[-4 * TAIL :],
@@ -588,8 +594,8 @@ def _run(
     progress = Progress(
         trace,
         run_id=run_id,
-        task_type=request.task_type,
-        backend=request.backend,
+        task_type=_label(request.task_type),
+        backend=_label(request.backend),
         worktree=worktree.as_posix(),
         operation_run_id=request.operation_run,
     )
@@ -601,17 +607,19 @@ def _run(
     # The node keeps a context identity only as a string; the grant check refuses any other.
     if not isinstance(context_identity, str):
         context_identity = None
+    # A label the request gave as no non-empty string is recorded as null, so that the refusal of
+    # such a request still ends its record; the refusal's detail names the value as given.
     record: dict = {
         "run_id": run_id,
-        "task_type": request.task_type,
-        "backend": request.backend,
-        "backend_source": request.backend_source,
-        "operation": request.operation,
-        "worker": request.worker,
-        "model": request.model,
-        "local_model": request.local_model,
-        "model_map": request.model_map,
-        "reasoning": request.reasoning,
+        "task_type": _label(request.task_type),
+        "backend": _label(request.backend),
+        "backend_source": _label(request.backend_source),
+        "operation": _label(request.operation),
+        "worker": _label(request.worker),
+        "model": _label(request.model),
+        "local_model": _label(request.local_model),
+        "model_map": _label(request.model_map),
+        "reasoning": _label(request.reasoning),
         "worktree": worktree.as_posix(),
         "context_identity": context_identity,
         "grant_digest": None,
@@ -643,13 +651,20 @@ def _run(
         "worker-run",
         content_type=WORKER_RUN_TRACE,
         metadata={
-            "modules": list(modules) if isinstance(modules, (list, tuple)) else None,
-            "operation": request.operation,
-            "worker": request.worker,
-            "task_type": request.task_type,
-            "backend": request.backend,
-            "model": request.model,
-            "reasoning": request.reasoning,
+            "modules": [item for item in modules if _label(item)]
+            if isinstance(modules, (list, tuple))
+            else None,
+            **{
+                name: record[name]
+                for name in (
+                    "operation",
+                    "worker",
+                    "task_type",
+                    "backend",
+                    "model",
+                    "reasoning",
+                )
+            },
             "context_identity": context_identity,
         },
         content=_run_content(record),
@@ -874,6 +889,15 @@ def _run(
                 "it, so it never launches a worker in another placement and cannot move the "
                 "worktree itself",
             )
+        overlap = _runtime_overlap(request, worktree, view, placement, paths)
+        if overlap is not None:
+            return fail(
+                "runtime_path_overlap",
+                f"the runtime path {overlap}",
+                "input",
+                "Workers launches only with runtime paths that leave every protection of the "
+                "grant intact, which its caller lists; it never narrows or drops one",
+            )
         try:
             configuration = backend.prepare(request, worktree, paths, schema, placement)
         except BackendRefusal as refusal:
@@ -924,9 +948,14 @@ def _run(
                     source["session"] = stream.session
 
             progress.phase("worker", round=number)
-            outcome = _launch(request, paths, command, environment, prompt, on_line)
-            record["stderr_tail"] = outcome["stderr"][-TAIL:].decode("utf-8", "replace")
-            _keep_stderr(round_node, outcome["stderr"])
+
+            def on_stderr(data: bytes, round_node=round_node) -> None:
+                record["stderr_tail"] = data[-TAIL:].decode("utf-8", "replace")
+                _keep_stderr(round_node, data)
+
+            outcome = _launch(
+                request, paths, command, environment, prompt, on_line, on_stderr
+            )
             round_record.update(
                 exit=outcome.get("exit"), duration=outcome.get("duration")
             )
@@ -951,12 +980,15 @@ def _run(
             if source["transcript"]:
                 record["transcript"] = (trace / TRANSCRIPT).as_posix()
             progress.phase("audit")
-            verdict = audit(worktree, before, lambda path: view.level(path) == "rw")
-            round_record["audit"] = verdict.record()
+            try:
+                verdict = audit(worktree, before, lambda path: view.level(path) == "rw")
+            except (OSError, subprocess.CalledProcessError) as error:
+                verdict, unaudited = None, exception_detail(error)
+            round_record["audit"] = verdict.record() if verdict is not None else None
             # A write outside the grant is reported whatever else went wrong in the round.
             outside = (
                 ""
-                if verdict.clean
+                if verdict is None or verdict.clean
                 else f"; the worker also changed {len(verdict.violations)} path(s) outside "
                 f"the grant's writable paths: {', '.join(verdict.violations)}"
             )
@@ -978,8 +1010,45 @@ def _run(
             # are performed at the end when the round's audit was clean.
             if invalid is None:
                 record["worker_result"] = result
-                if verdict.clean:
+                if verdict is not None and verdict.clean:
                     pending["result"] = result
+            if verdict is None:
+                # An audit that could not run is never clean: whatever else ended the round, the
+                # worktree may hold any change, so nothing goes on (launch.md#audit).
+                failure = concluded.failure
+                also = [
+                    *(
+                        [f"the round timed out after {request.timeout}s"]
+                        if outcome["timed_out"]
+                        else []
+                    ),
+                    *(
+                        [
+                            f"the {backend.process} process ended with an error "
+                            f"({failure['code']})"
+                        ]
+                        if failure is not None
+                        else []
+                    ),
+                    *(
+                        [f"the worker's result was invalid: {invalid}"]
+                        if invalid
+                        else []
+                    ),
+                ]
+                _finish_round(round_node, round_record, "failed", "audit_unavailable")
+                return fail(
+                    "audit_unavailable",
+                    f"round {number}: the audit of the task worktree {worktree} could not "
+                    f"run: {unaudited}"
+                    + (f"; besides, {'; '.join(also)}" if also else ""),
+                    "environment",
+                    "Workers accepts no round it could not audit: without the comparison with "
+                    "the snapshot, any change of the worktree may be the worker's, so it "
+                    "neither validates, retries, resumes nor performs proposed deletions",
+                    attempts=attempts,
+                    causes=[failure] if failure is not None else [],
+                )
             if outcome["timed_out"]:
                 _finish_round(round_node, round_record, "failed", "timed_out")
                 return fail(
@@ -1236,6 +1305,48 @@ def _run(
 
 
 TRANSCRIPT = "transcript.jsonl"
+
+
+def _runtime_overlap(request, worktree: Path, view, placement, paths) -> str | None:
+    """Why the first of the request's runtime paths overlaps protected material, or None when none
+    does (launch.md#reading-beside-the-grant): a runtime path never holds the task worktree, the
+    primary worktree, the user's home or the runtime directory, never lies in a Git
+    administrative path, and never meets a ``names`` or ``rw`` entry of the grant."""
+    home = Path(os.path.realpath(request.home or Path.home()))
+    holds = (
+        ("the task worktree", worktree),
+        ("the primary worktree", placement.primary),
+        ("the user's home", home),
+        ("the runtime directory", Path(os.path.realpath(paths.root))),
+    )
+    for given in request.runtime:
+        spellings = {Path(os.path.abspath(given)), Path(os.path.realpath(given))}
+        for path in sorted(spellings):
+            for name, protected in holds:
+                if path == protected or path in protected.parents:
+                    return f"{given} holds {name} {protected}"
+            for git in placement.git:
+                if path == git or git in path.parents:
+                    return f"{given} lies in the Git administrative path {git}"
+            if path == worktree or worktree not in path.parents:
+                continue
+            relative = path.relative_to(worktree).as_posix()
+            for level in ("names", "rw"):
+                for entry in view.paths(level):
+                    bare = entry.rstrip("/")
+                    if (
+                        relative == bare
+                        or relative.startswith(bare + "/")
+                        and entry.endswith("/")
+                        or bare.startswith(relative + "/")
+                    ):
+                        return f"{given} meets the grant's {level} entry {entry}"
+    return None
+
+
+def _label(value) -> str | None:
+    """A request's label as its record keeps it: the value when it is a non-empty string."""
+    return value if isinstance(value, str) and value else None
 
 
 def _run_content(record: dict) -> dict:

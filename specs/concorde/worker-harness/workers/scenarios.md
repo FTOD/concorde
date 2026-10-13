@@ -151,6 +151,15 @@ the run. [The run mechanics](launch.md) give these exact details:
 - AND the grant the run record keeps is the request's grant
 - AND that grant has the same context identity as the request's grant
 
+### scenario.workers.runtime-path-overlap-refused — A runtime path that meets protected material is refused
+
+- GIVEN a request whose runtime path holds the task worktree or the user's home, lies below the
+  repository's common Git directory, or is or holds a directory the grant lists `rw`
+- WHEN the host is asked to start the worker
+- THEN it refuses before launch with `runtime_path_overlap` and the reason `input`
+- AND the refusal's detail names the runtime path and what it meets
+- AND no round runs
+
 ## The boundary
 
 ### scenario.workers.undeclared-write-denied — A new undeclared file cannot be written
@@ -299,6 +308,14 @@ the run. [The run mechanics](launch.md) give these exact details:
 - AND the host generates no settings or write hook
 - AND it still writes the run record
 
+### scenario.workers.duplicate-grant-path-refused — A path listed twice is a malformed grant
+
+- GIVEN a grant with two entries for the same file, or for the same directory
+- AND their levels are equal or differ
+- WHEN settings are generated from it
+- THEN settings generation raises `grant_malformed`
+- AND the error names the second entry and says that its path is listed again
+
 ## Audit and deletions
 
 ### scenario.workers.audit-violation — A write outside `rw` fails the run
@@ -346,6 +363,19 @@ the run. [The run mechanics](launch.md) give these exact details:
 - THEN the run ends `failed` with `audit_violation` and the violating path as host evidence
 - AND the error's detail says that the worker result was invalid
 - AND the error has no cause from the worker
+
+### scenario.workers.audit-unavailable — A round that cannot be audited ends the run
+
+- GIVEN a worker round that ends with a valid `ok` result proposing the deletion of a `rw` file
+- AND a round validation
+- AND after the round, the audit's read-only Git fails
+- WHEN the host audits the worktree
+- THEN the run ends `failed` with `audit_unavailable` and the reason `environment`
+- AND the round's `audit` is null
+- AND no round validation runs
+- AND no retry round or resume round follows
+- AND the host performs no proposed deletion
+- AND the run keeps the valid result as its `worker_result`
 
 ### scenario.workers.glossary-entries — A worker may change its own Modules' glossary entries
 
@@ -502,6 +532,7 @@ the run. [The run mechanics](launch.md) give these exact details:
 - AND when the interruption comes while the worker of a round still runs, after its output named
   the session, the [run directory](../../glossary.json#concept.run-directory) keeps that session's
   transcript
+- AND that round's `stderr.log` keeps the standard error the round wrote before the interruption
 
 ### scenario.workers.invalid-result — A worker without a valid result has failed
 
@@ -521,6 +552,8 @@ the run. [The run mechanics](launch.md) give these exact details:
 
 - GIVEN a worker whose Claude Code session ends with an error subtype, such as the turn limit,
   instead of a structured result
+- AND the error is no [transient model-service error](launch.md#retries), which
+  [scenario.workers.transient-retry-claude](#scenario.workers.transient-retry-claude) retries
 - WHEN the host reads its output
 - THEN for a turn or budget limit, the run ends `failed` with `worker_limit_reached`
 - AND otherwise, the run ends `failed` with `claude_failed`
@@ -586,6 +619,16 @@ the run. [The run mechanics](launch.md) give these exact details:
 - WHEN the host reads the round
 - THEN the run ends `failed` after that one round
 - AND the error's detail names the write outside the grant
+- AND the round's node records the error as not retried
+
+### scenario.workers.transient-sessionless-change-not-retried — Changes without a session are not replayed
+
+- GIVEN a worker on the Claude Code backend that writes a file of its `rw` list
+- AND then its session ends with an error envelope that names no session and whose final text is
+  an `API Error` naming an overloaded service
+- WHEN the host reads the round
+- THEN the round's audit is clean and lists the file in `changed`
+- AND the run ends `failed` with `claude_failed` after that one round
 - AND the round's node records the error as not retried
 
 ## The pi backend
@@ -804,12 +847,21 @@ the run. [The run mechanics](launch.md) give these exact details:
 - AND a worker with no level anywhere gets none
 - AND for that worker, its program's built-in default remains
 
-### scenario.workers.model-level-refused — A model's own level its backend lacks is refused
+### scenario.workers.model-level-refused — A model's own level of neither backend is refused
 
-- GIVEN `enabled_models` giving a model a level of neither backend, or a level the backend of a
-  worker taking that model does not have
+- GIVEN `enabled_models` giving a model a level of neither backend
 - WHEN the configuration is checked
 - THEN it is refused with `config_invalid`
+
+### scenario.workers.model-level-inherited-refused — A model's own level its worker's backend lacks is refused where it applies
+
+- GIVEN `enabled_models` giving a model the level `off`, which Claude Code does not have
+- AND a worker on Claude Code takes that model
+- AND neither the entry that chose the model nor a more specific one sets a level
+- WHEN the configuration is checked
+- THEN it is refused with `config_invalid`, since the model's own level is the worker's level
+- BUT when the entry that chose the model sets a level Claude Code has, that level is the worker's
+- AND then the configuration is accepted
 
 ### scenario.workers.model-unresolved — A worker whose configuration names no model is refused
 

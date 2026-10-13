@@ -299,7 +299,11 @@ class WorkerModelTests(unittest.TestCase):
             ("a-default", "default"), (other["model"], other["model_source"])
         )
 
-    @verifies("scenario.workers.model-levels", "scenario.workers.model-level-refused")
+    @verifies(
+        "scenario.workers.model-levels",
+        "scenario.workers.model-level-refused",
+        "scenario.workers.model-level-inherited-refused",
+    )
     def test_a_models_own_level_applies_when_the_entry_choosing_it_sets_none(self):
         config = {
             "schema_version": 2,
@@ -375,6 +379,17 @@ class WorkerModelTests(unittest.TestCase):
                 models.validate_config(invalid, DECLARED)
             self.assertEqual("config_invalid", raised.exception.code)
             self.assertIn("reasoning", str(raised.exception))
+        # A level of the worker's backend set with the model overrides the model's own level, so
+        # the pi level the model gives never becomes the effective level of the Claude Code worker.
+        overridden = {
+            "schema_version": 2,
+            "enabled_models": _enabled("a-default", **{"a-default": "off"}),
+            "default": {"backend": "claude", "model": "a-default", "reasoning": "high"},
+        }
+        models.validate_config(overridden, DECLARED)
+        self.assertEqual(
+            "high", models.choice(overridden, "implement", "worker")["reasoning"]
+        )
 
     @verifies("scenario.workers.model-unresolved")
     def test_a_worker_whose_configuration_names_no_model_is_refused(self):
