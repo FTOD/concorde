@@ -168,7 +168,8 @@ The pytest evidence plugin SHALL count in the report's `totals` one unit per col
 When every collected test runs, the units sum to the collected count because subtests are not
 counted on their own. When a run stops early through `-x` or a crashed xdist worker, it has fewer
 units (`tests`) than `collected`. Since a test that never ran has no times or outcome to report, it has
-no unit. pytest's own terminal line lists each failed subtest separately. Since pytest counts the
+no unit. A test whose xdist worker crashed while it ran did run and failed. It counts as one failed
+unit. Its process and its times are unknown, so they are null, and its telemetry is incomplete. pytest's own terminal line lists each failed subtest separately. Since pytest counts the
 parent as passed, its numbers may differ from the totals. The report's `counting_note` says so.
 
 ### scenario.concorde.test-prior-unchanged — A rerun on unchanged inputs is recognized
@@ -201,6 +202,14 @@ parent as passed, its numbers may differ from the totals. The report's `counting
 - WHEN they run with `--json` reporting
 - THEN the report has one failed and one passed unit and counts no subtest on its own
 - AND its `counting_note` says that subtests are not counted on their own
+
+### scenario.concorde.test-counting-crashed — A test whose worker crashed counts as one failed unit
+
+- GIVEN a passing test, a test that ends its xdist worker's process, and a third test
+- WHEN they run in this order with `--json` reporting on one xdist worker that is not restarted
+- THEN the report has one passed and one failed unit, and no unit for the third test
+- AND the failed unit's process and execution time are null
+- AND its totals count two tests and one failed unit of three collected
 
 ## External references
 
@@ -292,13 +301,14 @@ The script commits nothing. The developer reviews the change. The developer comm
 
 ### req.concorde.docs-refresh-whole — A documentation refresh is published whole or not at all
 
-The documentation fetcher SHALL replace `references/claude-code/` only with a complete snapshot, and leave it unchanged when a page cannot be fetched or the snapshot cannot be written.
+The documentation fetcher SHALL replace `references/claude-code/` only with a complete snapshot, and leave it unchanged when a page cannot be fetched or the snapshot cannot be written, except when both the swap and moving the previous snapshot back fail.
 
 Every page is fetched before anything is written. The snapshot is written into a temporary
 directory beside `references/claude-code/`. When the snapshot is complete, and only then, it is
 swapped in.
-The temporary directories are removed either way. A file of the previous snapshot that the index
-no longer lists is therefore gone after a refresh. A refused refresh exits with status 1.
+The temporary directories are removed either way, with one exception, described at the end of this
+section. A file of the previous snapshot that the index no longer lists is therefore gone after a
+refresh. A refused refresh exits with status 1.
 On standard error, it names each failure:
 
 - Every page it could not fetch because the request failed.
@@ -306,9 +316,13 @@ On standard error, it names each failure:
 - The write that failed.
 
 Before any page is fetched, the script refuses an index listing a page whose name would lead
-outside the snapshot. Such a name is absolute or has a `..` component. When both the swap and
-moving the previous snapshot back fail, and only then, the directory is left changed. In that
-case, the refusal says so. It names where the previous snapshot is kept. That snapshot is not removed.
+outside the snapshot. Such a name is absolute or has a `..` component.
+
+The swap first moves the previous snapshot aside, beside `references/claude-code/`. When both the
+swap and moving the previous snapshot back fail, and only then, the directory is left changed: it
+no longer exists. In that case, the refusal says so. It names where the previous snapshot is kept.
+That snapshot is not removed, so that the developer can move it back. The new snapshot is
+removed.
 
 ### scenario.concorde.docs-refresh-replaces — A refresh replaces the snapshot whole
 
@@ -321,8 +335,18 @@ case, the refusal says so. It names where the previous snapshot is kept. That sn
 
 - GIVEN `references/claude-code/` holding a snapshot
 - WHEN the documentation fetcher runs and a page cannot be fetched, or a file of the new snapshot cannot be written, or the new snapshot cannot be moved into place
+- AND the previous snapshot, if it was moved aside, can be moved back
 - THEN it exits with status 1 and says why on standard error
 - AND `references/claude-code/` holds exactly the files it held before, unchanged, and no temporary directory is left beside it
+
+### scenario.concorde.docs-refresh-restore-failed — A failed restoration keeps the previous snapshot
+
+- GIVEN `references/claude-code/` holding a snapshot
+- WHEN the documentation fetcher runs, the new snapshot cannot be moved into place and the previous snapshot cannot be moved back
+- THEN it exits with status 1 and does not say that `references/claude-code/` is unchanged
+- AND `references/claude-code/` does not exist
+- AND the previous snapshot is kept, unchanged, in one directory beside it, which standard error names
+- AND no other temporary directory is left beside it
 
 ## Agent instructions
 

@@ -80,7 +80,18 @@
         ]
       }
     ],
-    "includes": [],
+    "includes": [
+      {
+        "kind": "document",
+        "target": "document.method.brownfield",
+        "reason": "Method's brownfield procedure, whose step order, admitted inputs and continuation rules the brownfield workflow scenarios of Workflows follow"
+      },
+      {
+        "kind": "document",
+        "target": "document.tasks.requirements",
+        "reason": "Tasks' close, which holds a workspace's workflow lock while it retires the workspace (req.tasks.close-when-ended, req.tasks.workflow-lock-last), the caller promise that keeps the step and report commands from writing into a retired workspace"
+      }
+    ],
     "participates": []
   },
   "defines": [

@@ -18,7 +18,6 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
-import os
 import re
 import subprocess
 import sys
@@ -220,8 +219,8 @@ def unstarted_link(space: Workspace, workflow: str, key: str, name: str) -> dict
         space.name,
         "step_lost",
         f"step {key} ({name}) was recorded as starting, but no run entered its node and no run "
-        f"of workspace {space.name} runs: the command that started it ended before its run was "
-        "announced",
+        f"of workspace {space.name} runs: the command that started it ended before it recorded "
+        "a run, and any run it started was refused before it took the workspace lock",
         reason="environment",
         explanation="the workflow cannot tell why the command that started the step ended",
         options=[
@@ -230,15 +229,24 @@ def unstarted_link(space: Workspace, workflow: str, key: str, name: str) -> dict
     )
 
 
-def concorde_command(worktree: Path) -> list[str]:
-    """The workspace's own ``concorde``: its installed command, or this checkout's script."""
-    installed = worktree / ".concorde/bin/concorde"
+def workspace_concorde(worktree: Path) -> list[str] | None:
+    """The workspace's own ``concorde``: its installed command, or, in Concorde's source
+    checkout, its script run by this Python; None when the worktree has neither."""
+    installed = Path(worktree) / ".concorde/bin/concorde"
     if installed.is_file():
         return [str(installed)]
-    script = worktree / "scripts/concorde.py"
+    script = Path(worktree) / "scripts/concorde.py"
     if script.is_file():
         return [sys.executable, str(script)]
-    return [sys.executable, "-m", "concorde"]
+    return None
+
+
+def concorde_command(worktree: Path) -> list[str]:
+    """The worktree's own ``concorde``, or else this package run by this Python.
+
+    Kept for Method's Issue calls (``method.review_issues``); a workflow step never uses it,
+    since a step runs only the workspace's own ``concorde`` (``workspace_concorde``)."""
+    return workspace_concorde(worktree) or [sys.executable, "-m", "concorde"]
 
 
 def start_run(
@@ -249,25 +257,48 @@ def start_run(
     An Operation starts with ``concorde run <argv> --detach``, an execution command with
     ``concorde <argv> --detach``. ``StepError`` carries a ``step_refused`` link when the runner
     rejected the command line (its standard error as the cause), the detached runner did not
-    start (its link as the cause), or the launcher could not be run or gave no answer within
-    ``LAUNCH_WAIT`` seconds, when it is ended.
+    start (its link as the cause), or the launcher could not be run, gave no answer within
+    ``LAUNCH_WAIT`` seconds, when it is ended, or is missing from the workspace.
     """
     prefix = [] if argv[0] in COMMANDS else ["run"]
     placed = ["--trace-at", str(trace_at)] if trace_at is not None else []
-    command = [*concorde_command(space.root), *prefix, *argv, *placed, "--detach"]
-    environment = dict(os.environ)
-    if command[1:3] == ["-m", "concorde"]:
-        # This package itself: make it importable for the child.
-        environment["PYTHONPATH"] = os.pathsep.join(
-            [str(Path(__file__).resolve().parents[2])]
-            + ([environment["PYTHONPATH"]] if environment.get("PYTHONPATH") else [])
+    launcher = workspace_concorde(space.root)
+    if launcher is None:
+        missing = (
+            f"the workspace's worktree {space.root} has neither its installed command "
+            ".concorde/bin/concorde nor a source checkout's scripts/concorde.py"
         )
+        raise StepError(
+            workflow_link(
+                workflow,
+                space.name,
+                "step_refused",
+                f"the step's run could not start: {missing}",
+                reason="input",
+                explanation="the workflow starts a step's run only with the workspace's own "
+                "concorde, never with another Concorde",
+                options=[
+                    "install Concorde in the project again, then run the step again"
+                ],
+                causes=[
+                    errors.link(
+                        "component",
+                        "Execution runner",
+                        "run_not_started",
+                        missing,
+                        reason="environment",
+                        explanation="a workspace without its own concorde has no launcher "
+                        "that could start the run",
+                    )
+                ],
+            )
+        )
+    command = [*launcher, *prefix, *argv, *placed, "--detach"]
     shown = " ".join(command)
     try:
         completed = subprocess.run(
             command,
             cwd=space.root,
-            env=environment,
             capture_output=True,
             text=True,
             check=False,
@@ -667,6 +698,7 @@ __all__ = [
     "step_key",
     "unstarted_link",
     "workflow_link",
+    "workspace_concorde",
 ]
 
 

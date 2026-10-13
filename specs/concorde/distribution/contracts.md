@@ -391,7 +391,9 @@ Every other call is answered on the session's thread, one at a time, in the orde
 A thread of the server reads the session and hands each message to the session's thread.
 The `--tools` process and the process of every call but long work may take 300 seconds.
 After 300 seconds, the process is stopped. The call is then refused with `call_failed`.
-A `workflow_step` call waits at most 100 seconds, so it fits in that time limit.
+A `workflow_step` call's process takes at most 220 seconds, its longest wait and the time it
+allows the step command beyond it ([Workflows](../workflows/contracts.md#starting-a-workflow-step)),
+so it fits in that time limit.
 When an answer's `tools` differs from both of these digests, the server sends
 `notifications/tools/list_changed`:
 

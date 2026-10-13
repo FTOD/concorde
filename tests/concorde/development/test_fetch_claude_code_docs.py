@@ -197,6 +197,7 @@ class FetchClaudeCodeDocsTests(unittest.TestCase):
         self.assertEqual(PREVIOUS, snapshot(self.target))
         self.assert_no_leftovers()
 
+    @verifies("scenario.concorde.docs-refresh-restore-failed")
     def test_a_failed_restoration_keeps_the_previous_snapshot_and_says_where(self):
         rename = Path.rename
 

@@ -47,10 +47,15 @@ of these cases:
 - A run of the workspace holds the [workspace lock](../glossary.json#concept.workspace-lock).
 - A run of the workspace waits in the lobby for that lock.
 
-The call waits because that run may be the step's. Otherwise the step's run never started. In
-that case, the call ends the step's node lost. The call starts the run anew under the same key,
-superseding the starting step. So repeating a call or relaunching the workflow never starts a run
-twice.
+The call waits because that run may be the step's. Otherwise no run of the step entered the
+step's node. In that case, the call ends the step's node lost. The call starts the run anew under
+the same key, superseding the starting step. So repeating a call or relaunching the workflow never
+starts two runs that do work for one key.
+
+A run refused before it took the workspace lock, such as with `workspace_busy`, never enters the
+step's node. When the interrupted command could not record its identity, the call does not adopt
+it. That run did no work and changed nothing. Its result stays in Execution's lobby. The relaunch
+supersedes the starting step, so the step history omits that refusal.
 
 ### req.workflows.restart-generation — A restart runs a step once more
 
@@ -108,11 +113,12 @@ answered step is taken as current.
 
 ### req.workflows.refused-recorded — A step that could not start is recorded
 
-When the runner rejected a step's command line or its detached runner did not start, the step SHALL be recorded without a run and with its error link, unless the step was refused because its workspace was retired.
+When the runner rejected a step's command line or its detached runner did not start, `concorde workflow step` SHALL record the step without a run and with its error link, unless the step was refused because its workspace was retired.
 
 A runner that did not start includes a launcher that could not be run at all, such as a
 workspace's `concorde` that cannot be executed. It also includes a launcher that gave no answer
-within 90 seconds. A step refused because its workspace was retired is recorded nowhere, since
+within 90 seconds, and a workspace whose worktree has no `concorde` of its own
+([req.workflows.steps-are-runs](#req.workflows.steps-are-runs)). A step refused because its workspace was retired is recorded nowhere, since
 nothing writes into a retired workspace's folder. Its outcome alone carries the
 `workspace_retired` link.
 
@@ -146,9 +152,37 @@ A caller tells by that status alone that it may ask for the same step again.
 
 ### req.workflows.answers-new-key — Answers make a new step
 
-When given answers, a step SHALL add to its step key `@` and the first eight hexadecimal digits of the SHA-256 of the answers list in canonical JSON.
+When given answers, a step SHALL add to its step key `@` and the first eight hexadecimal digits of the SHA-256 of the answers list's canonical JSON bytes.
 
-Canonical JSON has its keys sorted and no whitespace, so the same answers always name the same step.
+The canonical JSON bytes of the answers list are the JSON text of the list with these rules:
+
+- The keys of every object are sorted by Unicode code point.
+- `,` separates the items of an array and the members of an object. `:` separates a key from its
+  value. No other whitespace stands between tokens.
+- A character outside ASCII stands as itself, never as a `\u` escape.
+- A string escapes only what JSON requires: `"`, `\` and the control characters U+0000 to U+001F.
+  A control character takes its short escape where JSON has one, such as `\n`. Otherwise it takes
+  `\u` with four lowercase hexadecimal digits.
+- The text is encoded as UTF-8.
+
+These are the bytes of Python's
+`json.dumps(answers, sort_keys=True, separators=(",", ":"), ensure_ascii=False)`, encoded as
+UTF-8. So the same answers always name the same step.
+
+For example, take this answers list:
+
+```json
+[{"id": "d.db-helper", "question": "own Module?", "answer": "oui, un Module à part", "answered_by": "developer"}]
+```
+
+Its canonical JSON bytes are the UTF-8 encoding of this text, with `à` as the two bytes `c3 a0`:
+
+```json
+[{"answer":"oui, un Module à part","answered_by":"developer","id":"d.db-helper","question":"own Module?"}]
+```
+
+The SHA-256 of these bytes starts with `88f81e9b`. So the step `survey` given these answers has the
+key `survey@88f81e9b`.
 
 ### req.workflows.answers-passed — Answers reach the run
 
@@ -254,7 +288,7 @@ It judges in the mode `--mode` gives, which the script passes as the mode it ran
 `--mode`, it judges in the latest recorded step's mode. An interactive relaunch of a workflow that
 ran in no-ask mode stops at the first such step, even one found finished. Its result then shows
 that step's unsettled decision points as pending instead of the earlier run's outcome
-([The record and the result](module.md#the-record-and-the-result)).
+([Reading the result](module.md#reading-the-result)).
 
 ### req.workflows.complete-report — Nothing is left out of the report
 
@@ -326,10 +360,10 @@ into a task's log.
 
 ### req.workflows.one-source — One procedure, written once
 
-Each workflow's procedure SHALL be written once, apart from the step adapter.
+The part that owns a workflow's procedure SHALL write that procedure once, as its [workflow script](../glossary.json#concept.workflow-script), apart from the step adapter.
 
-The part that owns the procedure contributes it as its
-[workflow script](../glossary.json#concept.workflow-script).
+The build renders that script with the adapter
+([req.workflows.faithful-render](#req.workflows.faithful-render)).
 
 ### req.workflows.faithful-render — The build renders the procedure unchanged
 
@@ -394,8 +428,10 @@ When the session's worktree has no usable [workspace binding](../glossary.json#c
 
 ### req.workflows.script-repeats — The script, not a model, waits for a run
 
-The Claude Code step function SHALL ask for a step again while its outcome says the run is still running, each call waiting at most 100 seconds, for at most 200 calls of that step, after which it resolves to the last outcome that said the run was running.
+The Claude Code step function SHALL ask for a step again while its outcome says the run is still running, each call with a run wait of 100 seconds, for at most 200 calls of that step, after which it resolves to the last outcome that said the run was running.
 
+A call that starts a run adds at most the 90 seconds of its launch allowance to its run wait
+([req.workflows.bounded-wait](#req.workflows.bounded-wait)).
 The cap is about five and a half hours of waiting.
 It is a guard against a run that never ends, not a limit of the run.
 At the cap, the following happens:

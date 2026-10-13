@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import errno
 import importlib.util
 import io
 import json
@@ -958,6 +959,125 @@ class IssueCommandTests(unittest.TestCase):
                 self.assertEqual("environment", value["error"]["unhandled"]["reason"])
                 self.assertIn(NOT_AN_ISSUE, value["error"]["options"])
                 self.assertEqual([], list_issues(self.root))
+
+    @verifies("scenario.issues.command-report-check-refused")
+    def test_check_refuses_an_append_recording_would_refuse(self):
+        first = self.recorded()
+        issue, revision = first["receipt"]["issue_id"], first["revision"]
+        self.recorded(report_key="later", issue_id=issue, expected_revision=revision)
+        closed = self.recorded(report_key="closed")["receipt"]["issue_id"]
+        status, value = self.run_command(
+            "close", closed, "--reason", "resolved", *DISPOSITION
+        )
+        self.assertEqual(0, status, value)
+        unknown = "I-" + "0" * 32
+        for name, code, target, current in (
+            ("unknown.json", "unknown_issue", unknown, "sha256:" + "0" * 64),
+            ("stale.json", "stale_issue", issue, revision),
+            ("closed.json", "closed_issue", closed, value["revision"]),
+        ):
+            path = self.report_file(
+                name, report_key=name, issue_id=target, expected_revision=current
+            )
+            with self.subTest(code=code):
+                checked = self.assert_refused(
+                    1, code, [target], "report", "--file", path, "--check"
+                )
+                recorded = self.assert_refused(1, code, [], "report", "--file", path)
+                self.assertEqual(
+                    recorded["error"]["detail"], checked["error"]["detail"]
+                )
+
+    @verifies("scenario.issues.command-check-io-error")
+    def test_an_unreadable_issue_directory_is_refused_alike_by_command_and_tool(self):
+        from concorde.issues import tools
+
+        self.recorded()
+        directory = self.root / ".concorde/issues"
+        iterdir = Path.iterdir
+
+        def listing(path):
+            if path == directory:
+                raise PermissionError(errno.EACCES, "Permission denied", str(path))
+            return iterdir(path)
+
+        with patch.object(Path, "iterdir", listing):
+            status, value = self.run_in_process("check")
+            answered = tools.answer(
+                {"tool": "issue_check", "arguments": {}, "primary": str(self.root)}
+            )
+        self.assertEqual(1, status)
+        self.assertEqual(value, answered)
+        self.assertEqual("io_error", value["error"]["code"])
+        self.assertEqual("environment", value["error"]["unhandled"]["reason"])
+        self.assertIn(NOT_AN_ISSUE, value["error"]["options"])
+        self.assertIn(f"{directory}: Permission denied", value["error"]["detail"])
+
+    @verifies("scenario.issues.tools-invalid-binding")
+    def test_a_binding_that_cannot_be_trusted_refuses_the_write_tools(self):
+        from concorde.issues import tools
+
+        linked = Path(os.path.realpath(str(self.root) + "-bound"))
+        subprocess.run(
+            ["git", "worktree", "add", "-q", "-b", "bound", str(linked)],
+            cwd=self.root,
+            check=True,
+            capture_output=True,
+        )
+        self.addCleanup(
+            subprocess.run,
+            ["git", "worktree", "remove", "--force", str(linked)],
+            cwd=self.root,
+            capture_output=True,
+        )
+        binding = linked / ".concorde/workspace.json"
+        binding.parent.mkdir(parents=True, exist_ok=True)
+        copied = {
+            "schema_version": 2,
+            "workspace": "retry-limit",
+            "root": str(self.root),
+            "branch": "bound",
+            "base_commit": "0" * 40,
+            "goal": "Fix the retry limit",
+            "modules": ["module.service"],
+            "traces": str(self.root),
+            "concorde": str(self.root / ".concorde"),
+        }
+        issue = self.recorded()["receipt"]["issue_id"]
+        before = self.records()
+        for text, cause in (
+            ("{not json", "binding_unreadable"),
+            (json.dumps(copied), "binding_misplaced"),
+        ):
+            binding.write_text(text)
+            for tool, arguments in (
+                ("issue_report", {"report": report(report_key="bound")}),
+                (
+                    "issue_close",
+                    {
+                        "issue": issue,
+                        "reason": "resolved",
+                        "note": "n",
+                        "evidence": ["e"],
+                    },
+                ),
+            ):
+                with self.subTest(cause=cause, tool=tool):
+                    error = tools.answer(
+                        {
+                            "tool": tool,
+                            "arguments": arguments,
+                            "primary": str(self.root),
+                            "where": str(linked),
+                        }
+                    )["error"]
+                    self.assertEqual("invalid_binding", error["code"])
+                    self.assertEqual("environment", error["unhandled"]["reason"])
+                    self.assertIn(str(linked), error["detail"])
+                    self.assertEqual(
+                        [cause], [item["code"] for item in error["causes"]]
+                    )
+                    self.assertEqual(before, self.records())
 
 
 class OptionalIntegrationTests(unittest.TestCase):

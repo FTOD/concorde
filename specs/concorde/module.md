@@ -26,295 +26,6 @@ Each part works without the parts it does not depend on. When a feature needs an
 [optional integration](glossary.json#concept.optional-integration).
 It says plainly what is missing rather than failing.
 
-## Core concepts
-
-Concorde rests on four ideas:
-
-- A project described as Modules, each with its Spec.
-- Three kinds of agent that work on it, each at its own level.
-- A context and a boundary computed for every worker from the Specs.
-- Parts that can be installed apart.
-
-The [glossary](glossary.json) defines every term of the project once.
-This Module declares it.
-This section explains the terms this Module owns. Every other Module explains its own, such as:
-
-- [Operation](glossary.json#concept.operation).
-- [Task](glossary.json#concept.task).
-- [Grant](glossary.json#concept.grant).
-- [Issue](glossary.json#concept.issue).
-
-### Modules and Specs
-
-<a id="concept.module"></a><a id="concept.spec"></a>
-
-A **[Module](glossary.json#concept.module)** is one responsibility, such as reviewing code or
-publishing documentation. Its **[Spec](glossary.json#concept.spec)** is the set of documents it
-owns, written under the Spec Protocol:
-
-- An entry that explains the Module.
-- Optional topics.
-- Implementation documents with these precise details:
-  - Requirements.
-  - Scenarios.
-  - Contracts.
-
-A Module may have any of these arrangements:
-
-- It may span several directories.
-- It may share files with others.
-- It may have no files at all.
-
-The Spec, not the code, is the shared source of truth between the developer and the agents.
-The responsibility it assigns to a Module is also the boundary of every worker bound to that Module.
-
-### The people and agents
-
-<a id="concept.main-agent"></a>
-
-The developer sets the project's direction with the
-**[main agent](glossary.json#concept.main-agent)**, the Claude Code session in the primary
-worktree. Its project-wide view lets it judge which responsibilities a change affects.
-That view also lets it judge which questions need the developer.
-It hands every task to a task session so that it remains free for these activities:
-
-- Talking with the developer.
-- Answering every session.
-
-Of the changes of Spec meaning or code behaviour,
-it makes itself only a small change the developer approved. It alone merges a task into the
-primary branch.
-[Main session](coordination/main-session/module.md) explains its working method and decision
-policy.
-
-<a id="uses-main-session"></a>
-
-Every flow of this Module follows Main session's policy for who settles a question. The main agent
-and a task session decide ordinary questions themselves
-([req.main-session.ordinary-decisions](coordination/main-session/requirements.md#req.main-session.ordinary-decisions),
-[req.main-session.task-session-decides](coordination/main-session/requirements.md#req.main-session.task-session-decides)).
-A task session escalates every other question to the main agent
-([req.main-session.task-session-escalates](coordination/main-session/requirements.md#req.main-session.task-session-escalates)).
-Before acting on a decision of major impact, the main agent asks the developer
-([req.main-session.escalation-policy](coordination/main-session/requirements.md#req.main-session.escalation-policy)).
-Except for a small change the developer approved, the main agent makes every change of Spec meaning
-or code behaviour in a task
-([req.main-session.small-change](coordination/main-session/requirements.md#req.main-session.small-change)).
-The main agent changes only these in the primary worktree itself
-([req.main-session.tasks-own-changes](coordination/main-session/requirements.md#req.main-session.tasks-own-changes)):
-
-- A small change the developer approved.
-- Housekeeping that regenerates derived files.
-- A commit of the worker configuration alone.
-
-This Module states no decision policy of its own.
-When that policy does not let a level settle a question, the question goes up with its error chain.
-This continues until it reaches the developer.
-Where the coordination part is not installed, Concorde has no main agent or task session.
-There, whoever drives the other parts settles every question itself.
-
-<a id="concept.task-session"></a>
-
-A **[task session](glossary.json#concept.task-session)** carries one task to delivery inside the
-task's own worktree. It may change Specs and code directly or use Operations. It then validates
-and delivers the task. That responsibility is broader than a worker's single bounded job. It never asks the
-developer in place. It gathers the decisions its task needs and reports them to the main agent
-together. [Task sessions](coordination/task-session/module.md) explains its lifecycle.
-
-<a id="concept.worker"></a>
-
-A **[worker](glossary.json#concept.worker)** is a headless AI process that receives a frozen grant
-for one job. Until the program that launched it verifies its answer, that answer is a proposal.
-It cannot substitute its own judgement for the checks around it.
-[Workers](worker-harness/workers/module.md) explains these aspects:
-
-- How it is launched.
-- How it is audited.
-- How it is recorded.
-
-Workers, plural, names that code of the worker harness. It does not name the AI process itself.
-[Agents at both ends, programs
-between](#agents-at-both-ends-programs-between) explains why model reasoning and deterministic steps
-occupy different levels.
-
-<a id="concept.agent-harness"></a>
-
-An agent's **[agent harness](glossary.json#concept.agent-harness)** consists of:
-
-- What it may know.
-- What it may touch.
-- The environment it runs in.
-
-The three agent levels need very different amounts of each.
-For each level, a different part applies the agent harness:
-
-| | Main session | Task session | Worker |
-| --- | --- | --- | --- |
-| Context | the installed [guidance](glossary.json#concept.main-session-guidance) and whatever the developer's own configuration adds | the developer's configuration, the task-session guidance and the task's goal, Modules and decision log | only its [brief](glossary.json#concept.brief): its caller's instructions and the grant's `rw`, `ro` and `names` lists, from which it reads its [Spec context](glossary.json#concept.spec-context), [external context](glossary.json#concept.external-context), [implementation context](glossary.json#concept.implementation-context) and [task context](glossary.json#concept.task-context); its tool set is its [capability context](glossary.json#concept.capability-context) |
-| Permission | none | the file tools write only the task worktree and its decision log; the shell and everything else are open, kept inside the task by its guidance, and the merge audits only some working trees outside the task worktree ([Tasks](coordination/tasks/module.md#nothing-changed-outside-the-task)) | the grant: `rw` writable, `ro` readable, `names` named only, everything else hidden; no network, no Git |
-| Environment | the developer's | the developer's Claude Code configuration | its own configuration directory, a cleared environment, its own working directory and limits |
-| Applied by | Distribution, which installs the guidance | Coordination's [session boundary](glossary.json#concept.session-boundary) | the worker harness's [worker settings](glossary.json#concept.worker-settings) or [permission extension](glossary.json#concept.permission-extension) |
-
-The worker's column is the one computed from the Specs. Method computes its grant through the Spec
-tooling. The worker harness applies it. The task session's harness comes from its task.
-Since Concorde places no permission limits on the main agent, its agent harness is its guidance alone.
-
-### Context and boundaries
-
-<a id="concept.task-type"></a>
-
-In this section a task is the Protocol's word for one worker's bounded job. It is not a Concorde
-[Task](glossary.json#concept.task). A Task is the branch and worktree a task session carries to
-delivery. A **[task type](glossary.json#concept.task-type)** is the kind of such a job.
-It fixes access to the [boundary sets](glossary.json#concept.boundary-set) of the bound Modules.
-Examples are:
-
-- `specify` grants writes to their Specs.
-- `implement` grants writes to their code.
-- When the code came first, `code-to-spec` reads existing code to describe it in Specs.
-- `review-architecture` reads every Module's Specs, and no code, to judge how the Modules divide
-  and share the project.
-
-The Protocol defines the complete access table.
-Spec core repeats it with [its grants](spec-tooling/spec/contracts.md#grants).
-
-<a id="concept.boundary"></a>
-
-The **boundary** of a worker's job is the read and write limits its task type assigns to its bound
-Modules. The Protocol defines the sets and the task types.
-The [Harness](worker-harness/harness/module.md) explains how far Concorde enforces a worker's
-boundary. A Concorde Task has no task type. Its task session has no such boundary.
-The session receives the [session boundary](glossary.json#concept.session-boundary).
-This keeps its writes inside its task and leaves the rest of the session open.
-
-<a id="concept.context"></a>
-
-The **context** of one worker is everything it may know. It always has the same five kinds.
-Each kind is computed from declarations or produced for the task.
-It is not chosen by hand.
-For a given task, some kinds may be empty, but never all five:
-
-- <a id="concept.spec-context"></a>The **[Spec context](glossary.json#concept.spec-context)** is
-  what the Protocol calls the SpecContext of the bound Modules. It contains:
-  - The documents they own.
-  - The documents these relations select, one level deep:
-    - `contains`.
-    - `uses`.
-    - `includes`.
-  - The glossary entries of the terms they use.
-
-  It is read only. A provider's Specs arrive here instead of its code.
-  It holds only the project's own documents and terms, never external material.
-  For a `review-architecture` worker only, it also contains the Protocol's ProjectSpecification.
-  Since the architecture between Modules shows only when they are read together, this contains:
-  - Every Module's documents.
-  - The whole glossary.
-- <a id="concept.external-context"></a>The
-  **[external context](glossary.json#concept.external-context)** is what the Protocol calls the
-  ExternalContext of the bound Modules. It contains the documentation and source of external
-  dependencies that their `external` inclusions pin. Examples include a library's reference
-  documentation or a vendored copy of its code. This material is checked out at the commit the
-  project's version control records. Only the bound Modules' own inclusions count.
-  A Module their relations select brings none. Every task type grants it read only, beside the
-  Spec context. It explains how a dependency works. It never adds a promise the Spec does not state.
-- <a id="concept.implementation-context"></a>The
-  **[implementation context](glossary.json#concept.implementation-context)** starts from the
-  Protocol's ImplementationContext: the names of the files the bound Modules' realizations bind.
-  Only when the task type grants it does the implementation context also carry contents.
-  These task types grant contents:
-  - `implement`.
-  - `test`.
-  - `review-code`.
-  - `code-to-spec`.
-
-  The contents are the whole project's code, the Protocol's ProjectImplementation.
-  So that a task reading code reads the code it uses, this also holds
-  every Module's external material.
-  The worker may change at most the bound Modules' ImplementationScope.
-  For an `understand` worker, it carries only the names.
-  For a `review-architecture` worker, it carries the names of the whole ProjectImplementation, never
-  its contents.
-- <a id="concept.capability-context"></a>The
-  **[capability context](glossary.json#concept.capability-context)** is not a Protocol set.
-  The worker's Operation and task type fix the list of tools it may use.
-  It includes two kinds of contract:
-  - The contracts those tools reach.
-    Each contract says how the tool is called.
-    It also says what the tool answers.
-  - The contract of the [worker result](glossary.json#concept.worker-result) it must end with.
-    This contract says what its answer must hold.
-
-  It tells the model what it can do, never what the project promises.
-- <a id="concept.task-context"></a>The **[task context](glossary.json#concept.task-context)** is
-  what the Protocol calls task material. It contains:
-  - The [brief](glossary.json#concept.brief) with the task and its constraints.
-  - The admitted artifacts of earlier steps, such as an accepted assessment or the diff to review.
-  - The explicit lists of paths by access:
-    - Paths the worker may change.
-    - Paths the worker may read.
-    - Paths the worker may only know by name.
-
-  It is produced for the task.
-  It adds no source.
-  It never replaces a Spec document or a file.
-
-### Evidence and errors
-
-<a id="concept.evidence"></a>
-
-**[Evidence](glossary.json#concept.evidence)** is what a check or an independent review recorded
-about specific inputs. When any of those inputs change, the evidence no longer applies.
-It is never a permanent property of a Module. A Spec never stores it.
-A failure is never reduced to a status.
-It travels up as an [error chain](glossary.json#concept.error-chain).
-The chain keeps the original failure and why each receiving level could not handle it.
-Every level leaves a [trace
-node](glossary.json#concept.trace-node) of what it did.
-
-### Parts
-
-<a id="concept.part"></a>
-
-A **[part](glossary.json#concept.part)** is what a project installs.
-It is one top-level Module of this root with its children, packaged on its own.
-It names the parts it depends on.
-The installer installs any set of parts with the parts they depend on.
-It records which are installed. `concorde update` updates those.
-Each part contributes its own:
-
-- `concorde` commands.
-- MCP tools.
-- Guidance.
-- `.concorde/` files.
-
-Where a part is not installed, it contributes nothing.
-These are therefore simply absent:
-
-- Its commands.
-- Its tools.
-- Its guidance.
-
-All parts come from this one repository.
-They carry one version number.
-Dogfooding and End-to-end testing are Modules of this repository's own development, not parts.
-
-<a id="concept.optional-integration"></a>
-
-A part relies only on the parts it depends on. Where its work can use more, it does so through an
-**[optional integration](glossary.json#concept.optional-integration)**.
-When the other part is installed, the feature works.
-Otherwise, the feature is skipped with a plain statement of what is missing.
-Examples are:
-
-- Only where the issues part is installed does a task merge close the Issues the task resolved.
-- Only there does a review report its findings as Issues.
-  Otherwise, it keeps them in its run result.
-- Only where the spec part is installed does the merge run `concorde spec-validation`.
-- Without the spec part, a task's Modules and an Issue's Module are plain labels that nothing checks
-  against a registry.
-
-The Module that owns such a feature states, where it describes it, what it does in both cases.
-
 ## Overview
 
 Four pictures give the whole framework:
@@ -478,7 +189,8 @@ The Modules are:
 ### The parts
 
 The levels are levels of work, not of Modules. Nine parts carry them.
-Each part is a child of this root:
+Each part is a child of this root. [The children](#the-children) explain each part's
+responsibility and why it depends on what it depends on:
 
 | Part | Module | Holds |
 | --- | --- | --- |
@@ -532,6 +244,298 @@ coordination -> execution: optional {style.stroke-dash: 4}
 coordination -> spec: optional {style.stroke-dash: 4}
 coordination -> method: optional {style.stroke-dash: 4}
 ```
+
+## Core concepts
+
+Concorde rests on four ideas:
+
+- A project described as Modules, each with its Spec.
+- Three kinds of agent that work on it, each at its own level.
+- A context and a boundary computed for every worker from the Specs.
+- Parts that can be installed apart.
+
+The [glossary](glossary.json) defines every term of the project once.
+This Module declares it.
+This section explains the terms this Module owns. Every other Module explains its own, such as:
+
+- [Operation](glossary.json#concept.operation).
+- [Task](glossary.json#concept.task).
+- [Grant](glossary.json#concept.grant).
+- [Issue](glossary.json#concept.issue).
+
+### Modules and Specs
+
+<a id="concept.module"></a><a id="concept.spec"></a>
+
+A **[Module](glossary.json#concept.module)** is one responsibility, such as reviewing code or
+publishing documentation. Its **[Spec](glossary.json#concept.spec)** is the set of documents it
+owns, written under the Spec Protocol:
+
+- An entry that explains the Module.
+- Optional topics.
+- Implementation documents with these precise details:
+  - Requirements.
+  - Scenarios.
+  - Contracts.
+
+A Module may have any of these arrangements:
+
+- It may span several directories.
+- It may share files with others.
+- It may have no files at all.
+
+The Spec, not the code, is the shared source of truth between the developer and the agents.
+The responsibility it assigns to a Module is also the boundary of every worker bound to that Module.
+
+### The people and agents
+
+<a id="concept.main-agent"></a>
+
+The developer sets the project's direction with the
+**[main agent](glossary.json#concept.main-agent)**, the Claude Code session in the primary
+worktree. Its project-wide view lets it judge which responsibilities a change affects.
+That view also lets it judge which questions need the developer.
+It hands every task to a task session so that it remains free for these activities:
+
+- Talking with the developer.
+- Answering every session.
+
+Of the changes of Spec meaning or code behaviour,
+it makes itself only a small change the developer approved. It alone merges a task into the
+primary branch.
+[Main session](coordination/main-session/module.md) explains its working method and decision
+policy.
+
+<a id="uses-main-session"></a>
+
+Every flow of this Module follows Main session's policy for who settles a question. The main agent
+and a task session decide ordinary questions themselves
+([req.main-session.ordinary-decisions](coordination/main-session/requirements.md#req.main-session.ordinary-decisions),
+[req.main-session.task-session-decides](coordination/main-session/requirements.md#req.main-session.task-session-decides)).
+A task session escalates every other question to the main agent
+([req.main-session.task-session-escalates](coordination/main-session/requirements.md#req.main-session.task-session-escalates)).
+Before acting on a decision of major impact, the main agent asks the developer
+([req.main-session.escalation-policy](coordination/main-session/requirements.md#req.main-session.escalation-policy)).
+Except for a small change the developer approved, the main agent makes every change of Spec meaning
+or code behaviour in a task
+([req.main-session.small-change](coordination/main-session/requirements.md#req.main-session.small-change)).
+The main agent changes only these in the primary worktree itself
+([req.main-session.tasks-own-changes](coordination/main-session/requirements.md#req.main-session.tasks-own-changes)):
+
+- A small change the developer approved.
+- Housekeeping that regenerates derived files.
+- A commit of the worker configuration alone.
+
+This Module states no decision policy of its own.
+When that policy does not let a level settle a question, the question goes up with its error chain.
+This continues until it reaches the developer.
+Where the coordination part is not installed, Concorde has no main agent or task session.
+There, whoever drives the other parts settles every question itself.
+
+<a id="concept.task-session"></a>
+
+A **[task session](glossary.json#concept.task-session)** carries one task to delivery inside the
+task's own worktree. It may change Specs and code directly or use Operations. It then validates
+and delivers the task. That responsibility is broader than a worker's single bounded job. It never asks the
+developer in place. It gathers the decisions its task needs and reports them to the main agent
+together. [Task sessions](coordination/task-session/module.md) explains its lifecycle.
+
+<a id="concept.worker"></a>
+
+A **[worker](glossary.json#concept.worker)** is a headless AI process that receives a frozen grant
+for one job. Until the program that launched it verifies its answer, that answer is a proposal.
+It cannot substitute its own judgement for the checks around it.
+[Workers](worker-harness/workers/module.md) explains these aspects:
+
+- How it is launched.
+- How it is audited.
+- How it is recorded.
+
+Workers, plural, names that code of the worker harness. It does not name the AI process itself.
+[Agents at both ends, programs
+between](#agents-at-both-ends-programs-between) explains why model reasoning and deterministic steps
+occupy different levels.
+
+<a id="concept.agent-harness"></a>
+
+An agent's **[agent harness](glossary.json#concept.agent-harness)** consists of:
+
+- What it may know.
+- What it may touch.
+- The environment it runs in.
+
+The three agent levels need very different amounts of each.
+For each level, a different part applies the agent harness:
+
+| | Main session | Task session | Worker |
+| --- | --- | --- | --- |
+| Context | the installed [guidance](glossary.json#concept.main-session-guidance) and whatever the developer's own configuration adds | the developer's configuration, the task-session guidance and the task's goal, Modules and decision log | only its [brief](glossary.json#concept.brief): its caller's instructions and the grant's `rw`, `ro` and `names` lists, from which it reads its [Spec context](glossary.json#concept.spec-context), [external context](glossary.json#concept.external-context), [implementation context](glossary.json#concept.implementation-context) and [task context](glossary.json#concept.task-context); its tool set is its [capability context](glossary.json#concept.capability-context) |
+| Permission | none | the file tools write only the task worktree and its decision log; the shell and everything else are open, kept inside the task by its guidance, and the merge audits only some working trees outside the task worktree ([Tasks](coordination/tasks/module.md#nothing-changed-outside-the-task)) | the grant: `rw` writable, `ro` readable, `names` named only, everything else hidden; no network, no Git |
+| Environment | the developer's | the developer's Claude Code configuration | its own configuration directory, a cleared environment, its own working directory and limits |
+| Applied by | Distribution, which installs the guidance | Coordination's [session boundary](glossary.json#concept.session-boundary) | the worker harness's [worker settings](glossary.json#concept.worker-settings) or [permission extension](glossary.json#concept.permission-extension) |
+
+The worker's column is the one computed from the Specs. Method computes its grant through the Spec
+tooling. The worker harness applies it. The task session's harness comes from its task.
+Since Concorde places no permission limits on the main agent, its agent harness is its guidance alone.
+
+### Context and boundaries
+
+<a id="concept.task-type"></a>
+
+In this section a task is the Protocol's word for one worker's bounded job. It is not a Concorde
+[Task](glossary.json#concept.task). A Task is the branch and worktree a task session carries to
+delivery. A **[task type](glossary.json#concept.task-type)** is the kind of such a job.
+It fixes access to the [boundary sets](glossary.json#concept.boundary-set) of the bound Modules.
+Examples are:
+
+- `specify` grants writes to their Specs.
+- `implement` grants writes to their code.
+- When the code came first, `code-to-spec` reads existing code to describe it in Specs.
+- `review-architecture` reads every Module's Specs, and no code, to judge how the Modules divide
+  and share the project.
+
+The Protocol defines the complete access table.
+Spec core repeats it with [its grants](spec-tooling/spec/contracts.md#grants).
+
+<a id="concept.boundary"></a>
+
+The **boundary** of a worker's job is the read and write limits its task type assigns to its bound
+Modules. The Protocol defines the sets and the task types.
+The [Harness](worker-harness/harness/module.md) explains how far Concorde enforces a worker's
+boundary. A Concorde Task has no task type. Its task session has no such boundary.
+The session receives the [session boundary](glossary.json#concept.session-boundary).
+The session boundary keeps the session's file tools, Edit and Write, inside its task worktree and
+decision log. It does not restrict the session's shell. The session's guidance keeps its shell
+writes inside its task. The merge audits only some working trees outside the task worktree
+([Tasks](coordination/tasks/module.md#nothing-changed-outside-the-task)).
+
+<a id="concept.context"></a>
+
+The **context** of one worker is everything it may know. It always has the same five kinds.
+Each kind is computed from declarations or produced for the task.
+It is not chosen by hand.
+For a given task, some kinds may be empty, but never all five:
+
+- <a id="concept.spec-context"></a>The **[Spec context](glossary.json#concept.spec-context)** is
+  what the Protocol calls the SpecContext of the bound Modules. It contains:
+  - The documents they own.
+  - The documents these relations select, one level deep:
+    - `contains`.
+    - `uses`.
+    - `includes`.
+  - The glossary entries of the terms they use.
+
+  It is read only. A provider's Specs arrive here instead of its code.
+  It holds only the project's own documents and terms, never external material.
+  For a `review-architecture` worker only, it also contains the Protocol's ProjectSpecification.
+  Since the architecture between Modules shows only when they are read together, this contains:
+  - Every Module's documents.
+  - The whole glossary.
+- <a id="concept.external-context"></a>The
+  **[external context](glossary.json#concept.external-context)** is what the Protocol calls the
+  ExternalContext of the bound Modules. It contains the documentation and source of external
+  dependencies that their `external` inclusions pin. Examples include a library's reference
+  documentation or a vendored copy of its code. This material is checked out at the commit the
+  project's version control records. Only the bound Modules' own inclusions count.
+  A Module their relations select brings none. Every task type grants it read only, beside the
+  Spec context. It explains how a dependency works. It never adds a promise the Spec does not state.
+- <a id="concept.implementation-context"></a>The
+  **[implementation context](glossary.json#concept.implementation-context)** starts from the
+  Protocol's ImplementationContext: the names of the files the bound Modules' realizations bind.
+  Only when the task type grants it does the implementation context also carry contents.
+  These task types grant contents:
+  - `implement`.
+  - `test`.
+  - `review-code`.
+  - `code-to-spec`.
+
+  The contents are the whole project's code, the Protocol's ProjectImplementation.
+  So that a task reading code reads the code it uses, this also holds
+  every Module's external material.
+  The worker may change at most the bound Modules' ImplementationScope.
+  For an `understand` worker, it carries only the names.
+  For a `review-architecture` worker, it carries the names of the whole ProjectImplementation, never
+  its contents.
+- <a id="concept.capability-context"></a>The
+  **[capability context](glossary.json#concept.capability-context)** is not a Protocol set.
+  The worker's Operation and task type fix the list of tools it may use.
+  It includes two kinds of contract:
+  - The contracts those tools reach.
+    Each contract says how the tool is called.
+    It also says what the tool answers.
+  - The contract of the [worker result](glossary.json#concept.worker-result) it must end with.
+    This contract says what its answer must hold.
+
+  It tells the model what it can do, never what the project promises.
+- <a id="concept.task-context"></a>The **[task context](glossary.json#concept.task-context)** is
+  what the Protocol calls task material. It contains:
+  - The [brief](glossary.json#concept.brief) with the task and its constraints.
+  - The admitted artifacts of earlier steps, such as an accepted assessment or the diff to review.
+  - The explicit lists of paths by access:
+    - Paths the worker may change.
+    - Paths the worker may read.
+    - Paths the worker may only know by name.
+
+  It is produced for the task.
+  It adds no source.
+  It never replaces a Spec document or a file.
+
+### Evidence and errors
+
+<a id="concept.evidence"></a>
+
+**[Evidence](glossary.json#concept.evidence)** is what a check or an independent review recorded
+about specific inputs. When any of those inputs change, the evidence no longer applies.
+It is never a permanent property of a Module. A Spec never stores it.
+A failure is never reduced to a status.
+It travels up as an [error chain](glossary.json#concept.error-chain).
+The chain keeps the original failure and why each receiving level could not handle it.
+Every level leaves a [trace
+node](glossary.json#concept.trace-node) of what it did.
+
+### Parts
+
+<a id="concept.part"></a>
+
+A **[part](glossary.json#concept.part)** is what a project installs.
+It is one top-level Module of this root with its children, packaged on its own.
+It names the parts it depends on.
+The installer installs any set of parts with the parts they depend on.
+It records which are installed. `concorde update` updates those.
+Each part contributes its own:
+
+- `concorde` commands.
+- MCP tools.
+- Guidance.
+- `.concorde/` files.
+
+Where a part is not installed, it contributes nothing.
+These are therefore simply absent:
+
+- Its commands.
+- Its tools.
+- Its guidance.
+
+All parts come from this one repository.
+They carry one version number.
+Dogfooding and End-to-end testing are Modules of this repository's own development, not parts.
+
+<a id="concept.optional-integration"></a>
+
+A part relies only on the parts it depends on. Where its work can use more, it does so through an
+**[optional integration](glossary.json#concept.optional-integration)**.
+When the other part is installed, the feature works.
+Otherwise, the feature is skipped with a plain statement of what is missing.
+Examples are:
+
+- Only where the issues part is installed does a task merge close the Issues the task resolved.
+- Only there does a review report its findings as Issues.
+  Otherwise, it keeps them in its run result.
+- Only where the spec part is installed does the merge run `concorde spec-validation`.
+- Without the spec part, a task's Modules and an Issue's Module are plain labels that nothing checks
+  against a registry.
+
+The Module that owns such a feature states, where it describes it, what it does in both cases.
 
 ## How it is built
 
@@ -599,55 +603,7 @@ It contributes its own:
 Every reach into a part it does not depend on becomes an optional integration that its owner states.
 
 The dependency directions follow from what each part needs to do its job alone.
-The spec part depends on nothing, not even the kernel.
-The spec part keeps its own copy of the few data utilities it shares with the kernel for this reason:
-
-- A project can check its Specs with nothing else installed.
-- A project can publish its Specs with nothing else installed.
-It accepts the duplication.
-
-The kernel holds only what two parts must agree on without importing each other.
-One example is the [workspace binding](glossary.json#concept.workspace-binding) one part writes
-and another reads.
-It includes small mechanisms that keep those contracts, such as:
-
-- File transactions.
-- Locks.
-- Traces.
-
-It holds no work of its own that a part could come to depend on by accident, such as:
-
-- Running.
-- Delegating.
-- Reviewing.
-
-The worker harness receives its grant as data.
-It receives its round validation as a callback.
-It therefore bounds and records a worker without reading a Spec.
-Method takes the grant from the Spec tooling and hands it over.
-Execution runs what definitions tell it.
-It launches no worker itself.
-It knows no Spec.
-Coordination needs nothing but the kernel for these actions on tasks:
-
-- Open.
-- Delegate.
-- Merge.
-- Close.
-
-Only where they are installed does it reach:
-
-- Runs.
-- Issues.
-- Specs.
-- Method's delivery.
-
-Distribution is the installation host, present in every installation whatever parts it holds.
-It installs the selected parts.
-It composes the `concorde` command and the
-[project MCP server](glossary.json#concept.project-mcp-server) from the
-[registrations](glossary.json#concept.part-registration) of those installed.
-Since it depends on none of them, a spec-only installation is the spec part and its host.
+[The children](#the-children) give each part's reason in one place.
 
 A part's dependencies are package dependencies.
 They say what must be installed.
@@ -804,8 +760,11 @@ Only where a model works does an Operation exist.
 Deterministic steps, such as deciding readiness and delivering, are execution commands.
 The same runner records them without any worker machinery.
 
-Keeping one session inside one task worktree makes parallel tasks independent.
-The main agent delegates each task to a task session whose writes are confined to that task.
+Keeping one session inside one task worktree makes parallel tasks independent, as long as each
+session follows its guidance.
+The main agent delegates each task to a task session.
+The session's file tools write only that task's worktree and decision log. Its guidance keeps its
+shell writes there too.
 It retains:
 
 - The project-wide view.
@@ -1001,10 +960,12 @@ here by their role.
 - Publishing Specs.
 
 Every Module that reads Specs relies on it to refuse an untrustworthy structure.
-It depends on no other part.
+It depends on no other part, not even the kernel.
 It imports no other part's code.
 It implements the Kernel's formats it follows in its own copy, such as typed values and file
 transactions.
+So a project can check and publish its Specs with nothing else installed.
+The part accepts the duplication for this reason.
 
 <a id="contains-kernel"></a>
 
@@ -1026,6 +987,14 @@ Through its child Tracing, it also holds:
 - The `concorde trace` command.
 - The [error chain](glossary.json#concept.error-chain).
 
+It holds only what two parts must agree on without importing each other, such as the workspace
+binding one part writes and another reads, and the small mechanisms that keep those contracts.
+It holds no work of its own that a part could come to depend on by accident, such as:
+
+- Running.
+- Delegating.
+- Reviewing.
+
 It depends on no part.
 
 <a id="contains-worker-harness"></a>
@@ -1040,8 +1009,10 @@ With the worker configuration and the model map, Workers performs these actions:
 - It resumes the worker.
 - It records the worker.
 
+It receives its round validation as a callback too.
+It therefore bounds and records a worker without reading a Spec.
+Method takes the grant from the Spec tooling and hands it over.
 It depends on the kernel alone.
-It reads no Spec.
 
 <a id="contains-execution"></a>
 
@@ -1054,8 +1025,10 @@ It reads no Spec.
 
 It knows no task.
 It knows no Spec.
-It launches no worker itself.
+It runs what the definitions tell it.
+It launches no worker itself: the steps of the Operations it runs do.
 It records every run in its run store.
+It depends on the kernel alone.
 
 <a id="contains-workflows"></a>
 
@@ -1093,7 +1066,8 @@ At the task level, a task session carries each task the main agent hands it, wit
 workspace from Tasks.
 It hands work to the lower half only by binding a task worktree.
 It derives each task's state from what was recorded there.
-It depends on the kernel alone.
+It needs nothing but the kernel to open, delegate, merge and close tasks, so it depends on the
+kernel alone.
 These are its optional integrations:
 
 - Runs.
@@ -1134,7 +1108,8 @@ It depends on issues only as an optional integration.
 
 <a id="contains-distribution"></a>
 
-**Distribution**, the distribution part, performs these actions:
+**Distribution**, the distribution part, is the installation host, present in every installation
+whatever parts it holds. It performs these actions:
 
 - It builds the packages.
 - It installs the parts a project chooses.
@@ -1143,6 +1118,7 @@ It depends on issues only as an optional integration.
   - The `concorde` command.
   - The [project MCP server](glossary.json#concept.project-mcp-server).
 
+It depends on none of the parts, so a spec-only installation is the spec part and its host.
 Every flow above starts from such an install.
 In either of these cases, the installer refuses before writing anything:
 

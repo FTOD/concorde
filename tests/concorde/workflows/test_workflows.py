@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import contextlib
+import hashlib
 import io
 import json
 import os
@@ -99,9 +100,13 @@ class Runs:
         modules=("module.shop",),
         running: bool = False,
         folder: Path | None = None,
+        lobby: bool = False,
     ) -> str:
         stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S")
         run_id = f"r-{stamp}-{name.replace('-', '_')}-{secrets.token_hex(4)}"
+        if lobby:
+            # A run that never held its workspace lock, such as one refused workspace_busy.
+            folder = self.store.lobby_folder(run_id)
         directory = folder or self.store.run_folder(run_id)
         directory.mkdir(parents=True)
         trace.Node(directory, run_id, "run", metadata={"workspace": "adopt"}).start()
@@ -214,6 +219,41 @@ def ready_output(ready: bool = True) -> dict:
             else {"code": "not_ready", "detail": "a check failed"},
         )
     }
+
+
+class StepKeyTests(unittest.TestCase):
+    def test_the_answers_digest_hashes_the_canonical_utf8_bytes(self):
+        # The example of req.workflows.answers-new-key: keys sorted, no whitespace, a non-ASCII
+        # character written as itself, the text encoded as UTF-8.
+        answers = [
+            {
+                "id": "d.db-helper",
+                "question": "own Module?",
+                "answer": "oui, un Module à part",
+                "answered_by": "developer",
+            }
+        ]
+        canonical = (
+            '[{"answer":"oui, un Module à part","answered_by":"developer",'
+            '"id":"d.db-helper","question":"own Module?"}]'
+        ).encode("utf-8")
+        self.assertIn(b"\xc3\xa0", canonical)
+        self.assertEqual(
+            hashlib.sha256(canonical).hexdigest()[:8], steps.answers_digest(answers)
+        )
+        self.assertEqual("88f81e9b", steps.answers_digest(answers))
+        self.assertEqual("survey@88f81e9b", step_key("survey", answers))
+        # Only what JSON requires is escaped: a quote, a backslash and a control character.
+        escaped = [dict(answers[0], answer='a "b" \\ c\nd\x01')]
+        self.assertEqual(
+            hashlib.sha256(
+                (
+                    '[{"answer":"a \\"b\\" \\\\ c\\nd\\u0001","answered_by":"developer",'
+                    '"id":"d.db-helper","question":"own Module?"}]'
+                ).encode("utf-8")
+            ).hexdigest()[:8],
+            steps.answers_digest(escaped),
+        )
 
 
 class StepTests(unittest.TestCase):
@@ -857,6 +897,36 @@ class StepTests(unittest.TestCase):
         )
         self.assertEqual("step_lost", abandoned["error"]["code"])
 
+    @verifies("scenario.workflows.step-lobby-refusal")
+    def test_a_run_refused_in_the_lobby_is_not_adopted(self):
+        folder = store.next_step_folder(self.space, None, "survey")
+        folder.mkdir(parents=True)
+        store.record_step(
+            self.space, "brownfield", "survey", "survey", "no-ask", None, folder=folder
+        )
+        # The step's run was refused before it took the workspace lock, and the command that
+        # launched it ended before recording it: its result lies in the lobby, not in the node.
+        lobbied = self.runs.make(
+            "survey",
+            "failed",
+            error=run_link("survey", "r", "workspace_busy", "environment"),
+            lobby=True,
+        )
+        self.assertEqual(self.store.lobby_folder(lobbied), self.store.find(lobbied))
+        with self.starter(output=SURVEY_OUTPUT):
+            status, value = run_step(self.space, self.request())
+        self.assertEqual((0, "finished"), (status, value["state"]))
+        self.assertEqual(1, len(self.started))
+        self.assertNotEqual(lobbied, value["run_id"])
+        recorded = store.load(self.space)["steps"]
+        self.assertEqual([True, False], [s["superseded"] for s in recorded])
+        self.assertNotIn(lobbied, [s["run_id"] for s in recorded])
+        abandoned = trace.read(folder)
+        self.assertEqual(
+            ("failed", "lost", "step_lost"),
+            (abandoned["status"], abandoned["outcome"], abandoned["error"]["code"]),
+        )
+
     def test_a_step_waits_for_the_workflow_lock_only_within_its_bound(self):
         with (
             self.starter(output=SURVEY_OUTPUT),
@@ -909,7 +979,7 @@ class StepTests(unittest.TestCase):
     @verifies("scenario.workflows.refused-step")
     def test_a_launcher_that_cannot_run_makes_the_step_refused(self):
         with patch.object(
-            steps, "concorde_command", return_value=["/nonexistent/concorde"]
+            steps, "workspace_concorde", return_value=["/nonexistent/concorde"]
         ):
             status, value = run_step(
                 self.space, self.request("validate", ("task-validation",))
@@ -920,6 +990,33 @@ class StepTests(unittest.TestCase):
         )
         [recorded] = store.load(self.space)["steps"]
         self.assertEqual("step_refused", recorded["error"]["code"])
+
+    @verifies("scenario.workflows.refused-step")
+    def test_a_workspace_without_its_own_concorde_refuses_the_step(self):
+        from concorde.workflows import tools
+
+        launcher = self.space.root / ".concorde/bin/concorde"
+        launcher.unlink()
+        # The caller's own Concorde never stands in for the workspace's.
+        with patch.object(steps.subprocess, "run") as launched:
+            status, value = run_step(
+                self.space, self.request("validate", ("task-validation",))
+            )
+        launched.assert_not_called()
+        self.assertEqual(
+            (1, "refused", None), (status, value["state"], value["run_id"])
+        )
+        self.assertEqual(
+            ["step_refused", "run_not_started"], errors.codes(value["error"])
+        )
+        self.assertIn(".concorde/bin/concorde", value["error"]["causes"][0]["detail"])
+        [recorded] = store.load(self.space)["steps"]
+        self.assertEqual("step_refused", recorded["error"]["code"])
+        # The step tool, too, runs no other Concorde's step command.
+        request = {k: v for k, v in self.request().items() if v not in (None, False)}
+        with self.assertRaises(tools.ToolRefusal) as refused:
+            tools.workflow_step(self.space.root, {"request": request, "wait": 0})
+        self.assertEqual("step_failed", refused.exception.link["code"])
 
     def test_a_wrongly_shaped_workflow_record_is_unreadable(self):
         with self.starter(output=SURVEY_OUTPUT):
@@ -1446,12 +1543,14 @@ class ReportTests(unittest.TestCase):
         from concorde.workflows import tools
 
         real = subprocess.run
+        timeouts = []
 
         def timing_out(stderr):
             # As on POSIX: the output captured until the timeout comes as bytes.
             def run(command, **kwargs):
                 if "workflow" not in command:
                     return real(command, **kwargs)
+                timeouts.append(kwargs["timeout"])
                 raise subprocess.TimeoutExpired(
                     command, kwargs["timeout"], output=None, stderr=stderr
                 )
@@ -1482,6 +1581,10 @@ class ReportTests(unittest.TestCase):
                 (link["code"], link["unhandled"]["reason"]),
             )
             self.assertIn(shown, link["detail"])
+        # The tool waits for the command its wait plus 120 seconds, more than the 90 seconds the
+        # command may take beyond its wait to launch a run.
+        self.assertEqual([1 + 120, 1 + 120], timeouts)
+        self.assertGreater(tools.STEP_GRACE, steps.LAUNCH_WAIT)
 
     def test_a_report_during_a_running_step(self):
         self.record("survey", "survey", None, running=True)
@@ -1514,7 +1617,7 @@ class ScriptTests(unittest.TestCase):
     def setUp(self):
         self.directory = Path(self.id().replace(".", "_"))
 
-    def run_script(self, args, outcomes, report_status="ok"):
+    def run_script(self, args, outcomes, report_status="ok", report=...):
         import tempfile
 
         with tempfile.TemporaryDirectory() as directory:
@@ -1527,7 +1630,9 @@ class ScriptTests(unittest.TestCase):
                         "script": str(script),
                         "args": args,
                         "outcomes": outcomes,
-                        "report": {"status": report_status, "summary": "s"},
+                        "report": {"status": report_status, "summary": "s"}
+                        if report is ...
+                        else report,
                     }
                 ),
                 capture_output=True,
@@ -1744,6 +1849,45 @@ class ScriptTests(unittest.TestCase):
         self.assertEqual("scaffold", run["calls"][-1]["lost"])
         self.assertEqual("step_rejected", run["result"]["rejected"]["error"]["code"])
 
+    def test_a_report_refusal_or_unanswered_relay_is_the_scripts_result(self):
+        refusal = errors.link(
+            "component",
+            "Workflows (concorde workflow report)",
+            "workspace_retired",
+            "the workspace adopt was retired",
+            reason="environment",
+            explanation="a test stand-in",
+        )
+        outcomes = self.full()
+        outcomes["scaffold"] = None
+        run = self.run_script(self.ARGS, outcomes, report={"error": refusal})
+        self.assertIsNone(run["error"])
+        # The report command refused: no workflow result was saved, and its link is kept unchanged
+        # beside what the step agents relayed last.
+        self.assertEqual(refusal, run["result"]["report_refused"])
+        self.assertNotIn("reported", run["result"])
+        self.assertEqual("scaffold", run["result"]["relayed"]["key"])
+        for relayed in (None, {"status": "ok"}, {"error": "no link"}):
+            with self.subTest(relayed=relayed):
+                run = self.run_script(self.ARGS, self.full(), report=relayed)
+                link = run["result"]["report_refused"]
+                self.assertNotIn("reported", run["result"])
+                validate(link, errors.ERROR_SCHEMA)
+                self.assertEqual(
+                    ("component", "report_unanswered", "environment"),
+                    (link["level"], link["code"], link["unhandled"]["reason"]),
+                )
+                self.assertIn(
+                    "workflow report --workflow 'brownfield'",
+                    link["evidence"][0]["ref"],
+                )
+        # A saved workflow result is pointed at by its status and summary alone.
+        run = self.run_script(self.ARGS, self.full())
+        self.assertEqual(
+            {"workflow": "brownfield", "reported": {"status": "ok", "summary": "s"}},
+            run["result"],
+        )
+
     def test_a_step_still_running_ends_a_no_ask_run(self):
         outcomes = self.full()
         outcomes["describe:module.inventory"]["state"] = "running"
@@ -1922,6 +2066,21 @@ class ScriptTests(unittest.TestCase):
         )
         run = self.run_script(self.ARGS, outcomes)
         self.assertNotIn("delivery", [c["key"] for c in run["calls"]])
+
+    def test_a_missing_adapter_refuses_the_render_of_registered_workflows(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            answer = catalog.build_renders(root)
+            self.assertEqual("invalid_workflow", answer["refusal"]["code"])
+            self.assertIn(str(root / catalog.ADAPTER), answer["refusal"]["message"])
+            self.assertIn("brownfield", answer["refusal"]["message"])
+            # With no registered workflow, nothing is rendered, whatever the adapter.
+            with patch.dict(catalog.WORKFLOWS, clear=True):
+                self.assertEqual({"files": {}}, catalog.build_renders(root))
+                self.assertEqual({"files": {}}, catalog.build_renders(REPOSITORY_ROOT))
+        # With the adapter, every registered workflow is rendered.
+        answer = catalog.build_renders(REPOSITORY_ROOT)
+        self.assertIn(catalog.output_path("brownfield"), answer["files"])
 
     def test_the_last_step_is_the_registered_one(self):
         rendered = catalog.render("brownfield")

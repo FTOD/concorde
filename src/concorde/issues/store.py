@@ -705,19 +705,21 @@ def _foreign(
 
 def _put_back(root: Path, path: str) -> str | None:
     """Put the record ``path`` back to its version in ``HEAD``, or remove it, from the index as
-    well, when ``HEAD`` holds none; what went wrong, or ``None``."""
-    if _git(root, "cat-file", "-e", f"HEAD:{path}").returncode == 0:
-        done = _git(root, "checkout", "-q", "HEAD", "--", path)
-        if done.returncode != 0:
-            return _git_failure(root, done, f"git checkout HEAD -- {path}").strerror
-        return None
-    done = _git(root, "rm", "-q", "--cached", "--ignore-unmatch", "--", path)
-    if done.returncode != 0:
-        return _git_failure(root, done, f"git rm --cached {path}").strerror
+    well, when ``HEAD`` holds none; what went wrong, or ``None``. An index entry or a file that is
+    already absent is already put back."""
     try:
+        if _git(root, "cat-file", "-e", f"HEAD:{path}").returncode == 0:
+            done = _git(root, "checkout", "-q", "HEAD", "--", path)
+            if done.returncode != 0:
+                return _git_failure(root, done, f"git checkout HEAD -- {path}").strerror
+            return None
+        done = _git(root, "rm", "-q", "--cached", "--ignore-unmatch", "--", path)
+        if done.returncode != 0:
+            return _git_failure(root, done, f"git rm --cached {path}").strerror
         (root / path).unlink(missing_ok=True)
     except OSError as error:
-        return f"removing {path}: {error.strerror}"
+        # Git could not be started, or the operating system refused to remove the file.
+        return f"putting back {path}: {error.strerror or error}"
     return None
 
 
@@ -726,15 +728,17 @@ def _recover(root: Path) -> dict:
     temporaries of an interrupted file transaction, holding the merge lock.
 
     A change of a record that no Issue write leaves is left as it is and reported in ``left``.
-    ``recovery_failed`` when something could not be put back, after every other one was tried.
+    ``recovery_failed`` when something could not be inspected, put back or removed, after every
+    other one was tried.
     """
-    recovered, left, failed = [], [], []
+    left, failed = [], []
     changed = _changed_entries(root)
     records = [path for _, path in changed if not Path(path).name.startswith(TEMPORARY)]
     # Both places of every Issue whose record changed: a write moving a record between the
     # folders publishes it in one and removes it from the other.
     places = [place for path in records for place in issue_paths(Path(path).stem)]
     committed = _committed(root, _head(root), places) if records else {}
+    done = {}
     for _, path in changed:
         if Path(path).name.startswith(TEMPORARY):
             try:
@@ -742,20 +746,49 @@ def _recover(root: Path) -> dict:
             except OSError as error:
                 failed.append(f"removing {path}: {error.strerror}")
             else:
-                recovered.append({"path": path, "action": "removed"})
+                done[path] = "removed"
     # Every record is judged before any is put back: putting back one half of a move first would
-    # make the other half look like no write's.
-    judged = [(path, _judged(root, path, records, committed)) for path in records]
-    for path, reason in judged:
-        if reason is not None:
-            left.append({"path": path, "reason": reason})
-            continue
-        problem = _put_back(root, path)
-        if problem is not None:
-            failed.append(problem)
-        else:
-            action = "restored" if path in committed else "removed"
-            recovered.append({"path": path, "action": action})
+    # make the other half look like no write's. A record that cannot be inspected is kept.
+    judged = {}
+    for path in records:
+        try:
+            judged[path] = _judged(root, path, records, committed)
+        except OSError as error:
+            failed.append(f"inspecting {path}: {error.strerror or error}")
+    issues = {}
+    for path in records:
+        issues.setdefault(Path(path).stem, []).append(path)
+    for paths in issues.values():
+        # Both changed places of one Issue are the halves of one move: one half is never put
+        # back without the other, or the half kept would look like a change no write made.
+        uninspected = [path for path in paths if path not in judged]
+        restored = True
+        # The committed half is restored first, so that a failure there keeps the other half.
+        for path in sorted(paths, key=lambda path: path not in committed):
+            if path in uninspected:
+                continue
+            reason = judged[path]
+            if reason is not None:
+                left.append({"path": path, "reason": reason})
+            elif uninspected:
+                failed.append(
+                    f"{path} was not put back, since {', '.join(uninspected)} of the same "
+                    "Issue could not be inspected"
+                )
+            elif path not in committed and not restored:
+                failed.append(
+                    f"{path} was not removed, since its Issue's committed record could not be "
+                    "restored"
+                )
+            elif (problem := _put_back(root, path)) is not None:
+                failed.append(problem)
+                if path in committed:
+                    restored = False
+            else:
+                done[path] = "restored" if path in committed else "removed"
+    order = [path for _, path in changed]
+    left.sort(key=lambda item: order.index(item["path"]))
+    recovered = [{"path": path, "action": done[path]} for path in order if path in done]
     if failed:
         raise IssueError(
             f"uncommitted Issue records of the primary worktree {root} could not be put back, "
@@ -892,9 +925,25 @@ def _settle(
         "back"
     )
     for old, before in removed:
+        try:
+            target = checked_path(root, old)
+            changed = not target.is_file() or digest(target.read_bytes()) != before
+        except (KernelError, OSError) as error:
+            # The record could not be checked: put back what this write published, never the
+            # record it could not check, and refuse with what went wrong.
+            left = _put_back_all(root, published)
+            if left is None:
+                raise
+            raise IssueError(
+                f"{what} was not written: {type(error).__name__}: {error} while checking "
+                f"{old} after {'its record' if one else 'their records'} "
+                f"{', '.join(published)} {'was' if one else 'were'} published, and putting "
+                f"{'that' if one else 'those'} {record} back failed: {left}; {stays}",
+                "recovery_failed",
+                path=published[0],
+            ) from error
         # Another program changed the record after this write read it: keep its change.
-        target = checked_path(root, old)
-        if not target.is_file() or digest(target.read_bytes()) != before:
+        if changed:
             left = _put_back_all(root, published)
             raise IssueError(
                 f"Issue {Path(old).stem} was changed by another program after this write read "
@@ -1093,6 +1142,56 @@ def _key_holder(root: Path, invocation_id: str, report_key: str) -> str | None:
     return None
 
 
+def _check_target(
+    identifier: str, report: dict, record: dict | None, revision: str | None
+) -> None:
+    """The checks of the Issue ``report`` creates or appends to, against its committed
+    ``record`` and ``revision`` (``None`` when none is committed): a creation finds no record, an
+    append finds the record at its ``expected_revision``, open."""
+    if record is None:
+        if "issue_id" in report:
+            raise IssueError(
+                f"cannot append to Issue {identifier}: it does not exist",
+                "unknown_issue",
+            )
+        return
+    if "issue_id" not in report:
+        raise IssueError(
+            f"allocated Issue identity {identifier} is already occupied",
+            "issue_key_conflict",
+        )
+    if revision != report["expected_revision"]:
+        raise IssueError(
+            f"Issue {identifier} changed before this observation: expected revision "
+            f"{report['expected_revision']}, current revision {revision}",
+            "stale_issue",
+        )
+    if record["status"] != "open":
+        raise IssueError(
+            f"Issue {identifier} is closed; reopen it before reporting another observation",
+            "closed_issue",
+        )
+
+
+def check_report_target(root: Path, report: dict) -> None:
+    """Without a lock or a write, the checks ``record_report`` makes of the Issue an appending
+    ``report`` names, against the committed records of ``root``: the Issue exists
+    (``unknown_issue``), still has the report's ``expected_revision`` (``stale_issue``) and is
+    open (``closed_issue``). A report that creates an Issue passes. A write repeats these checks
+    under the merge lock."""
+    validate_report(report)
+    if "issue_id" not in report:
+        return
+    identifier = report["issue_id"]
+    try:
+        record, revision = read_issue(root, identifier)
+    except IssueError as error:
+        if error.code != "unknown_issue":
+            raise
+        record, revision = None, None
+    _check_target(identifier, report, record, revision)
+
+
 def report_issue(
     root: Path,
     report: dict,
@@ -1168,29 +1267,8 @@ def record_report(
                 f"{source['invocation_id']} already names an observation in Issue {elsewhere}",
                 "issue_key_conflict",
             )
-        if record is not None:
-            if "issue_id" not in report:
-                raise IssueError(
-                    f"allocated Issue identity {identifier} is already occupied",
-                    "issue_key_conflict",
-                )
-            if revision != report["expected_revision"]:
-                raise IssueError(
-                    f"Issue {identifier} changed before this observation: expected revision "
-                    f"{report['expected_revision']}, current revision {revision}",
-                    "stale_issue",
-                )
-            if record["status"] != "open":
-                raise IssueError(
-                    f"Issue {identifier} is closed; reopen it before reporting another observation",
-                    "closed_issue",
-                )
-        elif "issue_id" in report:
-            raise IssueError(
-                f"cannot append to Issue {identifier}: it does not exist",
-                "unknown_issue",
-            )
-        else:
+        _check_target(identifier, report, record, revision)
+        if record is None:
             record = {
                 "schema_version": RECORD_VERSION,
                 "id": identifier,

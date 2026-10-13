@@ -1,7 +1,9 @@
 # Workflows scenarios
 
 Concrete situations that show the [requirements](requirements.md) of [Workflows](module.md). The
-shapes are in the [contracts](contracts.md).
+shapes are in the [contracts](contracts.md). The scenarios of the
+[brownfield workflow](../glossary.json#concept.brownfield-workflow) follow the procedure that
+[Method](../method/brownfield.md) defines: its steps, their order and where it goes past a step.
 
 ## Steps
 
@@ -37,7 +39,8 @@ shapes are in the [contracts](contracts.md).
 
 - GIVEN a step whose run takes longer than the step's `--wait`
 - WHEN the step command is run
-- THEN it prints the step outcome with state `running` and exits with status 3 after at most `--wait` seconds
+- THEN it prints the step outcome with state `running` and exits with status 3
+- AND it exits after at most `--wait` seconds, plus at most 90 seconds when it started the run
 - AND running the same command again starts no second run and waits for the recorded one
 
 ### scenario.workflows.step-outlives-call — A step's run outlives the call that started it
@@ -115,6 +118,20 @@ shapes are in the [contracts](contracts.md).
 - THEN the command ends the starting step's node lost, since its run never started
 - AND the command starts the run anew under the key `survey`
 - AND the new step supersedes the starting step
+
+### scenario.workflows.step-lobby-refusal — A run refused in the lobby is not adopted
+
+- GIVEN a workspace whose step `survey` is recorded as starting, with its node `workflow/steps/1-survey/` and no run
+- AND the step command that launched the step's run ended before it recorded the run's identity
+- AND that run was refused with `workspace_busy` before it took the [workspace lock](../glossary.json#concept.workspace-lock)
+- AND so the refused run's result lies in Execution's lobby, not in the step's node
+- AND no run of the workspace runs
+- WHEN the step command is run for `survey`
+- THEN the command does not adopt the refused run
+- AND the command ends the starting step's node lost
+- AND the command starts the run anew under the key `survey`
+- AND the new step supersedes the starting step
+- BUT no step of the workflow record names the refused run
 
 ### scenario.workflows.step-ends-later — A step's node ends later when the workflow lock stays busy
 

@@ -3,6 +3,7 @@ recovery puts back a move a killed write left, and archive moves misplaced recor
 
 from __future__ import annotations
 
+import errno
 import json
 import os
 import shutil
@@ -268,6 +269,32 @@ class ClosedFolderTests(unittest.TestCase):
         with self.assertRaises(IssueError) as raised:
             self.close(identifier, read_issue(self.root, identifier)[1])
         self.assertEqual("uncommitted_change", raised.exception.code)
+
+    @verifies("scenario.issues.store-move-check-failed")
+    def test_a_move_whose_committed_record_cannot_be_checked_puts_its_record_back(self):
+        identifier = self.recorded()
+        before, files = self.head(), self.issue_files()
+        revision = read_issue(self.root, identifier)[1]
+        committed = self.root / OPEN.format(identifier)
+        failure = OSError(errno.EIO, "Input/output error", str(committed))
+        read_bytes = Path.read_bytes
+
+        def reading(path):
+            if path == committed:
+                raise failure
+            return read_bytes(path)
+
+        # The close publishes the record in closed/, then cannot check the committed one.
+        with (
+            patch.object(Path, "read_bytes", reading),
+            self.assertRaises(OSError) as raised,
+        ):
+            self.close(identifier, revision)
+        self.assertIs(failure, raised.exception)
+        self.assertEqual((before, files), (self.head(), self.issue_files()))
+        self.assertEqual("", self.status())
+        record, current = read_issue(self.root, identifier)
+        self.assertEqual(("open", revision), (record["status"], current))
 
     @verifies("scenario.issues.store-archive")
     def test_archive_moves_every_misplaced_record_in_one_commit(self):

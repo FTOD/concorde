@@ -5,7 +5,7 @@ owns a procedure registers its name, description, script and last step with ``re
 Method registers ``brownfield``. A workflow's procedure is written once, as plain JavaScript with no
 asynchronous helper functions, by the part that owns it. It calls three functions the adapter
 ``scripts/claude.js`` defines: ``step(key, argv)`` returns a promise of the step outcome (or null
-when the step agent returned nothing), ``report(lost)`` a promise of the reported status, and
+when the step agent returned nothing), ``report(lost)`` a promise of the script's result, and
 ``note(text)`` shows progress. ``render`` puts a ``meta`` block, the constants ``WORKFLOW`` and
 ``LAST_STEP`` and that adapter, whose small subagents relay each step, in front of it.
 """
@@ -122,11 +122,18 @@ def renders(root: Path = PACKAGE_ROOT) -> dict[str, tuple[str, tuple[str, ...]]]
 def build_renders(root) -> dict:
     """The build's entry, which the workflow part's registration names: every registered
     workflow rendered for Claude Code from the sources under ``root``, as
-    ``{"files": {path: {"content", "sources"}}}``; none when ``root`` holds no step adapter, and
-    ``{"refusal": {"code", "message"}}`` when a render fails."""
+    ``{"files": {path: {"content", "sources"}}}``, with no file when no workflow is registered,
+    and ``{"refusal": {"code", "message"}}`` when a render fails, such as a registered workflow
+    whose step adapter is missing from ``root``."""
     root = Path(root)
-    if not (root / ADAPTER).is_file():
-        return {"files": {}}
+    if WORKFLOWS and not (root / ADAPTER).is_file():
+        return {
+            "refusal": {
+                "code": "invalid_workflow",
+                "message": f"the step adapter {root / ADAPTER} is missing, so the registered "
+                f"workflows {', '.join(sorted(WORKFLOWS))} cannot be rendered",
+            }
+        }
     try:
         found = renders(root)
     except WorkflowError as error:

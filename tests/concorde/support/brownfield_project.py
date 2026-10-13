@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import os
+import shlex
 import subprocess
 import sys
 import tempfile
@@ -99,6 +100,17 @@ class BrownfieldProject:
         )
         proposal = project_proposal(self.root, REPOSITORY_ROOT, "Shop", "module.shop")
         apply_project_proposal(self.root, REPOSITORY_ROOT, proposal)
+        # The installed command, committed as an install commits it, so that every worktree of
+        # the project runs its own `concorde`: here this checkout's package, by this Python.
+        launcher = self.root / ".concorde/bin/concorde"
+        launcher.parent.mkdir(parents=True, exist_ok=True)
+        launcher.write_text(
+            "#!/bin/sh\n"
+            f"PYTHONPATH={shlex.quote(str(REPOSITORY_ROOT / 'src'))}"
+            "${PYTHONPATH:+:$PYTHONPATH} "
+            f'exec {shlex.quote(sys.executable)} -m concorde "$@"\n'
+        )
+        launcher.chmod(0o755)
         commit(self.root, "adopt Concorde")
         claude_workers(self.root)
         self.fake = self.base / "claude"
