@@ -1461,10 +1461,10 @@ class TaskStoreTests(unittest.TestCase):
         self.assertTrue((history / "workspace").is_dir())
         self.assertFalse((history / "runtime").exists())
         node = trace.read(history)
-        self.assertEqual(
-            ("ok", "merged", value["closed"]["at"]),
-            (node["status"], node["outcome"], node["ended_at"]),
-        )
+        self.assertEqual(("ok", "merged"), (node["status"], node["outcome"]))
+        # The node ends once the closing is logged, which may be a later second than the closing
+        # under load: the same moment format, so the strings compare in time order.
+        self.assertGreaterEqual(node["ended_at"], value["closed"]["at"])
         self.assertEqual(
             ["open", "closed"],
             [item["state"] for item in node["content"]["data"]["transitions"]],
