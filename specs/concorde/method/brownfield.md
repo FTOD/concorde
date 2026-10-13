@@ -202,8 +202,8 @@ Method's requirements specify the order, the stops and the last step:
 A worktree without a binding runs no workflow at all, as Workflows requires
 ([req.workflows.bound-only](../workflows/requirements.md#req.workflows.bound-only)).
 
-Created Modules are described providers first, by the `uses` the survey proposed among them.
-Thus, a worker describing a consumer reads its providers' descriptions rather than their stubs.
+Created Modules are described providers first, by the `uses` the survey proposed among them, for
+the reason [Method's entry](module.md#the-brownfield-workflow) gives.
 Those `uses` may form cycles, which the Protocol allows. So the order condenses them into strongly
 connected groups. Each time, the next group comes from those whose used groups are all described.
 Among those groups, the one whose first Module the scaffold lists first is described next. Its
@@ -215,10 +215,8 @@ for it. A `describe` step that did not end `ok` does not end a no-ask workflow. 
 - Task validation decides whether the workspace can still be delivered.
 - The problem is reported.
 
-The review step runs `spec_panel` with its defaults rather than a lighter panel. The survey
-proposed the new Modules' boundaries and nobody has judged them yet. The architects judge how each
-new Module fits among the others. Several independent reviewers judge each description written from
-code.
+The review step runs `spec_panel` with its defaults rather than a lighter panel, for the reasons
+[Method's entry](module.md#the-brownfield-workflow) gives.
 
 Spec review findings are reported, not repaired, because repairing a
 [Spec](../glossary.json#concept.spec) needs a decision.

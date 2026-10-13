@@ -189,7 +189,19 @@ that run hands it. Its Operations declare its decision points in the
 - Every decision the survey took itself.
 - Every [open question](../glossary.json#concept.open-question).
 
-[The brownfield workflow](brownfield.md) walks through it.
+Two design reasons shape the procedure:
+
+- **Providers first.** The created Modules are described providers first, by the `uses` the survey
+  proposed among them. Thus, a worker describing a consumer reads its providers' descriptions
+  rather than their stubs. Mutual `uses`, which the Protocol allows, have no such order. So a
+  Module in a cycle may be described while a Module it uses still has its stub, and nothing is
+  refused for it.
+- **A full panel.** The review step runs `spec_panel` with its defaults, architects included,
+  rather than a lighter panel. Nobody has judged the boundaries the survey proposed yet. The
+  architects judge how each new Module fits among the others. Several independent reviewers judge
+  each description written from code.
+
+[The brownfield workflow](brownfield.md) walks through running and resuming it.
 
 ## Overview
 

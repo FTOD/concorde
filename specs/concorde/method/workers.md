@@ -183,7 +183,11 @@ The step hands Workers these inputs:
 
 The stop column ends the productive work, not the record. When a round ran, Workers audits it,
 even when it times out or returns an invalid result. Workers writes the run record for every
-worker run it was asked to start, including one refused before launch.
+worker run it was asked to start, including one refused before launch. A refusal of the worker
+configuration's reader in step 3 comes before any such request. It leaves no worker run record,
+run directory or [progress file](../glossary.json#concept.progress-file), only the Operation's
+`worker_model_unavailable` link
+([Refusals before a run](../worker-harness/workers/launch.md#refusals-before-a-run)).
 
 ### The round validation
 
