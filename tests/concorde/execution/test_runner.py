@@ -1039,6 +1039,8 @@ class RunnerTests(unittest.TestCase):
             "workspace_busy", [item["ref"] for item in envelope["host_evidence"]]
         )
         self.assertIsNone(json.loads(progress.read_text())["waiting_for"])
+        # The runner still writes under .concorde after its result: the cleanup waits for it.
+        self.wait_ended(announced["run_id"])
         with self.assertRaisesRegex(UsageError, "negative"):
             execute("command", "task-validation", ["--wait", "-1"], cwd=self.worktree)
 
@@ -1089,6 +1091,8 @@ class RunnerTests(unittest.TestCase):
         # Once the merge let go, the run did its own work: a readiness, not a refusal.
         envelope = self.wait_for(Path(announced["result"]))
         self.assertIsNotNone(envelope["output"], envelope)
+        # The runner still writes under .concorde after its result: the cleanup waits for it.
+        self.wait_ended(announced["run_id"])
 
     @verifies("scenario.execution.workspace-retired")
     def test_a_run_waiting_for_a_retired_workspace_is_refused(self):

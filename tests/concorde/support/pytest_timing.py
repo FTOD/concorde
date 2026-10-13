@@ -446,18 +446,16 @@ class ConcordeTiming:
         ]
         for unit in units:
             spans.append(
-                {
-                    **interval_record(
-                        name="test.unit",
-                        trace_id=run_id,
-                        parent_id=total_span["span_id"],
-                        started_at=unit.started_at,
-                        start_ns=unit.started_ns,
-                        end_ns=unit.ended_ns,
-                        status="error" if unit.failed else "ok",
-                    ),
-                    "process_id": unit.process_id,
-                }
+                interval_record(
+                    name="test.unit",
+                    trace_id=run_id,
+                    parent_id=total_span["span_id"],
+                    started_at=unit.started_at,
+                    start_ns=unit.started_ns,
+                    end_ns=unit.ended_ns,
+                    status="error" if unit.failed else "ok",
+                    process_id=unit.process_id,
+                )
             )
         counts = {
             key: sum(1 for unit in units if unit.status == key)
