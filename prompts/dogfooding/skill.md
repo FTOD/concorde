@@ -196,19 +196,27 @@ Then check it with `concorde issues report --check --file <path>`. This runs eve
 Concorde repository will run when it records the report. It records nothing. Until the check
 passes, repair the report.
 
-**A defect of the Issue system itself** is never written as a defect report. Such a defect is a
-crash or wrong result of any of these:
+**A failure of the Issue system itself** is never written as a defect report. Such a failure is a
+crash, a wrong result or a wrong refusal of any of these:
 
 - Concorde's Issue store.
 - `concorde issues`.
 - The project MCP server's Issue tools.
 
-This includes `concorde issues report --check` refusing a correct report. Do not write such a
-defect as a defect report because it is an Issue report. The Concorde repository would record it
-with the very Issue system that failed. A refusal whose reason is `environment`, such as
-`merge_busy`, is no defect. Only a busy lock passes by itself: for `merge_busy`, wait for the lock
-and write again. Every other such refusal names its cause and what removes it in its options.
-Follow those options, as the Issues guidance says, before you write again:
+A wrong refusal is, for example, `concorde issues report --check` refusing a correct report. Do not
+write such a failure as a defect report because it is an Issue report. The Concorde repository would
+record it with the very Issue system that failed.
+
+The exception covers failures only. A design limitation of the Issue system is an ordinary defect
+when the Issue system works and can record a report about it. An example is a report field that a
+legitimate report needs and Issues lacks. Write such a limitation as an ordinary defect report, as
+above. When the Issue system fails while you check or write that report, that failure is a failure
+of the Issue system.
+
+A refusal whose reason is `environment`, such as `merge_busy`, is no defect. Only a busy lock
+passes by itself: for `merge_busy`, wait for the lock and write again. Every other such refusal
+names its cause and what removes it in its options. Follow those options, as the Issues guidance
+says, before you write again:
 
 - For `merge_incomplete`, finish the merge with the command its message names.
 - For `commit_failed`, fix the cause it names, such as a refusing commit hook.
@@ -218,9 +226,8 @@ Follow those options, as the Issues guidance says, before you write again:
 Escalate a cause you cannot remove yourself, such as a disk that refuses writes, as any failure of
 a task. A new write without removing the cause meets the same refusal.
 
-Hand such a defect over as its error chain alone, with your own link on top. In a task, use
-`concorde task escalate <task> --code
-concorde_defect --reason scope`, as above. When a run's result carries the failure, use
+Hand a failure of the Issue system over as its error chain alone, with your own link on top. In a
+task, use `concorde task escalate <task> --code concorde_defect --reason scope`, as above. When a run's result carries the failure, use
 `--run <run-id>`. Otherwise, use `--error-file <json>` naming a file that holds the failing
 command's `{"error": ...}` output. The command records that link in the task. It prints the
 chain as `escalated`. Without a task, write your link by hand as above, with the failure's error
@@ -235,7 +242,7 @@ repository. That session records it as an Issue there. It fixes it in its own ta
 work the defect blocks open. Turn to other work. Do not close its task as failed for Concorde's
 sake. A defect you saw outside a task, such as in an unbound run or a refused command, opens no
 task. Keep its report only under `.concorde/runs/defects/`. Name that file to the developer,
-as you do with the error chain of a defect of the Issue system.
+as you do with the error chain of a failure of the Issue system.
 
 ### Take the fix
 

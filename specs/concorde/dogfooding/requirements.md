@@ -113,10 +113,10 @@ error, if any.
 The develop guidance SHALL require the defect report of a defect seen outside a task to be named to
 the developer.
 
-### req.dogfooding.issue-system-defect — A defect of the Issue system travels as its error chain
+### req.dogfooding.issue-system-failure — A failure of the Issue system travels as its error chain
 
-The develop guidance SHALL require a [Concorde defect](../glossary.json#concept.concorde-defect) of
-Concorde's Issue system itself to be handed over as the failure's whole
+The develop guidance SHALL require a failure of Concorde's Issue system itself, a crash, a wrong
+result or a wrong refusal, to be handed over as the failure's whole
 [error chain](../glossary.json#concept.error-chain) with the main agent's own link on top, and never
 as a [defect report](../glossary.json#concept.defect-report).
 
@@ -125,20 +125,29 @@ An Issue system failure is never recorded as an Issue
 ([Issues](../issues/requirements.md#req.issues.own-failures)) because the Concorde repository would
 record it with the very system that failed.
 
+### req.dogfooding.issue-design-limitation-reported — A design limitation of Issues is a defect report
+
+The develop guidance SHALL require a design limitation of Concorde's Issue system that the working
+Issue system can record to be written as an ordinary
+[defect report](../glossary.json#concept.defect-report).
+
+The exception for the Issue system exists because a system that failed cannot record its own
+failure. A design limitation leaves the Issue system working, so that reason does not apply.
+
 ### req.dogfooding.environment-refusal-handled — An environment refusal is handled by its options
 
 The develop guidance SHALL tell the main agent that a refusal whose reason is `environment` is no
 defect, to wait and write again only for a busy lock, and for every other such refusal to remove
 the cause its options name, or escalate it, before it writes again.
 
-### req.dogfooding.issue-system-defect-kept — The chain of an Issue system defect is kept
+### req.dogfooding.issue-system-failure-kept — The chain of an Issue system failure is kept
 
-The develop guidance SHALL require the error chain of a defect of Concorde's Issue system to be
+The develop guidance SHALL require the error chain of a failure of Concorde's Issue system to be
 written to `.concorde/runs/defects/`.
 
-### req.dogfooding.issue-system-defect-named — The chain of an Issue system defect is named
+### req.dogfooding.issue-system-failure-named — The chain of an Issue system failure is named
 
-The develop guidance SHALL require the error chain of a defect of Concorde's Issue system to be
+The develop guidance SHALL require the error chain of a failure of Concorde's Issue system to be
 named to the developer.
 
 ### req.dogfooding.report-checked — A defect report is checked before the hand-off

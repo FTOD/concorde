@@ -485,8 +485,9 @@ Examples include:
 - A failed commit.
 - A file the operating system would not write.
 
-When the Issue system can still record a report about a design gap of Issues, that report is an
-ordinary Issue, such as a suggestion.
+The exception covers failures only: a crash, a wrong result or a wrong refusal of the Issue system,
+and the refusals whose reason is `environment`. When the Issue system can still record a report
+about a design gap of Issues, that report is an ordinary Issue, such as a suggestion.
 
 ## Using Issues
 
