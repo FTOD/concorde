@@ -20,6 +20,7 @@ from concorde.execution.checks.timing import (
     Span,
     Trace,
     diagnostic_sink,
+    interval_record,
     metadata,
     summarize,
     timed,
@@ -86,6 +87,72 @@ class TimingTests(unittest.TestCase):
         )
         self.assertEqual(1, handed[0]["omitted"])
         self.assertEqual([None], [item["duration_ns"] for item in trace.records])
+
+    @verifies("scenario.checks.timing-interval")
+    def test_an_interval_measured_elsewhere_becomes_a_span_record(self):
+        started = "2026-10-13T09:00:00+00:00"
+        record = interval_record(
+            name="test.unit",
+            trace_id="run",
+            started_at=started,
+            start_ns=5_000_000_000,
+            end_ns=7_500_000_000,
+            process_id=4242,
+        )
+        self.assertEqual(
+            ("C", 4242, 2_500_000_000, "ok", None, {}),
+            (
+                record["layer"],
+                record["process_id"],
+                record["duration_ns"],
+                record["status"],
+                record["parent_id"],
+                record["metadata"],
+            ),
+        )
+        self.assertEqual(
+            {
+                "schema_version",
+                "trace_id",
+                "span_id",
+                "parent_id",
+                "layer",
+                "name",
+                "process_id",
+                "session_id",
+                "task_id",
+                "started_at",
+                "start_ns",
+                "duration_ns",
+                "status",
+                "metadata",
+            },
+            set(record),
+        )
+        self.assertEqual(
+            {"4242": 2.5}, summarize([record])["covered_seconds_by_process"]
+        )
+        open_ = interval_record(
+            name="test.unit",
+            trace_id="run",
+            started_at=started,
+            start_ns=1,
+            end_ns=None,
+            status="incomplete",
+        )
+        self.assertEqual(
+            (None, os.getpid()), (open_["duration_ns"], open_["process_id"])
+        )
+        for options in ({"end_ns": 0}, {"end_ns": 2, "status": "done"}):
+            with self.subTest(options=options):
+                with self.assertRaises(ValueError):
+                    interval_record(
+                        name="x",
+                        trace_id="run",
+                        started_at=started,
+                        start_ns=1,
+                        **options,
+                    )
 
     @verifies("scenario.checks.timing-summary")
     def test_overlap_and_missing_are_counted_per_process(self):
