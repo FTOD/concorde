@@ -614,14 +614,13 @@ def instructions(
 
 
 def _project_path(ctx: RunContext, path: str) -> str | None:
-    """The path relative to the worktree, or None when it is not a project path."""
+    """The path relative to the worktree, or None when it is not a project path: relative and
+    absolute paths alike must stay inside the worktree once every symbolic link on the way is
+    followed, so a link never lends a file outside the project its lines."""
+    root = Path(os.path.realpath(ctx.worktree))
     if os.path.isabs(path):
         try:
-            path = (
-                Path(os.path.realpath(path))
-                .relative_to(os.path.realpath(ctx.worktree))
-                .as_posix()
-            )
+            path = Path(os.path.realpath(path)).relative_to(root).as_posix()
         except ValueError:
             return None
     path = path.removeprefix("./")
@@ -630,6 +629,9 @@ def _project_path(ctx: RunContext, path: str) -> str | None:
     try:
         safe_path(path, "path")
     except (ContractError, TypedDataError, ValueError):
+        return None
+    # A deleted path resolves through the directories that remain, which must stay inside too.
+    if not Path(os.path.realpath(root / path)).is_relative_to(root):
         return None
     return path
 

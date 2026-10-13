@@ -86,7 +86,9 @@ roles:
 - The passage a Spec challenge disputes.
 
 Every finding also names its **locations**, the files and lines of the project's code that show
-it. The reviewer judges only against the Specs in its context, never against taste or another
+it. A location holds only inside the project once every symbolic link on its way is followed,
+whether it is written relative or absolute. Thus, a link never lends a file outside the project
+its lines. The reviewer judges only against the Specs in its context, never against taste or another
 Module's code. Thus, a disputed finding traces to a written promise and to the code in question.
 
 A finding's tier says who may act on it, as for every Issue. For code that keeps its promises but

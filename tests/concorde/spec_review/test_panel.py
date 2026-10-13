@@ -18,6 +18,7 @@ from concorde.spec.schema import validate
 from concorde.kernel.marker import write_marker
 from concorde.spec.verification import verifies
 from concorde.method.review_issues import NOT_RECORDED
+from concorde.method.spec_review import review
 from concorde.method.spec_review.panel import PAYLOAD_SCHEMA, account
 from tests.concorde.support.operation_project import (
     OperationProject,
@@ -111,6 +112,13 @@ def merged(*sources, note="Verified in the Spec.", **extra):
 
 def worker(**output):
     return [{"result": {"output": output}}]
+
+
+class RunContextStub:
+    """The one field of a run context that path validation reads."""
+
+    def __init__(self, worktree):
+        self.worktree = worktree
 
 
 class AccountingTests(unittest.TestCase):
@@ -557,7 +565,7 @@ class SpecPanelTests(unittest.TestCase):
         [unusable] = first["rejected"]
         self.assertEqual("/etc/elsewhere.md", unusable["finding"]["path"])
         self.assertNotIn("earlier", unusable["finding"])
-        self.assertIn("not a path in the task worktree", unusable["reason"])
+        self.assertIn("not an existing file of the task worktree", unusable["reason"])
         self.assertIn("invalid-output", self.kinds(envelope))
         self.assertEqual(["r1.1"], module["findings"][0]["sources"])
         [rejection] = module["rejected"]
@@ -565,6 +573,55 @@ class SpecPanelTests(unittest.TestCase):
         self.assertIn("the host rejected the chair's finding", rejection["reason"])
         self.assertEqual(1, len(self.issues()))
         self.assertEqual("changes_required", module["outcome"])
+
+    @verifies("scenario.spec-review.finding-path")
+    def test_relative_and_absolute_paths_hold_only_as_granted_files_of_the_workspace(self):
+        outside = self.project.base / "outside.md"
+        outside.write_text("# Outside\n")
+        (self.root / "specs" / "a" / "escape.md").symlink_to(outside)
+        commit(self.root, "a link out of the project")
+        paths = [
+            "specs/a/missing.md",
+            "specs/a/escape.md",
+            "src/a/calc.py",
+            "specs/a/module.md",
+        ]
+        plans = {
+            "reviewer module.a 1": worker(
+                findings=[finding(path, problem=path) for path in paths]
+            ),
+            "reviewer module.a 2": worker(findings=[]),
+            "chair module.a 1": worker(findings=[merged("r1.1")], rejected=[]),
+        }
+        exit_status, envelope = self.panel(plans, "--reviewers", "2")
+        self.assertEqual((0, "ok"), (exit_status, envelope["status"]), envelope)
+        first = envelope["output"]["modules"][0]["reviews"][0]
+        self.assertEqual(
+            ["specs/a/module.md"], [item["path"] for item in first["findings"]]
+        )
+        self.assertEqual(
+            paths[:3], [item["finding"]["path"] for item in first["rejected"]]
+        )
+        # The same file named by its absolute path holds as its relative path does.
+        absolute = str(self.worktree / "specs" / "a" / "module.md")
+        self.assertEqual(
+            "specs/a/module.md",
+            review._project_path(
+                RunContextStub(self.worktree), absolute, self.grant_value()
+            ),
+        )
+        self.assertIsNone(
+            review._project_path(
+                RunContextStub(self.worktree),
+                str(self.worktree / "specs" / "a" / "escape.md"),
+                self.grant_value(),
+            )
+        )
+
+    def grant_value(self):
+        return grant(
+            SpecRepository(self.worktree, REPOSITORY_ROOT), ["module.a"], "review-spec"
+        ).value
 
     @verifies("scenario.spec-review.panel-short")
     def test_a_blocked_reviewer_stops_the_panel_before_the_chair(self):

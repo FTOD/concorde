@@ -32,6 +32,7 @@ from ...execution.context import (
 )
 from ..specs import spec_cause, spec_finding
 from ..prompts import PROTOCOL_GUIDE
+from ...spec.grants import Grant
 from ...spec.repository import SpecRepository
 from ...spec.repository_base import SpecError
 from ...spec.schema import ContractError
@@ -388,15 +389,20 @@ def criteria(worktree: Path) -> str:
     )
 
 
-def _project_path(ctx: RunContext, path: str) -> str | None:
-    """The path relative to the task worktree, or None when it is not a project path."""
+NOT_HELD = (
+    "which is not an existing file of the task worktree that your grant lets you read"
+)
+
+
+def _project_path(ctx: RunContext, path: str, grant: dict | None = None) -> str | None:
+    """The path relative to the task worktree, or None when it does not hold: a path holds when
+    it names an existing file inside the worktree, after following every symbolic link, that
+    ``grant``, the worker's, lets it read, at level ``ro`` or ``rw`` or as its glossary.
+    Relative and absolute paths are judged alike."""
+    root = Path(os.path.realpath(ctx.worktree))
     if os.path.isabs(path):
         try:
-            path = (
-                Path(os.path.realpath(path))
-                .relative_to(os.path.realpath(ctx.worktree))
-                .as_posix()
-            )
+            path = Path(os.path.realpath(path)).relative_to(root).as_posix()
         except ValueError:
             return None
     path = path.removeprefix("./")
@@ -404,23 +410,35 @@ def _project_path(ctx: RunContext, path: str) -> str | None:
         safe_path(path, "path")
     except (ContractError, TypedDataError, ValueError):
         return None
+    resolved = Path(os.path.realpath(root / path))
+    if not resolved.is_relative_to(root) or not resolved.is_file():
+        return None
+    if (
+        grant is not None
+        and path != grant.get("glossary")
+        and Grant(grant).level(path) not in ("ro", "rw")
+    ):
+        return None
     return path
 
 
-def _normalize(ctx: RunContext, review: ModuleReview, claimed: list[dict]):
+def _normalize(
+    ctx: RunContext,
+    review: ModuleReview,
+    claimed: list[dict],
+    grant: dict | None = None,
+):
     """The payload findings, in the order claimed with None for each rejected one, the host's
-    scope corrections and the rejected findings, each with its reason: a finding whose path is
-    not one of the task worktree is rejected alone, never reported."""
+    scope corrections and the rejected findings, each with its reason: a finding whose path does
+    not hold under ``grant``, the grant of the worker that returned it, is rejected alone, never
+    reported."""
     repository = _state(ctx).repository
     own = {member for path in review.documents for member in (path, path + ".json")}
     findings, corrections, rejected = [], [], []
     for position, item in enumerate(claimed, 1):
-        path = _project_path(ctx, item["path"])
+        path = _project_path(ctx, item["path"], grant)
         if path is None:
-            reason = (
-                f"finding {position} names {item['path']!r}, which is not a path in the "
-                "task worktree"
-            )
+            reason = f"finding {position} names {item['path']!r}, {NOT_HELD}"
             corrections.append(evidence("invalid-output", review.module, reason))
             rejected.append(
                 {
@@ -454,17 +472,17 @@ def _normalize(ctx: RunContext, review: ModuleReview, claimed: list[dict]):
     return findings, corrections, rejected
 
 
-def path_repair(ctx: RunContext, result: dict) -> str | None:
-    """The repair that resumes a reviewing worker once with every finding whose path is not one
-    of the task worktree, or None when every path holds."""
+def path_repair(ctx: RunContext, result: dict, grant: dict | None = None) -> str | None:
+    """The repair that resumes a reviewing worker once with every finding whose path does not
+    hold under ``grant``, the worker's, or None when every path holds."""
     return review_issues.citation_repair(
         [
-            f"finding {position} (titled {item.get('title')!r}) names {item['path']!r}, which is "
-            "not a path in the task worktree"
+            f"finding {position} (titled {item.get('title')!r}) names {item['path']!r}, "
+            + NOT_HELD
             for position, item in enumerate(
                 (result.get("output") or {}).get("findings") or [], 1
             )
-            if _project_path(ctx, item["path"]) is None
+            if _project_path(ctx, item["path"], grant) is None
         ]
     )
 

@@ -88,15 +88,16 @@ The [definition](panel.md#earlier-issues) says what follows from a name that was
 
 ### req.spec-review.finding-path-resumed — A worker is resumed once to correct its paths
 
-When findings of a worker name a path that is not one of the workspace, the Operation SHALL resume
-that worker once, with those paths to correct.
+When findings of a worker name a path that does not [hold](panel.md#normalizing-a-finding), the
+Operation SHALL resume that worker once, with those paths to correct.
 
 A path that does not hold is a slip of one finding. The worker gets one chance to correct it.
 
 ### req.spec-review.finding-path — A finding whose path does not hold is not reported
 
-The Operation SHALL report no finding whose path is still not one of the workspace after the
-worker's [resume round](../../glossary.json#concept.resume-round).
+The Operation SHALL report no finding whose path still does not
+[hold](panel.md#normalizing-a-finding) after the worker's
+[resume round](../../glossary.json#concept.resume-round).
 
 Afterwards, a path that does not hold costs only that finding. The Module is not made `incomplete`
 for it.

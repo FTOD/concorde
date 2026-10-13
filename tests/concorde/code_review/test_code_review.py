@@ -495,6 +495,29 @@ class CodeReviewTests(unittest.TestCase):
         self.assertEqual(["suggestion"], [item["tier"] for item in entry["findings"]])
         self.assertEqual(1, len(self.issues()))
 
+    @verifies("scenario.code-review.unknown-location")
+    def test_a_relative_link_out_of_the_project_is_no_location(self):
+        outside = self.project.base / "outside"
+        outside.mkdir()
+        (outside / "x.py").write_text("SECRET = 1\n")
+        (self.worktree / "src/a/out.py").symlink_to(outside / "x.py")
+        (self.worktree / "src/a/out").symlink_to(outside)
+        refs = [
+            "src/a/out.py:1",
+            "src/a/out/x.py:1",
+            f"{self.worktree}/src/a/out.py:1",
+        ]
+        _, envelope = self.change(
+            *(finding(locations=[ref], title=ref) for ref in refs),
+            finding(locations=["src/a/calc.py:2"], tier="suggestion"),
+        )
+        problems = self.unresolved(envelope)
+        self.assertEqual(refs, [item["ref"] for item in problems])
+        self.assertTrue(
+            all("is not a path in the project" in item["detail"] for item in problems)
+        )
+        self.assertEqual(3, len(self.module_entry(envelope)["rejected"]))
+
     def test_a_finding_about_a_module_not_reviewed_is_not_reported(self):
         _, envelope = self.change(finding(module="module.b"))
         [problem] = self.unresolved(envelope)

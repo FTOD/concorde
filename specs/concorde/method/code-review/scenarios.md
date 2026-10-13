@@ -138,7 +138,7 @@ in the [contracts](contracts.md).
 ### scenario.code-review.unknown-location — A finding located in no file is not reported
 
 - GIVEN a reviewer that, also after its one resume round, returns findings naming locations that do not hold
-- AND those locations name a file that does not exist, lines beyond the file's end or a place outside the project
+- AND those locations name a file that does not exist, lines beyond the file's end or a place outside the project, also through a symbolic link
 - AND the reviewer also returns one finding whose location holds
 - WHEN the Operation checks the findings
 - THEN each finding whose location does not hold is listed under `rejected` with the reason, and each such location is host evidence
