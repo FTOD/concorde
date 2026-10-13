@@ -374,7 +374,7 @@ The worker sequence adds these codes.
 | Grant not computable | `grant_unavailable` | `scope` | Spec core's error |
 | An unbound run asked for a worker whose grant keeps a writable path | `unbound_write` | `scope` | none |
 | Worker backend or model configuration not settled | `worker_model_unavailable` | `input` (`config_invalid` and the other refusals of the worker configuration) or `environment` (`backend_missing`, `model_map_missing`, `model_map_invalid`, `model_unmapped`) | the `component` link of Workers' model configuration, with its code and the file |
-| Configured checks cannot run | `checks_unavailable` | `environment` | Check execution's error |
+| Configured checks cannot run | `checks_unavailable` | `environment` | Check execution's error, or Spec core's error translated as below when the Specs that select the checks do not load |
 | Worker run ended with an audit violation, or the round validation or the check after the worker run found a glossary ownership violation | `audit_violation` | `permission` | the run record's error, when the worker run ended with one |
 | Worker run ended with checks still failing | `checks_failed` | `decision` | the run record's error |
 | Worker ended `blocked` or `failed` | `worker_blocked`, `worker_failed` | `decision` | the run record's error, whose cause is the worker's link |

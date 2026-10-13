@@ -421,6 +421,7 @@ def round_validation(
     from ..execution.checks.checks import CheckError, check_error, service_error
     from ..spec.errors import SpecError
     from .checks import run_module_checks
+    from .specs import spec_cause
 
     def validation(worktree: Path, folder: Path, result: dict) -> RoundValidation:
         if glossary is not None:
@@ -449,7 +450,13 @@ def round_validation(
                         "checks_unavailable",
                         f"the configured checks of {', '.join(check_modules)} could not run "
                         f"({code}): {error}",
-                        (service_error(error),),
+                        # Spec tooling's own error keeps its whole record, never blamed on
+                        # Check execution.
+                        (
+                            spec_cause(error)
+                            if isinstance(error, SpecError)
+                            else service_error(error),
+                        ),
                     )
                 )
             failures = [item for item in checks if item["status"] != "passed"]
