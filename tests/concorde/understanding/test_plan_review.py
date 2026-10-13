@@ -335,6 +335,8 @@ class PlanReviewTests(unittest.TestCase):
                 finding(2, basis=None),
                 finding(3, kind="goal", basis=None),
                 finding(4, kind="goal", basis="specs/a/module.md#design"),
+                finding(5, kind="goal", basis="specs/a/module.md"),
+                finding(6, basis="specs/a/module.md#nonexistent-promise"),
             ]
         )
         _, envelope = self.review()
@@ -348,6 +350,8 @@ class PlanReviewTests(unittest.TestCase):
         self.assertIn("F2 cites (none)", link["detail"])
         self.assertNotIn("F3", link["detail"])
         self.assertNotIn("F4", link["detail"])
+        self.assertNotIn("F5", link["detail"])
+        self.assertIn("F6 cites specs/a/module.md#nonexistent-promise", link["detail"])
 
     @verifies("scenario.understanding.plan-unresolved-basis")
     def test_a_selected_concept_is_a_basis_wherever_it_is_explained(self):

@@ -59,8 +59,8 @@ The unknown identities are returned as host evidence. The Operation never drops 
 
 ### req.understanding.consistent — Inconsistent assessments fail the run
 
-The understand Operation SHALL end a run `failed` when the assessment has any of these
-inconsistencies:
+When the assessment has any of these inconsistencies, the understand Operation SHALL end a run
+`failed`:
 
 - It lists Spec gaps although it is sufficient.
 - It lists no Spec gaps although it is insufficient.
@@ -143,8 +143,8 @@ Any violation the [write audit](../../glossary.json#concept.write-audit) finds e
 
 ### req.understanding.plan-review-answers — Every previous finding is answered once
 
-The `plan_review` Operation SHALL end the run `failed` with `iteration_mismatch`, before any worker
-launches, when any of these conditions holds:
+When any of these conditions holds, the `plan_review` Operation SHALL end the run `failed` with
+`iteration_mismatch` before any worker launches:
 
 - More than one admitted input is a `plan_review` run.
 - A finding of the admitted `plan_review` input is not answered exactly once by `--accept` or
@@ -157,8 +157,8 @@ reviewer. They need no answer.
 
 ### req.understanding.plan-review-responses — The reviewer answers the previous iteration
 
-The `plan_review` Operation SHALL end the run `failed` with `inconsistent_review` when any of these
-conditions holds:
+When any of these conditions holds, the `plan_review` Operation SHALL end the run `failed` with
+`inconsistent_review`:
 
 - Two of the reviewer's findings have the same id.
 - The reviewer's responses are not exactly one per finding of the previous iteration.
@@ -173,6 +173,12 @@ When a finding's basis does not resolve in the bound Modules'
 `plan_review` Operation SHALL end the run `failed` with `unresolved_basis`.
 
 A concept resolves when the Spec context selects its glossary entry, wherever its explanation lies.
+A document path resolves when the Spec context selects the document. An anchor after the path
+resolves only when that document has it, as one of these:
+
+- A readable anchor, such as an `<a id>` anchor or a requirement or scenario identity.
+- The anchor of one of its headings: an explicit `{#…}` anchor, or else the heading's text in lower
+  case, without punctuation other than `-` and `_`, with each space a `-`.
 
 ### req.understanding.plan-review-verdict — The verdict follows the findings
 
