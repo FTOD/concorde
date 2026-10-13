@@ -528,8 +528,11 @@ This integration works through records rather than a call. Execution promises th
   ([Runner](runner.md#runner)).
 
 The preparer reads those records itself to tell each run running, ended or lost. It waits on a run
-lock to learn that a run ended. It sends `SIGTERM` itself, as a task's close does. Execution
-registers no call for any of it. Without the execution part, none of these records exists, so a
+lock to learn that a run ended. It sends `SIGTERM` itself, as a task's close does. It finds the
+process to signal as the holder of the run lock that the operating system's lock table shows in its
+own PID namespace. It never signals `host_pid`, which may name an unrelated process there. When
+that table shows no holder, the preparer cannot stop the run. It waits on the run lock instead.
+Execution registers no call for any of it. Without the execution part, none of these records exists, so a
 workspace has no runs. Coordination says so.
 
 **An idle check** serves Distribution. This is the one integration Execution's

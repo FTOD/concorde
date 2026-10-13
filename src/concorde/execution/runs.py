@@ -175,6 +175,29 @@ RESULT_SCHEMA: dict = {
 }
 
 
+def validate_result(result) -> None:
+    """``KernelError`` unless ``result`` satisfies the run result contract: its schema, an
+    ``error`` that is null exactly when the status is ``ok``, and an error of the level of the
+    run's kind. Publication and input admission judge a result alike."""
+    validate(result, RESULT_SCHEMA)
+    error, status = result["error"], result["status"]
+    if (error is None) != (status == "ok"):
+        raise KernelError(
+            "invalid_input",
+            f"a result of status {status} has "
+            + ("no error" if error is None else "an error")
+            + "; error is null exactly when the status is ok",
+            field="/error",
+        )
+    if error is not None and error["level"] != result["kind"]:
+        raise KernelError(
+            "invalid_input",
+            f"the error of a run of kind {result['kind']} is a link of level "
+            f"{error['level']!r}, not the run's own link",
+            field="/error/level",
+        )
+
+
 class RunError(Exception):
     """A run the store refuses before it begins; ``code`` names why."""
 
@@ -414,7 +437,7 @@ def admit_inputs(
                 f"--input {identity} has no readable result at {result_path(store, identity)}",
             )
         try:
-            validate(result, RESULT_SCHEMA)
+            validate_result(result)
         except KernelError as problem:
             raise RunError(
                 "input_not_admissible",
@@ -501,6 +524,7 @@ __all__ = [
     "run_state",
     "runner_alive",
     "store_of",
+    "validate_result",
     "waiting_runs",
     "workspace_lock",
     "workspace_runs",

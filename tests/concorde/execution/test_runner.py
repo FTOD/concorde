@@ -1658,6 +1658,8 @@ class RunnerTests(unittest.TestCase):
         self.assertTrue(lock.is_file())
         self.assertTrue(locks.held(lock))
         self.assertIn(run_id, locks.holder(lock))
+        # The lock table shows the runner as the lock's holder: whoever stops the run signals it.
+        self.assertEqual([announced["host_pid"]], locks.holder_pids(lock))
         self.assertTrue(runs.runner_alive(self.store(), run_id))
         self.assertEqual("running", runs.run_state(self.store(), run_id))
         release.set()
@@ -2184,6 +2186,27 @@ class RunnerTests(unittest.TestCase):
         )
         self.assertEqual(["refused", "input_not_admissible"], codes(refused["error"]))
         self.assertIn("current run result contract", refused["error"]["detail"])
+        # A result whose status contradicts its error breaks the contract too, though each
+        # field has its shape: an ok result has no error.
+        contradictory = {
+            **older,
+            "worker_runs": [],
+            "status": "ok",
+            "error": errors_link(
+                "command",
+                "Command task-validation",
+                "not_deliverable",
+                "a well-formed link",
+                reason="input",
+                explanation="it contradicts the status",
+            ),
+        }
+        saved.write_text(json.dumps(contradictory))
+        _, refused = self.project.run(
+            "understand", "--task", "t1", "--input", first["run_id"]
+        )
+        self.assertEqual(["refused", "input_not_admissible"], codes(refused["error"]))
+        self.assertIn("error is null exactly when", refused["error"]["detail"])
 
     def test_the_idle_check_finds_the_unbound_runs_of_linked_worktrees(self):
         from concorde.execution.idle import active_runs
@@ -2683,6 +2706,83 @@ class UnboundCheckoutTests(unittest.TestCase):
         )
         self.assertEqual([], envelope["worker_runs"])
         self.assertEqual([self.root], worktrees(self.root))
+
+    @verifies("scenario.execution.unbound-setup-failed")
+    def test_a_checkout_whose_setup_fails_is_named_and_removed(self):
+        from concorde.execution import checkout as module
+
+        def failing(root):
+            raise RuntimeError("resolver broke")
+
+        examined = head(self.root)
+        with patch.dict(
+            catalog.OPERATIONS.definitions,
+            {"understand": dataclasses.replace(PROBE, runtime_paths=failing)},
+        ):
+            status, envelope = self.probe()
+        self.assertEqual(
+            (1, "host_error"), (status, envelope["error"]["code"]), envelope
+        )
+        self.assertIn("resolver broke", envelope["error"]["detail"])
+        self.assertEqual(examined, envelope["commit"])
+        self.assertIn(
+            examined,
+            [
+                item["ref"]
+                for item in envelope["host_evidence"]
+                if item["kind"] == "checkout"
+            ],
+        )
+        self.assertEqual([self.root], worktrees(self.root))
+        self.assertEqual([], list((self.root / ".claude/worktrees").glob(f"{PREFIX}*")))
+        # A removal Git and the direct removal both refuse is named, the status unchanged.
+        real = module._git
+
+        def refusing(cwd, *arguments, **options):
+            if arguments[:2] == ("worktree", "remove"):
+                return subprocess.CompletedProcess(arguments, 1, "", "refused")
+            return real(cwd, *arguments, **options)
+
+        with (
+            patch.dict(
+                catalog.OPERATIONS.definitions,
+                {"understand": dataclasses.replace(PROBE, runtime_paths=failing)},
+            ),
+            patch.object(module, "_git", refusing),
+            patch.object(module.shutil, "rmtree"),
+        ):
+            status, envelope = self.probe()
+        [left] = [
+            item
+            for item in envelope["host_evidence"]
+            if item["kind"] == "checkout-not-removed"
+        ]
+        self.addCleanup(git, self.root, "worktree", "remove", "--force", left["ref"])
+        self.assertEqual((1, "host_error"), (status, envelope["error"]["code"]))
+        self.assertEqual(examined, envelope["commit"])
+        self.assertIn("could not be deleted directly", left["detail"])
+
+    @verifies("scenario.execution.unbound-checkout-interrupted")
+    def test_a_signal_during_the_checkouts_creation_leaves_no_checkout(self):
+        from concorde.execution import checkout as module
+
+        real = module._git
+
+        def interrupted(cwd, *arguments, **options):
+            done = real(cwd, *arguments, **options)
+            if arguments[:2] == ("worktree", "add") and "--detach" in arguments:
+                # Git made the checkout; the signal arrives before the call returns.
+                os.kill(os.getpid(), signal.SIGTERM)
+            return done
+
+        with patch.object(module, "_git", interrupted):
+            status, envelope = self.probe()
+        self.assertEqual(
+            (1, "cancelled"), (status, envelope["error"]["code"]), envelope
+        )
+        self.assertEqual([], envelope["worker_runs"])
+        self.assertEqual([self.root], worktrees(self.root))
+        self.assertEqual([], list((self.root / ".claude/worktrees").glob(f"{PREFIX}*")))
 
     @verifies("scenario.execution.unbound-checkout-removed")
     def test_a_checkout_the_fallback_cannot_remove_is_named_with_what_is_left(self):
