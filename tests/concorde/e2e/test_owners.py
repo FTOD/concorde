@@ -286,7 +286,9 @@ class OwnersCaseTests(unittest.TestCase):
         self.concorde(refused=True)
         # A read after the first that found the result may find none, as one does while the run
         # rewrites its progress file under load: the case must judge the result it read.
-        read = owners.result_of
+        # Once the result is found, the progress file reads as one being rewritten too: the
+        # refusal must still name the result where it is.
+        read, named = owners.result_of, owners._run_id
         found = set()
 
         def once(records, run_id):
@@ -299,6 +301,9 @@ class OwnersCaseTests(unittest.TestCase):
 
         with (
             patch.object(owners, "result_of", once),
+            patch.object(
+                owners, "_run_id", lambda folder: None if found else named(folder)
+            ),
             self.assertRaises(e2e.E2EError) as raised,
         ):
             self.run_case()
