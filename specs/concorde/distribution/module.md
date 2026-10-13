@@ -1150,6 +1150,7 @@ The table lists these details for every refusal:
 | `install_failed` | a file operation of the installer or of `concorde update` fails | `environment` | yes |
 | `not_installed` | `concorde update` finds no readable receipt | `input` | no |
 | `update_source_missing` | `concorde update` finds no checkout to update from | `input` | no |
+| `update_start_failed` | the operating system refuses to start the installer of the checkout `concorde update` updates from | `environment` | no |
 
 ### After installing
 

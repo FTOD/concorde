@@ -2376,6 +2376,41 @@ class InstallTests(unittest.TestCase):
             "environment", refusal("concorde_busy", "busy")["unhandled"]["reason"]
         )
 
+    @verifies("scenario.distribution.install-refusal-link")
+    def test_update_refuses_a_malformed_receipt_and_a_refused_start(self):
+        from concorde.distribution.cli import update_main
+
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        project = Path(directory.name)
+        (project / ".concorde").mkdir()
+
+        def refused(**patches):
+            output = io.StringIO()
+            with contextlib.redirect_stdout(output), contextlib.ExitStack() as stack:
+                for target, effect in patches.items():
+                    stack.enter_context(patch(target, side_effect=effect))
+                status = update_main(["--project-root", str(project)])
+            self.assertEqual(1, status)
+            error = json.loads(output.getvalue())["error"]
+            validate(error, ERROR_SCHEMA)
+            return error["code"], error["unhandled"]["reason"], error["detail"]
+
+        for receipt in ("[]", '{"source": 7}'):
+            with self.subTest(receipt=receipt):
+                (project / ".concorde/install.json").write_text(receipt)
+                code, reason, detail = refused()
+                self.assertEqual(("update_source_missing", "input"), (code, reason))
+                self.assertIn("install.json", detail)
+        (project / ".concorde/install.json").write_text(
+            json.dumps({"source": str(REPOSITORY_ROOT)})
+        )
+        code, reason, detail = refused(
+            **{"subprocess.run": PermissionError(13, "Permission denied")}
+        )
+        self.assertEqual(("update_start_failed", "environment"), (code, reason))
+        self.assertIn("Permission denied", detail)
+
     def test_the_refusal_table_lists_every_refusal_with_its_reason(self):
         text = (REPOSITORY_ROOT / "specs/concorde/distribution/module.md").read_text()
         section = text.split("\n### Refusals\n", 1)[1].split("\n### ", 1)[0]
@@ -2398,7 +2433,7 @@ class InstallTests(unittest.TestCase):
         ):
             raised.update(
                 re.findall(
-                    r'(?:InstallError|ToolError|DevelopError|refusal)\(\s*"([a-z0-9_]+)"',
+                    r'(?:InstallError|ToolError|DevelopError|refusal|refuse)\(\s*"([a-z0-9_]+)"',
                     (REPOSITORY_ROOT / source).read_text(),
                 )
             )
