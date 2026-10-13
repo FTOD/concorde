@@ -2055,7 +2055,13 @@ def stop_task(primary: Path, task_id: str) -> list[str]:
     for folder in run_store.folders(concorde(primary), workspace, task_id):
         run_id = (run_store.progress(folder) or {}).get("run_id") or folder.name
         lock = run_store.run_lock(concorde(primary), run_id)
-        for pid in locks.holder_pids(lock):
+        try:
+            pids = locks.holder_pids(lock)
+        except locks.LockTableUnsettled as unsettled:
+            # Every process a read of the table named held the run lock at that moment, and only
+            # the run's runner holds it, so each of them is stopped.
+            pids = unsettled.seen
+        for pid in pids:
             try:
                 os.kill(pid, signal.SIGTERM)
                 stopped.append(f"run {run_id} (process {pid})")

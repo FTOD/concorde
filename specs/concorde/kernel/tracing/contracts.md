@@ -705,7 +705,21 @@ From any PID namespace, an observer uses either method:
 - It reads the operating system's lock table `/proc/locks` for the file's device and inode.
 
 It uses both the device and inode since an inode number is unique only within its filesystem.
-The observer never decides by a recorded process identifier. The run lock
+The observer never decides by a recorded process identifier.
+
+**Reading the lock table.** The operating system serves `/proc/locks` one page per read call. The
+table can change between two such calls. Therefore, one read of a table longer than one page can
+skip a lock that stays held, or show it twice. An observer that reads the holders of a lock from
+the table performs these steps:
+
+- It reads the whole table again until two consecutive complete reads are identical.
+- It takes the holders from the second of those reads.
+- It names each holder once.
+
+When no two consecutive reads are identical within one second, the observer refuses to name the
+holders. Its refusal names, once each, every process that some read showed as a holder. Each such
+process held the lock at some moment of the reads. The observer never answers from a read that may
+be partial. The run lock
 of a bound run lies under `locks/` of the `.concorde` its binding names. The run lock of an unbound
 run lies under the `.concorde` of the worktree it started in.
 

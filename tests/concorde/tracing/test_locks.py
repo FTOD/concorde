@@ -1,4 +1,5 @@
-"""The lock library's holder line and the handing of a held lock to another process."""
+"""The lock library's holder line, the handing of a held lock to another process and the reading
+of the kernel's lock table."""
 
 from __future__ import annotations
 
@@ -7,6 +8,7 @@ import os
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 from pathlib import Path
 from unittest.mock import patch
@@ -121,6 +123,101 @@ class LockLineTests(unittest.TestCase):
         path = Path(tempfile.mkdtemp()) / "run.lock"
         with locks.hold(path, "the test"):
             self.assertEqual([os.getpid()], locks.holder_pids(path))
+
+    @verifies("scenario.tracing.lock-table-settled")
+    def test_the_lock_table_is_read_until_two_reads_agree(self):
+        path, held, other = self.lock_and_lines()
+        table = ChangingTable([other, held + held + other, held + other, held + other])
+        with patch.object(locks, "LOCK_TABLE", table):
+            self.assertEqual([101], locks.holder_pids(path))
+        self.assertEqual(4, table.reads)
+
+    @verifies("scenario.tracing.lock-table-unsettled")
+    def test_a_lock_table_that_never_settles_is_refused(self):
+        path, held, other = self.lock_and_lines()
+        churn = ChurningTable([other, held + held + other, held + other])
+        started = time.monotonic()
+        with (
+            patch.object(locks, "LOCK_TABLE", churn),
+            self.assertRaises(locks.LockTableUnsettled) as refused,
+        ):
+            locks.holder_pids(path)
+        self.assertGreaterEqual(time.monotonic() - started, 1.0)
+        self.assertEqual([101], refused.exception.seen)
+        self.assertGreater(refused.exception.reads, 2)
+
+    def test_a_held_lock_is_named_once_while_other_processes_churn_locks(self):
+        """Real processes take and release enough locks to keep the kernel's table over a page and
+        changing; each answer names this process once, or refuses naming it once."""
+        folder = Path(tempfile.mkdtemp())
+        path = folder / "run.lock"
+        churners = [
+            subprocess.Popen([sys.executable, "-c", CHURN, str(folder), str(number)])
+            for number in range(8)
+        ]
+        try:
+            with locks.hold(path, "the test"):
+                largest = 0
+                deadline = time.monotonic() + 2
+                while time.monotonic() < deadline:
+                    largest = max(largest, len(locks.LOCK_TABLE.read_text()))
+                    try:
+                        self.assertEqual([os.getpid()], locks.holder_pids(path))
+                    except locks.LockTableUnsettled as unsettled:
+                        self.assertEqual([os.getpid()], unsettled.seen)
+        finally:
+            for churner in churners:
+                churner.kill()
+                churner.wait()
+        self.assertGreater(largest, 4096)
+
+    def lock_and_lines(self) -> tuple[Path, str, str]:
+        """A lock file, a table line naming process 101 as its holder and one for another inode."""
+        path = Path(tempfile.mkdtemp()) / "run.lock"
+        path.touch()
+        status = os.stat(path)
+        file = f"{os.major(status.st_dev):02x}:{os.minor(status.st_dev):02x}"
+        held = f"1: FLOCK  ADVISORY  WRITE 101 {file}:{status.st_ino} 0 EOF\n"
+        other = f"2: FLOCK  ADVISORY  WRITE 102 {file}:{status.st_ino + 1} 0 EOF\n"
+        return path, held, other
+
+
+class ChangingTable:
+    """A lock table whose reads give the texts in turn, the last one ever after."""
+
+    def __init__(self, texts: list[str]):
+        self.texts = texts
+        self.reads = 0
+
+    def read_text(self) -> str:
+        self.reads += 1
+        return self.texts[min(self.reads, len(self.texts)) - 1]
+
+
+class ChurningTable(ChangingTable):
+    """A lock table whose reads cycle through the texts, each with a line of a lock taken just
+    then, so no two reads are ever identical."""
+
+    def read_text(self) -> str:
+        self.reads += 1
+        churn = (
+            f"9: FLOCK  ADVISORY  WRITE {1000 + self.reads} 00:00:{self.reads} 0 EOF\n"
+        )
+        return self.texts[self.reads % len(self.texts)] + churn
+
+
+# A process that takes and releases 40 locks of its own in a loop.
+CHURN = """
+import fcntl, os, sys, time
+paths = [os.path.join(sys.argv[1], f"churn-{sys.argv[2]}-{i}") for i in range(40)]
+while True:
+    descriptors = [os.open(p, os.O_RDWR | os.O_CREAT) for p in paths]
+    for descriptor in descriptors:
+        fcntl.flock(descriptor, fcntl.LOCK_EX)
+    time.sleep(0.001)
+    for descriptor in descriptors:
+        os.close(descriptor)
+"""
 
 
 if __name__ == "__main__":
