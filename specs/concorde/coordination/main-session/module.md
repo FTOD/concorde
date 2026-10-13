@@ -798,7 +798,7 @@ Their result names:
 
 The guidance tells the task session to handle these Issues like any other Issue of its task, by
 their tier. It tells the task session to handle them in later `specify` or `implement` work, never
-in the review. For a `code_review` finding that challenges the Spec, usually `decision-needed`, the
+in the review. For a `code_review` finding that challenges the Spec, always `decision-needed`, the
 guidance tells the task session to escalate rather than change the promise itself. The guidance also
 tells the task session to close each Issue the review found resolved. When the task fixed the Issue,
 the task session closes it through its task with `task resolve`. Otherwise, the task session closes
