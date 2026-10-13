@@ -575,7 +575,9 @@ class SpecPanelTests(unittest.TestCase):
         self.assertEqual("changes_required", module["outcome"])
 
     @verifies("scenario.spec-review.finding-path")
-    def test_relative_and_absolute_paths_hold_only_as_granted_files_of_the_workspace(self):
+    def test_relative_and_absolute_paths_hold_only_as_granted_files_of_the_workspace(
+        self,
+    ):
         outside = self.project.base / "outside.md"
         outside.write_text("# Outside\n")
         (self.root / "specs" / "a" / "escape.md").symlink_to(outside)
