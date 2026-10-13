@@ -67,6 +67,14 @@ binds names.
 On every run it does not refuse and in which Git lists the tracked files, the Operation SHALL find
 the files Git tracks that no Module binds.
 
+### req.project-review.unowned-unlisted — Files Git cannot list make the review incomplete
+
+When Git cannot list the tracked files, the Operation SHALL make the root Module's outcome and the
+project's verdict `incomplete` and report `deterministic.complete` false, with the reason in its
+[error chain](../../glossary.json#concept.error-chain).
+
+Thus, a run that could not look for unowned files never reads as one that found none.
+
 ### req.project-review.deterministic-issues — Each deterministic problem is one Issue
 
 Where the issues part is installed, the Operation SHALL report each failed or timed-out check, each
@@ -91,6 +99,11 @@ report.
 When the run examined a Module's deterministic problems of one kind and found none with the title
 of an open Issue of that Module and kind, the Operation SHALL list that Issue as resolved, leaving
 it open for a task to close.
+
+### req.project-review.deterministic-unexamined — An unexamined problem's Issue is carried
+
+When the checks could not run or Git could not list the tracked files, the Operation SHALL list as
+carried every open Issue of each Module and kind it could not examine, and resolve none of them.
 
 ## Skipping and the record
 

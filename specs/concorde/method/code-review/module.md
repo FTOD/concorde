@@ -86,13 +86,17 @@ roles:
 - The passage a Spec challenge disputes.
 
 Every finding also names its **locations**, the files and lines of the project's code that show
-it. The reviewer judges only against the Specs in its context, never against taste or another
+it. A location holds only inside the project once every symbolic link on its way is followed,
+whether it is written relative or absolute. Thus, a link never lends a file outside the project
+its lines. The reviewer judges only against the Specs in its context, never against taste or another
 Module's code. Thus, a disputed finding traces to a written promise and to the code in question.
 
 A finding's tier says who may act on it, as for every Issue. For code that keeps its promises but
 could serve them better, the tier is `suggestion`. Otherwise, it is a blocking tier, `obvious-fix`,
 `preferred-fix` or `decision-needed`. Since changing what a Module promises is decided above the
-task, a Spec challenge is usually `decision-needed`. Its severity says, independently, how much
+task, every Spec challenge is `decision-needed`. The Operation gives a Spec challenge that tier
+whatever tier the reviewer chose, and names each such correction as `challenge-tier` host
+evidence. Its severity says, independently, how much
 the problem matters to the callers and the later tasks relying on the code. It ranges from
 `critical`, such as wrong results or lost data, down to `low`, something cosmetic.
 

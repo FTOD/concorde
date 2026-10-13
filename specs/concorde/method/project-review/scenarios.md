@@ -60,9 +60,22 @@ record's shapes are in the [contracts](contracts.md).
 ### scenario.project-review.check-repaired — A repaired check's Issue no longer stands
 
 - GIVEN an open Issue of phase `check` that a `project_review` reported for a failed check
-- WHEN the check passes again and the main agent runs `project_review`
+- WHEN a change of that Module's code makes the check pass again and the main agent runs `project_review`
 - THEN that Issue is listed resolved and no longer stands
 - BUT it stays open until a task closes it
+
+### scenario.project-review.unowned-unlisted — Files Git cannot list make the review incomplete
+
+- GIVEN a project with the issues part and configured workers, whose tracked files Git cannot list
+- WHEN the main agent runs `project_review`
+- THEN `deterministic.complete` is false, the root Module is `incomplete` and so is the verdict
+- AND the run ends `failed` with `unowned_unavailable` in its error chain
+
+### scenario.project-review.unexamined-carried — The Issues of an unexamined kind are carried
+
+- GIVEN open Issues that `project_review` reported for a failed check and for files bound to no Module
+- WHEN the checks cannot run and Git cannot list the tracked files on the next `project_review --full`
+- THEN both Issues are listed carried and neither is listed resolved
 
 ### scenario.project-review.structural-error — A structurally invalid Module is incomplete alone
 
@@ -82,16 +95,16 @@ record's shapes are in the [contracts](contracts.md).
 ### scenario.project-review.narrowed — --modules narrows what the verdict counts
 
 - GIVEN a project whose Module A has Issues that stand
-- WHEN the main agent runs `project_review --modules` naming Module B alone
+- WHEN the main agent runs `project_review --full --modules` naming Module B alone
 - THEN the result covers Module B alone, and the Issues that stand are counted for Module B alone
-- AND when `--modules` names both Modules in the reverse of the registry's order, the result lists them in the registry's order
+- AND when, after a change of Module B, `--modules` names both Modules in the reverse of the registry's order, the result lists them in the registry's order
 
 ## Issues and the record
 
 ### scenario.project-review.skipped-resolutions — A skipped part keeps what it found resolved
 
 - GIVEN a code review of `project_review` that found an earlier Issue resolved, which no task closed yet
-- WHEN a later `project_review` skips that code review, since its Module is unchanged
+- WHEN a later `project_review` skips that code review, since its Module is unchanged, while another Module's code changed so that its code review runs
 - THEN that Issue does not stand for the Module, while its revision is unchanged
 - BUT it stays open until a task closes it
 
@@ -134,6 +147,6 @@ record's shapes are in the [contracts](contracts.md).
 ### scenario.project-review.record-refused — A record with an uncommitted change is refused
 
 - GIVEN a primary worktree whose review record file holds a change no commit holds, which is not a valid record
-- WHEN the main agent runs `project_review`
+- WHEN the main agent runs `project_review --full`
 - THEN the reviews complete and their Issues are written
 - BUT the record is not written, and the run ends `failed` with `record_unpublished` naming the uncommitted change, its verdict still in the output

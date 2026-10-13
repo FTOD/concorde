@@ -292,19 +292,27 @@ def settle_and_report(
     ctx: RunContext,
     problems: list[Problem],
     examined: dict[str, set[str]],
+    unexamined: dict[str, set[str]] | None = None,
 ) -> tuple[list[dict], Settlement, Stop | None]:
     """Settle the deterministic earlier Issues of every examined Module and phase with the
     problems found, and report every new or changed problem; ``examined`` maps each phase to the
-    Modules it examined. Returns the host evidence, the settlement and the stop of a refusal."""
+    Modules it examined, ``unexamined`` each phase to the Modules it should have examined but
+    could not, whose earlier Issues are all carried and none resolved. Returns the host
+    evidence, the settlement and the stop of a refusal."""
     found: list[dict] = []
     settlement = Settlement()
     groups: dict[tuple[str, str], list[Problem]] = {}
     for problem in problems:
         groups.setdefault((problem.phase, problem.module), []).append(problem)
-    pairs = sorted(
-        {(phase, module) for phase, modules in examined.items() for module in modules}
-        | set(groups)
-    )
+    looked = {
+        (phase, module) for phase, modules in examined.items() for module in modules
+    }
+    missed = {
+        (phase, module)
+        for phase, modules in (unexamined or {}).items()
+        for module in modules
+    } - looked
+    pairs = sorted(looked | missed | set(groups))
     try:
         for phase, module in pairs:
             earlier = review_issues.earlier_issues(
@@ -313,6 +321,13 @@ def settle_and_report(
             mine = groups.get((phase, module), [])
             if earlier is None:
                 # The issues part is not installed: the problems stay in the result.
+                continue
+            if (phase, module) in missed and not mine:
+                # Not examined: whether its problems remain is unknown, so they all stand.
+                settlement.carried.extend(
+                    {key: item[key] for key in ("issue", "severity", "tier", "title")}
+                    for item in earlier
+                )
                 continue
             titles = {problem.title: problem for problem in mine}
             carried = []

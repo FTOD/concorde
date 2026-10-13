@@ -131,7 +131,7 @@ IDENTITY: dict = {
     ]
 }
 
-# contract.spec-review.panel-payload, version 6 (panel.md); a test keeps the two equal.
+# contract.spec-review.panel-payload, version 7 (panel.md); a test keeps the two equal.
 PAYLOAD_SCHEMA: dict = {
     "type": "object",
     "required": ["verdict", "modules", "workflow"],
@@ -324,9 +324,11 @@ class Panel:
     ):
         """The worker ``worker``, one of the panel's worker ids, so that the worker
         configuration may give each worker its own backend, model and thinking level; returns
-        (output or None, host evidence, context identity, stop or None)."""
+        (output or None, host evidence, context identity, stop or None, the worker's grant or
+        None)."""
         # Every panel worker returns findings with paths, and is resumed once with those that do
-        # not hold.
+        # not hold under its own grant.
+        grants: list[dict] = []
         result = run_worker(
             self.ctx,
             instructions,
@@ -335,20 +337,25 @@ class Panel:
             rounds=review_issues.CITATION_ROUNDS,
             modules=self.modules,
             worker=worker,
-            validate=lambda value: review.path_repair(self.ctx, value),
+            validate=lambda value: review.path_repair(
+                self.ctx, value, grants[0] if grants else None
+            ),
+            grants=grants,
         )
         found = review._labelled(result.evidence, f"{self.subject.module} {label}")
         identity = review._identity(result.evidence)
+        grant = grants[0] if grants else None
         if isinstance(result, Stop):
             result.error["actor"] += f", panel of {self.subject.module} {label}"
-            return None, found, identity, result
-        return result.output or {}, found, identity, None
+            return None, found, identity, result, grant
+        return result.output or {}, found, identity, None, grant
 
-    def _normalized(self, claimed: list[dict]):
-        """The findings normalized, in the order claimed with None for each rejected one, the
-        host's corrections and the rejected findings with their reasons."""
+    def _normalized(self, claimed: list[dict], grant: dict | None):
+        """The findings normalized under ``grant``, the grant of the worker that returned them,
+        in the order claimed with None for each rejected one, the host's corrections and the
+        rejected findings with their reasons."""
         findings, corrections, rejected = review._normalize(
-            self.ctx, self.subject, claimed
+            self.ctx, self.subject, claimed, grant
         )
         cleaned = [
             None
@@ -372,7 +379,7 @@ class Panel:
     def review(self, seat_state: dict) -> dict:
         role, seat = seat_state["role"], seat_state["seat"]
         label = worker = f"{role}{seat}"
-        output, found, identity, stop = self._launch(
+        output, found, identity, stop, grant = self._launch(
             worker,
             ARCHITECTURE_TASK_TYPE if role == "architect" else TASK_TYPE,
             self._brief(
@@ -392,7 +399,9 @@ class Panel:
             "identity": identity,
         }
         if stop is None:
-            findings, corrections, rejected = self._normalized(output["findings"])
+            findings, corrections, rejected = self._normalized(
+                output["findings"], grant
+            )
             found += corrections
             # A rejected finding gets no label, so the chair never has to account for it.
             entry["findings"] = [
@@ -482,7 +491,7 @@ class Panel:
             )
         # The chair checks architects' findings against the other Modules' Specs they cite.
         wide = self.seats["architect"] > 0
-        output, found, identity, stop = self._launch(
+        output, found, identity, stop, grant = self._launch(
             self.chair_worker,
             ARCHITECTURE_TASK_TYPE if wide else TASK_TYPE,
             self._brief("chair", section, "".join(material)),
@@ -503,7 +512,8 @@ class Panel:
                     if key not in ("sources", "note")
                 }
                 for item in output["findings"]
-            ]
+            ],
+            grant,
         )
         updates["evidence"] = found + corrections
         # A merged finding the host rejected is reported nowhere: its labels count as rejected,

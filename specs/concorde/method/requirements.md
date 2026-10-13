@@ -96,6 +96,20 @@ What the report means for the run is the Operation's own:
   insufficient or a review's finding
   ([Spec gaps and paths outside the grant](workers.md#the-round-validation)).
 
+### req.method.interpreter-readable — A worker may read the project's interpreter and nothing above the home
+
+When the project configuration names an interpreter in `python` and that interpreter resolves,
+every worker-backed step of a Method Operation SHALL hand the worker harness, as read-only runtime
+paths, every one of the interpreter's directories that exists:
+
+- The environment the interpreter belongs to.
+- The installation it resolves to.
+- Each directory that holds a symbolic link on the way between them.
+
+It SHALL do so whatever runtime paths the worker configuration sets. It SHALL NOT hand `/usr`, the
+home directory or a directory that holds the home directory as one of the interpreter's directories
+([The interpreter's directories](workers.md#interpreter-directories)).
+
 ## The brownfield workflow
 
 These obligations fix the procedure [The brownfield workflow](brownfield.md) explains. The machinery

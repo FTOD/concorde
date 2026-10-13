@@ -48,6 +48,34 @@ the resolver returns no path. In that case, nothing is linked. The run's first s
 [admission](#admitting-the-workers), then refuses the run with `worker_model_unavailable` on the
 same file.
 
+### The interpreter's directories {#interpreter-directories}
+
+A worker must be able to run the project's code and tests with the project's own interpreter.
+So each worker-backed step adds the interpreter's directories to the runtime paths it hands
+Workers. It does so when the project configuration names an interpreter in `python` and that
+interpreter resolves as it does for the project's checks. Otherwise, the step adds nothing. The
+interpreter's directories are these:
+
+- The environment the interpreter belongs to: the directory that holds the interpreter's `bin`
+  directory, such as `.venv`.
+- The installation the interpreter resolves to: the same directory for the interpreter's real
+  path, after every symbolic link is followed.
+- Each directory that holds a symbolic link on the way from the interpreter's path to its real
+  path. The sandbox allows a read only at a path's real location, so the way through such a link
+  must be readable too. An example is a version directory that links to a patch-release
+  directory.
+
+The step never adds these directories:
+
+- `/usr`.
+- The user's home directory.
+- A directory that holds the home directory, such as `/` or `/home`.
+- A directory that does not exist.
+
+The step adds the interpreter's directories whatever the worker configuration's `runtime` sets.
+The configured runtime paths neither replace nor limit them. Like every runtime path, they are
+readable only. The worker can never write them.
+
 ## Admitting the workers
 
 After the runner admits it, every Method Operation's run begins with the step `check_worker_models`.
@@ -183,7 +211,11 @@ The step hands Workers these inputs:
 
 The stop column ends the productive work, not the record. When a round ran, Workers audits it,
 even when it times out or returns an invalid result. Workers writes the run record for every
-worker run it was asked to start, including one refused before launch.
+worker run it was asked to start, including one refused before launch. A refusal of the worker
+configuration's reader in step 3 comes before any such request. It leaves no worker run record,
+run directory or [progress file](../glossary.json#concept.progress-file), only the Operation's
+`worker_model_unavailable` link
+([Refusals before a run](../worker-harness/workers/launch.md#refusals-before-a-run)).
 
 ### The round validation
 
@@ -374,7 +406,7 @@ The worker sequence adds these codes.
 | Grant not computable | `grant_unavailable` | `scope` | Spec core's error |
 | An unbound run asked for a worker whose grant keeps a writable path | `unbound_write` | `scope` | none |
 | Worker backend or model configuration not settled | `worker_model_unavailable` | `input` (`config_invalid` and the other refusals of the worker configuration) or `environment` (`backend_missing`, `model_map_missing`, `model_map_invalid`, `model_unmapped`) | the `component` link of Workers' model configuration, with its code and the file |
-| Configured checks cannot run | `checks_unavailable` | `environment` | Check execution's error |
+| Configured checks cannot run | `checks_unavailable` | `environment` | Check execution's error, or Spec core's error translated as below when the Specs that select the checks do not load |
 | Worker run ended with an audit violation, or the round validation or the check after the worker run found a glossary ownership violation | `audit_violation` | `permission` | the run record's error, when the worker run ended with one |
 | Worker run ended with checks still failing | `checks_failed` | `decision` | the run record's error |
 | Worker ended `blocked` or `failed` | `worker_blocked`, `worker_failed` | `decision` | the run record's error, whose cause is the worker's link |

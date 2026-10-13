@@ -13,10 +13,11 @@ run does, whatever its definition, is shown by the [Execution scenarios](../exec
 
 - GIVEN a bound workspace `severity` of `module.issues`
 - AND a worker that ends `ok` after changing only files its grant makes writable
-- AND a change on which every [configured check](../glossary.json#concept.configured-check) of the bound Modules and of every Module that uses one of them, directly or through further uses, passes
+- AND a change on which every [configured check](../glossary.json#concept.configured-check) that `implement`'s work stage selects passes
+- AND those are the checks of the bound Modules and of every Module that uses one of them, directly or through further uses, without readiness checks and selective checks that have no test to run
 - WHEN the task level runs `concorde run implement --goal "<goal>"` in it
 - THEN the run computes the implement grant from the workspace's Specs and launches one worker through the worker harness
-- AND the audit is clean and every configured check passes
+- AND the audit is clean and every check that ran passes, the host evidence listing only those checks
 - AND the result has status `ok`, the worker's result in `worker` and the grant, audit and checks in `host_evidence`
 - AND the result is printed and saved in the run's [trace node](../glossary.json#concept.trace-node) in the [run store](../glossary.json#concept.run-store) of the binding's workspace folder, with the worker run's node below it
 - AND the command exits with status 0
@@ -144,6 +145,16 @@ This illustrates [the glossary audited by entry](requirements.md#req.method.glos
 This illustrates the guard that [The round validation](workers.md#the-round-validation) states for
 the Operations that may run unbound, and the
 [error of the worker sequence](workers.md#errors-of-the-worker-sequence) it ends with.
+
+### scenario.method.interpreter-readable — A worker may read the project's interpreter, whatever the runtime paths
+
+- GIVEN a project whose configuration names an interpreter in `python`, in an environment that links through a symbolic version directory to an installation
+- AND a worker configuration whose `runtime` names only another path
+- WHEN a worker-backed step hands its runtime paths to the worker harness
+- THEN they hold the configured path, the environment, the installation and the directory that holds the version link, each readable only
+- BUT they hold none of `/usr`, the home directory or a directory that holds it, even when the interpreter lies in one of them
+
+This illustrates [the interpreter's directories](requirements.md#req.method.interpreter-readable).
 
 ## The brownfield workflow
 

@@ -60,6 +60,57 @@ Every worker has its own [worker id](../../glossary.json#concept.worker-id). The
 [worker configuration](../../glossary.json#concept.worker-configuration) may therefore give each a
 backend, model and level of its own under `operations.project_review`.
 
+## Overview
+
+```d2 illustrative
+direction: down
+prepare: "Validate the project; compute each part's identity;\nread the review record; decide the skips"
+deterministic: "Run every covered Module's checks; find uncovered\nscenarios and unowned files; settle and report"
+architecture: "Architecture review, once\n(skipped when every Spec is unchanged)"
+modules: "Per Module, at most --parallel at once:\nSpec panel and code review,\neach skipped when its input is unchanged"
+record: "Merge the completed parts into the review record;\ncommit it under the merge lock"
+verdict: "Each Module's outcome from the Issues that stand;\nthe project verdict" {shape: page}
+prepare -> deterministic -> architecture -> modules -> record -> verdict
+```
+
+## Running project_review
+
+```text
+concorde run project_review [--modules <id>,…] [--full] [--parallel <1-8>] [--reviewers <2-5>] [--architects <0-2>]
+```
+
+| Argument | Meaning | Default |
+| --- | --- | --- |
+| `--modules` | the Modules whose checks, coverage, Spec panel and code review the run covers | every registered Module |
+| `--full` | review every part whatever the record says | off |
+| `--parallel` | how many Spec panels and code reviews run at the same time | 2 |
+| `--reviewers` | the reviewers of each Spec panel | 3 |
+| `--architects` | the architects of the architecture review; 0 leaves it out | 2 |
+
+Each Spec panel runs its reviewers at the same time, so one Module's review keeps several workers
+busy at once. Workers that share one model provider can meet its concurrency limit. The default
+`--parallel` of 2 keeps the run's workers fewer than that limit usually allows.
+[Workers](../../worker-harness/workers/launch.md#retries) retries a round that such a limit ended
+anyway.
+
+In the primary worktree, the run is an [unbound run](../../glossary.json#concept.unbound-run). It
+examines the worktree's `HEAD` in its [unbound checkout](../../glossary.json#concept.unbound-checkout).
+In a task worktree, it examines the bound [workspace](../../glossary.json#concept.workspace), its
+uncommitted changes included. Either way, its Issues and the review record go to the primary branch.
+The command waits for the result. Start it in background Bash.
+
+When every worker part would be skipped, the run is refused with `nothing_to_review` before any
+step. Its result is `failed`, and its error names `--full`.
+
+The run's status is `ok` when every part completed and the record was written or had nothing new.
+Otherwise it is `blocked` or `failed`, with an [error chain](../../glossary.json#concept.error-chain)
+that has one cause per part that did not complete. The output carries the verdict either way. The
+caller handles the Issues that stand by their tier, as the
+[main-session guidance](../../coordination/main-session/module.md#issues) says. Fixing them is later
+work of a task. It is never the review's.
+
+## Findings, the record and the verdict
+
 ### The review record
 
 The **review record** is the file `.concorde/reviews/record.json` of the primary branch. For each
@@ -137,6 +188,7 @@ Three problems need no worker to establish:
   declarations of every file a Module binds, as structural validation does. It counts a scenario of
   a Module without code too.
 - The files Git tracks that no Module binds. When Git cannot list them, they are not examined.
+  The root Module, which owns those files, and the project are then `incomplete`.
 
 Each is reported as an Issue of a fixed title, tier and severity, which
 [req.project-review.deterministic-issues](requirements.md#req.project-review.deterministic-issues)
@@ -225,7 +277,8 @@ owns it. A Module's outcome has these values:
 - `accepted`, otherwise.
 
 A Module is also `incomplete` when its checks could not run, when one of its deterministic
-problems could not be written, or when an architecture finding about it could not be written.
+problems could not be written, or when an architecture finding about it could not be written. The
+root Module is also `incomplete` when Git could not list the tracked files.
 
 `--modules` narrows which Modules the run covers. The Issues that stand are counted for the covered
 Modules alone. An architecture finding about a Module the run does not cover stands for that Module.
@@ -237,61 +290,13 @@ The project's verdict is the highest Module outcome in the order `accepted`, `ch
 
 - The architecture review stopped.
 - The checks could not run.
+- Git could not list the tracked files.
 - The deterministic findings could not all be written.
 - The Issues that stand could not be read.
 
 The result counts the Issues that stand by [severity](../../glossary.json#concept.issue-severity)
 and by [tier](../../glossary.json#concept.issue-tier). Where the issues part is not installed, each
 Module's outcome follows from this run's findings, exactly as from the Issues they would become.
-
-## Overview
-
-```d2 illustrative
-direction: down
-prepare: "Validate the project; compute each part's identity;\nread the review record; decide the skips"
-deterministic: "Run every covered Module's checks; find uncovered\nscenarios and unowned files; settle and report"
-architecture: "Architecture review, once\n(skipped when every Spec is unchanged)"
-modules: "Per Module, at most --parallel at once:\nSpec panel and code review,\neach skipped when its input is unchanged"
-record: "Merge the completed parts into the review record;\ncommit it under the merge lock"
-verdict: "Each Module's outcome from the Issues that stand;\nthe project verdict" {shape: page}
-prepare -> deterministic -> architecture -> modules -> record -> verdict
-```
-
-## Running project_review
-
-```text
-concorde run project_review [--modules <id>,…] [--full] [--parallel <1-8>] [--reviewers <2-5>] [--architects <0-2>]
-```
-
-| Argument | Meaning | Default |
-| --- | --- | --- |
-| `--modules` | the Modules whose checks, coverage, Spec panel and code review the run covers | every registered Module |
-| `--full` | review every part whatever the record says | off |
-| `--parallel` | how many Spec panels and code reviews run at the same time | 2 |
-| `--reviewers` | the reviewers of each Spec panel | 3 |
-| `--architects` | the architects of the architecture review; 0 leaves it out | 2 |
-
-Each Spec panel runs its reviewers at the same time, so one Module's review keeps several workers
-busy at once. Workers that share one model provider can meet its concurrency limit. The default
-`--parallel` of 2 keeps the run's workers fewer than that limit usually allows.
-[Workers](../../worker-harness/workers/launch.md#retries) retries a round that such a limit ended
-anyway.
-
-In the primary worktree, the run is an [unbound run](../../glossary.json#concept.unbound-run). It
-examines the worktree's `HEAD` in its [unbound checkout](../../glossary.json#concept.unbound-checkout).
-In a task worktree, it examines the bound [workspace](../../glossary.json#concept.workspace), its
-uncommitted changes included. Either way, its Issues and the review record go to the primary branch.
-The command waits for the result. Start it in background Bash.
-
-When every worker part would be skipped, the run is refused with `nothing_to_review` before any
-step. Its result is `failed`, and its error names `--full`.
-
-The run's status is `ok` when every part completed and the record was written or had nothing new.
-Otherwise it is `blocked` or `failed`, with an [error chain](../../glossary.json#concept.error-chain)
-that has one cause per part that did not complete. The output carries the verdict either way. The
-caller handles the Issues that stand by their tier, as the
-[main-session guidance](../../coordination/main-session/module.md#issues) says. Fixing them is later
-work of a task. It is never the review's.
 
 ## How it is built
 
@@ -309,7 +314,7 @@ It may run unbound, since it launches only reading workers.
 | --- | --- | --- | --- |
 | 1 | Admit every worker against the worker configuration and the [model map](../../glossary.json#concept.model-map) | Method | a worker cannot be configured (`failed`) |
 | 2 | Validate the whole project. Compute each covered Module's identities and the architecture's. Read the review record. Decide what is skipped. The Operation's admission does this work before step 1 and the step returns what it found | Operation, Spec core | every worker part skipped (refused with `nothing_to_review` before any step); Specs that do not load, Issues that cannot be read (`failed`); a Module with a structural error or no grant is `incomplete` and not reviewed; a record that cannot be read skips nothing |
-| 3 | Run every covered Module's configured checks of the work stage. Find the uncovered scenarios and the unowned files. Settle them with their earlier Issues and report them | Operation, Check execution, Issues | — (checks that cannot run, or a refusal of the Issue store, make the project and the Modules concerned `incomplete`) |
+| 3 | Run every covered Module's configured checks of the work stage. Find the uncovered scenarios and the unowned files. Settle them with their earlier Issues and report them | Operation, Check execution, Issues | — (checks that cannot run, tracked files Git cannot list, or a refusal of the Issue store, make the project and the Modules concerned `incomplete`) |
 | 4 | Unless skipped or left out, run the architecture review: read its earlier Issues, run the panel graph without reviewers, report the chair's findings with phase `architecture` | Operation, Workers, Issues | — (a stop, a grant that cannot be computed or LangGraph missing makes the project `incomplete`) |
 | 5 | Run every Spec panel and code review not skipped, at most `--parallel` at once. A Spec panel runs as `spec_panel` runs one Module's panel without architects, with phase `spec-panel`. A code review runs as `code_review --scope module` reviews one Module, with phase `code-review` | Operation, Workers, Issues | — (a stop makes that Module `incomplete`) |
 | 6 | Merge the completed parts into the review record and commit it on the primary branch | Operation, Kernel | — (a refusal fails the run with `record_unpublished`; the verdict stands) |

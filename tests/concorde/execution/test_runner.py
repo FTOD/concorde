@@ -842,6 +842,38 @@ class RunnerTests(unittest.TestCase):
         )
         self.assertIn("src/shared.py", system["detail"])
 
+    @verifies("scenario.method.spec-error")
+    def test_a_spec_tooling_error_in_the_rounds_checks_keeps_its_record(self):
+        from concorde.spec.errors import SpecError, system_cause
+
+        refused = SpecError(
+            "the checks file of module.a cannot be read",
+            "checks_unreadable",
+            "modules",
+            causes=[system_cause(PermissionError(13, "denied", "checks.json"))],
+        )
+        with patch("concorde.method.checks.run_module_checks", side_effect=refused):
+            status, envelope = self.implement([{}])
+        self.assertEqual((1, "failed"), (status, envelope["status"]))
+
+        def find(error, code):
+            if error["code"] == code:
+                return error
+            for cause in error["causes"]:
+                found = find(cause, code)
+                if found is not None:
+                    return found
+            return None
+
+        spec = find(envelope["error"], "checks_unreadable")
+        self.assertIsNotNone(spec, envelope["error"])
+        self.assertEqual("Spec core", spec["actor"])
+        self.assertEqual(refused.reason, spec["unhandled"]["explanation"])
+        self.assertEqual([refused.remediation], spec["options"])
+        [system] = spec["causes"]
+        self.assertEqual("system_error", system["code"])
+        self.assertIsNone(find(envelope["error"], "unexpected_error"))
+
     @verifies("scenario.method.checks-exhausted")
     def test_checks_still_failing_after_the_last_round(self):
         status, envelope = self.implement(

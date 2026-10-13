@@ -495,6 +495,29 @@ class CodeReviewTests(unittest.TestCase):
         self.assertEqual(["suggestion"], [item["tier"] for item in entry["findings"]])
         self.assertEqual(1, len(self.issues()))
 
+    @verifies("scenario.code-review.unknown-location")
+    def test_a_relative_link_out_of_the_project_is_no_location(self):
+        outside = self.project.base / "outside"
+        outside.mkdir()
+        (outside / "x.py").write_text("SECRET = 1\n")
+        (self.worktree / "src/a/out.py").symlink_to(outside / "x.py")
+        (self.worktree / "src/a/out").symlink_to(outside)
+        refs = [
+            "src/a/out.py:1",
+            "src/a/out/x.py:1",
+            f"{self.worktree}/src/a/out.py:1",
+        ]
+        _, envelope = self.change(
+            *(finding(locations=[ref], title=ref) for ref in refs),
+            finding(locations=["src/a/calc.py:2"], tier="suggestion"),
+        )
+        problems = self.unresolved(envelope)
+        self.assertEqual(refs, [item["ref"] for item in problems])
+        self.assertTrue(
+            all("is not a path in the project" in item["detail"] for item in problems)
+        )
+        self.assertEqual(3, len(self.module_entry(envelope)["rejected"]))
+
     def test_a_finding_about_a_module_not_reviewed_is_not_reported(self):
         _, envelope = self.change(finding(module="module.b"))
         [problem] = self.unresolved(envelope)
@@ -679,7 +702,7 @@ class CodeReviewTests(unittest.TestCase):
         challenge = finding(
             "scenario.a.answer",
             kind="spec-challenge",
-            tier="decision-needed",
+            tier="preferred-fix",
             problem="The scenario asks A to answer every question, which no function can.",
         )
         _, envelope = self.review(
@@ -697,6 +720,14 @@ class CodeReviewTests(unittest.TestCase):
             (report["tier"], report["type"], report["subtype"]),
         )
         self.assertIn("spec-challenge", report["basis"])
+        # Whatever tier the reviewer gave it, a Spec challenge is decided above the task.
+        self.assertEqual("decision-needed", item["tier"])
+        [corrected] = [
+            entry
+            for entry in envelope["host_evidence"]
+            if entry["kind"] == "challenge-tier"
+        ]
+        self.assertIn("preferred-fix", corrected["detail"])
 
     @verifies("scenario.code-review.unbound-module-review")
     def test_an_unbound_module_review_reports_to_the_projects_issues(self):

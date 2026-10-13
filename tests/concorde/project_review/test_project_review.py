@@ -472,6 +472,55 @@ class ProjectReviewTests(unittest.TestCase):
         )
         self.assertEqual("open", self.issues()[check["issue"]]["status"])
 
+    @verifies("scenario.project-review.unexamined-carried")
+    def test_the_issues_of_parts_that_could_not_run_are_carried(self):
+        (self.root / "stray.txt").write_text("bound to no Module\n")
+        commit(self.root, "a file no Module binds")
+        self.test_a_failed_check_is_an_issue()
+        unowned = next(
+            item["issue"]
+            for item in self.envelope["output"]["deterministic"]["findings"]
+            if item["phase"] == "unowned"
+        )
+        self.assertIsNotNone(unowned)
+        from concorde.execution.checks.checks import CheckError
+
+        def unavailable(*_arguments, **_options):
+            raise CheckError("no sandbox here", "check_sandbox_unavailable", "checks")
+
+        with (
+            patch(
+                "concorde.method.project_review.operation.run_module_checks",
+                unavailable,
+            ),
+            patch.object(findings, "unowned_paths", return_value=None),
+        ):
+            _, envelope = self.review(None, "--full")
+        settled = envelope["output"]["deterministic"]["earlier_issues"]
+        carried = [item["issue"] for item in settled["carried"]]
+        self.assertIn(self.check_issue, carried)
+        self.assertIn(unowned, carried)
+        self.assertEqual([], settled["resolved"])
+
+    @verifies("scenario.project-review.unowned-unlisted")
+    def test_files_git_cannot_list_make_the_review_incomplete(self):
+        with patch.object(findings, "unowned_paths", return_value=None):
+            status, envelope = self.review()
+        self.assertEqual((1, "failed"), (status, envelope["status"]), envelope)
+        output = envelope["output"]
+        self.assertFalse(output["deterministic"]["complete"])
+        self.assertEqual("incomplete", output["verdict"])
+        root = SpecRepository(self.root, REPOSITORY_ROOT).root_module
+        self.assertEqual("incomplete", self.module(envelope, root)["outcome"])
+        self.assertEqual(
+            ["unowned_unavailable"],
+            [
+                cause["code"]
+                for cause in envelope["error"]["causes"]
+                if cause["code"] == "unowned_unavailable"
+            ],
+        )
+
     def test_a_resolved_checks_issue_changed_meanwhile_still_stands(self):
         self.test_a_failed_check_is_an_issue()
         issue = self.check_issue

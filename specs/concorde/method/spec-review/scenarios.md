@@ -13,7 +13,7 @@ and no architect.
 - WHEN the caller runs `spec_panel` for Module A
 - THEN the verdict is `accepted` and A's outcome carries the [context identity](../../glossary.json#concept.context-identity) of its `review-spec` grant
 - AND the suggestion is returned and recorded as a new [Issue](../../glossary.json#concept.issue) of A with the tier `suggestion`, committed on the primary branch
-- BUT no file of the workspace changes
+- BUT no file of the workspace changes, apart from the run's own entries in the [run store](../../glossary.json#concept.run-store)
 
 ### scenario.spec-review.changes-required — All blocking findings in one result
 
@@ -36,7 +36,7 @@ and no architect.
 - GIVEN the primary worktree, without a [workspace binding](../../glossary.json#concept.workspace-binding), whose Module A's [Specs](../../glossary.json#concept.spec) have one problem
 - WHEN the caller runs `spec_panel` for Module A there
 - THEN the problem is recorded as an Issue of the project, whose report names the `spec_panel` run and no task
-- AND the primary worktree has no change but the Issue's commit
+- AND the primary worktree has no change but the Issue's commit and the run's own entries in its run store under `.concorde/unbound/`
 
 ### scenario.spec-review.without-issues — Without the issues part the findings stay in the result
 
@@ -74,7 +74,8 @@ and no architect.
 
 ### scenario.spec-review.finding-path — A finding whose path does not hold is rejected alone
 
-- GIVEN a reviewer that returns, also after its one [resume round](../../glossary.json#concept.resume-round), a finding naming a path outside the workspace and a finding that holds
+- GIVEN a reviewer that returns, also after its one [resume round](../../glossary.json#concept.resume-round), a finding naming a path outside the workspace and a finding that holds, of a blocking tier about a document of the reviewed Module
+- AND a chair that merges the second with its blocking tier, and an Issue store that records every report
 - WHEN the Operation normalizes the reviewer's findings
 - THEN the first is listed unlabelled under that reviewer's `rejected` with the reason and as `invalid-output` evidence, and is reported as no Issue
 - AND the second is labelled, and once the chair merges it, it is reported as an Issue, the Module is `changes_required` and the run ends `ok`
@@ -122,6 +123,13 @@ and no architect.
 - THEN the Module's outcome is `incomplete`
 - AND the audit violation is returned as host evidence
 
+### scenario.spec-review.unknown-module — A Module the worktree does not register refuses the run
+
+- GIVEN a workspace that registers Module A but not `module.nowhere`
+- WHEN the caller runs `spec_panel` for Module A and `module.nowhere`
+- THEN Method's admission refuses the run with `unknown_module`, naming `module.nowhere`, before any step
+- AND no worker is launched and no Issue is reported
+
 ## Paneling
 
 ### scenario.spec-review.panel-merged — The chair merges independent reviews into one report
@@ -133,7 +141,7 @@ and no architect.
 - AND the merged finding is recorded as one Issue of tier `obvious-fix`, and nothing is recorded for the rejection
 - AND each reviewer's own findings are in the result, labelled
 - AND A's outcome and the verdict are `changes_required`
-- BUT no file of the workspace changes
+- BUT no file of the workspace changes, apart from the run's own entries in the [run store](../../glossary.json#concept.run-store)
 
 ### scenario.spec-review.panel-architects — Architects judge the Module among all the Modules
 
@@ -178,7 +186,15 @@ and no architect.
 
 ### scenario.spec-review.panel-without-issues — A panel keeps its settled findings without the issues part
 
-- GIVEN a project whose `concorde` does not offer `issues`, and a panel whose chair merges a reviewer's finding and names an `earlier` for it against its brief
+- GIVEN a project whose `concorde` does not offer `issues`
+- AND a panel whose workers all finish, and whose chair merges a reviewer's finding of a blocking tier about a document of the reviewed Module and names an `earlier` for it against its brief
 - WHEN the panel reports
 - THEN the run ends `ok`, the Module is `changes_required` and its report finding names no `earlier` and keeps `issue` null
-- AND a Module whose panel stopped after a chair report lists that report's findings without the `earlier` the chair named
+
+### scenario.spec-review.panel-stopped-earlier — A stopped panel drops the chair's earlier claims
+
+- GIVEN a panel of two reviewers that each return one finding
+- AND a chair whose every attempt merges the first reviewer's finding, names an `earlier` for it and leaves the second reviewer's finding unaccounted
+- WHEN the panel stops after the chair's last attempt with `report_unaccounted`
+- THEN the run ends `failed`, the Module is `incomplete` and no Issue is reported
+- AND the Module lists the last report's finding with `issue` null and without the `earlier` the chair named
