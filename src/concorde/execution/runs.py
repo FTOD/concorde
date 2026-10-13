@@ -309,7 +309,11 @@ def load_progress(folder: Path) -> dict | None:
 
 
 def pid_alive(pid: int) -> bool:
-    """Whether a process lives, a zombie not counting; no process has a pid below 1."""
+    """Whether a process lives; no process has a pid below 1.
+
+    A process that ended is a zombie (``Z``) until it is reaped and dead (``X``) while it is
+    reaped, and is gone once its ``/proc`` entry is: none of these counts as alive.
+    """
     if pid < 1:
         return False
     try:
@@ -317,12 +321,17 @@ def pid_alive(pid: int) -> bool:
     except ProcessLookupError:
         return False
     except PermissionError:
+        pass
+    try:
+        stat = Path(f"/proc/{pid}/stat").read_text()
+    except (FileNotFoundError, ProcessLookupError):
+        # Reaped since the signal.
+        return False
+    except OSError:
         return True
     try:
-        # A child that ended but was not reaped yet is not alive.
-        stat = Path(f"/proc/{pid}/stat").read_text()
-        return stat.rsplit(")", 1)[1].split()[0] != "Z"
-    except (OSError, IndexError):
+        return stat.rsplit(")", 1)[1].split()[0] not in ("Z", "X")
+    except IndexError:
         return True
 
 
