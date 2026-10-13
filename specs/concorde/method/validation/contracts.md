@@ -17,9 +17,16 @@ input measurement the readiness is bound to.
   no write bit and a single link. Where an absent path is to be hidden, that sandbox creates the
   file on the host before it mounts `/dev/null` over it. It removes the file only when no sandbox
   of its Claude Code process is alive. Meanwhile, another command sees it as a regular file.
-  This is the signature by which the sandbox runtime itself recognises such a file. A file a task
-  creates has a write bit, content or another link. Such a file is measured. Neither kind is an
-  uncommitted change for Delivery either, which tests for one with this measurement's rules.
+  This is the signature by which the sandbox runtime itself recognises such a file. Nothing on the
+  host records which process created a file, so the measurement leaves out every untracked file
+  with this signature, whatever created it. An empty read-only file with one link that a task
+  creates is therefore left out too. A task makes such a file count in any of these ways:
+  - It stages the file, such as with `git add`, so that the file is no longer untracked.
+  - It gives the file content.
+  - It gives the file a write bit.
+
+  Neither kind is an uncommitted change for Delivery either, which tests for one with this
+  measurement's rules.
   When its checked-out commit differs, a submodule is a changed path. Since the workspace commits
   only the submodule's commit, changes inside the submodule's own worktree are not measured.
   Those changes are no uncommitted change for Delivery.
@@ -84,8 +91,30 @@ input measurement the readiness is bound to.
   - A checks directory entry cannot be read.
 - The **input digest** is the digest of the canonical JSON of the object
   `{"head", "base", "changed", "config_digest"}`. Its values are those recorded in `inputs`, with
-  each changed path as it is recorded. The canonical JSON has sorted keys, no insignificant
-  whitespace and UTF-8.
+  each changed path as it is recorded.
+- The **canonical JSON** of a value, for the configuration digest and the input digest, is its
+  JSON text encoded as UTF-8 with these rules:
+  - The keys of every object are sorted by Unicode code point.
+  - No whitespace stands outside a string. Members are separated by `,`, and keys from values by
+    `:`.
+  - Inside a string, `"` is written `\"` and `\` is written `\\`. A character from U+0000 to U+001F
+    is written `\b`, `\t`, `\n`, `\f` or `\r` where JSON has such a form, and otherwise `\u`
+    with four lower-case hexadecimal digits, such as `\u0001`.
+  - Every other character, U+007F and all non-ASCII characters included, is written as itself in
+    UTF-8, never as a `\u` escape.
+
+  For example, take the input object with head `1111…` and base `0000…`, of 40 digits each. Its
+  configuration digest is `sha256:bbbb…`. Its one changed path is `café.txt`, with mode `100644`
+  and digest `sha256:aaaa…`. Each digest has 64 digits. The object has this canonical JSON, with
+  `é` as the two bytes `0xC3 0xA9`:
+
+  ```text
+  {"base":"0000000000000000000000000000000000000000","changed":[{"digest":"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","mode":"100644","path":"café.txt"}],"config_digest":"sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb","head":"1111111111111111111111111111111111111111"}
+  ```
+
+  Its input digest is
+  `sha256:4add383e898f9c317dacb3e315e274d78d3307aa7b415515cfbd2e54ae97ef84`. These rules are the
+  ones every earlier readiness was measured with, so stating them changes no digest.
 
 Delivery uses the same measurement through Validation, so both compute the same input digest for
 the same workspace.
@@ -99,14 +128,16 @@ The object's `data` holds `ready`, the readiness's own value. When the workspace
 `blocking` is `null`. Otherwise, it is
 `{"code": "not_ready", "detail": "<each blocking finding's kind and subject>"}`. In that case, the run
 declares to a workflow that its procedure stops here. The workflow reads nothing else of the
-run's output. The readiness saved as `readiness.json` does not carry the object. The object
+run's output. The readiness saved as `readiness.json` does not carry the object. It is otherwise
+the same object. The contract's one schema covers both representations, so `workflow` is optional
+there. The object
 declares no [decision point](../../glossary.json#concept.decision-point), decision or note. The convention,
 not this contract, defines the object.
 
 ```concorde-contract
 {
   "id": "contract.validation.readiness",
-  "version": 10,
+  "version": 11,
   "schema": {
     "type": "object",
     "additionalProperties": false,
@@ -117,8 +148,7 @@ not this contract, defines the object.
       "modules",
       "blocking",
       "warnings",
-      "checks",
-      "workflow"
+      "checks"
     ],
     "properties": {
       "workspace": {
@@ -304,7 +334,7 @@ not this contract, defines the object.
       }
     }
   },
-  "semantics": "The output of one task-validation run of the bound workspace named by workspace, and the readiness a delivery run decides with the same steps and saves in its trace node. inputs is the input measurement taken at the start of the run and confirmed unchanged at its end: every changed path, as the input measurement records it, with its mode and digest, both null for a path that no longer exists or that the measurement measures as deleted since Git would not commit it; digest is the input digest. modules lists, sorted, the changed Modules (binding a changed path or owning a changed Spec document) together with the run's Modules. blocking lists every blocking finding: load when the Specs could not be loaded, structural for a structural-check error (ref is the rule identity and path) or one of the run's Modules that the workspace's registry does not register (ref is the Module identity), unbound for a changed path whose digest is not null that is no document member, not the project glossary, no control record under .concorde/, no generated or build output, no external material and bound by no Module (ref is the path as recorded), check for a configured check that failed or timed out (ref is the check identity), for a checks file or declared input of the project that is invalid (ref is configured checks) or for Modules whose checks could not be run (ref is the Module identity, or the comma-separated identities of the whole selection when its selective checks could not run). warnings lists structural-check warnings in the same shape and never affects ready. checks lists one result per configured check run, in run order, including the checks a call of Check execution finished before it failed, with measured_digest the measured digest Check execution took before the check ran, exit_code null on timeout and log the path of its saved log relative to the run's trace node, checks/<check>/output.log. ready is true exactly when blocking is empty; every check then has status passed. The run's status is ok when ready is true and blocked otherwise, and a blocked run still carries this readiness as its output. A readiness is valid only while a fresh input measurement of the same workspace yields the same digest. workflow is the object of Workflows' step output convention, which defines its fields: its data holds ready, and blocking is null when the workspace is ready and otherwise names the blocking findings (req.validation.step-output); the readiness saved as readiness.json does not carry it. A behaviour or field change increments the version.",
+  "semantics": "The readiness of the bound workspace named by workspace, in two representations that this one schema covers: the output of one task-validation run, which always carries workflow, and the readiness.json that a task-validation run, or a delivery run deciding the readiness with the same steps, saves in its trace node, which never carries workflow and is otherwise the same object. inputs is the input measurement taken at the start of the run and confirmed unchanged at its end: every changed path, as the input measurement records it, with its mode and digest, both null for a path that no longer exists or that the measurement measures as deleted since Git would not commit it; digest is the input digest. modules lists, sorted, the changed Modules (binding a changed path or owning a changed Spec document) together with the run's Modules. blocking lists every blocking finding: load when the Specs could not be loaded, structural for a structural-check error (ref is the rule identity and path) or one of the run's Modules that the workspace's registry does not register (ref is the Module identity), unbound for a changed path whose digest is not null that is no document member, not the project glossary, no control record under .concorde/, no generated or build output, no external material and bound by no Module (ref is the path as recorded), check for a configured check that failed or timed out (ref is the check identity), for a checks file or declared input of the project that is invalid (ref is configured checks) or for Modules whose checks could not be run (ref is the Module identity, or the comma-separated identities of the whole selection when its selective checks could not run). warnings lists structural-check warnings in the same shape and never affects ready. checks lists one result per configured check run, in run order, including each check that a call of Check execution finished before it failed and whose trace node records its end (a finished check whose final trace write the operating system refused has no result here; the call's blocking finding stands, and its cause, Check execution's link, names the refused writes that Check execution's error carries), with measured_digest the measured digest Check execution took before the check ran, exit_code null on timeout and log the path of its saved log relative to the run's trace node, checks/<check>/output.log. ready is true exactly when blocking is empty; every check then has status passed. The run's status is ok when ready is true and blocked otherwise, and a blocked run still carries this readiness as its output. A readiness is valid only while a fresh input measurement of the same workspace yields the same digest. workflow is the object of Workflows' step output convention, which defines its fields: its data holds ready, and blocking is null when the workspace is ready and otherwise names the blocking findings (req.validation.step-output); it is optional in the schema only because the saved readiness.json does not carry it. A behaviour or field change increments the version.",
   "example": {
     "workspace": "severity",
     "ready": true,

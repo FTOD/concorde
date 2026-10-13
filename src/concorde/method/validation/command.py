@@ -62,7 +62,6 @@ READINESS_SCHEMA: dict = {
         "blocking",
         "warnings",
         "checks",
-        "workflow",
     ],
     "properties": {
         "workspace": TEXT,
@@ -98,7 +97,8 @@ READINESS_SCHEMA: dict = {
         },
         "modules": {"type": "array", "items": TEXT},
         "blocking": {"type": "array", "items": {"$ref": "#/$defs/finding"}},
-        # The workflow object of the step output convention, whose own contract defines it.
+        # The workflow object of the step output convention, whose own contract defines it;
+        # task-validation's output always carries it, the saved readiness.json never does.
         "workflow": {"type": "object"},
         "warnings": {"type": "array", "items": {"$ref": "#/$defs/finding"}},
         "checks": {
