@@ -902,6 +902,16 @@ This illustrates [the parts Coordination does without](../module.md#optional-int
   recording nothing
 - AND a report for a closed task is refused with `task_closed`, recording nothing
 
+### scenario.tasks.session-record-refused — A refused session record leaves the task record as it was
+
+- GIVEN an open task whose record names the main agent's session `concorde-7d`
+- WHEN a task session started for the main agent's session `concorde-8e` is recorded
+- AND the file system refuses the session's trace node
+- THEN the recording fails with `record_unwritable`
+- AND the task record is unchanged, byte for byte, still naming `concorde-7d`
+- BUT when the node is written and the record then refuses the new main, the node is removed again
+- AND the task record is still unchanged
+
 ### scenario.tasks.rebind — The main agent rebinds its tasks to its new session name
 
 - GIVEN a task `severity` whose record names the main agent's session `concorde-7d`

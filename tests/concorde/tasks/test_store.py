@@ -607,6 +607,36 @@ class TaskStoreTests(unittest.TestCase):
         session = {**self.session(task_id, session_id), "main": main}
         store.record_session(self.root, task_id, {**session, "started_at": store.now()})
 
+    @verifies("scenario.tasks.session-record-refused")
+    def test_a_refused_session_record_leaves_the_record(self):
+        self.project.open_task("t1")
+        self.started()
+        path = store.record_path(self.root, "t1")
+        before = path.read_bytes()
+
+        class Refused(store.Node):
+            def start(self):
+                self.failure = OSError("No space left on device")
+                return self
+
+        session = {**self.session("t1", "s2"), "main": "concorde-8e"}
+        with patch.object(store, "Node", Refused):
+            with self.assertRaises(store.TaskError) as refused:
+                store.record_session(self.root, "t1", session)
+        self.assertEqual("record_unwritable", refused.exception.code)
+        self.assertEqual(before, path.read_bytes())
+
+        def conflicting(primary, task_id, main, purpose):
+            raise store.TaskError("record_conflict", "changed concurrently")
+
+        with patch.object(store, "_bind_main", conflicting):
+            with self.assertRaises(store.TaskError) as refused:
+                store.record_session(self.root, "t1", session)
+        self.assertEqual("record_conflict", refused.exception.code)
+        self.assertEqual(before, path.read_bytes())
+        self.assertFalse(store.session_folder(self.root, "t1", "s2").exists())
+        self.assertEqual("concorde-7d", self.record()["main"])
+
     @verifies("scenario.tasks.report")
     def test_a_report_is_recorded_before_the_message(self):
         self.project.open_task("t1")

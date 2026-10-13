@@ -1090,13 +1090,8 @@ def record_session(primary: Path, task_id: str, session: dict) -> dict:
     _current_open(primary, task_id)
     with task_locked(primary, task_id):
         record = _current_open(primary, task_id)
-        if session.get("main"):
-            record = _bind_main(
-                primary,
-                task_id,
-                session["main"],
-                "a session works only in an open task",
-            )
+        # The node first, removed again when the record refuses its main: either refusal leaves
+        # the record as it was.
         folder = session_folder(primary, task_id, session["id"])
         node = Node(
             folder,
@@ -1115,6 +1110,17 @@ def record_session(primary: Path, task_id: str, session: dict) -> dict:
                 "record_unwritable",
                 f"the session node {folder} of task {task_id} cannot be written: {node.failure}",
             )
+        if session.get("main"):
+            try:
+                record = _bind_main(
+                    primary,
+                    task_id,
+                    session["main"],
+                    "a session works only in an open task",
+                )
+            except TaskError:
+                shutil.rmtree(folder, ignore_errors=True)
+                raise
         return record
 
 
