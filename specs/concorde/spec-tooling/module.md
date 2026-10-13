@@ -47,11 +47,11 @@ Operation, not this part's.
 ## Overview
 
 Spec tooling binds only the part's guidance and its part entries. Its three children fulfil it.
-The other two rely on Spec core, which performs these functions:
-
-- It loads everything they present.
-- It checks everything they present.
-- It computes everything they present.
+Spec core loads, checks and computes everything that the Spec MCP server and Views' scaffold present.
+Views' publisher is the exception. It reads the registered Specs itself and computes the selections
+it shows with the same rules, without calling Spec core.
+Publishing a site therefore proves nothing about structure. The validator alone does
+([Views](views/module.md)).
 
 ```d2
 tooling: Spec tooling {
@@ -83,8 +83,12 @@ The spec part also registers its install contribution through its part registrat
 The install contribution comprises these items:
 
 - The [Protocol copy](../glossary.json#concept.protocol-copy) under `.concorde/protocol/`.
-- The project configuration's [Protocol binding](../glossary.json#concept.protocol-binding).
-- The initialization of a project that has no Spec yet.
+- The project configuration's [Protocol binding](../glossary.json#concept.protocol-binding), which
+  the installer keeps bound to that copy.
+- The `init` command, with which the developer initializes a project that has no Spec yet.
+
+Installing the part makes `init` available and never runs it. A project gets its first Spec only
+when the developer runs `concorde init --propose` and then `concorde init --apply`.
 
 ### A Spec change through Spec tooling
 
@@ -211,27 +215,13 @@ This keeps Spec core from importing either Views or the Spec MCP server
 <a id="init-command"></a>
 
 The `init` command is a thin adapter over Spec core's `initialize`
-([Initialization](spec/contracts.md#initialization)). `concorde init --propose --name <name>
-[--target <id>] [--python <interpreter>]` calls it with action `propose` (`--target` defaulting to
-`module.project`). `concorde init --apply --proposal <file>` reads the project-relative JSON
-`<file>`. The file must be an object holding at least `proposal` and `proposal_digest`.
-The whole `result` that `--propose` printed is one such object.
-The apply command calls `initialize` with action `apply` and those two fields.
-Any other field of the file is ignored. The proposal itself is checked by `initialize`.
-Either way the command prints Spec core's [shared envelope](spec/contracts.md#validation-result)
-with `tool` `init` and `target` `.`.
-On success, the envelope has status `success` with `initialize`'s answer as `result` (exit code 0).
-That answer's own `status` is `proposed` or `applied`.
-On refusal, the envelope has status `failed` with the refusal's
-[error record](spec/errors.md) as `error` (exit code 3).
-Besides `initialize`'s own refusals, the adapter adds `invalid_input` for these cases:
-
-- A malformed command line.
-- A propose without `--name`.
-- An apply without `--proposal`.
-- A proposal file that cannot be read as JSON.
-
-For a file that is not an object holding both fields, the adapter adds `invalid_proposal`.
+([Initialization](spec/contracts.md#initialization)). The developer first runs
+`concorde init --propose --name <name>` and reads the proposal it prints. The developer saves the
+printed `result` in a file, which need not lie in the project. The developer then runs
+`concorde init --apply --proposal <file>`. Apply writes the project's first Spec only when the
+project is still in the state the proposal was computed from. A proposal edited by hand is refused
+unless its digest is recomputed, and then it is checked like any other. The adapter's exact
+arguments, file format, results and refusals are its [contract](contracts.md#init-command).
 
 ```d2 illustrative
 direction: right
@@ -276,12 +266,37 @@ The Spec tooling guidance comprises these sections:
 
 Each section says what happens where a part it mentions is not installed.
 
+The "Specs" section and the task-session prompt's errors section say how to escalate Spec tooling's
+own [error record](spec/errors.md). The record is no link of an
+[error chain](../glossary.json#concept.error-chain). Where the coordination part is installed, the
+agent translates the record into a `component` link and escalates it with `--error-file`:
+
+- `level` is `component`, and `actor` is `Spec tooling (concorde <command>)`.
+- `code` is the record's code.
+- `detail` holds the record's message, reason, location and remediation.
+- `recommendation` holds the agent's recommendation.
+- `unhandled` is `input` for Specs or arguments that the agent or the one above it must correct,
+  and `environment` otherwise.
+- `causes` are the record's causes, translated the same way.
+
+A task session escalates such a link to the main agent, and the main agent to the developer.
+Without the coordination part, there are no tasks to escalate in. The main agent then gives the
+developer the record whole, with what it tried, when it cannot correct the cause itself.
+
 ## The children
 
-- <a id="contains-spec"></a>**Spec core** implements the Spec Protocol: loading, validation, the
-  registry mirror, [boundary sets](../glossary.json#concept.boundary-set), impact indexes, grants,
-  initialization and the Protocol text. Spec core has its private copy of typed values and file
-  transactions.
+- <a id="contains-spec"></a>**Spec core** implements the Spec Protocol. Its responsibilities are:
+
+  - Loading.
+  - Validation.
+  - The registry mirror.
+  - The [boundary sets](../glossary.json#concept.boundary-set).
+  - The impact indexes.
+  - The grants.
+  - Initialization.
+  - The Protocol text.
+
+  Spec core has its private copy of typed values and file transactions.
   It is the single source of every structural answer. Spec core must stay free of other Modules'
   code and of model calls.
 - <a id="contains-spec-mcp"></a>**Spec MCP server** serves Spec core's answers to agents over local

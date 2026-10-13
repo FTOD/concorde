@@ -14,7 +14,8 @@ the deterministic heart of Spec tooling. Spec core does the following:
 
 Spec core has these limits:
 
-- It uses no other [Module](../../glossary.json#concept.module).
+- It imports no other [Module](../../glossary.json#concept.module)'s code. It relies only on the
+  formats of the two Modules it uses.
 - It depends on no other part.
 - It never calls a model.
 - It does not judge whether a Spec explains enough or whether code keeps a promise.
@@ -512,6 +513,10 @@ performs these checks:
 
 The digest shows the proposal intact, not that propose made it. The written result is validated
 inside the transaction. If a first Spec does not validate, it is rolled back.
+Only a killed apply, or a restore the operating system refused, leaves some of the proposal's files
+behind. Since all of them were new, the
+caller removes those that still hold the proposal's content and initializes again
+([recovery](contracts.md#initialization)).
 Initialization creates only what the project owns: its configuration, registry and first Spec.
 
 Everything that exists because Concorde is installed is the installer's. So that the project
@@ -521,8 +526,17 @@ The first entry follows the recommended reading order. The entry invents nothing
 `Purpose`, a section says what is not yet specified. Its `Parts` section explains the realizations.
 Once a scaffold adds children, that section also explains the children.
 
-Propose and apply are two calls. Unless the proposal is exactly what the project's current state
-would give, apply refuses before it writes anything ([definition](contracts.md#initialization)):
+Propose and apply are two calls. Apply refuses before it writes anything unless all of these hold
+([definition](contracts.md#initialization)):
+
+- The proposal has the proposal type's shape.
+- Its digest is the given `proposal_digest`.
+- It binds the installed Protocol copy.
+- It was computed from the project's current state.
+- It creates only new files of the configuration, the registry and the first Spec.
+
+Apply does not check that propose made the proposal. A proposal built by hand to the same shape
+passes the same checks:
 
 ```d2 illustrative
 direction: down

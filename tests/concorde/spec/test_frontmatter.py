@@ -79,6 +79,34 @@ class FrontMatterTests(unittest.TestCase):
             metadata,
         )
 
+    def test_a_colon_inside_a_list_scalar_is_text(self):
+        # Only a colon followed by a space or ending the item separates a key; a quoted scalar or
+        # an inline collection is a value whatever colons it holds.
+        metadata, _ = parse_document(
+            document(
+                "items:",
+                "  - https://example.com/a",
+                '  - "https://example.com/b"',
+                "  - 'key: quoted'",
+                '  - {"url": "https://example.com/c"}',
+                '  - ["a:b"]',
+                "  - key: https://example.com/d",
+            )
+        )
+        self.assertEqual(
+            {
+                "items": [
+                    "https://example.com/a",
+                    "https://example.com/b",
+                    "key: quoted",
+                    {"url": "https://example.com/c"},
+                    ["a:b"],
+                    {"key": "https://example.com/d"},
+                ]
+            },
+            metadata,
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

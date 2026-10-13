@@ -1077,7 +1077,11 @@ class CheckTests(unittest.TestCase):
         )
         self.assertIn("CHK.view.nodes", self.rules())
 
-    @verifies("scenario.spec.registry-mirror", "scenario.spec.registry-regenerate")
+    @verifies(
+        "scenario.spec.registry-mirror",
+        "scenario.spec.registry-regenerate",
+        "scenario.spec.registry-check",
+    )
     def test_a_stale_registry_is_reported_and_regenerated(self):
         value = self.project.metadata(self.entry("consumer"))
         value["module"]["includes"].append(
@@ -1089,10 +1093,14 @@ class CheckTests(unittest.TestCase):
         before = (self.root / ".concorde/specs.json").read_bytes()
         checked = registry_command(self.root, write=False)
         self.assertEqual("invalid", checked.status)
+        self.assertEqual({"stale": ["module.consumer"]}, checked.result)
         self.assertEqual(["module.consumer"], [f.subject_id for f in checked.findings])
         self.assertEqual(before, (self.root / ".concorde/specs.json").read_bytes())
         written = registry_command(self.root, write=True)
         self.assertEqual("success", written.status)
+        self.assertEqual({"regenerated": ["module.consumer"]}, written.result)
+        current = registry_command(self.root, write=False)
+        self.assertEqual(("success", {"stale": []}), (current.status, current.result))
         registry = read_json(self.root, ".concorde/specs.json")
         self.assertEqual(
             ["module.app", "module.provider", "module.consumer"],

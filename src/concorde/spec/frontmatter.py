@@ -24,6 +24,9 @@ class FrontMatterError(SpecError):
 
 _KEY = re.compile(r"^[A-Za-z_][A-Za-z0-9_.-]*$")
 _INTEGER = re.compile(r"^-?[0-9]+$")
+# A list item is a mapping only when a colon followed by a space, or ending it, separates a key;
+# a quoted scalar or an inline collection is never a mapping, so `- https://x` stays a string.
+_ITEM_SEPARATOR = re.compile(r":(?: |$)")
 
 
 def _unique_pairs(items: list[tuple[str, Any]]) -> dict[str, Any]:
@@ -126,8 +129,13 @@ def _parse_block(
                 value, index = _parse_block(tokens, index + 1, indent + 2, source)
                 container.append(value)
                 continue
-            if ":" in item:
-                key, raw_value = item.split(":", 1)
+            separator = (
+                None
+                if item.startswith(('"', "'", "[", "{"))
+                else _ITEM_SEPARATOR.search(item)
+            )
+            if separator:
+                key, raw_value = item[: separator.start()], item[separator.end() :]
                 key = _key(key, source, line)
                 record: dict[str, Any] = {}
                 if raw_value.strip():

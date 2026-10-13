@@ -52,6 +52,7 @@ to it.
 
 - GIVEN a project whose configuration has a `profile_version` other than the one this Concorde
   supports
+- AND whose configuration holds no field of an earlier profile
 - WHEN a repository is constructed
 - THEN construction fails with `unsupported_profile`
 - AND the configuration is not reinterpreted
@@ -397,13 +398,17 @@ to it.
 - AND each record's identity and entry path are unchanged
 - AND the record order is unchanged
 - AND the set of recorded Modules is unchanged
+- AND the command's status is `success` with `regenerated` naming the stale records
+- AND a second `--write` reports `unchanged`
 
 ### scenario.spec.registry-check — Checking the mirror without writing
 
 - GIVEN a registry whose records are stale for some Modules
 - WHEN the developer runs the registry command with `--check`
 - THEN it reports one `CHK.registry.mirror` finding per stale record
+- AND its status is `invalid` with `stale` naming those records
 - BUT it writes no file
+- AND on a current registry its status is `success` with an empty `stale`
 
 ## Boundary sets
 
@@ -730,6 +735,8 @@ A `review-spec` grant for the same Module is equal to it apart from its task typ
 - AND it differs after the change to the definition
 - BUT it is unchanged after the change to the implementation file
 - BUT it is unchanged after a change to a glossary entry outside A's terms
+- BUT it is unchanged after the glossary file is reformatted with every entry's value kept
+- AND the `review-architecture` grant's context identity differs after that reformatting
 
 ## Coverage
 
@@ -850,6 +857,16 @@ A `review-spec` grant for the same Module is equal to it apart from its task typ
 - WHEN it is applied
 - THEN every written file is restored
 - AND the exception the caller receives is the one the final check raised
+
+### scenario.spec.transaction-interrupted — An observed interruption restores and is raised again
+
+- GIVEN a file transaction of two files whose final check receives `KeyboardInterrupt` or
+  `SystemExit`
+- AND every restore of a written file succeeds
+- WHEN it is applied
+- THEN every written file is restored
+- AND files that did not exist are removed
+- AND the exception the caller receives is that interruption, unchanged
 
 ### scenario.spec.transaction-stale — A changed file stops a transaction before it writes
 

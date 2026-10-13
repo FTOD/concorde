@@ -116,21 +116,27 @@ def apply_files(
                     "stale_proposal",
                     path=item["path"],
                 )
-            write(path, item["content"].encode())
+            # A target is recorded before its write begins, so that an interruption after its
+            # rename still restores it; restoring a target the write never reached changes nothing.
             changed.append(item["path"])
+            write(path, item["content"].encode())
         current = None
         if verify:
             verify()  # its own exception propagates unchanged once the files are restored
-    except Exception as error:
+    except BaseException as error:
+        # An interruption the process observes, such as KeyboardInterrupt or SystemExit, restores
+        # like any other failure and is raised again unchanged.
         unrestored = []
         for relative in reversed(changed):
             original = backups[relative]
             # Each restore resolves its own destination, so one that became unsafe, such as a
             # symlink, is left alone and named while the other files are still restored.
+            if relative == current and _unchanged(root / relative, original):
+                continue  # the interrupted or refused write never reached its target
             try:
                 path = checked_path(root, relative)
                 if original is None:
-                    path.unlink()
+                    path.unlink(missing_ok=True)
                 else:
                     write(path, original)
             except OSError as problem:
@@ -178,3 +184,15 @@ def apply_files(
             ) from error
         raise
     return changed
+
+
+def _unchanged(path: Path, original: bytes | None) -> bool:
+    """Whether ``path`` still holds ``original``, or is still absent when that is ``None``."""
+    try:
+        if path.is_symlink():
+            return False
+        if original is None:
+            return not path.exists()
+        return path.is_file() and path.read_bytes() == original
+    except OSError:
+        return False

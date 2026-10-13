@@ -153,7 +153,7 @@ class SpecRepository(DocumentUnitRepository):
                 causes=[error if isinstance(error, SpecError) else system_cause(error)],
             ) from error
         self.protocol_manifest_bytes = raw
-        manifest = decode(raw.decode())
+        manifest = _manifest(raw)
         binding = {"version": manifest.get("version"), "digest": digest(raw)}
         if self.config["protocol"] != binding or binding["version"] != PROTOCOL_VERSION:
             raise SpecError(
@@ -211,3 +211,37 @@ class SpecRepository(DocumentUnitRepository):
             registry_bytes=self._registry_override,
             document_overrides=self.document_overrides,
         )
+
+
+def _manifest(raw: bytes) -> dict:
+    """The installed Protocol manifest, refused as ``protocol_mismatch`` unless it is an object
+    whose ``assets`` are records with a string ``path`` and ``digest``."""
+    problem = "it is not JSON"
+    causes: list[SpecError] = []
+    try:
+        manifest = decode(raw.decode("utf-8"))
+    except (SpecError, UnicodeError) as error:
+        causes = [error if isinstance(error, SpecError) else system_cause(error)]
+    else:
+        if not isinstance(manifest, dict):
+            problem = f"it is a JSON {type(manifest).__name__}, not an object"
+        elif not isinstance(manifest.get("assets"), list):
+            problem = "its assets are not a list"
+        elif not all(
+            isinstance(item, dict)
+            and isinstance(item.get("path"), str)
+            and isinstance(item.get("digest"), str)
+            for item in manifest["assets"]
+        ):
+            problem = "an asset is not a record with a string path and digest"
+        else:
+            return manifest
+    raise SpecError(
+        f"the installed Protocol manifest {PROTOCOL_MANIFEST_PATH} is malformed: {problem}",
+        "protocol_mismatch",
+        path=PROTOCOL_MANIFEST_PATH,
+        reason="the Protocol copy is accepted only through a well-formed manifest that the "
+        "configuration binds",
+        remediation="reinstall Concorde so the project's copy matches the package",
+        causes=causes,
+    )
