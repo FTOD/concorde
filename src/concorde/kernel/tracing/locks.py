@@ -38,6 +38,9 @@ INHERITED = "CONCORDE_INHERITED_LOCKS"
 SESSION = "CLAUDE_CODE_SESSION_ID"
 # The kernel's table of the locks held now.
 LOCK_TABLE = Path("/proc/locks")
+# How long ``holder_pids`` reads the lock table again, in seconds, before it gives up on two
+# consecutive reads agreeing.
+SETTLE = 1.0
 
 
 class LockBusy(Exception):
@@ -63,6 +66,22 @@ class LockGone(Exception):
             f"{path} was removed or replaced by its holder while this process waited for it"
         )
         self.path = path
+        self.waited = waited
+
+
+class LockTableUnsettled(Exception):
+    """No two consecutive reads of the lock table agreed within the settle time, so no read is
+    known to be whole; ``seen`` names, once each, every process some read named as a holder of
+    ``path``, each of which held that lock at some moment of the reads."""
+
+    def __init__(self, path: Path, seen: list[int], reads: int, waited: float):
+        super().__init__(
+            f"the lock table changed between each two of its {reads} reads in {waited:.1f}s, "
+            f"so the holders of {path} are not known"
+        )
+        self.path = path
+        self.seen = seen
+        self.reads = reads
         self.waited = waited
 
 
@@ -371,10 +390,18 @@ def wait_released(path: Path, timeout: float | None = None) -> bool:
     return done.wait(timeout)
 
 
-def holder_pids(path: Path) -> list[int]:
+def holder_pids(path: Path, settle: float = SETTLE) -> list[int]:
     """The processes the kernel's lock table ``/proc/locks`` names as holding a ``flock`` on the
-    file ``path``, as seen from this PID namespace; empty where the table is unavailable or the
-    holder is not visible from here."""
+    file ``path``, as seen from this PID namespace, once each; empty where the table is unavailable
+    or the holder is not visible from here.
+
+    The kernel serves the table one page per ``read()`` and lets it change between the calls, so a
+    single read of a table over one page can skip or repeat a lock held throughout. The table is
+    therefore read again until two consecutive complete reads are identical, and the holders are
+    taken from that read. When no two consecutive reads agree within ``settle`` seconds, it raises
+    ``LockTableUnsettled`` naming every holder some read showed, rather than answer from a read
+    that may be partial.
+    """
     try:
         status = os.stat(path)
         table = LOCK_TABLE.read_text()
@@ -382,6 +409,27 @@ def holder_pids(path: Path) -> list[int]:
         return []
     # An inode number is unique only within its filesystem, so the device must match as well.
     wanted = (os.major(status.st_dev), os.minor(status.st_dev), status.st_ino)
+    seen = _table_holders(table, wanted)
+    reads = 1
+    started = time.monotonic()
+    while True:
+        try:
+            again = LOCK_TABLE.read_text()
+        except OSError:
+            return []
+        reads += 1
+        if again == table:
+            return _table_holders(again, wanted)
+        seen += [pid for pid in _table_holders(again, wanted) if pid not in seen]
+        waited = time.monotonic() - started
+        if waited >= settle:
+            raise LockTableUnsettled(path, seen, reads, waited)
+        table = again
+
+
+def _table_holders(table: str, wanted: tuple[int, int, int]) -> list[int]:
+    """The processes one read of the lock table names as holding a ``flock`` on the file whose
+    device numbers and inode are ``wanted``, once each, in the table's order."""
     found = []
     for line in table.splitlines():
         fields = line.split()
@@ -395,7 +443,7 @@ def holder_pids(path: Path) -> list[int]:
             file = (int(major, 16), int(minor, 16), int(number))
         except ValueError:
             continue
-        if file == wanted and pid > 0:
+        if file == wanted and pid > 0 and pid not in found:
             found.append(pid)
     return found
 
@@ -411,8 +459,10 @@ __all__ = [
     "INHERITED",
     "POLL",
     "SESSION",
+    "SETTLE",
     "LockBusy",
     "LockGone",
+    "LockTableUnsettled",
     "acquire",
     "describe",
     "entry",

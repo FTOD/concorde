@@ -223,3 +223,22 @@ define these items:
 - THEN it names only the process of the entry whose device and inode both match the file
 - AND it names no process of a waiting entry or of a POSIX lock on the file
 
+### scenario.tracing.lock-table-settled — The holders come from two identical reads of a changing table
+
+- GIVEN a process holds the `flock` of a lock file throughout
+- AND the lock table reads differently each time until two consecutive reads are identical
+- AND the earlier reads skip that process's entry or show it twice
+- WHEN an observer reads the holders of that lock file from the table
+- THEN it names that process once
+- AND it read the table until two consecutive reads were identical
+
+### scenario.tracing.lock-table-unsettled — A lock table that never settles is refused
+
+- GIVEN a process holds the `flock` of a lock file throughout
+- AND every read of the lock table differs from the read before it
+- AND some reads skip that process's entry or show it twice
+- WHEN an observer reads the holders of that lock file from the table
+- THEN it refuses once one second has passed
+- AND the refusal names that process once
+- BUT the refusal names no holder that no read showed
+

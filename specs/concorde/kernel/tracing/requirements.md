@@ -190,6 +190,15 @@ A process that adopted a handed lock SHALL hold it until the process ends, passi
 
 Therefore, when the process that adopted the lock ends, the lock is released.
 
+### req.tracing.lock-table-whole — Lock holders come from a whole lock table
+
+An observer that reads the holders of a lock from the operating system's lock table SHALL take
+them from two consecutive identical reads of the whole table and name each holder once.
+
+When no two consecutive reads are identical within one second, the observer SHALL refuse and name
+every holder that some read showed. The [contract](contracts.md#locks) gives the
+reason: one read of the table is not whole when the table changes during it.
+
 ### req.tracing.history-unchanged — A closed root is not changed
 
 No Concorde command SHALL change a file inside a folder of a trace root its part registered as closed, such as Coordination's [history](../../glossary.json#concept.history), except that retention only removes such a folder whole or removes its conversation records, and except the writes the registering part names as its closing exception.
