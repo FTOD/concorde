@@ -128,94 +128,6 @@ tooling. Such an admission leaves out the binding's Modules the workspace no lon
 refuses a named Module the workspace does not register. A definition that reads no Spec takes the Modules as
 labels.
 
-### Unbound runs
-
-<a id="concept.unbound-run"></a>
-
-When a definition allows it, the definition may also run
-**[unbound](../glossary.json#concept.unbound-run)**, in a worktree without a binding such as the
-primary worktree. The definition decides this by its binding
-([What a definition gives the runner](runner.md#what-a-definition-gives-the-runner)). In Concorde,
-Method's reading Operations allow it, such as `understand`, `survey`, `spec_panel`, `code_review`
-and `project_review`. `general` allows it only for work that writes nothing.
-
-An unbound run has these properties:
-
-- It works with the Modules `--modules` names.
-- It records `workspace` null.
-- It admits only unbound inputs.
-- It takes no workspace lock, having no workspace to lock.
-- It takes its run lock like every run.
-- It may launch only reading workers, so it changes no Spec or code.
-
-Besides its own record, the lasting changes an unbound run may make are publishing
-[Issues](../glossary.json#concept.issue) and a `project_review` run's review record. Where the
-issues part is installed, a Spec or code review reports its findings this way. It publishes them
-only through the [Issues](../issues/module.md) store. The store commits each Issue on the primary
-branch as a commit of its own under the [merge lock](../glossary.json#concept.merge-lock).
-`project_review` commits its review record alone on the primary branch the same way, as
-[Project review](../method/project-review/module.md) says. The run never publishes through the
-checkout it examines
-([req.execution.unbound-origin-untouched](requirements.md#req.execution.unbound-origin-untouched)).
-A definition that requires a binding is refused unbound with `binding_required`
-([req.execution.unbound-read-only](requirements.md#req.execution.unbound-read-only)).
-
-<a id="concept.unbound-checkout"></a>
-
-An unbound run never works in the worktree it starts in. The runner checks out that worktree's
-`HEAD` detached as `.claude/worktrees/unbound-<run-id>` of the repository's primary worktree. This is
-the **[unbound checkout](../glossary.json#concept.unbound-checkout)**, where the run's steps and
-workers work. Before it writes the result, the runner removes the checkout. The result names the
-commit examined as `commit`. The run examines that commit, never uncommitted changes.
-[Running unbound](#running-unbound) says what else the checkout holds.
-
-### Long runs
-
-<a id="concept.detached-run"></a><a id="concept.run-progress-file"></a><a id="concept.run-lock"></a>
-
-With `--detach`, the command starts the runner as a
-**[detached run](../glossary.json#concept.detached-run)**, a process of its own that outlives the
-command. As soon as the run's **[run progress file](../glossary.json#concept.run-progress-file)**
-exists, the command prints the run identity and the path of its result. Everything else about the
-run is the same. The run progress file names these things:
-
-- what runs
-- in which workspace
-- in which step
-
-The **[run lock](../glossary.json#concept.run-lock)**, `locks/runs/<run-id>.lock`, tells whether the
-runner still lives. Only the run's runner locks it. The runner locks it before the first run
-progress file and holds it until after the result. The runner removes the file as it exits. An
-observer in any PID namespace tells by the lock whether the run still runs.
-[Following a long run](#following-a-long-run) explains how an observer uses
-both.
-
-<a id="detached-namespace"></a>
-
-**A detached run lives only as long as the PID namespace it started in.** The runner is a new
-session and process group, which frees it from the command and its terminal. No process leaves
-the PID namespace it was started in. When the first process of a PID namespace ends, the
-operating system kills every other one in it at once. Claude Code's Bash sandbox runs every call
-of a session's Bash tool in a PID namespace of its own, foreground or background. The namespace's
-first process is the sandbox's own wrapper around the call's shell. When the call's command ends,
-the call's namespace ends. When a sandboxed Bash call returns, a runner detached from it is
-therefore killed without a word. The runner leaves a run with no result whose run lock nobody
-holds. The same holds for any process that call started. A sandboxed command cannot hand the run
-to a process outside either, since the sandbox refuses it even Unix sockets. Whoever needs a run
-to outlive a sandboxed call starts it from a process outside the sandbox or keeps the call alive
-as long as the run. A [workflow step](../glossary.json#concept.workflow-step) starts it outside
-through the [project MCP server](../glossary.json#concept.project-mcp-server)
-([Workflows](../workflows/module.md#steps-in-claude-code)). Which callers those are is not
-Execution's to say. On the Claude Code backend, a worker's Bash is sandboxed
-([req.workers.bash-sandbox](../worker-harness/workers/launch.md#req.workers.bash-sandbox)). A
-[main agent](../glossary.json#concept.main-agent)'s own session may be sandboxed. A
-[task session](../glossary.json#concept.task-session)'s calls are not sandboxed
-([req.task-session.no-sandbox](../coordination/task-session/requirements.md#req.task-session.no-sandbox)).
-No namespace of a task session's calls therefore ends with them. A task session starts its runs
-in background Bash rather than detached all the same, because Claude Code may end the processes of
-a call that returned. Execution itself does not see which namespace it was started in and promises no
-more than this.
-
 ### The run store
 
 <a id="concept.run-store"></a>
@@ -454,6 +366,44 @@ though, does not mean the lock is free yet.
 
 ### Running unbound
 
+<a id="unbound-runs"></a><a id="concept.unbound-run"></a>
+
+When a definition allows it, the definition may also run
+**[unbound](../glossary.json#concept.unbound-run)**, in a worktree without a binding such as the
+primary worktree. The definition decides this by its binding
+([What a definition gives the runner](runner.md#what-a-definition-gives-the-runner)). In Concorde,
+Method's reading Operations allow it, such as `understand`, `survey`, `spec_panel`, `code_review`
+and `project_review`. `general` allows it only for work that writes nothing.
+
+An unbound run has these properties:
+
+- It works with the Modules `--modules` names.
+- It records `workspace` null.
+- It admits only unbound inputs.
+- It takes no workspace lock, having no workspace to lock.
+- It takes its run lock like every run.
+- It may launch only reading workers, so it changes no Spec or code.
+
+Besides its own record, the lasting changes an unbound run may make are publishing
+[Issues](../glossary.json#concept.issue) and a `project_review` run's review record. Where the
+issues part is installed, a Spec or code review reports its findings this way. It publishes them
+only through the [Issues](../issues/module.md) store. The store commits each Issue on the primary
+branch as a commit of its own under the [merge lock](../glossary.json#concept.merge-lock).
+`project_review` commits its review record alone on the primary branch the same way, as
+[Project review](../method/project-review/module.md) says. The run never publishes through the
+checkout it examines
+([req.execution.unbound-origin-untouched](requirements.md#req.execution.unbound-origin-untouched)).
+A definition that requires a binding is refused unbound with `binding_required`
+([req.execution.unbound-read-only](requirements.md#req.execution.unbound-read-only)).
+
+<a id="concept.unbound-checkout"></a>
+
+An unbound run never works in the worktree it starts in. The runner checks out that worktree's
+`HEAD` detached as `.claude/worktrees/unbound-<run-id>` of the repository's primary worktree. This is
+the **[unbound checkout](../glossary.json#concept.unbound-checkout)**, where the run's steps and
+workers work. However the run ends, the runner removes the checkout before it writes the result.
+The result names the commit examined as `commit`. The run examines that commit, never uncommitted changes.
+
 While an unbound run lasts, main sessions merge tasks into the primary worktree. The run reads,
 and the worker harness audits, only its checkout. Such a merge can therefore neither change what
 the run reads nor make a worker's audit fail. The run is still recorded in the worktree it started
@@ -465,8 +415,7 @@ that Git ignores are linked from that worktree into the checkout. Examples inclu
 in the checkout. Each submodule that worktree checked out is checked out in the checkout too, when
 its repository holds the commit the checkout records for it and Git can check it out. A submodule that cannot be
 checked out stays empty, as in a fresh clone. The `submodule-absent` evidence names why
-([Unbound checkout](runner.md#unbound-checkout)). However the run ends, the runner removes the
-checkout before it writes the result.
+([Unbound checkout](runner.md#unbound-checkout)).
 
 <a id="preparation"></a>
 
@@ -487,22 +436,55 @@ The command can write the checkout and its own scratch. It cannot write any othe
 This includes the worktree the run started in, the primary worktree and the runtime paths the
 checkout only links. When a command fails, the run ends `failed` and no step runs
 ([Preparing the checkout](runner.md#preparing-the-checkout)). A bound run is never prepared. Whoever
-prepares its workspace, such as a task session, also builds it.
+prepares its workspace, such as a [task session](../glossary.json#concept.task-session), also
+builds it.
 
 ### Following a long run
 
-While a run lives, its run progress file names these things:
+<a id="long-runs"></a><a id="concept.detached-run"></a><a id="concept.run-progress-file"></a><a id="concept.run-lock"></a>
+
+With `--detach`, the command starts the runner as a
+**[detached run](../glossary.json#concept.detached-run)**, a process of its own that outlives the
+command. As soon as the run's **[run progress file](../glossary.json#concept.run-progress-file)**
+exists, the command prints the run identity and the path of its result. Everything else about the
+run is the same. The run progress file names these things:
 
 - what runs
 - in which workspace
 - in which step
-- the runner's process identifier
 
-Every worker run its steps launch records the run's identity. An observer therefore follows a run
-and its worker without asking the runner. Examples of observers include a workflow step or the run
-state of a task. The run lock tells whether the runner still lives. The runner locks it from before
-its first run progress file until after its result. As it exits, the runner removes the lock.
-However the runner ends, the operating system releases the lock. A run without a result whose run
+The **[run lock](../glossary.json#concept.run-lock)**, `locks/runs/<run-id>.lock`, tells whether the
+runner still lives. Only the run's runner locks it. The runner locks it before the first run
+progress file and holds it until after the result. The runner removes the file as it exits. An
+observer in any PID namespace tells by the lock whether the run still runs. The rest of this
+section explains how an observer uses both.
+
+<a id="detached-namespace"></a>
+
+**A detached run lives only as long as the PID namespace it started in.** The runner is a new
+session and process group, which frees it from the command and its terminal. No process leaves
+the PID namespace it was started in. When the first process of a PID namespace ends, the
+operating system kills every other one in it at once. Claude Code's Bash sandbox runs every call
+of a session's Bash tool in a PID namespace of its own, foreground or background. The namespace's
+first process is the sandbox's own wrapper around the call's shell. When the call's command ends,
+the call's namespace ends. When a sandboxed Bash call returns, a runner detached from it is
+therefore killed without a word. The runner leaves a run with no result whose run lock nobody
+holds. The same holds for any process that call started. A sandboxed command cannot hand the run
+to a process outside either, since the sandbox refuses it even Unix sockets. Whoever needs a run
+to outlive a sandboxed call starts it from a process outside the sandbox or keeps the call alive
+as long as the run. A [workflow step](../glossary.json#concept.workflow-step) starts it outside
+through the [project MCP server](../glossary.json#concept.project-mcp-server)
+([Workflows](../workflows/module.md#steps-in-claude-code)). Which callers those are is not
+Execution's to say. On the Claude Code backend, a worker's Bash is sandboxed
+([req.workers.bash-sandbox](../worker-harness/workers/launch.md#req.workers.bash-sandbox)). Whether
+another caller's calls are sandboxed is its own owner's promise, and so is the advice on how that
+caller starts its runs. Execution itself does not see which namespace it was started in and
+promises no more than this.
+
+While a run lives, its run progress file also names the runner's process identifier. Every worker
+run its steps launch records the run's identity. An observer therefore follows a run and its worker
+without asking the runner. Examples of observers include a workflow step or the run state of a
+task. However the runner ends, the operating system releases its run lock. A run without a result whose run
 lock nobody holds ended without writing one. No observer decides whether the runner still lives
 by the recorded process identifier. The identifier is only meaningful in the PID namespace the
 runner ran in. A runner started in a sandboxed shell may record 2. On the host, that number names
