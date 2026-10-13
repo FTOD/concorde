@@ -205,15 +205,45 @@ The installation, the binding and the mark stay, so only the update result is lo
 
 The build records what every part of the package registers in the **parts index**
 `generated/parts.json`. The parts index has this form:
-`{"schema_version": 1, "parts": {<part>: {"module", "depends_on",
-"commands", "mcp_tools"}}}`.
-This lets a project's `concorde` and [project MCP server](../glossary.json#concept.project-mcp-server)
-name the part of a command or tool that is not installed.
-They can do this without reading that part's registration.
+
+```json
+{
+  "schema_version": 2,
+  "parts": {
+    "coordination": {
+      "module": "module.coordination",
+      "directory": "coordination",
+      "depends_on": ["kernel"],
+      "commands": ["task"],
+      "mcp_tools": ["task_list", "task_show", "task_merge", "register_wait"]
+    }
+  }
+}
+```
+
+The index has one entry for each part of the package, by its part name. Each entry is a projection
+of the part's registration:
+
+- `module` is the registration's `module`.
+- `directory` is the part's directory of `src/concorde/`, which holds its registration.
+- `depends_on` is the registration's `depends_on`.
+- `commands` holds the `name` of each of the registration's `commands`, in their order.
+- `mcp_tools` holds the `name` of each of the registration's `mcp_tools`, in their order.
+
+The example shows a few of Coordination's tools. A change of the form increments `schema_version`.
 In a source checkout, the installed parts are every part the package builds.
 In a project, the installed parts are the parts the receipt names under `parts`.
 That field is an object whose keys are the part names.
 When the receipt names none, every part is installed. Distribution is installed with any part.
+A project reads the registrations of its installed parts alone. It finds each in the directory the
+index names, and it passes over a part the index does not name. When the index is missing,
+unreadable or of another `schema_version`, a project whose receipt names its parts cannot find
+them. Then its `concorde` refuses every command with `stale_build`, and its project MCP server
+presents no tool.
+The index also lets a project's `concorde` and
+[project MCP server](../glossary.json#concept.project-mcp-server) name the part of a command or tool
+that is not installed. They can do this without reading that part's registration. An index they
+cannot read names no part, and the command or tool is refused as unknown.
 
 ## Project MCP server
 

@@ -768,9 +768,9 @@ class RoutingTests(unittest.TestCase):
         self.assertEqual(2, command("task", "frobnicate").returncode)
 
 
-def framework(test, parts: list[str] | None) -> Path:
-    """A project whose Framework copy is this package, with a receipt naming ``parts``, or no
-    parts at all when None; the project's root."""
+def framework(test, named: list[str] | None) -> Path:
+    """A project whose Framework copy is this package, with a receipt naming the parts
+    ``named``, or no parts at all when None; the project's root."""
     directory = tempfile.TemporaryDirectory()
     test.addCleanup(directory.cleanup)
     project = Path(directory.name) / "project"
@@ -780,14 +780,15 @@ def framework(test, parts: list[str] | None) -> Path:
         copy / "src",
         ignore=shutil.ignore_patterns("__pycache__", "*.pyc"),
     )
+    # The parts index of these sources, as the build writes it, without reading the checkout's.
     (copy / "generated").mkdir(parents=True)
-    shutil.copy2(
-        REPOSITORY_ROOT / "generated/parts.json", copy / "generated/parts.json"
+    (copy / "generated/parts.json").write_text(
+        json.dumps(parts.index_of(parts.package_parts(REPOSITORY_ROOT)))
     )
     shutil.copy2(REPOSITORY_ROOT / "concorde.json", copy / "concorde.json")
     receipt = {"version": "9.0.0"}
-    if parts is not None:
-        receipt["parts"] = {name: "9.0.0" for name in parts}
+    if named is not None:
+        receipt["parts"] = {name: "9.0.0" for name in named}
     (project / ".concorde/install.json").write_text(json.dumps(receipt))
     subprocess.run(["git", "init", "-q", str(project)], check=True)
     return project
@@ -811,8 +812,11 @@ class PartsTests(unittest.TestCase):
     EVERY_PART_BUT = ("issues", "execution")
 
     def installed(self) -> list[str]:
-        index = json.loads((REPOSITORY_ROOT / "generated/parts.json").read_text())
-        return [name for name in index["parts"] if name not in self.EVERY_PART_BUT]
+        return [
+            name
+            for name in parts.package_parts(REPOSITORY_ROOT)
+            if name not in self.EVERY_PART_BUT
+        ]
 
     @verifies(
         "scenario.distribution.part-missing",
@@ -883,7 +887,7 @@ class PartsTests(unittest.TestCase):
 
     @verifies("scenario.distribution.composed-from-installed-parts")
     def test_a_receipt_naming_no_parts_installs_every_part(self):
-        index = json.loads((REPOSITORY_ROOT / "generated/parts.json").read_text())
+        index = parts.index_of(parts.package_parts(REPOSITORY_ROOT))
         # A receipt without parts and one whose parts are empty both name none.
         for named in (None, []):
             with self.subTest(parts=named):
@@ -902,6 +906,55 @@ class PartsTests(unittest.TestCase):
         everything = parts.package_parts(REPOSITORY_ROOT)
         for receipt in ({"version": "9.0.0"}, {"version": "9.0.0", "parts": {}}):
             self.assertEqual(set(everything), _previous_parts(receipt, everything))
+
+    @verifies("scenario.distribution.registration-only-installed")
+    def test_a_project_reads_no_registration_of_a_part_it_has_not_installed(self):
+        project = framework(self, self.installed())
+        copy = project / ".concorde/framework"
+        # The issues part is not installed: its registration is not even JSON.
+        (copy / "src/concorde/issues/registration.json").write_text(
+            "not a registration"
+        )
+        usage = framework_command(project, "--help")
+        self.assertEqual(0, usage.returncode, usage.stderr)
+        self.assertIn("task", usage.stdout)
+        listed = framework_command(project, "project-mcp", "--tools")
+        self.assertEqual(0, listed.returncode, listed.stderr)
+        self.assertIn(
+            "task_list", {tool["name"] for tool in json.loads(listed.stdout)["tools"]}
+        )
+        refused = framework_command(project, "issues", "list")
+        self.assertEqual("part_missing", json.loads(refused.stdout)["error"]["code"])
+        # An index of another version cannot place the installed parts: refused, not guessed.
+        index = json.loads((copy / "generated/parts.json").read_text())
+        index["schema_version"] = 1
+        (copy / "generated/parts.json").write_text(json.dumps(index))
+        stale = framework_command(project, "--help")
+        self.assertNotEqual(0, stale.returncode)
+        self.assertEqual("stale_build", json.loads(stale.stdout)["error"]["code"])
+
+    def test_the_parts_index_has_the_form_of_its_contract(self):
+        index = parts.index_of(parts.package_parts(REPOSITORY_ROOT))
+        self.assertEqual(parts.INDEX_VERSION, index["schema_version"])
+        text = (
+            REPOSITORY_ROOT / "specs/concorde/distribution/contracts.md"
+        ).read_text()
+        example = json.loads(
+            text.split("The parts index has this form:\n\n```json\n", 1)[1].split(
+                "\n```", 1
+            )[0]
+        )
+        self.assertEqual(index["schema_version"], example["schema_version"])
+        self.assertEqual(
+            index["parts"]["coordination"]["module"],
+            example["parts"]["coordination"]["module"],
+        )
+        for name, entry in index["parts"].items():
+            self.assertEqual(set(example["parts"]["coordination"]), set(entry), name)
+            self.assertTrue(
+                (REPOSITORY_ROOT / "src/concorde" / entry["directory"]).is_dir()
+            )
+            self.assertTrue(all(isinstance(item, str) for item in entry["commands"]))
 
     @verifies("scenario.distribution.build-refuses-name-conflict")
     def test_two_parts_registering_one_name_fail_the_build(self):
@@ -1442,6 +1495,17 @@ class InstallTests(unittest.TestCase):
         )
         registration["install"]["gitignore"] = []
         (retired / "registration.json").write_text(json.dumps(registration))
+        # The copy's own parts index, built when the copy had the part, places it.
+        index_path = project / ".concorde/framework/generated/parts.json"
+        index = json.loads(index_path.read_text())
+        index["parts"]["retired"] = {
+            "module": "module.retired",
+            "directory": "retired",
+            "depends_on": registration["depends_on"],
+            "commands": [],
+            "mcp_tools": [item["name"] for item in registration["mcp_tools"]],
+        }
+        index_path.write_text(json.dumps(index))
         path = project / ".concorde/install.json"
         receipt = json.loads(path.read_text())
         receipt["parts"]["retired"] = receipt["version"]

@@ -112,6 +112,17 @@ This illustrates [a prompt reached at most once within one root](requirements.md
 - THEN the build stops with an error naming the edited output
 - BUT the edited output is kept as it is
 
+### scenario.distribution.registration-only-installed — A project reads only its installed parts' registrations
+
+- GIVEN a project whose receipt names its installed parts
+- AND whose Framework copy holds the registration of a part the receipt does not name, which is not even JSON
+- WHEN the developer runs `concorde --help`, a command of an installed part or the project MCP server lists its tools
+- THEN the commands and tools of the installed parts answer
+- AND a command of the part not installed is refused with `part_missing`
+- BUT when the parts index is of another version, every command is refused with `stale_build`
+
+This illustrates [reaching a part only through its registration](requirements.md#req.distribution.registration-only).
+
 ### scenario.distribution.build-refuses-name-conflict — Refuse a name two parts register
 
 - GIVEN a checkout in which two parts' [registrations](../glossary.json#concept.part-registration) register the same command
