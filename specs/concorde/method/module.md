@@ -401,7 +401,10 @@ The task level therefore routes every Spec repair through `specify` or does it i
 **Implementation** provides `implement` and `test`. In `implement` a worker changes the bound
 Modules' code under a grant that makes only that code writable. Its round validation runs their
 checks with resume rounds until they pass or the rounds run out. Its result therefore says whether
-the checks passed on the changed code. In `test` a read-only worker interprets the checks the
+the checks passed on the code of the last validated round. The deletions the worker proposed happen
+after those checks, so the check evidence describes the workspace before them. A caller that needs
+checks of the final workspace runs `test`
+([Implementation](implementation/module.md#how-implement-is-built)). In `test` a read-only worker interprets the checks the
 Operation ran. It returns a test report. The check results, not the worker's reading of them, are
 the evidence. Both need a bound workspace.
 

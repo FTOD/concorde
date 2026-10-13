@@ -1,14 +1,16 @@
 # Code review scenarios
 
 Concrete situations that show the [requirements](requirements.md) at work. The report's shape is
-in the [contracts](contracts.md).
+in the [contracts](contracts.md). Unless a scenario says otherwise, the issues part is installed and
+records every report, the configured checks run, and the reviewer finishes.
 
 ## Change review
 
 ### scenario.code-review.clean — A change that keeps its promises
 
 - GIVEN a workspace whose changes to a bound [Module](../../glossary.json#concept.module)'s code keep every promise of its [Spec](../../glossary.json#concept.spec)
-- WHEN the caller runs `code_review` for that Module
+- AND that Module has no open Issue of a blocking tier from an earlier review
+- WHEN the caller runs `code_review` for that Module and its reviewer reports no finding of a blocking tier
 - THEN the [Operation](../../glossary.json#concept.operation) computes the diff and runs the Module's [configured checks](../../glossary.json#concept.configured-check) before launching the reviewer
 - AND the result has status `ok` and a report with verdict `accepted`
 - AND the report records the scope, the base and the [check results](../../glossary.json#concept.check-result) it examined, and the run's host evidence carries the [context identity](../../glossary.json#concept.context-identity)
@@ -16,6 +18,7 @@ in the [contracts](contracts.md).
 ### scenario.code-review.all-blocking — Every blocking finding in one report, each an Issue
 
 - GIVEN a change that violates two requirements of a bound Module and omits a test for one of its scenarios
+- AND no open Issue of that Module states any of these problems
 - WHEN the reviewer reviews the change
 - THEN one report lists all three problems as findings of a blocking tier, each naming its basis and locations
 - AND the Operation reports each as a new [Issue](../../glossary.json#concept.issue) owned by that Module with the finding's severity and tier, and names the Issue in the finding
@@ -130,7 +133,7 @@ in the [contracts](contracts.md).
 
 - GIVEN a reviewer that, also after its one [resume round](../../glossary.json#concept.resume-round), returns two findings
 - AND its first finding cites a requirement identity the reviewed Modules' [Spec context](../../glossary.json#concept.spec-context) does not define and names an earlier Issue
-- AND its second finding holds
+- AND its second finding holds and has a blocking tier
 - WHEN the Operation checks the findings
 - THEN the first finding is reported as no Issue and listed under its Module's `rejected` without that earlier Issue, with the reason naming the unresolved identity, which is also host evidence
 - AND the second finding is reported as an Issue, the Module is `changes_required` and the run ends `ok`
