@@ -4,7 +4,7 @@
 {
   "schema_version": 4,
   "id": "I-4aa68b8b2b5e5eaaaa5a0dd333103eb1",
-  "status": "open",
+  "status": "closed",
   "reports": [
     {
       "id": "sha256:056ee2cb24d6d9deec10f5644773c3ab70041cd64cf625ae1eca7305385852a6",
@@ -43,6 +43,18 @@
       }
     }
   ],
-  "dispositions": []
+  "dispositions": [
+    {
+      "reason": "resolved",
+      "note": "Fixed by task r3-leftovers, merged into the primary branch at 88b3e7fee3675a40757cd06f545a96e89d0ffa63.",
+      "evidence": [
+        "merge commit 88b3e7fee3675a40757cd06f545a96e89d0ffa63",
+        "task r3-leftovers"
+      ],
+      "duplicate_of": null,
+      "actor": "main-agent",
+      "created_at": "2026-10-13T15:45:21.352683+00:00"
+    }
+  ]
 }
 ```
