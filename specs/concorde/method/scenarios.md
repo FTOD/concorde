@@ -108,6 +108,15 @@ run does, whatever its definition, is shown by the [Execution scenarios](../exec
 - THEN the Operation's link has that error as a `component` cause with its code and message
 - AND the cause's explanation is the error's reason, its option is the error's remediation, and the error's own cause is nested below it
 
+### scenario.method.issues-concorde-missing — A review's Issue call without the started worktree's concorde
+
+- GIVEN a worktree that has neither `.concorde/bin/concorde` nor `scripts/concorde.py`
+- WHEN a review started there calls `concorde issues`
+- THEN no command runs
+- AND the call fails with the `component` link `issues_command_failed` of reason `environment`, naming the worktree and both launchers
+
+This illustrates [Issues reached through the started worktree's concorde](requirements.md#req.method.issues-own-concorde).
+
 ### scenario.method.glossary-after-run — A blocked worker's foreign glossary edit is audited after the run
 
 - GIVEN a `specify` worker bound to [Module](../glossary.json#concept.module) A, whose grant makes the project glossary writable, and a glossary entry Module B owns

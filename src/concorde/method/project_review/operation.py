@@ -46,7 +46,7 @@ from .. import review_issues
 from ..checks import run_module_checks
 from ..code_review import operation as code_review
 from ..prompts import load_prompt
-from ..specs import admission
+from ..specs import admission, spec_cause
 from ..spec_review import panel as spec_panel
 from ..spec_review import review
 from ..workers import grant_failure, operation
@@ -434,6 +434,7 @@ def _admit_modules(context: RunContext) -> None:
             explanation="project_review reviews every Module the Specs register, which must "
             "load",
             options=["run concorde spec-validation to see why the Specs do not load"],
+            causes=[spec_cause(error)],
         ) from error
 
 

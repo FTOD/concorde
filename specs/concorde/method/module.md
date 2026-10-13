@@ -342,8 +342,9 @@ The **Definitions** realization holds what Method's definitions share around the
 - `specs.py` holds the admission of a run's Modules against the workspace's registry. With
   `removed-module` evidence, it leaves out the binding's Modules the workspace no longer registers.
   As [Execution's runner](../execution/runner.md#runner) lets a definition's admission do, it refuses
-  `modules_removed`, `specs_unloadable` and `unknown_module`. For a command that diagnoses the Specs
-  itself, it begins anyway. It also holds the translation of Spec tooling's errors into links of
+  `modules_removed`, `specs_unloadable` and `unknown_module`. A `specs_unloadable` refusal carries
+  Spec core's error, translated as [the worker sequence](workers.md#errors-of-the-worker-sequence)
+  says, as its cause. For a command that diagnoses the Specs itself, it begins anyway. It also holds the translation of Spec tooling's errors into links of
   the [error chain](../glossary.json#concept.error-chain).
 - `checks.py` selects these for [Check execution](#uses-checks):
   - The Modules a change concerns and every Module that uses one of them.
@@ -640,7 +641,8 @@ in the run result with its tier. The result says that the findings were not reco
 
 They reach Issues only through the issues part's
 [bookkeeping command](../issues/interface.md#bookkeeping-command), `concorde issues` of the
-worktree the run started in. They never reach it through its code. The command takes JSON in and
+worktree the run started in: its installed command, or a source checkout's script. They never
+reach it through its code or through another Concorde. The command takes JSON in and
 out through these:
 
 - `list`.

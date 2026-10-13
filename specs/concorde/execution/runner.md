@@ -262,10 +262,12 @@ refusal the run context's library defines. The refusal holds these details:
 - a reason
 - an explanation
 - options
+- the links of the errors that made the actor refuse, if any
 
 The runner turns that refusal into the run's `refused` link, with the reason, explanation and
 options the refusal gives. Below that link, the runner puts the refusal as a `component` link of
-its actor ([Errors](#errors)). No step runs. Without an admission, the runner takes the Modules as
+its actor ([Errors](#errors)). Below the actor's link, the runner keeps the refusal's own links as
+its causes. No step runs. Without an admission, the runner takes the Modules as
 they are.
 
 **Its steps.** These are an ordered list of functions. Each function receives the run context and
@@ -785,7 +787,7 @@ A step that stops the run builds that link itself. The runner builds it as follo
 
 | Error | Code | Reason | Causes |
 | --- | --- | --- | --- |
-| Refusal before the steps began | `refused` | `decision` for `workspace_busy`; `scope` for `binding_required`; `environment` for `binding_unreadable`, `workspace_retired`, `run_store_unwritable` and `checkout_unavailable`; for a refusal of the definition's admission, the reason it gives, such as `scope` for Method's `specs_unloadable`; `input` otherwise | the `component` link of `Execution (workspace binding)` for a binding refusal and `workspace_retired`, `Execution (unbound checkout)` for `checkout_unavailable`, the admission's own component, such as `Method (Module admission)`, for a refusal of the definition's admission, or `Execution (run store)` otherwise, with the refusal's code and message |
+| Refusal before the steps began | `refused` | `decision` for `workspace_busy`; `scope` for `binding_required`; `environment` for `binding_unreadable`, `workspace_retired`, `run_store_unwritable` and `checkout_unavailable`; for a refusal of the definition's admission, the reason it gives, such as `scope` for Method's `specs_unloadable`; `input` otherwise | the `component` link of `Execution (workspace binding)` for a binding refusal and `workspace_retired`, `Execution (unbound checkout)` for `checkout_unavailable`, the admission's own component, such as `Method (Module admission)`, for a refusal of the definition's admission, or `Execution (run store)` otherwise, with the refusal's code and message; below the admission's link, the links its refusal gives, such as Spec core's error for `specs_unloadable` |
 | A step raised, or the runner raised outside every step | `host_error` | `capability` | the exception's `component` link |
 | An unbound checkout's preparation failed | `preparation_invalid` or `preparation_failed` | the cause's: `input` for an invalid file or a command that failed or ran out of time, `environment` for a boundary that could not be established | the `component` link of `Execution (unbound preparation)`: `invalid_preparation`, `preparation_command_failed`, `preparation_timed_out` with the command, how it ended, its log and the end of the log, or `preparation_sandbox_unavailable` over Check execution's `check_sandbox_unavailable` link |
 | Cancelled | `cancelled` | `environment` | none |

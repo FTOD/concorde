@@ -1276,6 +1276,34 @@ class RunnerTests(unittest.TestCase):
         self.assertEqual("Method (Module admission)", cause["actor"])
         self.assertIn("module.nowhere", cause["detail"])
 
+    @verifies("scenario.execution.admission-refusal-causes")
+    def test_an_admissions_refusal_keeps_its_causes(self):
+        from concorde.spec.errors import SpecError, system_cause
+
+        refused = SpecError(
+            "the registry of the workspace cannot be read",
+            "registry_unreadable",
+            "registry",
+            causes=[system_cause(PermissionError(13, "denied", "specs/registry.json"))],
+        )
+        with patch("concorde.method.specs.SpecRepository", side_effect=refused):
+            status, envelope = self.project.run("understand", "--task", "t1")
+        self.assertEqual((1, "failed"), (status, envelope["status"]))
+        self.assertEqual([], self.node(envelope)["content"]["data"]["steps"])
+        error = envelope["error"]
+        self.assertEqual(
+            ["refused", "specs_unloadable", "registry_unreadable", "system_error"],
+            codes(error),
+        )
+        [admission] = error["causes"]
+        self.assertEqual("Method (Module admission)", admission["actor"])
+        [spec] = admission["causes"]
+        self.assertEqual(("component", "Spec core"), (spec["level"], spec["actor"]))
+        self.assertEqual(refused.reason, spec["unhandled"]["explanation"])
+        self.assertEqual([refused.remediation], spec["options"])
+        [system] = spec["causes"]
+        self.assertIn("specs/registry.json", system["detail"])
+
     @verifies("scenario.execution.removed-module", "scenario.execution.modules-removed")
     def test_a_module_the_workspace_removed_is_left_out(self):
         def bind(modules):

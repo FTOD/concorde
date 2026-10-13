@@ -348,6 +348,34 @@ class ProjectReviewTests(unittest.TestCase):
         status, envelope = self.review(None, "--architects", "0")
         self.assertEqual("nothing_to_review", envelope["error"]["causes"][0]["code"])
 
+    def test_specs_that_do_not_load_refuse_with_spec_cores_error(self):
+        from concorde.spec.errors import SpecError, system_cause
+
+        refused = SpecError(
+            "the registry of the worktree cannot be read",
+            "registry_unreadable",
+            "registry",
+            causes=[system_cause(PermissionError(13, "denied", "specs/registry.json"))],
+        )
+        with patch(
+            "concorde.method.project_review.operation.SpecRepository",
+            side_effect=refused,
+        ):
+            status, envelope = self.review()
+        self.assertEqual((1, "failed"), (status, envelope["status"]), envelope)
+        self.assertEqual([], envelope["worker_runs"])
+        [admission] = envelope["error"]["causes"]
+        self.assertEqual(
+            ("Method (Module admission)", "specs_unloadable"),
+            (admission["actor"], admission["code"]),
+        )
+        [spec] = admission["causes"]
+        self.assertEqual(
+            ("Spec core", "registry_unreadable"), (spec["actor"], spec["code"])
+        )
+        self.assertEqual([refused.remediation], spec["options"])
+        self.assertEqual(["system_error"], [item["code"] for item in spec["causes"]])
+
     @verifies("scenario.project-review.code-change")
     def test_a_code_change_reviews_only_that_modules_code(self):
         first = self.first()

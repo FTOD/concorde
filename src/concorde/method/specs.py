@@ -4,7 +4,7 @@ Execution treats a run's Modules as names. Every definition Method registers adm
 the workspace's registry itself, through Spec core: it leaves out, with ``removed-module``
 evidence, each Module the binding names that the workspace no longer registers, refuses a run whose
 binding names only such Modules (``modules_removed``), a run whose Specs cannot be loaded
-(``specs_unloadable``) and a named Module the workspace does not register (``unknown_module``),
+(``specs_unloadable``, Spec core's error its cause) and a named Module the workspace does not register (``unknown_module``),
 except that a definition that diagnoses the Specs itself, such as ``task-validation``, begins
 even when they do not load. Spec tooling reports with its own error record, which ``spec_cause``
 and ``spec_finding`` translate into links of the error chain.
@@ -83,6 +83,7 @@ def _registered(context: RunContext) -> set[str]:
                 "load",
                 "repair the Specs by hand",
             ],
+            causes=[spec_cause(error)],
         ) from error
 
 
