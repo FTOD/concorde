@@ -146,6 +146,16 @@ This illustrates the guard that [The round validation](workers.md#the-round-vali
 the Operations that may run unbound, and the
 [error of the worker sequence](workers.md#errors-of-the-worker-sequence) it ends with.
 
+### scenario.method.interpreter-readable — A worker may read the project's interpreter, whatever the runtime paths
+
+- GIVEN a project whose configuration names an interpreter in `python`, in an environment that links through a symbolic version directory to an installation
+- AND a worker configuration whose `runtime` names only another path
+- WHEN a worker-backed step hands its runtime paths to the worker harness
+- THEN they hold the configured path, the environment, the installation and the directory that holds the version link, each readable only
+- BUT they hold none of `/usr`, the home directory or a directory that holds it, even when the interpreter lies in one of them
+
+This illustrates [the interpreter's directories](requirements.md#req.method.interpreter-readable).
+
 ## The brownfield workflow
 
 ### scenario.method.brownfield-mutual-uses — Modules that use each other are described as a group

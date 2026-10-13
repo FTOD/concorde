@@ -260,6 +260,27 @@ def interpreter_roots(interpreter: str, home: Path | None = None) -> tuple[Path,
     )
 
 
+def runtime_readable(
+    worktree: Path,
+    configured: tuple[str, ...],
+    readable: tuple[Path, ...],
+    interpreter: str | None,
+    home: Path | None = None,
+) -> tuple[Path, ...]:
+    """The paths a worker's Bash may read besides its grant, none of them ever writable.
+
+    These are the ``configured`` runtime paths, relative to ``worktree`` or absolute, the step's
+    own ``readable`` host material and, when the project names an ``interpreter`` that resolves,
+    its :func:`interpreter_roots`, whatever the configured runtime paths are. A path that does not
+    exist is left out.
+    """
+    paths = tuple(
+        Path(path) if os.path.isabs(path) else worktree / path for path in configured
+    ) + tuple(Path(path) for path in readable)
+    roots = interpreter_roots(interpreter, home) if interpreter is not None else ()
+    return tuple(path for path in paths if path.exists()) + roots
+
+
 def withhold_writes(value: dict) -> dict:
     """A grant with every ``rw`` entry lowered to ``ro``; the entry list is otherwise unchanged."""
     return {
@@ -655,16 +676,10 @@ def run_worker(
     if grants is not None:
         grants.append(computed)
     bounds = models.limits(config)
-    readable_paths = tuple(
-        Path(path) if os.path.isabs(path) else ctx.worktree / path
-        for path in models.runtime(config)
-        if (Path(path) if os.path.isabs(path) else ctx.worktree / path).exists()
-    ) + tuple(Path(path) for path in readable if Path(path).exists())
     interpreter = project_interpreter(ctx)
-    if interpreter is not None:
-        # The environment the interpreter belongs to, and the installation it links to,
-        # must be readable for the worker to run it; neither is ever writable.
-        readable_paths += interpreter_roots(interpreter)
+    readable_paths = runtime_readable(
+        ctx.worktree, models.runtime(config), readable, interpreter
+    )
     glossary = (
         computed.get("glossary")
         if writable(computed["entries"], computed.get("glossary"))
@@ -845,5 +860,6 @@ __all__ = [
     "round_validation",
     "run_worker",
     "runtime_paths",
+    "runtime_readable",
     "withhold_writes",
 ]

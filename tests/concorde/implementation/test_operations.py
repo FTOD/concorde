@@ -22,7 +22,7 @@ from concorde.method.implementation.operation import (
     _latest_checks,
     code_change,
 )
-from concorde.method.workers import interpreter_roots
+from concorde.method.workers import interpreter_roots, runtime_readable
 from concorde.spec.repository import SpecRepository
 from concorde.spec.verification import verifies
 from tests.concorde.support.operation_project import (
@@ -388,6 +388,52 @@ class InterpreterRootsTests(unittest.TestCase):
         self.assertIn(release, roots)
         self.assertIn(environment / "bin", roots)
         self.assertNotIn(home, roots)
+
+    @verifies("scenario.method.interpreter-readable")
+    def test_the_interpreter_is_readable_whatever_the_runtime_paths(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            base = Path(os.path.realpath(temporary))
+            worktree = base / "worktree"
+            (worktree / "other").mkdir(parents=True)
+            home = base / "users/someone"
+            home.mkdir(parents=True)
+            installations = base / "python"
+            release = installations / "cpython-3.9.25"
+            (release / "bin").mkdir(parents=True)
+            (release / "bin/python3.9").write_text("")
+            (installations / "cpython-3.9").symlink_to(release)
+            environment = worktree / ".venv"
+            (environment / "bin").mkdir(parents=True)
+            (environment / "bin/python").symlink_to(
+                installations / "cpython-3.9/bin/python3.9"
+            )
+
+            paths = runtime_readable(
+                worktree,
+                ("other",),
+                (),
+                (environment / "bin/python").as_posix(),
+                home,
+            )
+            in_home = home / "env/bin/python"
+            in_home.parent.mkdir(parents=True)
+            in_home.write_text("")
+            above_home = base / "users/bin/python"
+            above_home.parent.mkdir(parents=True)
+            above_home.write_text("")
+            excluded = [
+                runtime_readable(worktree, (), (), interpreter, home)
+                for interpreter in (
+                    "/usr/bin/no-such-python",
+                    in_home.as_posix(),
+                    above_home.as_posix(),
+                )
+            ]
+
+        self.assertEqual(worktree / "other", paths[0])
+        for directory in (environment, environment / "bin", installations, release):
+            self.assertIn(directory, paths)
+        self.assertEqual(((), (home / "env",), ()), tuple(excluded))
 
 
 class NoCheckTests(unittest.TestCase):

@@ -48,6 +48,34 @@ the resolver returns no path. In that case, nothing is linked. The run's first s
 [admission](#admitting-the-workers), then refuses the run with `worker_model_unavailable` on the
 same file.
 
+### The interpreter's directories {#interpreter-directories}
+
+A worker must be able to run the project's code and tests with the project's own interpreter.
+So each worker-backed step adds the interpreter's directories to the runtime paths it hands
+Workers. It does so when the project configuration names an interpreter in `python` and that
+interpreter resolves as it does for the project's checks. Otherwise, the step adds nothing. The
+interpreter's directories are these:
+
+- The environment the interpreter belongs to: the directory that holds the interpreter's `bin`
+  directory, such as `.venv`.
+- The installation the interpreter resolves to: the same directory for the interpreter's real
+  path, after every symbolic link is followed.
+- Each directory that holds a symbolic link on the way from the interpreter's path to its real
+  path. The sandbox allows a read only at a path's real location, so the way through such a link
+  must be readable too. An example is a version directory that links to a patch-release
+  directory.
+
+The step never adds these directories:
+
+- `/usr`.
+- The user's home directory.
+- A directory that holds the home directory, such as `/` or `/home`.
+- A directory that does not exist.
+
+The step adds the interpreter's directories whatever the worker configuration's `runtime` sets.
+The configured runtime paths neither replace nor limit them. Like every runtime path, they are
+readable only. The worker can never write them.
+
 ## Admitting the workers
 
 After the runner admits it, every Method Operation's run begins with the step `check_worker_models`.
