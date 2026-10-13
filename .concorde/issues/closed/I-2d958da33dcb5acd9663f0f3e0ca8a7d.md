@@ -4,7 +4,7 @@
 {
   "schema_version": 4,
   "id": "I-2d958da33dcb5acd9663f0f3e0ca8a7d",
-  "status": "open",
+  "status": "closed",
   "reports": [
     {
       "id": "sha256:1910a167f2f38b0b04aa8cddce7e0f4e2a1d29043cb1372bf031fa3de9d4db9b",
@@ -43,6 +43,18 @@
       }
     }
   ],
-  "dispositions": []
+  "dispositions": [
+    {
+      "reason": "resolved",
+      "note": "Fixed by task flaky-and-wording, merged into the primary branch at 4c71410e26f842cce27dab68d2c977c8117c8cd8.",
+      "evidence": [
+        "merge commit 4c71410e26f842cce27dab68d2c977c8117c8cd8",
+        "task flaky-and-wording"
+      ],
+      "duplicate_of": null,
+      "actor": "main-agent",
+      "created_at": "2026-10-13T16:18:56.349358+00:00"
+    }
+  ]
 }
 ```
