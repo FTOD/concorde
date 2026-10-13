@@ -289,8 +289,10 @@ Every `trace.json` holds the same fields, defined by the
   The producer registers its type. Examples include a run's steps with their timings or a worker
   round's audit.
 
-The figures of a node's usage come from what the agent program itself reported or recorded,
-never from a computation of Concorde's own. A worker round's figures come from the result its
+The tokens, cost and turns of a node's usage come from what the agent program itself reported or
+recorded, never from a computation of Concorde's own. The node's duration is the exception. It is
+the wall-clock time Concorde observed from the node's start to its end. When the producer gives no
+duration, the library computes it at the final write. A worker round's figures come from the result its
 agent process returned. A task session's figures come from Claude Code's records of the session.
 When its task ends, these records are read.
 Concorde keeps no price table, so when the program did not report a cost, that cost stays null.
@@ -355,6 +357,9 @@ This applies in both cases:
 - The node is addressed directly.
 
 A worker run is addressed directly by its identity.
+A record that `show` cannot read below the node it shows does not hide the rest of the trace.
+`show` shows that node as `unreadable`, with the reason, and its totals count only what it could
+read. A node that `show` is asked for and cannot read is refused.
 `list` lists the current tasks with their status and rolled-up usage.
 With its options, it also lists the history and the unbound runs with their status and rolled-up
 usage. Its JSON output is one array with one entry per top node it lists, `[]` when it lists none
@@ -650,6 +655,12 @@ the error chain code.
 
 **The Kernel**, its parent, defines [typed values](../../glossary.json#concept.typed-value).
 A node's content is a typed value whose type its producer registered. When content fails its type,
-the library refuses to write it rather than record it in a shape nobody declared. Tracing relies
+the library refuses to write it rather than record it in a shape nobody declared. Tracing relies on
+the Kernel's registration of a type
+([req.kernel.registration-stable](../requirements.md#req.kernel.registration-stable),
+[req.kernel.registered-dialect](../requirements.md#req.kernel.registered-dialect)) and on its check
+of a typed value ([req.kernel.typed-checked](../requirements.md#req.kernel.typed-checked)). The
+Kernel's [typed values](../contracts.md#typed-values) and [library](../contracts.md#library) give
+their inputs and refusals exactly. Tracing relies
 on no Module that produces traces. It relies on no part outside the kernel. Those Modules and
 parts rely on Tracing.
