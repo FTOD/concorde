@@ -108,7 +108,7 @@ baseline: "Operation: validate the Specs as a baseline" {class: program}
 prepare: "Operation: freeze the specify grant" {class: program}
 edit: "Worker: edits the bound Modules'\nown documents" {class: agent}
 check: "Operation: validate against the baseline" {class: program}
-create: "Operation: create the proposed documents,\nempty and owned" {class: program}
+create: "Operation: create the proposed documents,\nas owned stubs" {class: program}
 observe: "Operation: regenerate the registry mirror,\nvalidate again, observe the Spec change" {class: program}
 decide: "Task level: accepts, retries, repairs\nor discards the uncommitted edits" {class: agent}
 intent -> baseline -> prepare -> edit
@@ -171,13 +171,14 @@ The worker can write only these:
 A changed glossary shows among the changed documents. When the change needs a new document of a
 bound Module, the worker proposes it and ends `blocked`. The Operation then does these things:
 
-- Creates each proposed document, empty and registered in its Module's `owns` and the registry
-  mirror.
+- Creates each proposed document as a minimal stub, registered in its Module's `owns` and the
+  registry mirror. The stub is a title heading named after the file and one line linking to the
+  entry. The second worker writes everything else.
 - Launches a worker once more, with the same intent and a brief naming the created documents, to
   fill them.
 
-A document may lie in a subfolder of the entry's folder. Its one line links to the entry by a
-relative path, such as `../module.md`. The Operation may not create a proposal in any of these
+A document may lie in a subfolder of the entry's folder. Its stub's one line then links to the entry
+by a relative path, such as `../module.md`. The Operation may not create a proposal in any of these
 cases:
 
 - The Module is not one the run is bound to.
@@ -227,10 +228,10 @@ increment, needs them all bound in one run.
 | 3 | Generate settings, tools and the [brief](../../glossary.json#concept.brief) | Workers | — |
 | 4 | Launch the worker and wait for its [worker result](../../glossary.json#concept.worker-result); after each round it ended `ok` with a clean audit, validate against the baseline and, at most twice per worker launch, resume it with every error its change introduced | Workers, worker, Operation | launch error/timeout (`failed`); worker `blocked`/`failed` (passed on) |
 | 5 | [Audit](../../glossary.json#concept.write-audit), perform proposed deletions, write the [run record](../../glossary.json#concept.run-record); then check glossary ownership once more, whatever the worker's status | Workers, Method | a write outside the grant or a glossary entry another Module owns changed (`failed`) |
-| 5a | When the worker ended `blocked` proposing new documents of bound Modules: create them, empty and owned, regenerate the registry mirror, and repeat steps 2–5 once with a brief naming them | Operation, Workers | a proposal it may not create (`blocked`, `document-refused`); a failed file transaction (`blocked`, `document-creation-failed`); the second worker's own outcome |
+| 5a | When the worker ended `blocked` proposing new documents of bound Modules: create them as owned stubs, regenerate the registry mirror, and repeat steps 2–5 once with a brief naming them | Operation, Workers | a proposal it may not create (`blocked`, `document-refused`); a failed file transaction (`blocked`, `document-creation-failed`); the second worker's own outcome |
 | 6 | Regenerate the [registry](../../glossary.json#concept.registry) mirror from the changed entries | Operation, Spec core | — |
 | 7 | Validate again and compare with the baseline | Operation, Spec core | a new error left after the last repair round of a worker that ended `ok` (`blocked`) |
-| 8 | Compute changed documents, added entries and affected Modules via the [impact index](../../glossary.json#concept.impact-index) | Operation, Spec core | — |
+| 8 | Compute changed documents from every launch's audits and the Operation's own writes, added entries and affected Modules via the [impact index](../../glossary.json#concept.impact-index), comparing with the baseline of step 1 ([req.specification.observed-baseline](requirements.md#req.specification.observed-baseline)) | Operation, Spec core | — |
 | 9 | Return the Spec change as the run's output | Operation, Execution runner | — |
 
 The repair loop inside each worker launch, the one relaunch of step 5a and the exits:
@@ -244,7 +245,7 @@ launch: 4 Launch or resume the worker
 audit: 5 Audit against the grant
 repair: 4 Validate against the baseline
 record: "5 Proposed deletions after a clean audit, run record"
-create: "5a Create the proposed documents, empty and owned;\nregenerate the registry mirror"
+create: "5a Create the proposed documents as owned stubs;\nregenerate the registry mirror"
 registry: 6 Regenerate the registry mirror
 validate: 7 Validate again against the baseline
 impact: 8 Changed documents, added entries, affected Modules
@@ -277,7 +278,9 @@ after editing. This includes these cases:
 - A worker result was invalid.
 
 The result thus shows what was left behind. The status stays the worker's, with any new error
-reported in the validation findings. Only an audit violation skips those steps.
+reported in the validation findings. Only an audit violation skips those steps. Such a worker may
+give no valid answer, and so no claims. The
+[contracts](contracts.md#spec-change) say how the Spec change then fills the worker's fields.
 
 Steps 6 and 8 never stop the run themselves. When an entry the worker edited cannot be read,
 the steps do the following:

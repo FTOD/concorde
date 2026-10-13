@@ -724,10 +724,17 @@ def narrowed_entries(
     def taken(path: str) -> bool:
         if any(covers(item, path.rstrip("/")) or item == path for item in absorbed):
             return True
-        # A file is taken only when a child entry binds it: a child's directory entry does not
-        # bind the files the exclusion rule skips, such as dot files, which the parent keeps.
+        # A path is taken only when a child entry binds it: a child's directory entry does not
+        # bind what the exclusion rule skips below it, such as dot files or a dot-directory,
+        # which the parent keeps. A directory is taken whole when the folders between the
+        # child's entry and it are not skipped, since the child's rule then skips below it
+        # exactly what the directory entry's own rule skips.
         if is_directory_entry(path):
-            return any(covers(child, path) for child in child_entries)
+            return any(
+                covers(child, path)
+                and (child == path or not skipped_path(path[len(child) :] + "x"))
+                for child in child_entries
+            )
         return any(bound_by(child, path) for child in child_entries)
 
     def inside(directory: str) -> bool:

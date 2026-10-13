@@ -11,7 +11,8 @@
       "specs/concorde/method/adoption/module.md",
       "specs/concorde/method/adoption/requirements.md",
       "specs/concorde/method/adoption/scenarios.md",
-      "specs/concorde/method/adoption/contracts.md"
+      "specs/concorde/method/adoption/contracts.md",
+      "specs/concorde/method/adoption/test-links.md"
     ],
     "contains": [],
     "uses": [

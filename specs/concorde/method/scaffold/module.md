@@ -88,9 +88,11 @@ proposal stale, and Specs that do not load.
 
 ## What it writes
 
-For each proposed child, it writes an entry `module.md` and its metadata. It writes them in a folder
-named after the child's identity, next to the parent's entry. The entry follows the recommended
-reading order. It invents nothing:
+For each proposed child, it writes an entry `module.md` and its metadata. It writes them in a new
+subfolder of the parent entry's folder, named after the last segment of the child's identity. For
+example, the child `module.shop.checkout` of a parent whose entry is `specs/shop/module.md` gets
+`specs/shop/checkout/module.md`. [Narrowing the parent](#narrowing-the-parent) gives the rule. The
+entry follows the recommended reading order. It invents nothing:
 
 - Its `Purpose` states the survey's purpose.
 - Its section `Not yet specified` says that the child's core concepts, behaviour and design are not
@@ -164,22 +166,31 @@ When any of these conditions holds, the run is `failed`:
 The [error chain](../../glossary.json#concept.error-chain) names every mismatch or finding as a
 cause. When the file transaction fails for another reason, such as the operating system refusing a
 write, the run is `failed` with `write_failed`. When the transaction cannot restore a file it wrote,
-the run also has this status and code. In either case, the result names every file that still holds
-the scaffold's content, to be removed or restored by hand. It says every other file is as before.
+the run also has this status and code, whatever made the transaction fail
+([req.scaffold.write-failed](requirements.md#req.scaffold.write-failed)). In either case, the
+result names every file that still holds the scaffold's content, to be removed or restored by hand.
+It says every other file is as before. So "nothing of the scaffold kept", in a `stale_proposal` or
+`scaffold_invalid` result, always means that the transaction restored every file it wrote.
 
 Rollback covers only the failures the file transaction observes, as Spec core's
-[file transactions](../../spec-tooling/spec/contracts.md#file-transactions) state. A run cancelled
-by `SIGINT` or `SIGTERM` is such a failure. The
-[runner](../../glossary.json#concept.execution-runner) turns the signal into a failure of the
-running step, so the transaction restores every file it wrote. The run then ends `failed` with
-`cancelled` evidence, as Execution's
-[req.execution.one-result](../../execution/requirements.md#req.execution.one-result) requires. A
-folder the scaffold created for a child may remain, empty.
+[file transactions](../../spec-tooling/spec/contracts.md#file-transactions) state. Two ways a run
+can stop early differ:
 
-A run killed by a signal its runner cannot handle, such as `SIGKILL`, restores nothing and produces
-no run result, as Execution's exceptions to one result state. Each file already renamed into place
-keeps the scaffold's content. Temporary `.concorde-write-` files may remain beside them. Before
-running the scaffold again after such a lost run, inspect the workspace with Git and repair it.
+- **A handled cancellation** produces a run result. The
+  [runner](../../glossary.json#concept.execution-runner) turns a `SIGINT` or `SIGTERM` into a
+  failure of the running step, which the transaction observes. The transaction then tries to
+  restore every file it wrote. The run ends `failed` with `cancelled` evidence, as Execution's
+  [req.execution.one-result](../../execution/requirements.md#req.execution.one-result) requires,
+  within that requirement's own exceptions. A folder the scaffold created for a child may remain,
+  empty. The `cancelled` evidence alone does not prove that every file was restored. When the
+  transaction could not restore a file, the result is `write_failed` and names it, as above. Inspect
+  the result before running the scaffold again.
+- **A lost run** produces no run result. A signal its runner cannot handle, such as `SIGKILL`, or
+  the loss of the runner's process stops the run before it can report. The transaction observes
+  no failure, so it restores nothing, as Execution's exceptions to one result state. Each file
+  already renamed into place keeps the scaffold's content. Temporary `.concorde-write-` files may
+  remain beside them. Before running the scaffold again after such a lost run, inspect the
+  workspace with Git and repair it.
 
 A stale proposal is `blocked` because what follows is the
 [main agent](../../glossary.json#concept.main-agent)'s decision: survey again, or undo the change
@@ -245,7 +256,7 @@ execution command. The command launches no worker:
 | 1 | Admit exactly one `ok` survey of the same workspace as input | host | none or several, not a survey, or a survey output that breaks its contract (`failed`, `invalid_request`) |
 | 2 | Validate the worktree as a baseline and check the proposal against it again | host, Spec core | the Specs cannot be loaded (`failed`, `specs_unloadable`); the proposal no longer fits, such as a child's folder that already exists, a surveyed Module no longer registered or a vendored path another Module binds (`blocked`, `stale_proposal`) |
 | 3 | Compute every file change from the bytes step 2 loaded: child entries, parent entry, the metadata of every parent document declaring a realization, registry | host | a target file already exists (`blocked`, `stale_proposal`); a parent document step 2 could not read (`failed`, `specs_unloadable`) |
-| 4 | Apply them as one file transaction, kept only if validation finds no new error | host, Spec core | a new error (`failed`, `scaffold_invalid`), nothing kept; a file changed after step 2 loaded it (`blocked`, `stale_proposal`), nothing kept; a write the operating system refused or a file it could not restore (`failed`, `write_failed`), naming every file not restored |
+| 4 | Create each child's folder exclusively, then apply the changes as one file transaction, kept only if validation finds no new error | host, Spec core | a child's folder that appeared after step 2 (`blocked`, `stale_proposal`), nothing written; a new error (`failed`, `scaffold_invalid`), nothing kept; a file changed after step 2 loaded it (`blocked`, `stale_proposal`), nothing kept; a write the operating system refused, or a file it could not restore whatever made the transaction fail (`failed`, `write_failed`), naming every file not restored; "nothing kept" holds only when every file was restored |
 | 5 | Return the run result with the scaffold record | host | — |
 
 Its tests, under `tests/concorde/scaffold/`, run a survey and the scaffold in a bound task worktree
