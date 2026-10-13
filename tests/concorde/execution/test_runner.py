@@ -1725,9 +1725,12 @@ class RunnerTests(unittest.TestCase):
         release.set()
         self.wait_for(Path(announced["result"]))
         deadline = time.monotonic() + 30
-        while runs.pid_alive(announced["host_pid"]) and time.monotonic() < deadline:
+        # One observation decides: the runner ended once it is a zombie, dead or gone.
+        while (
+            alive := runs.pid_alive(announced["host_pid"])
+        ) and time.monotonic() < deadline:
             time.sleep(0.05)
-        self.assertFalse(runs.pid_alive(announced["host_pid"]))
+        self.assertFalse(alive)
         # Once the runner exited its lock file is gone, and no lock ever lay in its folder.
         self.assertFalse(lock.exists())
         self.assertFalse(runs.runner_alive(self.store(), run_id))
@@ -1839,13 +1842,9 @@ class RunnerTests(unittest.TestCase):
         self.assertEqual("cancelled", self.node(envelope)["outcome"])
         child = int(pid_file.read_text())
         deadline = time.monotonic() + 5
-        while time.monotonic() < deadline and Path(f"/proc/{child}").exists():
-            state = Path(f"/proc/{child}/stat")
-            if state.exists() and state.read_text().split()[2] == "Z":
-                break
+        while (alive := runs.pid_alive(child)) and time.monotonic() < deadline:
             time.sleep(0.05)
-        state = Path(f"/proc/{child}/stat")
-        self.assertTrue(not state.exists() or state.read_text().split()[2] == "Z")
+        self.assertFalse(alive, "the worker's child outlived its run")
 
     @verifies("scenario.execution.inputs")
     def test_earlier_results_are_admitted_as_task_material(self):
@@ -2932,6 +2931,47 @@ class BindingTests(unittest.TestCase):
             )
         self.assertEqual("binding_invalid", caught.exception.code)
         self.assertEqual(before, (worktree / binding_file.BINDING).read_text())
+
+
+class PidAliveTests(unittest.TestCase):
+    def stat_reads(self, answer):
+        """Patch the reading of this process's ``/proc`` stat to give ``answer``, or raise it."""
+        own, read = f"/proc/{os.getpid()}/stat", Path.read_text
+
+        def read_text(path, *arguments, **options):
+            if str(path) != own:
+                return read(path, *arguments, **options)
+            if isinstance(answer, BaseException):
+                raise answer
+            return f"{os.getpid()} (python (x)) {answer} 1 1 1"
+
+        return patch.object(Path, "read_text", read_text)
+
+    def test_a_process_that_ended_or_vanished_is_not_alive(self):
+        # A zombie waits to be reaped, a dead process is being reaped, and a process whose stat
+        # is gone after the signal found it was reaped meanwhile.
+        for answer in ("Z", "X", FileNotFoundError(), ProcessLookupError()):
+            with self.subTest(answer=answer), self.stat_reads(answer):
+                self.assertFalse(runs.pid_alive(os.getpid()))
+
+    def test_a_running_or_unreadable_process_is_alive(self):
+        for answer in ("R", "S", "D", PermissionError()):
+            with self.subTest(answer=answer), self.stat_reads(answer):
+                self.assertTrue(runs.pid_alive(os.getpid()))
+
+    def test_a_zombie_child_a_reaped_child_and_no_pid_are_not_alive(self):
+        child = subprocess.Popen(["true"])
+        self.addCleanup(child.wait)
+        # Until this process reaps it, the ended child stays a zombie.
+        stat = Path(f"/proc/{child.pid}/stat")
+        deadline = time.monotonic() + 10
+        while (state := stat.read_text().rsplit(")", 1)[1].split()[0]) != "Z":
+            self.assertLess(time.monotonic(), deadline, state)
+            time.sleep(0.01)
+        self.assertFalse(runs.pid_alive(child.pid))
+        child.wait()
+        self.assertFalse(runs.pid_alive(child.pid))
+        self.assertFalse(runs.pid_alive(0))
 
 
 if __name__ == "__main__":

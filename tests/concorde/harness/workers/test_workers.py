@@ -92,6 +92,16 @@ LOOPBACK_PROXY = {
 }
 
 
+def alive(pid: int) -> bool:
+    """Whether the process ``pid`` still runs: one that ended is a zombie (``Z``) until it is
+    reaped, and dead (``X``) while it is reaped."""
+    try:
+        state = Path(f"/proc/{pid}/stat").read_text().rsplit(")", 1)[1].split()[0]
+    except (OSError, IndexError):
+        return False
+    return state not in ("Z", "X")
+
+
 def git(root, *arguments):
     return subprocess.run(
         ["git", *arguments], cwd=root, check=True, capture_output=True, text=True
@@ -1898,13 +1908,9 @@ class WorkerRunTests(unittest.TestCase):
         self.assertEqual("worker_timeout", record["error"]["code"])
         child = int(pid_file.read_text())
         deadline = time.monotonic() + 5
-        while time.monotonic() < deadline and Path(f"/proc/{child}").exists():
+        while (running := alive(child)) and time.monotonic() < deadline:
             time.sleep(0.05)
-        state = Path(f"/proc/{child}/stat")
-        self.assertTrue(
-            not state.exists() or state.read_text().split()[2] == "Z",
-            "the worker's child outlived its round",
-        )
+        self.assertFalse(running, "the worker's child outlived its round")
 
     @verifies("scenario.workers.violation-and-timeout")
     def test_a_timed_out_round_still_reports_its_writes_outside_rw(self):
