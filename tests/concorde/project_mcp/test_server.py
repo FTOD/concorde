@@ -185,12 +185,13 @@ def children(pid: int) -> list[int]:
 
 
 def alive(pid: int) -> bool:
-    """Whether the process ``pid`` exists and is no zombie."""
+    """Whether the process ``pid`` still runs: one that ended is a zombie (``Z``) until it is
+    reaped, and dead (``X``) while it is reaped."""
     try:
         state = Path(f"/proc/{pid}/stat").read_text().rsplit(")", 1)[1].split()[0]
-    except OSError:
+    except (OSError, IndexError):
         return False
-    return state != "Z"
+    return state not in ("Z", "X")
 
 
 class ProjectMcpTests(unittest.TestCase):
@@ -772,9 +773,10 @@ class ProjectMcpTests(unittest.TestCase):
         client.process.send_signal(signal.SIGKILL)
         client.process.wait(10)
         deadline = time.monotonic() + 20
-        while alive(waiting[0]) and time.monotonic() < deadline:
+        # An ended process never runs again: the last look decides.
+        while (running := alive(waiting[0])) and time.monotonic() < deadline:
             time.sleep(0.05)
-        self.assertFalse(alive(waiting[0]), "the wait outlived its server")
+        self.assertFalse(running, "the wait outlived its server")
 
     @verifies("scenario.main-session.project-mcp-wait-fallback")
     def test_without_a_channel_the_wait_names_the_command(self):
