@@ -46,6 +46,21 @@ class SubtestTests(unittest.TestCase):
         pass
 """
 
+CRASH_TESTS = """import os
+import unittest
+
+
+class CrashTests(unittest.TestCase):
+    def test_a_first(self):
+        pass
+
+    def test_b_crash(self):
+        os._exit(1)
+
+    def test_c_unstarted(self):
+        pass
+"""
+
 
 class PytestTimingTests(unittest.TestCase):
     def setUp(self):
@@ -289,6 +304,34 @@ class PytestTimingTests(unittest.TestCase):
         self.assertEqual((totals["passed"], totals["failed"]), (1, 1))
         self.assertEqual(totals["tests"], totals["collected"])
         self.assertIn("subtests are not counted on their own", value["counting_note"])
+
+    @verifies("scenario.concorde.test-counting-crashed")
+    def test_a_test_whose_worker_crashed_counts_one_failed_unit(self):
+        (self.root / "checks/test_crash.py").write_text(CRASH_TESTS)
+        report = self.reports / "crash.json"
+        result = self.pytest(
+            "checks/test_crash.py",
+            f"--json={report}",
+            "--max-worker-restart=0",
+            workers=1,
+        )
+        self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("crashed while running", result.stdout + result.stderr)
+        value = json.loads(report.read_text())
+        statuses = {unit["nodeid"]: unit["status"] for unit in value["units"]}
+        crashed = "checks/test_crash.py::CrashTests::test_b_crash"
+        self.assertEqual("failed", statuses.pop(crashed))
+        self.assertEqual(
+            {"checks/test_crash.py::CrashTests::test_a_first": "passed"}, statuses
+        )
+        unit = next(unit for unit in value["units"] if unit["nodeid"] == crashed)
+        self.assertIsNone(unit["execution_seconds"])
+        self.assertIsNone(unit["process_id"])
+        totals = value["totals"]
+        self.assertEqual(
+            (totals["tests"], totals["failed"], totals["failed_units"]), (2, 1, 1)
+        )
+        self.assertEqual(3, totals["collected"])
 
 
 if __name__ == "__main__":

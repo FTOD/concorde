@@ -87,7 +87,7 @@ dependency. It depends on no part. It reads only the registrations of the parts 
 
 ### req.concorde.absent-part-stated — An absent part is stated, not failed
 
-An optional integration whose part is not installed SHALL be skipped with a statement that names the missing part, never making the rest of the work it belongs to fail.
+The part whose feature is an optional integration SHALL skip that integration when the part it uses is not installed, with a statement that names the missing part, never making the rest of the work it belongs to fail.
 
 When a part is not installed, its command or MCP tool is absent rather than present and broken.
 A command that needs it is refused naming the part.
@@ -144,7 +144,7 @@ installation, leaving each program's local model id to the user's untracked
 
 ### req.concorde.worker-models-explicit — Worker models change only on request
 
-A worktree's worker configuration SHALL change only by an explicit request of the developer.
+No agent SHALL change a worktree's worker configuration except on an explicit request of the developer.
 
 ## The two halves
 

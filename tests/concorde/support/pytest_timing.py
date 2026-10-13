@@ -103,7 +103,7 @@ class Unit:
     nodeid: str
     module: str
     worker: str
-    process_id: int
+    process_id: int | None
     status: str = "pending"
     queued_ns: int | None = None
     started_ns: int | None = None
@@ -363,6 +363,23 @@ class ConcordeTiming:
                 (c for c in categories if c != "passed"), "passed" if categories else ""
             )
             unit.phase_seconds = self.phases.pop(report.nodeid)
+            self.units[report.nodeid] = unit
+        elif report.when == "???" and report.nodeid not in self.units:
+            # xdist's report of a test whose worker crashed: the test ran and failed, but no
+            # teardown report brought its unit, so its process and times stay unknown.
+            gateway = getattr(getattr(report, "node", None), "gateway", None)
+            unit = Unit(
+                report.nodeid,
+                module_name(report.nodeid),
+                str(getattr(gateway, "id", "unknown")),
+                None,
+                status="failed",
+                telemetry_complete=False,
+            )
+            phases = self.phases.pop(report.nodeid, {})
+            unit.phase_seconds = {
+                when: seconds for when, seconds in phases.items() if when != "???"
+            }
             self.units[report.nodeid] = unit
 
     def pytest_sessionfinish(self, exitstatus) -> None:
