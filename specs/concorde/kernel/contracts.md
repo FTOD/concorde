@@ -132,6 +132,32 @@ A delivery commit is never amended.
 When a workspace is delivered again, it gets a new delivery commit on top.
 Thus, the first-parent history keeps every delivery.
 
+<a id="listing-deliveries"></a>
+
+**Listing deliveries.** The library's `delivery.deliveries` returns the delivery commits as a
+`list` of `dict`s, oldest first. Each entry has exactly two fields:
+
+- `commit`: the commit's full hexadecimal identity, as Git prints it.
+- `mismatches`: a `list` of texts, each saying how the commit fails to verify. It is empty when
+  the commit verifies. For a commit with another number of parents, it holds one text naming them.
+
+A branch without a delivery commit since the base gives an empty list. For example, a branch with
+one ordinary delivery commit and, on top of it, a merge commit given the same subject gives:
+
+```json
+[
+  {"commit": "4f1c2e0a9b7d6c5e4f3a2b1c0d9e8f7a6b5c4d3e", "mismatches": []},
+  {
+    "commit": "9a8b7c6d5e4f3a2b1c0d9e8f7a6b5c4d3e2f1a0b",
+    "mismatches": [
+      "it has 2 parent(s) (4f1c2e0a9b7d6c5e4f3a2b1c0d9e8f7a6b5c4d3e, 1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c) instead of one"
+    ]
+  }
+]
+```
+
+The workspace was then delivered once, by the first commit. The second commit does not verify.
+
 This convention says what a delivery commit is, not who makes one.
 The delivering command's own rules state these matters in its [Spec](../glossary.json#concept.spec):
 
@@ -616,7 +642,7 @@ conventions hold for every operation:
 | Check a record | `schema.validate(value, schema)` | a value and its contract schema | nothing | `invalid_input` (the schema), `invalid_field` (the value), and the codes of an embedded typed value |
 | Apply a file transaction | `files.apply_files(root, changes, allowed, *, verify=None)`; `files.file_change(root, path, content)` makes one change bound to the file's current bytes | a root, the changes, the allowed paths and an optional final check | the written paths | the outcomes of [File transactions](#file-transactions) |
 | Make a delivery message | `delivery.message(workspace, goal)` | a workspace's name and its goal | the message of a [delivery commit](#delivery-commit): the subject `concorde: deliver <workspace>`, a blank line and the goal without its surrounding whitespace, ending in one newline | nothing |
-| List deliveries | `delivery.deliveries(worktree, branch, base, workspace)` | a worktree, its branch, its base commit and the workspace's name | the delivery commits on the first-parent history since the base, oldest first, each with how it fails to verify, nothing when it verifies | `git_failed`, naming the Git command and its output |
+| List deliveries | `delivery.deliveries(worktree, branch, base, workspace)` | a worktree, its branch, its base commit and the workspace's name | a `list` of `{"commit", "mismatches"}`, the delivery commits on the first-parent history since the base, oldest first, `mismatches` holding how each fails to verify and empty when it verifies, as [Listing deliveries](#listing-deliveries) says | `git_failed`, naming the Git command and its output |
 | Take the [workspace lock](../glossary.json#concept.workspace-lock) | `with locking.workspace_lock(concorde, workspace, holder, *, wait=0, waiting=None, task=None, retake=True) as waited:` | the `.concorde` a binding names, the workspace, the holder, how long to wait and whether to take a lock file its holder removed meanwhile | holds it until released | `workspace_busy` naming the holder, `workspace_retired` (its holder removed the file while the taker waited, as a close does), `system_error` |
 | Take the merge lock | `with locking.merge_lock(concorde, holder, *, wait=300, task=None) as waited:` | the primary worktree's `.concorde`, the holder, the task when there is one and how long to wait, 300 seconds by default | holds it until released | `merge_busy` naming the holder, `system_error` |
 | Read a lock's holder | `locking.workspace_lock_holder(concorde, workspace)`, `locking.merge_lock_holder(concorde)` | the workspace lock or the merge lock | its holder line, or none when nobody holds it | nothing |

@@ -219,6 +219,8 @@ class DeliveryTests(unittest.TestCase):
             [{"commit": first, "mismatches": []}, {"commit": second, "mismatches": []}],
             delivery.deliveries(root, "main", base, "retry"),
         )
+        # A branch without a delivery since the base gives an empty list.
+        self.assertEqual([], delivery.deliveries(root, "main", second, "retry"))
 
     @verifies("scenario.kernel.delivery-message")
     def test_a_delivery_message_carries_the_subject_and_the_goal(self):
