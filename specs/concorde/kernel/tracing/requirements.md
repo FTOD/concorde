@@ -186,11 +186,15 @@ When a process takes a lock whose file its `CONCORDE_INHERITED_LOCKS` names, the
 The [contract](contracts.md#handing-a-lock-on) gives the whole handoff. A descriptor for a lock
 file that was replaced meanwhile is therefore never adopted.
 
-### req.tracing.lock-held-to-exit — A handed lock lives as long as its receiver
+### req.tracing.handed-lock-held-by-block — A handed lock is held by its receiver's block
 
-A process that adopted a handed lock SHALL hold it until the process ends, passing neither the lock nor `CONCORDE_INHERITED_LOCKS` on to the processes it starts.
+A process that adopted a handed lock SHALL hold it for the `hold` block that adopted it, like any lock, passing it to a process it starts only by handing it on with `locks.handed_on`.
 
-Therefore, when the process that adopted the lock ends, the lock is released.
+The [contract](contracts.md#handing-a-lock-on) gives the lifetime. When the block ends, the process
+empties the holder line and closes its own descriptor. The lock is then released, unless the
+handing process still holds its own descriptor. When the process ends first, the lock is released
+then. A process the receiver starts without handing the lock on inherits neither the lock nor
+`CONCORDE_INHERITED_LOCKS`.
 
 ### req.tracing.lock-table-whole — Lock holders come from a whole lock table
 

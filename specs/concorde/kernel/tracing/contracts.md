@@ -719,10 +719,22 @@ When both conditions hold, the library performs these steps:
 - It writes its own holder line.
 
 Otherwise, it closes the descriptor and takes the lock as usual.
-Once the handing process closes its own descriptor or replaces itself, the lock is released
-exactly when the receiving process ends. The operating system's lock table keeps naming the
-process that first took the lock. Therefore, the holder line, not `/proc/locks`, says who holds a
-handed lock.
+The receiving process holds an adopted lock for its `hold` block, like any lock. When the block
+ends, however it ends, the process empties the holder line and closes its own descriptor. A lock
+whose handing process closed its own descriptor or replaced itself is then released. A handing
+process that keeps its own descriptor, as `locks.handed_on` does, still holds the lock.
+When the receiving process ends before its block ends, the operating system closes its
+descriptor in the same way.
+
+A receiving process may hand an adopted lock on in turn, as it hands any lock it holds, with
+`locks.handed_on`. No other way passes the lock on. The library has removed
+`CONCORDE_INHERITED_LOCKS` from the environment and marked the adopted descriptor not inherited, so
+a process started without `locks.handed_on` inherits neither. A `concorde task merge` that the
+project MCP server's process became, for example, adopts the merge lock and hands it on to
+`concorde issues recover` while the merge keeps holding it.
+
+The operating system's lock table keeps naming the process that first took the lock. Therefore,
+the holder line, not `/proc/locks`, says who holds a handed lock.
 
 **Waiting for a release.** A process that waits for a lock to be released performs these steps:
 
@@ -1544,9 +1556,10 @@ conventions hold for every operation:
 - Each module refuses with its own exception. The exception carries a stable `code`, except
   `LockBusy` and `LockGone`, and `str()` of it is the whole message. The table names each.
 - A lock is held by a context manager. The `with` block holds it. The lock is released when the
-  block ends, however it ends. The block receives the seconds spent waiting. A `wait` of `None`
-  waits as long as the lock is held. An operating-system error of the lock file passes as
-  `OSError`.
+  block ends, however it ends. A lock the block adopted from a handing process that still holds
+  its own descriptor stays held by that process, as [Handing a lock on](#handing-a-lock-on) says.
+  The block receives the seconds spent waiting. A `wait` of `None` waits as long as the lock is
+  held. An operating-system error of the lock file passes as `OSError`.
 - A failed write of a node's `trace.json` is no refusal. `Node` keeps its account in the list
   `failures`, as [Writing a node](#writing-a-node) says.
 
@@ -1563,7 +1576,7 @@ conventions hold for every operation:
 | Write the node's end | `Node.finish(status, *, outcome=None, error=None, used=None, content=None, ended_at=None, **metadata)` | the status, the finer outcome, the error link, the node's own usage fields | the record as written | `TraceError`: `node_invalid`, `content_invalid` |
 | Check, write or read a record | `node.check(record)`, `node.write(folder, record)`, `node.read(folder)` | a whole record, or a folder | the record; the path of the `trace.json` written; the record or `None` when none can be read | `TraceError`; `write` passes an operating-system error as `OSError` |
 | Take a lock | `with locks.hold(path, holder, *, wait=0, waiting=None, task=None, retake=True) as waited:` | the lock file, the holder's name, how long to wait, a callable told the holder once when the wait begins, the task, and whether to take a file its holder replaced meanwhile | holds it for the block | `locks.LockBusy` (`holder`, `entry`, `waited`), `locks.LockGone` (with `retake` false) |
-| Hand held locks on | `with locks.handed_on(*paths) as (environment, descriptors):` | lock files this process holds through `hold` | the variables to add to the started process's environment and the descriptors it must inherit, as [Handing a lock on](#handing-a-lock-on) says | `ValueError` for a lock this process does not hold |
+| Hand held locks on | `with locks.handed_on(*paths) as (environment, descriptors):` | lock files this process holds through `hold`, adopted locks included | the variables to add to the started process's environment and the descriptors it must inherit, as [Handing a lock on](#handing-a-lock-on) says | `ValueError` for a lock this process does not hold |
 | Read a lock's holder | `locks.holder(path)`, `locks.entry(path)` | a lock file | its holder line as text, or as an object; `None` when nobody holds it | nothing |
 | Wait for a lock's release | `locks.wait_released(path, timeout=None)` | a lock file and the longest wait in seconds | `True` once nobody holds it, `False` when the timeout passed first | nothing |
 | Wait for files to change | `watch.Changes(directory, names=None)`, then `.wait(timeout=None)` and `.close()` | a directory and the file names to watch | `True` once one changed since the last call, `False` when the timeout passed first | `watch.WatchError` |

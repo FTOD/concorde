@@ -591,7 +591,10 @@ conventions hold for every operation:
   its `field` the JSON pointer or path, `str()` of it the message and `causes` the failures that
   led to it. Its `to_dict()` gives the refusal as JSON data, each cause as its own refusal.
 - A lock is taken by a context manager. The `with` block holds it. The lock is released when the
-  block ends, however it ends. The block receives the seconds spent waiting. A `wait` of `None`
+  block ends, however it ends. A lock the block adopted from a handing process that still holds
+  its own descriptor stays held by that process
+  ([Handing a lock on](tracing/contracts.md#handing-a-lock-on)). The block receives the seconds
+  spent waiting. A `wait` of `None`
   waits as long as the lock is held. A refusal of a lock is `concorde.kernel.locking.LockRefused`,
   a `KernelError` that also carries `holder`, the holder's line as `entry` and `waited`.
 - The final check of a file transaction is `verify`, a callable that takes no argument. Its return

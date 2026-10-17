@@ -101,6 +101,101 @@ class LockLineTests(unittest.TestCase):
             with locks.handed_on(path):
                 pass
 
+    @verifies("scenario.tracing.lock-handover-block")
+    def test_a_handed_lock_goes_with_the_receiver_s_block(self):
+        path = Path(tempfile.mkdtemp()) / "merge.lock"
+        descriptor = locks.acquire(path)
+        code = (
+            "import sys\n"
+            "from concorde.kernel.tracing import locks\n"
+            f"with locks.hold({str(path)!r}, 'the merge', wait=0):\n"
+            "    print('held', flush=True)\n"
+            "    sys.stdin.readline()\n"
+            "print('left', flush=True)\n"
+            "sys.stdin.readline()\n"
+        )
+        child = subprocess.Popen(
+            [sys.executable, "-c", code],
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            text=True,
+            pass_fds=[descriptor],
+            env=child_environment(
+                PYTHONPATH=str(REPOSITORY_ROOT / "src"),
+                **{locks.INHERITED: json.dumps({str(path): descriptor})},
+            ),
+        )
+        os.close(descriptor)
+        self.addCleanup(child.wait)
+        self.assertEqual("held", child.stdout.readline().strip())
+        self.assertEqual(child.pid, locks.entry(path)["pid"])
+        child.stdin.write("\n")
+        child.stdin.flush()
+        # The receiver left its block and still runs: the lock is free and its file empty.
+        self.assertEqual("left", child.stdout.readline().strip())
+        self.assertIsNone(child.poll())
+        self.assertFalse(locks.held(path))
+        self.assertEqual("", path.read_text())
+        with locks.hold(path, "the next merge", wait=0):
+            self.assertEqual(os.getpid(), locks.entry(path)["pid"])
+        child.stdin.close()
+        child.wait(10)
+
+    @verifies("scenario.tracing.lock-handed-onward")
+    def test_an_adopted_lock_is_handed_on_only_explicitly(self):
+        path = Path(tempfile.mkdtemp()) / "merge.lock"
+        descriptor = locks.acquire(path)
+        # The grandchild says whether it was named a lock and takes it without waiting.
+        grandchild = (
+            "import os\n"
+            "from concorde.kernel.tracing import locks\n"
+            f"named = {locks.INHERITED!r} in os.environ\n"
+            "try:\n"
+            f"    with locks.hold({str(path)!r}, 'the Issue write', wait=0):\n"
+            "        print(named, 'held', os.getpid(), flush=True)\n"
+            "except locks.LockBusy:\n"
+            "    print(named, 'busy', os.getpid(), flush=True)\n"
+        )
+        # The child adopts the lock, starts one grandchild plainly and one with the lock handed
+        # on, and says whose holder line the lock carries afterwards.
+        code = (
+            "import os, subprocess, sys\n"
+            "from concorde.kernel.tracing import locks\n"
+            f"path, grandchild = {str(path)!r}, {grandchild!r}\n"
+            "def start(environment, descriptors=()):\n"
+            "    done = subprocess.run([sys.executable, '-c', grandchild], env=environment,\n"
+            "        pass_fds=descriptors, capture_output=True, text=True, timeout=60)\n"
+            "    print(done.stdout.strip() or done.stderr, flush=True)\n"
+            "with locks.hold(path, 'the merge', wait=0):\n"
+            "    start(dict(os.environ))\n"
+            "    with locks.handed_on(path) as (variables, descriptors):\n"
+            "        start({**os.environ, **variables}, descriptors)\n"
+            "    print(locks.entry(path)['pid'], os.getpid(), flush=True)\n"
+        )
+        child = subprocess.run(
+            [sys.executable, "-c", code],
+            pass_fds=[descriptor],
+            env=child_environment(
+                PYTHONPATH=str(REPOSITORY_ROOT / "src"),
+                **{locks.INHERITED: json.dumps({str(path): descriptor})},
+            ),
+            capture_output=True,
+            text=True,
+            timeout=120,
+            check=False,
+        )
+        os.close(descriptor)
+        self.assertEqual(0, child.returncode, child.stderr)
+        plain, handed, owner = (line.split() for line in child.stdout.splitlines())
+        # Started plainly, a process is named no lock and inherits none: the take is busy.
+        self.assertEqual(["False", "busy"], plain[:2])
+        # Handed on explicitly, it adopts the adopted lock at once under its own line.
+        self.assertEqual(["True", "held"], handed[:2])
+        # Afterwards the adopter holds the lock under its own holder line again.
+        self.assertEqual(owner[1], owner[0])
+        self.assertNotEqual(owner[1], handed[2])
+        self.assertFalse(locks.held(path))
+
     @verifies("scenario.tracing.lock-table-holders")
     def test_the_lock_table_names_holders_of_the_same_device_and_inode(self):
         path = Path(tempfile.mkdtemp()) / "run.lock"

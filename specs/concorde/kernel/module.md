@@ -246,8 +246,9 @@ details:
 
 While it holds the lock, the holder writes these details into the lock file.
 A process may also be handed the lock by the process that started it.
-When handed the lock, the process holds it from its start without waiting, exactly as long as it
-runs ([Handing a lock on](tracing/contracts.md#handing-a-lock-on)). The lock keeps the name of its
+When handed the lock, the process holds it from its start without waiting, for as long as its
+work holds it and at most as long as it runs
+([Handing a lock on](tracing/contracts.md#handing-a-lock-on)). The lock keeps the name of its
 first taker, the task merge. The reason is that every other taker takes it so as not to land a
 commit between a merge commit and its checks.
 

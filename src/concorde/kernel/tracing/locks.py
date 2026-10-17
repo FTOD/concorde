@@ -12,8 +12,10 @@ instead (``retake=False``), as a run waiting for a workspace lock that a close r
 A lock may be handed to a process: its taker starts it with the locked descriptor inherited and
 names it in the environment variable ``CONCORDE_INHERITED_LOCKS`` (``{"<lock path>": <fd>}``).
 ``hold`` in that process then adopts the descriptor instead of waiting, since a ``flock`` belongs
-to the open file description, which the taker and the process share; once the taker closed its
-own copy, the lock lives exactly as long as that process.
+to the open file description, which the taker and the process share. The adopting block holds it
+like any lock: once the taker closed its own copy, the lock is released when that block ends or
+the process ends, whichever comes first. The process may hand it on in turn with ``handed_on``,
+and in no other way: the variable is removed and the adopted descriptor is not inherited.
 
 Waiting for a lock to be released blocks on the lock itself, shared, in a thread, and lets it go at
 once, so a holder that dies wakes the waiter as surely as one that ends.

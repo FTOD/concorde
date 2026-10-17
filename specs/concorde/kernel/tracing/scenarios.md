@@ -222,6 +222,24 @@ define these items:
 - AND it no longer carries the variable
 - AND when that process ends, the lock is released
 
+### scenario.tracing.lock-handover-block — A handed lock goes with the receiver's block
+
+- GIVEN a process was handed a lock whose taker then closed its own descriptor
+- AND the process adopted the lock in a `hold` block
+- WHEN the process leaves that block and goes on running
+- THEN the lock is no longer held
+- AND its file is empty
+- AND another process takes the lock without waiting
+
+### scenario.tracing.lock-handed-onward — An adopted lock is handed on only explicitly
+
+- GIVEN a process holds a lock it adopted from the process that started it
+- WHEN it starts one process without handing the lock on
+- AND it starts another with `locks.handed_on` of that lock
+- THEN the first started process is named no lock and is refused the lock as busy
+- AND the second started process adopts the lock without waiting and writes its own holder line
+- AND once the second ends, the adopting process holds the lock under its own holder line again
+
 ### scenario.tracing.lock-table-holders — The lock table names the holders of the same file only
 
 - GIVEN a lock file exists
