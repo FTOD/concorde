@@ -23,7 +23,7 @@ from ..refusal import KernelError
 from ..schema import validate
 from . import layout, locks
 from .node import parse_time, read
-from .roots import TraceRoot, registered
+from .roots import TraceRoot, placed, registered
 
 DEFAULTS = {"unbound_days": 7, "history_days": None, "conversation_days": 30}
 _DAYS = {"anyOf": [{"type": "null"}, {"type": "integer", "minimum": 0}]}
@@ -110,12 +110,14 @@ def removable(
 ) -> list[Path]:
     """What retention may remove now under ``concorde``: whole top folders, root by root, then the
     conversation records of the top folders it keeps. ``roots`` default to the registered ones,
-    ``periods`` to the configuration of ``concorde``."""
+    ``periods`` to the configuration of ``concorde``. Only the roots that lie under ``concorde`` by
+    their registered place are searched, so a linked worktree's ``.concorde`` never loses a folder
+    named like a root of the primary worktree."""
     moment = moment or datetime.now(UTC)
     periods = configuration(concorde) if periods is None else periods
     found: list[Path] = []
     kept: list[tuple[TraceRoot, Path]] = []
-    for root in registered() if roots is None else roots:
+    for root in placed(registered() if roots is None else roots, concorde):
         for folder in root.top_folders(concorde):
             record = read(folder)
             if not record:

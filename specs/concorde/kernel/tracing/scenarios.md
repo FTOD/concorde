@@ -179,6 +179,16 @@ define these items:
 - AND the folder keeps its `trace.json`
 - AND when `concorde trace prune` runs again, without that refusal, it removes the folder
 
+### scenario.tracing.prune-placed — Retention keeps to each root's place
+
+- GIVEN a linked worktree whose `.concorde/history/done/` holds a task closed a year ago with a transcript
+- AND that worktree's `.concorde/unbound/` holds an unbound run ended 8 days ago
+- AND the history root is registered for the primary worktree's `.concorde` only
+- WHEN the tracing library's `retention.prune` is called on the linked worktree's `.concorde`
+- THEN it removes the unbound run
+- AND it removes nothing below `history/done/`
+- AND a call that names the registered roots itself removes nothing below `history/done/` either
+
 ## Locks
 
 ### scenario.tracing.run-lock-lifetime — A run lock exists only while its runner runs

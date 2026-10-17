@@ -9,6 +9,7 @@ what a task or a run is (``specs/concorde/kernel/tracing/contracts.md#trace-root
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -113,6 +114,14 @@ def registered() -> tuple[TraceRoot, ...]:
     return tuple(_ROOTS.values())
 
 
+def placed(roots: Iterable[TraceRoot], concorde: Path) -> tuple[TraceRoot, ...]:
+    """The roots that lie under ``concorde`` by the place each was registered with: a root of
+    the primary worktree's ``.concorde`` never lies under a linked worktree's, whose ``.git`` is a
+    file; a root of the worktree a node started in lies under any."""
+    linked = (Path(concorde).parent / ".git").is_file()
+    return tuple(root for root in roots if not (linked and root.place == "primary"))
+
+
 __all__ = [
     "LISTINGS",
     "PERIODS",
@@ -120,6 +129,7 @@ __all__ = [
     "STATES",
     "RootError",
     "TraceRoot",
+    "placed",
     "register",
     "registered",
 ]

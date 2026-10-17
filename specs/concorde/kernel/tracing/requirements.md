@@ -153,9 +153,11 @@ registers lists nothing.
 
 ### req.tracing.roots-pruned — Only registered roots are pruned
 
-Retention SHALL remove only what lies in the trace roots the installed parts registered, each by the periods its part registered for it.
+Retention SHALL remove only what lies in the trace roots the installed parts registered, each by the periods its part registered for it and only under a `.concorde` directory of the place its part registered for it.
 
-The retention periods of a root whose part is not installed are ignored.
+The retention periods of a root whose part is not installed are ignored. The place holds for every
+caller, the trace command and a direct call of the library alike. A linked worktree's `.concorde`
+therefore never loses a folder named like a root of the primary worktree.
 
 ### req.tracing.locks-apart — Locks lie apart from records
 
