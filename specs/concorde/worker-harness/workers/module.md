@@ -902,7 +902,11 @@ admitted. The reader resolves each worker's backend and model. When the map give
 id, the check passes. When the map lacks any of them, the reader refuses with one
 `model_unmapped`. That refusal names every model and backend the map lacks, with the workers that
 would take each. A worker whose entries set no model is left to its own resolution. When those
-entries set no model, that resolution refuses the worker with `model_unresolved`. Every refusal
+entries set no model, that resolution refuses the worker with `model_unresolved`. Asked for no
+Operation, the reader makes the same check at once for every worker id of every Operation the
+[Operation catalog](../../glossary.json#concept.operation-catalog) lists, with one `model_unmapped`
+for all of them. An Operation that declares no worker ids, such as `general`, adds no worker to
+that check. Every refusal
 before a run, with its code and reason, is listed in
 [the run mechanics](launch.md#refusals-before-a-run).
 

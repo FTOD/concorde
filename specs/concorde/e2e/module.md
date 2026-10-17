@@ -334,9 +334,13 @@ loads them.
 Before anything is cloned, `prepare` hands the configuration it built to Workers' check of a
 configuration.
 That check validates it.
-Through that map, the check resolves the model of every worker of every Operation the
-[Operation catalog](../glossary.json#concept.operation-catalog) lists.
+Through that map, the check resolves the model of every [worker id](../glossary.json#concept.worker-id) that an Operation of the
+[Operation catalog](../glossary.json#concept.operation-catalog) declares, when that worker's
+entries set a model.
 `prepare` enumerates no worker itself.
+So `prepare` checks no worker of an Operation that declares no worker ids, such as `general`. It
+checks no worker whose entries set no model either. Each such worker is checked when it launches,
+as Workers checks every worker before its run.
 It passes Workers' refusal on with its code ([Around it](#uses-workers)).
 
 Before anything is cloned, `prepare` refuses each of these:
@@ -834,7 +838,8 @@ each model.
 Its [contracts](../worker-harness/workers/contracts.md) define both.
 Workers' check of a whole configuration against the map validates it
 ([scenario.workers.model-map-checked](../worker-harness/workers/scenarios.md#scenario.workers.model-map-checked)).
-It resolves the model of every worker of every Operation.
+Asked for no Operation, it resolves the model of every declared worker id of every Operation whose
+entries set a model ([Workers' entry](../worker-harness/workers/module.md)).
 It refuses with these codes:
 
 - `config_invalid`.
