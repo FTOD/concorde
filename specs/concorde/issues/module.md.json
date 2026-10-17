@@ -23,7 +23,8 @@
           "concept.file-transaction",
           "concept.merge-lock",
           "concept.unfinished-merge-marker",
-          "req.kernel.marker-spans-merge"
+          "req.kernel.marker-spans-merge",
+          "concept.workspace-binding"
         ]
       },
       {
@@ -47,6 +48,15 @@
           "concept.part-registration",
           "contract.distribution.part-registration",
           "concept.project-mcp-server"
+        ]
+      },
+      {
+        "target": "module.tasks",
+        "meaning": "#uses-tasks",
+        "relies_on": [
+          "concept.task-record",
+          "concept.history",
+          "contract.tasks.record"
         ]
       }
     ],

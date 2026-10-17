@@ -1099,6 +1099,16 @@ This illustrates [recovering uncommitted records](requirements.md#req.issues.unc
 - THEN it reports an error naming the Issue and the unknown owner
 - AND it exits with a nonzero status
 
+### scenario.issues.store-check-task-owner — An owner an open task may add passes until the task ends
+
+- GIVEN a project where the spec part is installed, and an open Issue whose owner is not a Module of its registry
+- AND the Issue's latest report came from a run of the task `adopt`, whose [task record](../glossary.json#concept.task-record) lies in the project's `tasks/` folder
+- WHEN the configured store check runs, in the primary worktree or in a task worktree whose workspace binding names the primary worktree's `.concorde`
+- THEN it reports a note naming the Issue, the unknown owner and the open task
+- AND it passes
+- BUT once the task's record is no longer there, the check reports an error naming the Issue, the unknown owner and the task
+- AND the error says to close the Issue as `not-actionable` or report it again with a registered owner
+
 ### scenario.issues.store-check-misplaced — The store check fails for a misplaced or doubled record
 
 - GIVEN a closed record in `.concorde/issues/`

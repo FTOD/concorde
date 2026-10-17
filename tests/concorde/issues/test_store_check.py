@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -36,8 +37,9 @@ class StoreCheckTests(unittest.TestCase):
             if item["id"] == "check.issues.store"
         )
 
-    def run_check(self):
-        """Run the configured argv of ``check.issues.store`` in the project directory."""
+    def run_check(self, cwd=None):
+        """Run the configured argv of ``check.issues.store`` in the project directory, or in
+        ``cwd``."""
         argv = [
             sys.executable if part == "{python}" else part
             for part in self.check["argv"]
@@ -45,7 +47,7 @@ class StoreCheckTests(unittest.TestCase):
         argv[1] = str(PACKAGE / argv[1])
         result = subprocess.run(
             argv,
-            cwd=self.root,
+            cwd=cwd or self.root,
             capture_output=True,
             text=True,
             timeout=60,
@@ -117,6 +119,63 @@ class StoreCheckTests(unittest.TestCase):
             [f"{receipt['issue_id']} names unknown owner module.removed"],
             value["errors"],
         )
+
+    @verifies("scenario.issues.store-check-task-owner")
+    def test_an_owner_only_an_open_task_registers_is_a_note_until_the_task_ends(self):
+        # The report came from a run of the task's workspace, as Operation reporting records it.
+        receipt = report_issue(
+            self.root,
+            report(owner_target_id=None, evidence=[]),
+            source(target_id="module.removed", change_id="adopt"),
+        )
+        identifier = receipt["issue_id"]
+        task = self.root / ".concorde/tasks/adopt"
+        task.mkdir(parents=True)
+        (task / "task.json").write_text("{}")
+        status, value = self.run_check()
+        self.assertEqual((0, []), (status, value["errors"]), value)
+        self.assertEqual(1, len(value["notes"]))
+        self.assertIn(
+            f"{identifier} names unknown owner module.removed", value["notes"][0]
+        )
+        self.assertIn("open task adopt", value["notes"][0])
+        # A task worktree's check finds the task in the .concorde its binding names.
+        with tempfile.TemporaryDirectory() as directory:
+            worktree = Path(os.path.realpath(directory))
+            shutil.copytree(
+                self.root / ".concorde/issues", worktree / ".concorde/issues"
+            )
+            for name in ("specs.json", "config.json"):
+                shutil.copy(self.root / ".concorde" / name, worktree / ".concorde")
+            (worktree / ".concorde/workspace.json").write_text(
+                json.dumps(
+                    {
+                        "schema_version": 2,
+                        "workspace": "adopt",
+                        "root": str(worktree),
+                        "branch": "concorde/adopt",
+                        "base_commit": "0" * 40,
+                        "goal": "Adopt",
+                        "modules": ["module.service"],
+                        "traces": str(task),
+                        "concorde": str(self.root / ".concorde"),
+                    }
+                )
+            )
+            status, value = self.run_check(worktree)
+            self.assertEqual((0, []), (status, value["errors"]), value)
+            self.assertIn("open task adopt", value["notes"][0])
+        # The task closed without its merge registering the Module: an error naming the task.
+        (task / "task.json").unlink()
+        task.rmdir()
+        status, value = self.run_check()
+        self.assertEqual(1, status)
+        self.assertEqual(1, len(value["errors"]), value)
+        self.assertIn(
+            f"{identifier} names unknown owner module.removed", value["errors"][0]
+        )
+        self.assertIn("task adopt", value["errors"][0])
+        self.assertIn("not-actionable", value["errors"][0])
 
     @verifies("scenario.issues.store-check-closed-unknown-owner")
     def test_a_closed_issue_of_an_unregistered_owner_is_noted_but_passes(self):

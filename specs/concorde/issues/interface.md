@@ -186,7 +186,8 @@ host recording the findings of its run. The caller gives these values:
 The command then neither checks the report's owner against the primary worktree's registry nor
 checks its evidence paths. The caller vouches for the evidence paths like the provenance.
 These checks are omitted because a task's run may report on a Module its task adds and on a path
-its change removed.
+its change removed. Until that task ends, the store check excuses such an owner
+([bookkeeping command](#bookkeeping-command)).
 
 ## Record file
 
@@ -694,7 +695,9 @@ of `--root`, except hidden files such as `.gitignore`. It reads these entries as
 - A record is misplaced.
 - An Issue is recorded in both folders.
 - Where the spec part is installed, an open Issue's owner is not a registered Module
-  (`<id> names unknown owner <module>`).
+  (`<id> names unknown owner <module>`). When the latest report's `change_id` names a task that is
+  no longer open, the error also names that task. It says to close the Issue as `not-actionable` or
+  to report it again with a registered owner.
 
 For a misplaced record, the error names its status and place. It says to run
 `concorde issues archive` in the primary worktree, which moves the record to its place.
@@ -713,7 +716,11 @@ This is the one edit of a record by hand that Issues admits. That record
 holds every report of both copies, once each, and dispositions consistent with its final status.
 It is committed together with the other copy's removal, and nothing else.
 A closed Issue with an unknown owner produces the same text as a note, which does not change the
-exit status. Without the spec part, `check` does the following:
+exit status. So does an open Issue with an unknown owner whose latest report's `change_id` names a
+task that is still open. Such a task's [task record](../glossary.json#concept.task-record)
+`tasks/<task>/task.json` lies in the `.concorde` that the worktree's workspace binding names. Without
+a binding, it lies in the worktree's own `.concorde`. That note also names the task, whose merge
+registers the Module ([Spec core](module.md#uses-spec)). Without the spec part, `check` does the following:
 
 - It reads no registry.
 - It judges no owner.
