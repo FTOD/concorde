@@ -119,6 +119,17 @@ shapes are in the [contracts](contracts.md). The scenarios of the
 - AND the command starts the run anew under the key `survey`
 - AND the new step supersedes the starting step
 
+### scenario.workflows.launch-unanswered — A launcher that gives no answer leaves its step starting
+
+- GIVEN a workspace with no step `survey`
+- AND a launcher of the run of `survey` that gives no answer within 90 seconds
+- WHEN the step command is run for `survey`
+- THEN the command ends the launcher
+- AND it leaves the step starting, with its node `workflow/steps/1-survey/`, no run and no error
+- AND it prints the step outcome with state `running`, no run and no error, and exits with status 3
+- BUT once the run the ended launcher left enters `run/` of the step's node, running the same command again starts no run and records that run in the step
+- AND when no run enters the step's node and no run of the workspace runs, running the same command again starts the run anew, as for [a step whose run never started](#scenario.workflows.step-unstarted)
+
 ### scenario.workflows.step-lobby-refusal — A run refused in the lobby is not adopted
 
 - GIVEN a workspace whose step `survey` is recorded as starting, with its node `workflow/steps/1-survey/` and no run
