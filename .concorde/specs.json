@@ -1615,6 +1615,16 @@
         },
         {
           "kind": "bound",
+          "target": "protocol/style.md",
+          "reason": "the Protocol's Sentence style chapter: the decidable sentence rules that the CHK.style checks measure"
+        },
+        {
+          "kind": "bound",
+          "target": "protocol/views.md",
+          "reason": "the Protocol's Views chapter: the D2 subset of checked diagrams, their nodes and edges and the markings that the CHK.view checks validate"
+        },
+        {
+          "kind": "bound",
           "target": "protocol/model.yaml",
           "reason": "the Protocol's machine-readable model: node types, relation types, context effects and the task-type table"
         }
