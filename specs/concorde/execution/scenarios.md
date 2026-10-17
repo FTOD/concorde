@@ -134,7 +134,7 @@ and commands.
 ### scenario.execution.unbound-prepared — An unbound checkout is prepared before the first step
 
 - GIVEN a primary worktree at commit `C` whose `.concorde/preparation.json` declares two commands
-- AND the first command writes a file of the checkout and exits 0
+- AND the first command writes a file of the checkout that the commit's Git ignores and exits 0
 - AND the second command tries to write a file of the primary worktree
 - AND the second command exits 0 when that write is refused, and fails only when it succeeds
 - AND the definition's steps end `ok`
@@ -146,6 +146,22 @@ and commands.
 - AND the run's node keeps each command's log as `preparation/<n>.log`
 - AND once the result is written, the checkout is gone
 - BUT a bound run of a worktree with the same file runs no preparation command
+
+### scenario.execution.unbound-preparation-changed — A preparation that changes the commit runs no step
+
+- GIVEN a primary worktree whose committed `.concorde/preparation.json` declares a command that
+  exits 0
+- AND the command changes a tracked file of the checkout and keeps its size and timestamp, or
+  rewrites `.concorde/workers.json`
+- AND in another run, the command instead creates a file the commit's Git does not ignore, or a
+  file and a `.gitignore` that ignores it
+- WHEN an unbound run is started there
+- THEN the result is `failed` with `preparation_failed`
+- AND its cause is the `preparation_changed_commit` link of `Execution (unbound preparation)`
+- AND that link names what changed
+- AND no step runs and no worker is launched
+- AND once the result is written, the checkout is gone
+- BUT a command that writes only what the commit's Git ignores leaves the run `ok`
 
 ### scenario.execution.unbound-preparation-failed — A failed preparation runs no step
 

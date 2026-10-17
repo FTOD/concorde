@@ -434,7 +434,11 @@ admission and before the first step, the runner runs the commands in order in th
 command runs in Check execution's boundary with one more writable place, the checkout itself.
 The command can write the checkout and its own scratch. It cannot write any other file of the host.
 This includes the worktree the run started in, the primary worktree and the runtime paths the
-checkout only links. When a command fails, the run ends `failed` and no step runs
+checkout only links. The run still examines the commit. So a command may write only what the
+commit's Git ignores, such as build output. When the commands leave a tracked file changed, or a
+file the commit's Git would list, the run ends `failed` and no step runs. The Specs, the code and
+the worker configuration the run reads are therefore always the committed ones. When a command
+fails, the run ends `failed` and no step runs
 ([Preparing the checkout](runner.md#preparing-the-checkout)). A bound run is never prepared. Whoever
 prepares its workspace, such as a [task session](../glossary.json#concept.task-session), also
 builds it.

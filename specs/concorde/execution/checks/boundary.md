@@ -43,6 +43,9 @@ The runner refuses with `CheckSandboxError(RuntimeError)` in these cases:
 - Namespace or process file descriptor support is missing.
 - Sandbox setup fails.
 - No writable temporary directory exists outside the project.
+- With `writable_project`, the project holds a file that shares its inode with a file outside it,
+  or a directory the runner cannot list
+  ([A writable project](#a-writable-project)).
 
 The error carries the diagnostic output as bytes for the host. Apart from a deadline, a command
 that never received a trusted successful start is an isolation error, not a failed check. Even
@@ -140,7 +143,19 @@ then create, change, rename and delete files. Outside it, these hold:
   outside the project is therefore refused. The runtime paths an
   [unbound checkout](../../glossary.json#concept.unbound-checkout) links are such links.
 - A hard link from a file outside the project into it is refused (`EXDEV`), since it would cross
-  mounts. The file outside therefore never becomes writable through one.
+  mounts.
+- A hard link that already exists is no file of its own. A writable mount of the project would
+  make the file outside writable through it. So, before the sandbox is set up, the runner reads
+  every directory of the project, without following symbolic links. It refuses with
+  `CheckSandboxError` when a regular file's link count exceeds the number of its links inside the
+  project. It also refuses when it cannot read a directory, since it cannot tell what that
+  directory holds. The error names the files concerned. The file outside therefore never becomes
+  writable through a hard link.
+
+So the caller of `writable_project` gives a project that shares no file with the rest of the host.
+Execution's unbound checkout meets that by construction. `git worktree add` writes every file of it
+anew, and the runtime paths the runner links are symbolic links. The runner's refusal keeps the
+boundary closed even when a caller does not meet it.
 
 The network namespace is shared. Because of this, the command reaches the host's network and
 abstract Unix sockets. Filesystem Unix sockets under read-only mounts stay connectable. The IPC
@@ -184,8 +199,10 @@ only files inside the project and its scratch.
 Every other host file stays read-only, against the same actions and in the same cases as
 [req.checks.project-read-only](#req.checks.project-read-only) lists.
 
-This covers files reached through a symbolic link of the project and through a hard link made into
-it. Every other requirement of the boundary holds unchanged.
+This covers files reached through a symbolic link of the project and through a hard link, whether
+made into the project during the run or present in it before the run. When the project holds a file
+that shares its inode with a file outside it, the check runner refuses to start the command. Every
+other requirement of the boundary holds unchanged.
 
 ### req.checks.fail-closed — No run without the boundary
 
@@ -241,6 +258,17 @@ This includes processes with these behaviours:
 - AND writing through the link, to an existing file or a new one, is refused
 - AND a hard link from a file outside into the project is refused
 - AND the directory outside keeps exactly its files
+
+### scenario.checks.writable-project-hard-link — A project sharing a file with the host is never writable
+
+- GIVEN a project holding a hard link to a file outside it, made before the run
+- AND two hard links of one other file, both inside the project
+- WHEN a command is to run with `writable_project`
+- THEN the runner refuses with `CheckSandboxError` before the sandbox is set up
+- AND the error names the file linked outside, not the file linked only inside
+- AND the file outside keeps its content
+- BUT once the link outside is gone, the command runs and writes the file linked only inside
+- AND a command without `writable_project` still runs in that project, which stays read-only
 
 ### scenario.checks.scratch — A run reads its inputs and writes disposable output
 

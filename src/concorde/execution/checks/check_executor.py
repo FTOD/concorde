@@ -5,7 +5,9 @@ the host tree recursively read-only, with one fresh writable scratch mount. PID 
 closed descriptors and a host-held pidfd keep filesystem and process authority inside that tree.
 This is not a read, network or credential policy. A preparation command of an unbound checkout
 runs in the same boundary with the project as one more writable mount: what lies outside it, the
-places its symbolic links lead to included, stays read-only.
+places its symbolic links lead to included, stays read-only. A bind mount cannot separate an inode
+the project shares with a file outside it, so a project holding a hard link to such a file is
+refused before the sandbox is set up; no new one can be made inside, since it would cross mounts.
 """
 
 from __future__ import annotations
@@ -18,6 +20,7 @@ import math
 import os
 import select
 import signal
+import stat
 import subprocess
 import sys
 import tempfile
@@ -398,6 +401,49 @@ def _process_tempdir() -> str | None:
         return None
 
 
+# How many shared files a refusal names.
+SHOWN_LINKS = 10
+
+
+def _refuse_outside_links(project: Path) -> None:
+    """Refuse a project that a writable mount cannot separate from the host: one holding a
+    regular file whose inode has a link outside the project, or a directory it cannot list and so
+    cannot vouch for. Symbolic links are not followed: each leads to its target's own mount."""
+    seen: dict[tuple[int, int], list] = {}
+    unlisted: list[str] = []
+
+    def failed(error: OSError) -> None:
+        unlisted.append(f"{error.filename}: {error.strerror}")
+
+    for folder, _, names in os.walk(project, onerror=failed):
+        for name in names:
+            path = os.path.join(folder, name)
+            try:
+                metadata = os.lstat(path)
+            except OSError as error:
+                failed(error)
+                continue
+            if stat.S_ISREG(metadata.st_mode) and metadata.st_nlink > 1:
+                entry = seen.setdefault(
+                    (metadata.st_dev, metadata.st_ino), [metadata.st_nlink, []]
+                )
+                entry[1].append(path)
+    shared = sorted(paths[0] for count, paths in seen.values() if count > len(paths))
+    if unlisted:
+        raise CheckSandboxError(
+            f"the writable project {project} cannot be checked for hard links to files outside "
+            f"it: {'; '.join(unlisted[:SHOWN_LINKS])}"
+        )
+    if shared:
+        more = len(shared) - SHOWN_LINKS
+        raise CheckSandboxError(
+            f"the writable project {project} holds {len(shared)} file(s) hard-linked to a "
+            "file outside it, which a writable mount of the project would make writable: "
+            + ", ".join(shared[:SHOWN_LINKS])
+            + (f" and {more} more" if more > 0 else "")
+        )
+
+
 @timed("check.total")
 def execute_check(
     project_root: Path,
@@ -431,6 +477,8 @@ def execute_check(
         raise CheckSandboxError(
             "project location cannot be isolated by the Linux check backend"
         )
+    if writable_project:
+        _refuse_outside_links(project)
     backend: CheckBackend = BubblewrapBackend(
         cancel_event=cancel_event, writable_project=writable_project
     )

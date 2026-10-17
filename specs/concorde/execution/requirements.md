@@ -256,6 +256,17 @@ The worktree the run started in, the primary worktree and the runtime paths the 
 stay read-only for the command, at the system call
 ([req.checks.writable-project-only](checks/boundary.md#req.checks.writable-project-only)).
 
+### req.execution.preparation-keeps-commit — A preparation leaves the commit as committed
+
+After the preparation commands of an unbound run, the runner SHALL start no step unless the checkout
+holds every tracked file of the examined commit with its committed content, and no file that the
+commit's Git does not ignore.
+
+Otherwise the run ends `failed` with `preparation_failed`, caused by `preparation_changed_commit`
+([Preparing the checkout](runner.md#preparing-the-checkout)). A command cannot evade the
+comparison by keeping a file's timestamp, by rewriting the checkout's `.git` file or by adding a
+`.gitignore`.
+
 ### req.execution.checkout-removed — The checkout does not outlive the run
 
 Whatever ended an unbound run's steps, the runner SHALL attempt to remove the run's checkout, as

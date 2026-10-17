@@ -638,6 +638,25 @@ follows these steps:
 4. When the command exited 0, the runner goes on with the next command. Otherwise, no later
   command runs and no step runs. The run ends `failed` with `preparation_failed`.
 
+Before the first command, the runner reads the checkout's Git directory and its Git status. After
+the last command exited 0, it reads the status again and compares the two readings. Each reading
+does these things:
+
+- It reads the status against a fresh index of `HEAD`, never the checkout's own index. Git
+  therefore compares the content of every tracked file, not its timestamps.
+- It names Git's directory explicitly, as read before the first command. A command that rewrote
+  the checkout's `.git` file therefore cannot redirect it. The bytes of that file are part of the
+  reading.
+- It includes the files of the submodules and every file Git does not ignore.
+- It counts each new `.gitignore` whose directory the commit's own rules do not ignore. A command
+  can therefore not hide a file by ignoring it.
+
+When the readings differ, no step runs. The run ends `failed` with `preparation_failed`, and the
+cause's code is `preparation_changed_commit`. Its detail names what changed, the first 20 entries
+at most. When Git cannot read the status, the cause's code is `preparation_unverified`, with the
+reason `environment`. Either way, the runner records `preparation-check` host evidence with the
+`ref` `git status`, whose detail says what it found.
+
 A command fails in one of these ways:
 
 - It exits with a status other than 0. The cause's code is `preparation_command_failed`.
@@ -651,8 +670,8 @@ A file that cannot be read, is no JSON, or breaks its contract ends the run `fai
 `preparation_invalid`, before any command runs. The cause's code is `invalid_preparation`, with the
 place in the file that breaks the contract.
 
-What a command writes in the checkout lasts until the runner removes the checkout. The steps and
-the workers they launch read it there. The checks treat it like any other file of the checkout.
+What a command writes in the paths the commit's Git ignores lasts until the runner removes the
+checkout. The steps and the workers they launch read it there. The checks treat it like any other file of the checkout.
 The worker harness's [write audit](../glossary.json#concept.write-audit) measures each round
 against a snapshot taken before that round. What the preparation wrote is therefore never counted
 as a worker's write. A cancellation while a command runs ends its whole process tree, keeps its
