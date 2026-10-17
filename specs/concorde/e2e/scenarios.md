@@ -135,7 +135,7 @@ This illustrates [the driver's real step commands](requirements.md#req.e2e.drive
 
 ### scenario.e2e.task-unreadable — A task without a readable record is refused
 
-- GIVEN a test project whose task's [task record](../glossary.json#concept.task-record) is missing or names no worktree
+- GIVEN a test project whose task's [task record](../glossary.json#concept.task-record) is missing or names no worktree by an absolute path, such as an empty one
 - WHEN the developer runs `run` on that task
 - THEN the tool prints `{"error": …}` with `no_task`, naming the record
 - AND the tool exits 1
@@ -232,6 +232,6 @@ This illustrates [the driver's real step commands](requirements.md#req.e2e.drive
 
 ### scenario.e2e.owners-no-task — The owners case needs a task with a worktree
 
-- GIVEN a test project without a task `t9`, or whose [task record](../glossary.json#concept.task-record) names a worktree that does not exist
+- GIVEN a test project without a task `t9`, or whose [task record](../glossary.json#concept.task-record) names no worktree, an empty or relative one or one that does not exist
 - WHEN `owners` is asked to play its runs on that task
 - THEN it stops with `no_task` before any session starts

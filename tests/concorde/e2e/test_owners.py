@@ -421,6 +421,18 @@ class OwnersCaseTests(unittest.TestCase):
         self.assertEqual("no_task", raised.exception.code)
         self.assertIn("does not exist", raised.exception.detail)
         started.assert_not_called()
+        # An empty worktree would be the current directory, which is no task worktree.
+        (self.project / ".concorde/tasks/t1/task.json").write_text(
+            json.dumps({"id": "t1", "worktree": ""})
+        )
+        with (
+            patch.object(owners, "LiveSession") as started,
+            self.assertRaises(e2e.E2EError) as raised,
+        ):
+            owners.owners(self.project, task="t1")
+        self.assertEqual("no_task", raised.exception.code)
+        self.assertIn("task.json", raised.exception.detail)
+        started.assert_not_called()
 
     def test_the_status_listed_for_a_run_is_read_from_task_show(self):
         output = 'noise {"a": 1}\n' + json.dumps(

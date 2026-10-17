@@ -485,7 +485,9 @@ When a run continues a task, `--retry <key>` becomes the workflow's own `retry` 
 When a run continues a task, `--restart <key>=<label>` becomes its `restart` map.
 
 A workflow result whose status is not `ok` is printed like any other.
-When a task's record cannot be read or names no worktree, `run` refuses it with `no_task`.
+When a task's record cannot be read or names no worktree by an absolute path, `run` refuses it
+with `no_task`. An empty or relative path would be taken relative to the current directory,
+which is no task worktree.
 It fails instead in these cases:
 
 - When the headless session ends `exited` or `no_session`

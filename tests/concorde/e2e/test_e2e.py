@@ -656,7 +656,9 @@ class E2ETests(unittest.TestCase):
         self.addCleanup(directory.cleanup)
         base = Path(directory.name)
         (base / ".concorde/tasks/adopt").mkdir(parents=True)
-        for text in (None, "[]", "{}"):
+        # An empty or relative worktree would name the current directory, no task worktree.
+        records = ('{"worktree": ""}', '{"worktree": "."}', '{"worktree": null}')
+        for text in (None, "[]", "{}", *records):
             if text is not None:
                 (base / ".concorde/tasks/adopt/task.json").write_text(text)
             printed = io.StringIO()

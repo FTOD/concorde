@@ -68,6 +68,7 @@ from common import (  # noqa: E402
     clone,
     e2e_root,
     fresh_directory,
+    recorded_worktree,
     taken,
     test_directory,
     repository_url,
@@ -353,8 +354,8 @@ def task_worktree(project: Path, task: str) -> Path:
     """The worktree the record of ``task`` names; ``no_task`` when it cannot be read."""
     path = project / f".concorde/tasks/{task}/task.json"
     try:
-        return Path(json.loads(path.read_text(encoding="utf-8"))["worktree"])
-    except (OSError, ValueError, KeyError, TypeError) as error:
+        return recorded_worktree(path)
+    except (OSError, ValueError) as error:
         raise E2EError(
             "no_task",
             f"{project} has no task {task} whose record {path} names its worktree "
