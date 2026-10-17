@@ -207,8 +207,10 @@ def receipt_digest(project: Path) -> str | None:
 
 
 def installed_digests(project: Path) -> dict:
-    """The digest of each file the install receipt names outside ``.concorde/``;
-    ``receipt_unreadable`` when the receipt cannot be read as one naming its files."""
+    """The digest of each regular file the install receipt names, inside ``.concorde/`` too,
+    such as the installed command and the Protocol copy, except its defaults, which become the
+    project's to change; ``receipt_unreadable`` when the receipt cannot be read as one naming
+    its files."""
     path = project / RECEIPT
     try:
         receipt = json.loads(path.read_text(encoding="utf-8"))
@@ -217,6 +219,12 @@ def installed_digests(project: Path) -> dict:
         files = receipt.get("files")
         if not isinstance(files, list) or not all(isinstance(f, str) for f in files):
             raise ValueError("its files are not a list of paths")
+        # A receipt written before receipts named their defaults names none.
+        defaults = receipt.get("defaults", [])
+        if not isinstance(defaults, list) or not all(
+            isinstance(f, str) for f in defaults
+        ):
+            raise ValueError("its defaults are not a list of paths")
     except (OSError, ValueError) as error:
         raise E2EError(
             "receipt_unreadable",
@@ -226,7 +234,7 @@ def installed_digests(project: Path) -> dict:
     return {
         path: "sha256:" + hashlib.sha256((project / path).read_bytes()).hexdigest()
         for path in sorted(files)
-        if not path.startswith(".concorde/") and (project / path).is_file()
+        if path not in defaults and (project / path).is_file()
     }
 
 

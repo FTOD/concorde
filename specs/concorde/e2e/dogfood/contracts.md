@@ -169,7 +169,7 @@ A [dogfood scenario](../../glossary.json#concept.dogfood-scenario) is one file u
 ```concorde-contract
 {
   "id": "contract.dogfood-scenarios.record",
-  "version": 1,
+  "version": 2,
   "schema": {
     "type": "object",
     "additionalProperties": false,
@@ -236,7 +236,7 @@ A [dogfood scenario](../../glossary.json#concept.dogfood-scenario) is one file u
       }
     }
   },
-  "semantics": "The record dogfood.json that prepare writes into a scenario directory, with the scenario's baselines. scenario names the scenario; worker_models the models its worker configuration enables; concorde and project the absolute paths of the faulty Concorde clone and the installed project. fault_commit is the clone's commit of the fault and project_head the project's commit of the adoption. framework is the digest of the framework copy's sources under .concorde/framework/ (its src, scripts, prompts and generated, each file's path and bytes in path order, Python's __pycache__ folders left out). receipt is the digest of the install receipt .concorde/install.json's bytes. installed maps every file the receipt's files list names outside .concorde/ to the digest of its bytes. unchanged maps every path the scenario expects unchanged to the Git blob it has at the project's head; a path the head lacks fails prepare with command_failed. Without a readable record, run and evaluate refuse the directory with not_prepared. A behaviour or field change increments the version.",
+  "semantics": "The record dogfood.json that prepare writes into a scenario directory, with the scenario's baselines. scenario names the scenario; worker_models the models its worker configuration enables; concorde and project the absolute paths of the faulty Concorde clone and the installed project. fault_commit is the clone's commit of the fault and project_head the project's commit of the adoption. framework is the digest of the framework copy's sources under .concorde/framework/ (its src, scripts, prompts and generated, each file's path and bytes in path order, Python's __pycache__ folders left out). receipt is the digest of the install receipt .concorde/install.json's bytes. installed maps every regular file the receipt's files list names, inside .concorde/ too, such as the installed command and the Protocol copy, to the digest of its bytes, except the files the receipt's defaults list names, which become the project's own. unchanged maps every path the scenario expects unchanged to the Git blob it has at the project's head; a path the head lacks fails prepare with command_failed. Without a readable record, run and evaluate refuse the directory with not_prepared. A behaviour or field change increments the version.",
   "example": {
     "scenario": "write-hook-rw-directories",
     "worker_models": [

@@ -418,16 +418,30 @@ class EvaluationTests(unittest.TestCase):
         project = self.untouched_project()
         framework = dogfood.framework_digest(project)
         installed = dogfood.installed_digests(project)
-        self.assertEqual([".claude/skills/concorde/SKILL.md"], list(installed))
+        self.assertEqual(
+            [
+                ".claude/skills/concorde/SKILL.md",
+                ".concorde/bin/concorde",
+                ".concorde/protocol/principles.md",
+            ],
+            list(installed),
+        )
         record = self.untouched_record(project, framework, installed)
+        self.assertTrue(dogfood._untouched(record)["passed"])
+        # A default is the project's to change.
+        (project / ".concorde/issues/.gitignore").write_text("*.tmp\n*.bak\n")
         self.assertTrue(dogfood._untouched(record)["passed"])
         (project / ".concorde/framework/src/concorde/a.py").write_text("x = 2\n")
         self.assertNotEqual(framework, dogfood.framework_digest(project))
         (project / ".claude/skills/concorde/SKILL.md").write_text("changed\n")
+        (project / ".concorde/bin/concorde").write_text("#!/bin/sh\nexit 0\n")
+        (project / ".concorde/protocol/principles.md").unlink()
         self.assertNotEqual(installed, dogfood.installed_digests(project))
         check = dogfood._untouched(record)
         self.assertFalse(check["passed"])
         self.assertIn(".claude/skills/concorde/SKILL.md", check["detail"])
+        self.assertIn(".concorde/bin/concorde", check["detail"])
+        self.assertIn(".concorde/protocol/principles.md", check["detail"])
         self.assertIn(".concorde/framework changed", check["detail"])
 
     @verifies("scenario.dogfood-scenarios.caches-ignored")
@@ -455,6 +469,7 @@ class EvaluationTests(unittest.TestCase):
             '{"files": "all"}',
             "{}",
             *(json.dumps({"files": value}) for value in (None, False, 0, "", {})),
+            json.dumps({"files": [], "defaults": "all"}),
         )
         for text in (None, "not JSON", "[]", *malformed):
             with self.subTest(receipt=text):
@@ -646,20 +661,31 @@ class EvaluationTests(unittest.TestCase):
         return base
 
     def untouched_project(self) -> Path:
-        """A project with a framework copy, its caches' folder and one installed file."""
+        """A project with a framework copy, its caches' folder, installed files outside and
+        inside ``.concorde/`` and one default."""
         project = self.root / "project"
         (project / ".concorde/framework/src/concorde").mkdir(parents=True)
         (project / ".concorde/framework/src/concorde/__pycache__").mkdir()
         (project / ".concorde/framework/src/concorde/a.py").write_text("x = 1\n")
         (project / ".claude/skills/concorde").mkdir(parents=True)
         (project / ".claude/skills/concorde/SKILL.md").write_text("guidance\n")
+        (project / ".concorde/bin").mkdir()
+        (project / ".concorde/bin/concorde").write_text("#!/bin/sh\n")
+        (project / ".concorde/protocol").mkdir()
+        (project / ".concorde/protocol/principles.md").write_text("# Principles\n")
+        (project / ".concorde/issues").mkdir()
+        (project / ".concorde/issues/.gitignore").write_text("*.tmp\n")
         (project / ".concorde/install.json").write_text(
             json.dumps(
                 {
                     "files": [
                         ".claude/skills/concorde/SKILL.md",
                         ".concorde/bin/concorde",
-                    ]
+                        ".concorde/framework/",
+                        ".concorde/issues/.gitignore",
+                        ".concorde/protocol/principles.md",
+                    ],
+                    "defaults": [".concorde/issues/.gitignore"],
                 }
             )
         )

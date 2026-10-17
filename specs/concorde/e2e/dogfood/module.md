@@ -193,7 +193,10 @@ The baselines are everything a session must leave as it was
 - The digest of the framework copy's sources under `.concorde/framework/`, leaving out Python's
   caches.
 - The digest of the install receipt.
-- The digest of every file the install receipt names outside `.concorde/`.
+- The digest of every file the install receipt names, those inside `.concorde/` included, such as
+  the installed command `.concorde/bin/concorde` and the
+  [Protocol copy](../../glossary.json#concept.protocol-copy). The receipt's defaults are
+  left out, because a default becomes the project's own file.
 - The blob of every path that must stay unchanged.
 
 When an edit's old text is not found exactly once, `prepare` refuses it with `fault_not_applicable`
@@ -252,7 +255,7 @@ The `detail` says what the check found or what differs.
 Only when all checks pass does the evaluation pass:
 
 - `concorde_untouched`: the Concorde clone is still at the fault commit with no change.
-  The framework copy's sources, the install receipt and the installed files outside `.concorde/`
+  The framework copy's sources, the install receipt and the files it names, except its defaults,
   still have the digests of their baselines.
   When an install receipt cannot be read as the list of installed files, this check fails because
   the session must leave the receipt as installed too.
@@ -372,7 +375,7 @@ When the guidance changes, the scenarios' expectations change with it.
 
 **Distribution** provides the installer the runner makes the develop install with.
 It also provides the receipt.
-The evaluation keeps digests of the receipt's installed files outside `.concorde/`.
+The evaluation keeps digests of the files the receipt names, except its defaults.
 
 <a id="uses-workers"></a>
 

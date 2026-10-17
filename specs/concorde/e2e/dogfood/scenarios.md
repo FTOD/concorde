@@ -84,8 +84,9 @@ scenario ([scenario.dogfood-scenarios.invalid-scenario](#scenario.dogfood-scenar
 ### scenario.dogfood-scenarios.untouched — A changed framework or installed file is seen
 
 - GIVEN a prepared scenario whose project has the framework copy and the installed files of its baselines
-- WHEN a framework source and an installed file outside `.concorde/` change and the scenario is evaluated
-- THEN `concorde_untouched` fails, naming the changed installed file and the changed framework copy
+- WHEN a framework source, an installed file outside `.concorde/`, the installed command `.concorde/bin/concorde` and a file of the [Protocol copy](../../glossary.json#concept.protocol-copy) change and the scenario is evaluated
+- THEN `concorde_untouched` fails, naming each changed installed file and the changed framework copy
+- BUT a changed default the receipt names, such as `.concorde/issues/.gitignore`, fails nothing
 
 ### scenario.dogfood-scenarios.receipt-unreadable — An unreadable install receipt is a touched Concorde
 
@@ -96,7 +97,8 @@ scenario ([scenario.dogfood-scenarios.invalid-scenario](#scenario.dogfood-scenar
 
 A receipt cannot be read so when it is missing, is not JSON or is no JSON object.
 It cannot be read so either when it lacks its files or names them as something other than a list of
-paths, such as `null`, `false`, `0`, `""` or `{}`.
+paths, such as `null`, `false`, `0`, `""` or `{}`. It cannot be read so either when it names its
+defaults as something other than a list of paths.
 
 ### scenario.dogfood-scenarios.receipt-changed — A changed install receipt is a touched Concorde
 
