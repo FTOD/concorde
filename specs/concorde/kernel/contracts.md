@@ -256,7 +256,10 @@ A crash after step 1 and before step 5 leaves the marker. A marker whose writer'
 that no merge is unfinished is one a crash left at step 1 or step 5. Only its writer can tell, so
 only the writer removes it. A writer that cannot write the marker at step 1 changes nothing.
 A writer that cannot replace or remove it leaves the earlier marker, which still refuses every
-commit. The writer removes it once it can.
+commit. The writer removes it once it can. The writer's own commands do not read the marker as a
+reader does. While its own records say that the merge is not decided, the writer refuses every
+commit on the primary branch except those of the commands the marker names in `finish`
+([req.kernel.marker-writer-refuses-own-commits](requirements.md#req.kernel.marker-writer-refuses-own-commits)).
 
 A reader holds the merge lock. A marker present then belongs to a writer that ended, or to one that
 handed the lock on after it removed the marker. The reader refuses its commit with its own error
