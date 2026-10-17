@@ -128,7 +128,13 @@ def develop_source(package: str | Path) -> dict:
             f"the HEAD of {package} is detached; check out the branch tasks merge into "
             "before installing from it",
         )
-    query = ("status", "--porcelain", "--untracked-files=normal")
+    # Every submodule change counts, whatever ignore setting the repository gives it.
+    query = (
+        "status",
+        "--porcelain",
+        "--untracked-files=normal",
+        "--ignore-submodules=none",
+    )
     status = _git(package, *query)
     if status.returncode != 0:
         raise _unreadable(package, query, status, "it printed no message")

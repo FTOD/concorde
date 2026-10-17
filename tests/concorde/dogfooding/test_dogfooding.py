@@ -256,6 +256,25 @@ class DevelopInstallTests(unittest.TestCase):
             package, new_project(package), "develop_source_dirty", "stray.txt"
         )
 
+    @verifies("scenario.dogfooding.refused-dirty")
+    def test_a_submodule_change_is_seen_whatever_its_ignore_setting(self):
+        package = repository(self)
+        submodule = package / "vendor/sub"
+        submodule.mkdir(parents=True)
+        git(submodule, "init", "-q", "-b", "main")
+        git(submodule, "commit", "-q", "--allow-empty", "-m", "one")
+        (package / ".gitmodules").write_text(
+            '[submodule "sub"]\n\tpath = vendor/sub\n\turl = ./sub\n\tignore = all\n'
+        )
+        git(package, "add", ".gitmodules", "vendor/sub")
+        git(package, "commit", "-qm", "submodule")
+        git(package, "config", "diff.ignoreSubmodules", "all")
+        # The checked-out submodule commit differs from the recorded gitlink.
+        git(submodule, "commit", "-q", "--allow-empty", "-m", "two")
+        self.assert_refused(
+            package, new_project(package), "develop_source_dirty", "vendor/sub"
+        )
+
     @verifies("scenario.dogfooding.update-keeps-develop")
     def test_an_update_installs_the_new_commit_in_develop_mode(self):
         package = repository(self)

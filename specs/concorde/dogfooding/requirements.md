@@ -15,6 +15,9 @@ conditions:
 - It is on a branch.
 - It has no uncommitted or untracked change.
 
+A change of a submodule counts as an uncommitted change, whatever ignore setting the repository
+gives that submodule.
+
 ### req.dogfooding.refusal-names-reason — A refused source names its reason
 
 A refusal of a develop install, or of an update of one, by
