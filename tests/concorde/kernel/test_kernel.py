@@ -162,13 +162,37 @@ class BindingTests(unittest.TestCase):
     def test_a_binding_the_system_cannot_write_is_refused_with_a_code(self):
         failure = PermissionError(13, "Permission denied")
         with (
-            patch.object(Path, "write_text", side_effect=failure),
+            patch.object(binding.os, "replace", side_effect=failure),
             self.assertRaises(KernelError) as refused,
         ):
             binding.write(self.root, self.value())
         self.assertEqual("system_error", refused.exception.code)
         self.assertEqual(str(binding.path_of(self.root)), refused.exception.field)
         self.assertIs(failure, refused.exception.causes[0])
+        # The refused write leaves neither a binding nor its temporary file.
+        self.assertEqual([], list(binding.path_of(self.root).parent.iterdir()))
+
+    def test_overlapping_binding_writes_each_publish_a_whole_binding(self):
+        first = self.value(goal="The first writer's goal.")
+        second = self.value(goal="The second writer's goal.")
+        replace = os.replace
+        published = []
+
+        def interleaved(source, target):
+            # The second write runs whole between the first one's write and its rename.
+            if not published:
+                published.append(source)
+                binding.write(self.root, second)
+                self.assertEqual(second, binding.load(self.root))
+            replace(source, target)
+
+        with patch.object(binding.os, "replace", interleaved):
+            binding.write(self.root, first)
+        self.assertEqual(first, binding.load(self.root))
+        self.assertEqual(
+            [binding.path_of(self.root)],
+            list(binding.path_of(self.root).parent.iterdir()),
+        )
 
     @verifies("scenario.kernel.binding-copied")
     def test_a_copied_binding_is_refused(self):

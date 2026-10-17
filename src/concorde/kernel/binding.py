@@ -14,6 +14,7 @@ from __future__ import annotations
 import json
 import os
 import subprocess
+import tempfile
 from contextlib import suppress
 from pathlib import Path
 
@@ -167,20 +168,40 @@ def write(root: Path, value: dict) -> Path:
     """
     path = path_of(root)
     _check(path, value, root, misplaced="binding_invalid")
-    temporary = path.with_suffix(".json.tmp")
+    data = (json.dumps(value, indent=2, ensure_ascii=False) + "\n").encode("utf-8")
+    # Each write has a temporary file of its own beside the binding, closed before the rename, so
+    # overlapping writes never share one and the rename publishes one whole binding.
+    temporary = None
     try:
         path.parent.mkdir(parents=True, exist_ok=True)
-        temporary.write_text(json.dumps(value, indent=2, ensure_ascii=False) + "\n")
-        temporary.replace(path)
+        descriptor, temporary = tempfile.mkstemp(
+            prefix=".concorde-write-", dir=path.parent
+        )
+        with os.fdopen(descriptor, "wb") as stream:
+            stream.write(data)
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(temporary, path)
+        temporary = None
     except OSError as error:
-        with suppress(OSError):
-            temporary.unlink(missing_ok=True)
+        causes: list[BaseException] = [error]
+        if temporary is not None:
+            # A refused cleanup never hides the refused write: it is one more cause.
+            try:
+                Path(temporary).unlink(missing_ok=True)
+            except OSError as cleanup:
+                causes.append(cleanup)
         raise KernelError(
             "system_error",
             f"the workspace binding {path} cannot be written: {error}",
             field=str(path),
-            causes=[error],
+            causes=causes,
         ) from error
+    except BaseException:
+        if temporary is not None:
+            with suppress(OSError):
+                Path(temporary).unlink(missing_ok=True)
+        raise
     return path
 
 
