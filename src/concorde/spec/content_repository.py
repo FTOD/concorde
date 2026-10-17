@@ -55,6 +55,7 @@ from .repository_base import (
     most_specific,
     read_file,
     reference_record,
+    shared_path,
 )
 from .syntax import Reading, parse_reading
 from .typed_data import (
@@ -2004,7 +2005,7 @@ class DocumentUnitRepository:
                 path
                 for mine in self.implementation_scope(target)
                 for theirs in self.implementation_scope(other)
-                if (path := _shared_path(mine, theirs)) is not None
+                if (path := shared_path(mine, theirs)) is not None
             }
             if shared:
                 result[other.id] = tuple(sorted(shared))
@@ -2088,17 +2089,6 @@ class DocumentUnitRepository:
 
 
 RepositoryCore = DocumentUnitRepository
-
-
-def _shared_path(first: str, second: str) -> str | None:
-    """The path two realization entries both bind, or None (see ``shared_files``)."""
-    if first == second:
-        return first
-    if is_directory_entry(first) and bound_by(first, second):
-        return second
-    if is_directory_entry(second) and bound_by(second, first):
-        return first
-    return None
 
 
 def _as_cause(error: BaseException, **location) -> SpecError:

@@ -661,6 +661,14 @@ A `review-spec` grant for the same Module is equal to it apart from its task typ
 - WHEN a grant is computed for it with a task type that writes its implementation
 - THEN the computation fails with `installed_file`, naming the directory entry and the installed
   file
+
+### scenario.spec.grant-installed-link — An installation record behind a symbolic link is refused
+
+- GIVEN a worktree whose `.concorde/install.json` is a symbolic link to another worktree's
+  installation record
+- WHEN a grant is computed for a Module of that worktree
+- THEN the computation fails with `unsafe_path`, naming the link
+- AND validation reports `CHK.binds.installed` at `.concorde/install.json`
 - AND no grant is returned
 - BUT a grant for it with task type `understand` lists the directory as `names`
 
@@ -706,6 +714,13 @@ A `review-spec` grant for the same Module is equal to it apart from its task typ
 - AND no grant is returned
 - BUT a grant for task type `implement` and Modules A and D lists `src/shared.py` as `rw`
 - BUT a grant for task type `understand` and Module A alone lists it as `names`
+
+### scenario.spec.grant-shared-spec — A writable Spec document another Module binds is shared
+
+- GIVEN Module D whose realization also binds a document Module A owns, which validation reports
+  as `CHK.binds.no-spec`
+- WHEN a grant for task type `specify` and Module A alone is computed
+- THEN the computation fails with `shared_file`, naming that document and Module D
 
 ### scenario.spec.grant-invalid — An unanswerable request gets no grant
 

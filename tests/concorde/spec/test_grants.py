@@ -278,6 +278,27 @@ class GrantTests(unittest.TestCase):
         alone = self.levels(self.grant(["module.a"], "understand"))
         self.assertEqual("names", alone["src/shared.py"])
 
+    @verifies("scenario.spec.grant-shared-spec")
+    def test_a_writable_spec_document_another_module_binds_is_shared(self):
+        value = self.project.metadata("specs/d/module.md")
+        for record in value["defines"]:
+            if record["id"] == "realization.d.code":
+                record["entries"] = ["src/shared.py", "specs/a/"]
+        self.project.write("specs/d/module.md.json", json.dumps(value))
+        sync_registry(self.root)
+        self.assertTrue(self.project.findings("CHK.binds.no-spec"))
+        for task_type in ("specify", "code-to-spec"):
+            with self.subTest(task_type=task_type):
+                with self.assertRaises(SpecError) as raised:
+                    self.grant(["module.a"], task_type)
+                self.assertEqual("shared_file", raised.exception.code)
+                self.assertIn(
+                    "specs/a/module.md (also bound by module.d)",
+                    raised.exception.message,
+                )
+        # A grant that writes nothing of A's is unaffected.
+        self.assertTrue(self.grant(["module.a"], "understand")["entries"])
+
     @verifies("scenario.spec.grant-shared-file")
     def test_a_directory_entry_does_not_cover_a_file_the_exclusion_rule_skips(self):
         (self.root / "src/a/.settings").write_text("x\n")
@@ -388,6 +409,27 @@ class GrantTests(unittest.TestCase):
         self.assertNotIn("settings.json", finding.message)
         self.assertIn(".concorde/install.json", finding.message)
         self.assertTrue(finding.remediation)
+
+    @verifies("scenario.spec.grant-installed-link")
+    def test_an_installation_record_behind_a_symbolic_link_is_refused(self):
+        self.installed_project([".claude/skills/concorde/SKILL.md"])
+        other = Path(tempfile.mkdtemp())
+        self.addCleanup(lambda: subprocess.run(["rm", "-rf", str(other)]))
+        record = self.root / ".concorde/install.json"
+        (other / "install.json").write_text(record.read_text())
+        record.unlink()
+        record.symlink_to(other / "install.json")
+        with self.assertRaises(SpecError) as raised:
+            self.grant(["module.i"], "implement")
+        self.assertEqual("unsafe_path", raised.exception.code)
+        self.assertIn(".concorde/install.json", raised.exception.message)
+        [finding] = self.project.findings("CHK.binds.installed")
+        self.assertEqual(".concorde/install.json", finding.source)
+        self.assertIn("symbolic link", finding.message)
+        # Without a record no file is installed, and the grant is computed.
+        record.unlink()
+        levels = self.levels(self.grant(["module.i"], "implement"))
+        self.assertEqual("rw", levels[".claude/skills/concorde/SKILL.md"])
 
     @verifies("scenario.spec.grant-installed-directory")
     def test_a_writable_directory_never_covers_an_installed_file(self):

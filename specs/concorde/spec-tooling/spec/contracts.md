@@ -468,6 +468,9 @@ An installed file meets all these conditions:
 - It lies outside `.concorde/`.
 - It is not under `amended`.
 
+Without an installation record, no file is installed. The computation reads the record like every
+other source, never through a symbolic link.
+
 Entries are unique and sorted by path. A path covered by no entry is denied.
 
 Computing fails with a `SpecError` whose `code` is the one below. It then returns no grant and
@@ -481,9 +484,11 @@ also names every registered Module:
 | `unknown_module` | a Module identity is not registered |
 | `shared_file` | an `rw` entry covers a file that a Module outside `modules` also binds; the message names each such file and Module |
 | `installed_file` | an `rw` directory entry covers an installed file, which validation reports as `CHK.binds.installed`; the message names each such directory entry and the installed files it covers |
+| `unsafe_path` | the installation record, or a directory on its path, is a symbolic link, which validation reports as `CHK.binds.installed`; the message names the link |
 
-A shared file is found with the binding-Modules index (`shared_files`). This detects all these
-cases:
+A shared file is found from entries alone, as the binding-Modules index (`shared_files`) finds
+one, for every `rw` entry, whichever set made it writable. A Spec document that another Module
+binds by mistake (`CHK.binds.no-spec`) is therefore shared too. This detects all these cases:
 
 - An exact entry.
 - An exact entry below a directory entry.
