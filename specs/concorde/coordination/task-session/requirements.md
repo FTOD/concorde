@@ -36,8 +36,11 @@ Issue command, as the runs it starts do.
 ### req.task-session.no-sandbox — A task session's shell is not restricted
 
 The boundary Task sessions writes for a task session SHALL restrict nothing but its file-writing
-tools, carrying no sandbox, so that the session's commands reach every path, process, socket and
-network host the machine offers.
+tools and turn Claude Code's sandbox off, so that the session's commands reach every path, process,
+socket and network host the machine offers.
+
+A sandbox the user's or a project's settings enable would stay on if the session's settings omitted
+the key.
 
 A task session must change nothing outside its task worktree. Nothing else about the session is
 restricted. The task-session [guidance](../../glossary.json#concept.main-session-guidance) and
@@ -55,6 +58,15 @@ nothing outside its worktree. So the session does the following:
 
 No workaround is owed to a restriction that is not there.
 
+
+### req.task-session.managed-sandbox — A managed sandbox refuses the start
+
+Task sessions SHALL refuse to start a task session that Claude Code's managed settings keep
+sandboxed, as far as Concorde can read those settings, before writing anything.
+
+The managed settings decide `sandbox.enabled` over every other source, so no settings of the session
+can turn that sandbox off. A session that believes its commands unrestricted but runs sandboxed
+fails in ways nobody sees.
 ### req.task-session.project-mcp — A task session gets the project MCP server without a channel
 
 Task sessions SHALL start every task session with the

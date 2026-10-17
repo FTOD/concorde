@@ -197,12 +197,15 @@ def mcp_approvals(primary: Path, worktree: Path, managed: Path | None = None) ->
 def settings(primary: Path, record: dict, hook: Path, python: str) -> dict:
     """The complete ``settings.json`` of one task session: its MCP approvals and its write hook.
 
-    It carries no sandbox. A task session must change nothing outside its task worktree and
+    It turns the sandbox off. A task session must change nothing outside its task worktree and
     nothing else about it is restricted, so the hook guards the file tools and the shell is left
-    as the developer's own, with every path, process, socket and host open to it.
+    as the developer's own, with every path, process, socket and host open to it. Omitting the
+    key would keep a sandbox the user's or a project's settings enable, since Claude Code keeps
+    the lower-level value of a key ``--settings`` omits.
     """
     return {
         **mcp_approvals(primary, Path(record["worktree"])),
+        "sandbox": {"enabled": False},
         "hooks": {
             "PreToolUse": [
                 {
@@ -217,6 +220,23 @@ def settings(primary: Path, record: dict, hook: Path, python: str) -> dict:
             ]
         },
     }
+
+
+def managed_sandbox(managed: Path | None = None) -> Path | None:
+    """The managed settings file that turns the sandbox on for every session, which a session's
+    own settings cannot turn off, or None. Claude Code merges the drop-ins in name order over
+    ``managed-settings.json``, so the last file that sets ``sandbox.enabled`` decides."""
+    managed = managed or MANAGED
+    deciding = None
+    for path in (
+        managed / "managed-settings.json",
+        *sorted((managed / "managed-settings.d").glob("*.json")),
+    ):
+        sandbox = _json_object(path).get("sandbox")
+        enabled = sandbox.get("enabled") if isinstance(sandbox, dict) else None
+        if isinstance(enabled, bool):
+            deciding = path if enabled else None
+    return deciding
 
 
 def mcp_config(python: str) -> dict:
@@ -305,6 +325,15 @@ def _start(
             f"the worktree {worktree} of task {task_id} does not exist",
         )
     refuse_working(primary, task_id, run)
+    enforced = managed_sandbox()
+    if enforced is not None:
+        raise store.TaskError(
+            "session_failed",
+            f"the managed settings {enforced} turn Claude Code's sandbox on for every session, "
+            "which a task session's settings cannot turn off; a task session runs with every "
+            "path, process, socket and host open to its commands, so none is started; a task "
+            "session starts once the managed settings no longer turn the sandbox on",
+        )
     directory = session_directory(primary, task_id)
     directory.mkdir(parents=True, exist_ok=True)
     hook = directory / "write_hook.py"

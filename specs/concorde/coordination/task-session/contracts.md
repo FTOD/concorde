@@ -195,7 +195,7 @@ Besides those shared codes, its refusals use these:
 | --- | --- |
 | `missing_worktree` | `session` names a task whose worktree no longer exists. |
 | `session_running` | `session` names a task one of whose recorded task sessions `claude agents --json --all` lists in a state other than `done` or `failed`, such as `working`; the message names the session, its state and `claude stop <id>`. Reason `decision`. |
-| `session_failed` | `session` could not start Claude Code, Claude Code exited without reporting a started background session (its output is in the message), the composed task-session guidance `generated/guidance/task-session.md` is missing from the package, or the task has a recorded task session and `claude agents --json --all` could not be read to tell whether it still works. A launch that failed this way may still have started a background job that no node records, and so no later start sees; `claude agents --json --all` lists it by the name `task-<task-id>`. |
+| `session_failed` | `session` could not start Claude Code, Claude Code exited without reporting a started background session (its output is in the message), the composed task-session guidance `generated/guidance/task-session.md` is missing from the package, or the task has a recorded task session and `claude agents --json --all` could not be read to tell whether it still works, or Claude Code's managed settings turn the sandbox on, which the session's settings cannot turn off ([Task-session settings](#task-session-settings)). A launch that failed this way may still have started a background job that no node records, and so no later start sees; `claude agents --json --all` lists it by the name `task-<task-id>`. |
 | `session_stop_failed` | `concorde task close` without a merge could not confirm a Claude Code task session of the task stopped: `claude stop <id>` could not run, or exited non-zero without answering `No job matching`; the message names the session, Claude Code's answer, the worktree the close would have removed and `claude stop <id>`, and the task is unchanged. |
 
 | Command | Output |
@@ -301,13 +301,22 @@ session besides:
   folder exists, the hook also allows the decision log. The hook denies any other path with a reason
   naming the task worktree. For the decision log of a task whose folder moved to the history, the
   reason names the closed task. Any failure denies.
-- No `sandbox`: the session's Bash runs as the developer's own shell does, with all of these open to
-  it:
+- `sandbox` with `enabled` set to `false`: the session's Bash runs as the developer's own shell
+  does, with all of these open to it:
 
   - Every path
   - Every process
   - Every socket
   - Every host
+
+  `--settings` keeps the value of the user's or a project's settings for a key it omits, so the
+  settings set the key rather than omit it. Claude Code's managed settings decide `sandbox.enabled`
+  over every other source. So a start reads the managed settings
+  `/etc/claude-code/managed-settings.json` and the `*.json` drop-ins of
+  `/etc/claude-code/managed-settings.d/` in name order. When the last of them that sets
+  `sandbox.enabled` sets it to `true`, the start refuses with `session_failed` before it writes
+  anything. The refusal names that file. A policy Concorde cannot read, such as server-managed
+  settings, is not judged: the session then runs sandboxed.
 
 - No `permissions.deny` entries: reads stay open.
 

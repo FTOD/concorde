@@ -511,15 +511,37 @@ class TaskSessionTests(unittest.TestCase):
             str(self.worktree), denied["hookSpecificOutput"]["permissionDecisionReason"]
         )
         settings = json.loads(Path(shown["settings"]).read_text())
-        # Nothing but the hook restricts the session: no sandbox, no deny rules.
-        self.assertNotIn("sandbox", settings)
+        # Nothing but the hook restricts the session: the sandbox turned off, which a sandbox
+        # of the user's or the project's settings would keep were the key omitted, and no deny
+        # rules.
+        self.assertEqual({"enabled": False}, settings["sandbox"])
         self.assertNotIn("permissions", settings)
         self.assertEqual(
-            {"enabledMcpjsonServers", "disabledMcpjsonServers", "hooks"},
+            {"enabledMcpjsonServers", "disabledMcpjsonServers", "hooks", "sandbox"},
             set(settings),
         )
         # A dry run records no session.
         self.assertEqual([], store.sessions(self.root, "t1"))
+
+    @verifies("scenario.task-session.boundary")
+    def test_a_managed_sandbox_refuses_the_start(self):
+        _, managed = self.claude_config()
+        self.write(managed / "managed-settings.json", {"sandbox": {"enabled": True}})
+        claude = FakeClaude()
+        with patch.object(session, "MANAGED", managed):
+            with self.assertRaises(store.TaskError) as raised:
+                session.start(self.root, "t1", "m", run=claude)
+            self.assertEqual("session_failed", raised.exception.code)
+            self.assertIn(str(managed / "managed-settings.json"), str(raised.exception))
+            self.assertEqual([], claude.calls)
+            self.assertFalse((self.folder / "runtime/settings.json").exists())
+            # A later drop-in that turns it off again decides.
+            self.write(
+                managed / "managed-settings.d/20-off.json",
+                {"sandbox": {"enabled": False}},
+            )
+            session.start(self.root, "t1", "m", run=claude)
+        self.assertEqual(1, len(store.sessions(self.root, "t1")))
 
     @verifies("scenario.task-session.boundary")
     def test_the_hook_denies_what_it_cannot_judge(self):
