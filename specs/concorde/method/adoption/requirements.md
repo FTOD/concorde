@@ -142,12 +142,14 @@ still absolute, it fails these runs, with a line suffix such as `:12` allowed:
 
 ### req.adoption.open-questions — Doubtful intent is never a promise
 
-A code_to_spec worker SHALL report every behaviour whose intent the code does not settle as an
-[open question](../../glossary.json#concept.open-question) instead of writing it as a requirement,
-scenario or contract.
+A code_to_spec worker SHALL report every behaviour whose intent neither the code nor an admitted
+answer settles as an [open question](../../glossary.json#concept.open-question) instead of writing
+it as a requirement, scenario or contract.
 
 The Spec may name such a behaviour as an honest unknown so that a reader is warned. Until an answer
-states a promise about it, the Spec states none.
+states a promise about it, the Spec states none. Once an admitted answer settles it, the worker
+writes the promise the answer states, as
+[req.adoption.answers-followed](#req.adoption.answers-followed) requires.
 
 ### req.adoption.decisions-listed — Every open choice is listed
 

@@ -128,6 +128,23 @@ class UnderstandTests(unittest.TestCase):
         )
         self.assertIn("Plan requested: yes", self.fake_round(envelope)["prompt"])
 
+    @verifies("scenario.understanding.new-promise")
+    def test_a_new_promise_with_a_known_place_is_a_specify_step(self):
+        status, envelope = self.understand(
+            [{"result": {"output": assessment(plan=PLAN)}}], "--plan"
+        )
+        self.assertEqual(0, status, envelope)
+        output = envelope["output"]
+        self.assertTrue(output["sufficient"])
+        self.assertEqual([], output["gaps"])
+        self.assertEqual(
+            ["specify", "implement"], [step["run"] for step in output["plan"]["steps"]]
+        )
+        self.assertIn(
+            "A new promise the change adds is not a gap",
+            self.fake_round(envelope)["prompt"],
+        )
+
     @verifies("scenario.understanding.gap")
     def test_a_missing_promise_is_reported_as_a_gap(self):
         status, envelope = self.understand(
