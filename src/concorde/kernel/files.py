@@ -191,15 +191,21 @@ def apply_files(
 
 def _restore(
     root: Path, written: list[str], backups: dict[str, bytes | None]
-) -> list[tuple[str, OSError]]:
+) -> list[tuple[str, Exception]]:
     """Restore every written file, newest first; each restoration refused, with its error.
 
     The newest may never have been renamed into place: a file still absent or still holding its
-    original bytes is left as it is.
+    original bytes is left as it is. Finding a file's path is part of its restoration: an
+    operating-system error on the way, or a symbolic link that appeared there, refuses that file
+    alone and the other files are still restored.
     """
-    refused = []
+    refused: list[tuple[str, Exception]] = []
     for relative in reversed(written):
-        path = checked_path(root, relative, relative)
+        try:
+            path = checked_path(root, relative, relative)
+        except (OSError, KernelError) as problem:
+            refused.append((relative, problem))
+            continue
         try:
             if backups[relative] is None:
                 path.unlink(missing_ok=True)

@@ -804,6 +804,38 @@ class TransactionTests(unittest.TestCase):
         self.assertEqual(2, len(error.causes))
         self.assertEqual({"a.txt": "A\n", "b.txt": "b\n"}, self.contents())
 
+    @verifies("scenario.kernel.transaction-unrestored")
+    def test_a_refused_path_lookup_refuses_only_that_restoration(self):
+        failure = RuntimeError("the final check failed")
+        lookup = files.checked_path
+        restoring = []
+
+        def refusing(root: Path, relative: str, field: str = "") -> Path:
+            # Once the restoration began, finding b.txt's path is refused, as an unsearchable
+            # directory refuses it; b.txt is restored first, a.txt after it.
+            if restoring and relative == "b.txt":
+                raise PermissionError(13, "Permission denied", str(root / relative))
+            return lookup(root, relative, field)
+
+        def check():
+            restoring.append(True)
+            raise failure
+
+        with (
+            patch.object(files, "checked_path", refusing),
+            self.assertRaises(KernelError) as raised,
+        ):
+            files.apply_files(
+                self.root, self.changes(), {"a.txt", "b.txt"}, verify=check
+            )
+        error = raised.exception
+        self.assertEqual(("system_error", "b.txt"), (error.code, error.field))
+        self.assertIn("still holds", str(error))
+        self.assertIs(failure, error.causes[0])
+        self.assertIsInstance(error.causes[1], PermissionError)
+        self.assertEqual(2, len(error.causes))
+        self.assertEqual({"a.txt": "a\n", "b.txt": "B\n"}, self.contents())
+
 
 class LockTests(unittest.TestCase):
     @verifies("scenario.kernel.busy-lock-refused")
