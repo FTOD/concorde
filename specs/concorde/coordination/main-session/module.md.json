@@ -146,6 +146,31 @@
         ]
       },
       {
+        "target": "module.validation",
+        "meaning": "#uses-validation",
+        "relies_on": [
+          "concept.readiness",
+          "req.validation.ready-definition",
+          "req.validation.all-findings",
+          "req.validation.bound-inputs",
+          "req.validation.committed-content",
+          "req.validation.read-only"
+        ]
+      },
+      {
+        "target": "module.delivery",
+        "meaning": "#uses-delivery",
+        "relies_on": [
+          "req.delivery.own-readiness",
+          "req.delivery.blocked-inert",
+          "req.delivery.blocked-reason",
+          "req.delivery.exact-content",
+          "req.delivery.bound-branch",
+          "req.delivery.marked",
+          "req.delivery.rejected-removed"
+        ]
+      },
+      {
         "target": "module.tracing",
         "meaning": "#uses-tracing",
         "relies_on": [

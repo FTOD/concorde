@@ -1090,7 +1090,11 @@ developer approved. Its view there is the whole project, so nothing would bound 
 made directly. The primary worktree must also stay clean to merge. Where a task would cost more than
 the change, the developer's approval of the specific change stands in for that evidence. Inside a
 task worktree, a direct change is bounded by the task and evidenced by `task-validation` and
-`delivery`, so task sessions may change Specs and code there themselves.
+`delivery`, so task sessions may change Specs and code there themselves. Where the method part is
+installed, [Validation](#uses-validation) decides the task's
+[readiness](../../glossary.json#concept.readiness) and [Delivery](#uses-delivery) commits only what
+that readiness examined. Where it is not, `concorde task deliver` runs the checks the project's
+instructions name before its delivery commit ([Tasks](#uses-tasks)).
 
 Only the task branch holds the materials the task changes:
 
@@ -1111,13 +1115,28 @@ The main agent hands every task, even a single one, to a task session for these 
 - The main agent stays free to answer every session while tasks run.
 - Every task runs under a boundary.
 
-A task session's writes are confined to its task by the
+A task session works under the
 [session boundary](../../glossary.json#concept.session-boundary), which
-[Task sessions](../task-session/module.md) writes for it. The main agent stays unrestricted and
-alone merges. Merging needs no authorization for these reasons:
+[Task sessions](../task-session/module.md#the-session-boundary) writes for it. That boundary does
+not confine all of the session's writes:
+
+- Its hook refuses the Edit, Write, MultiEdit and NotebookEdit tools any path outside the task
+  worktree, the task's [decision log](../../glossary.json#concept.decision-log) excepted.
+- The session's shell runs under no sandbox, and the hook does not judge its MCP tools. The
+  task-session guidance, not the boundary, keeps the shell's and those tools' writes inside the task
+  ([requirements](requirements.md#req.main-session.task-session-guidance),
+  [scenario](scenarios.md#scenario.main-session.task-session-unrestricted)).
+- `concorde task merge` detects only a part of what a session wrote outside its worktree: changes
+  in the working trees of the primary worktree and of the tasks that ended or delivered. A merge
+  that succeeds therefore does not prove that the session stayed inside its worktree.
+
+The main agent stays unrestricted and alone merges. Merging needs no authorization for these
+reasons:
 
 - A [delivery commit](../../glossary.json#concept.delivery-commit) is made only after its delivering
-  command's checks, which are `delivery`'s readiness where the method part is installed.
+  command's checks. Where the method part is installed, these are `delivery`'s own validation of
+  the whole workspace, which commits nothing while a finding blocks
+  ([Delivery](#uses-delivery)).
 - A merge is ordinary, revertible Git.
 
 The escalation policy balances the same way:
@@ -1364,6 +1383,42 @@ Concorde, these are the method part's deterministic runs:
 
 A task session starts these by name in its task worktree. The guidance names them apart from the
 Operations, since they launch no worker and a caller starts them without `run`.
+
+<a id="uses-validation"></a>
+
+**Validation** decides, in a `task-validation` or `delivery` run, the workspace's
+[readiness](../../glossary.json#concept.readiness). The guidance relies on these promises when it
+lets a task session change Specs and code directly in its task worktree:
+
+- Ready means that no finding blocks
+  ([req.validation.ready-definition](../../method/validation/requirements.md#req.validation.ready-definition)).
+- One run reports every blocking finding
+  ([req.validation.all-findings](../../method/validation/requirements.md#req.validation.all-findings)).
+- The readiness is bound to the inputs it examined
+  ([req.validation.bound-inputs](../../method/validation/requirements.md#req.validation.bound-inputs)).
+- The readiness describes what Delivery commits
+  ([req.validation.committed-content](../../method/validation/requirements.md#req.validation.committed-content)).
+- A `task-validation` run changes nothing in the workspace
+  ([req.validation.read-only](../../method/validation/requirements.md#req.validation.read-only)), so
+  a session may run it at any time.
+
+<a id="uses-delivery"></a>
+
+**Delivery** makes the delivery commit of `delivery`. The guidance relies on these promises when it
+lets the main agent merge a delivered task without the developer:
+
+- Delivery validates the whole workspace itself
+  ([req.delivery.own-readiness](../../method/delivery/requirements.md#req.delivery.own-readiness)).
+- A blocked delivery changes nothing and says its own reason
+  ([req.delivery.blocked-inert](../../method/delivery/requirements.md#req.delivery.blocked-inert),
+  [req.delivery.blocked-reason](../../method/delivery/requirements.md#req.delivery.blocked-reason)).
+- The commit holds exactly what was validated
+  ([req.delivery.exact-content](../../method/delivery/requirements.md#req.delivery.exact-content)).
+- The commit goes on the bound branch and is marked by its subject
+  ([req.delivery.bound-branch](../../method/delivery/requirements.md#req.delivery.bound-branch),
+  [req.delivery.marked](../../method/delivery/requirements.md#req.delivery.marked)).
+- A rejected commit does not stay on the branch
+  ([req.delivery.rejected-removed](../../method/delivery/requirements.md#req.delivery.rejected-removed)).
 
 <a id="uses-workers"></a>
 
