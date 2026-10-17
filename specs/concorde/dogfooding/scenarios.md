@@ -54,10 +54,13 @@ worktree whose `HEAD` is detached is refused as a linked worktree.
 
 ### scenario.dogfooding.refused-dirty — Refuse a primary worktree with uncommitted changes
 
-- GIVEN the built primary worktree of a Concorde repository, on a branch, with an uncommitted or untracked change, or a submodule whose checked-out commit differs from its recorded one while the repository's settings tell Git to ignore that submodule
+- GIVEN the built primary worktree of a Concorde repository, on a branch, with an uncommitted or untracked change
 - WHEN the developer runs its installer on a project with `--develop`
 - THEN the install is refused with `develop_source_dirty`, naming the changed paths
 - BUT nothing is written into the project
+
+A submodule whose checked-out commit differs from its recorded one is such a change.
+It is one even when the repository's settings tell Git to ignore that submodule.
 
 ### scenario.dogfooding.refused-unreadable — Refuse a source Git cannot query
 
