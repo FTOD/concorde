@@ -695,6 +695,29 @@ class DeliveryTests(unittest.TestCase):
         self.assertNotIn("src/a/calc.py", error["detail"])
         self.assert_undone(envelope, index)
 
+    @verifies("scenario.delivery.staged-unvalidated")
+    def test_a_smudge_filter_that_rewrites_staged_content_is_refused(self):
+        # The clean filter keeps the bytes, so the staged blob equals the examined content; a
+        # checkout still rewrites it through the smudge filter.
+        (self.project.root / ".git/info").mkdir(exist_ok=True)
+        (self.project.root / ".git/info/attributes").write_text(
+            "src/a/extra.py filter=smudge\n"
+        )
+        git(self.project.root, "config", "filter.smudge.clean", "cat")
+        git(self.project.root, "config", "filter.smudge.smudge", "sed s/1/2/")
+        index = self.stage_before_delivery()
+        (self.worktree / "src/a/extra.py").write_text("EXTRA = 1\n")
+        index = (status_lines(self.worktree), *index[1:])
+        status, envelope = self.project.deliver()
+        self.assertEqual((status, envelope["status"]), (1, "failed"), envelope)
+        error = envelope["error"]
+        self.assertEqual(["staged_unvalidated"], codes(error))
+        self.assertIn(
+            "src/a/extra.py is staged with content a checkout would not give back",
+            error["detail"],
+        )
+        self.assert_undone(envelope, index)
+
     @verifies("scenario.delivery.staged-filtered")
     def test_staging_through_a_filter_a_checkout_reverses_is_delivered(self):
         # Git LFS and line-ending conversion stage other bytes than the worktree holds, which a
