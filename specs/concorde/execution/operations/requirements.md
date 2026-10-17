@@ -14,6 +14,15 @@ the catalog. [How an Operation runs its workers](../../method/workers.md) descri
 [Operations](../../glossary.json#concept.operation) run their workers. The scenarios show the
 obligations at work.
 
+Execution and Operations import nothing of the worker harness. The requirements below bind the
+steps of the parts that provide Operations. These steps meet them through the worker harness's own
+interface. [Launching a worker](../../worker-harness/workers/launch.md) defines that interface: the
+request a step passes in [Calling Workers](../../worker-harness/workers/launch.md#calling-workers),
+the [round validation](../../worker-harness/workers/launch.md#round-validation) it passes with the
+request, the [write audit](../../worker-harness/workers/launch.md#audit) and the run's status.
+[Standard worker sequence](../../method/workers.md#standard-worker-sequence) shows how Method's
+steps compute, freeze and hand over each grant.
+
 ## Definitions
 
 ### req.operations.workers-through-workers — Workers are launched only through the worker harness
@@ -29,7 +38,16 @@ Whatever part provides the Operation, these statements therefore hold for every 
 ### req.operations.grant-frozen — A worker's grant is frozen before its launch
 
 Before asking the worker harness to launch the worker, every worker-backed step SHALL freeze the
-grant of its worker.
+[grant](../../glossary.json#concept.grant) of its worker.
+
+To freeze a grant is to fix its entries and its
+[context identity](../../glossary.json#concept.context-identity) once, before the launch, and to
+hand the worker harness that value as data. No later change of the
+[Specs](../../glossary.json#concept.spec) changes it. The worker
+harness then generates the whole run's configuration from that one grant
+([req.workers.frozen-grant](../../worker-harness/workers/launch.md#req.workers.frozen-grant)).
+The grant input it receives follows the
+[grant input contract](../../worker-harness/workers/contracts.md#contract.workers.grant-input).
 
 ### req.operations.status-mapping — Worker failures are never ok
 
@@ -37,9 +55,11 @@ When any of these conditions holds, a run SHALL end with status `failed`:
 
 - The grant could not be computed.
 - A worker could not be launched or timed out.
-- The [write audit](../../glossary.json#concept.write-audit) found a violation.
-- After the last [resume round](../../glossary.json#concept.resume-round), the round validation
-  still reported a failure it designates to fail the run, such as a
+- The [write audit](../../glossary.json#concept.write-audit) found a violation
+  ([Audit](../../worker-harness/workers/launch.md#audit)).
+- After the last [resume round](../../glossary.json#concept.resume-round), the
+  [round validation](../../worker-harness/workers/launch.md#round-validation) still reported a
+  failure it designates to fail the run, such as a
   [configured check](../../glossary.json#concept.configured-check) still failing.
 
 When round validation still reports something else to repair after the last round, the providing

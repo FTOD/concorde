@@ -12,12 +12,15 @@ the [Execution scenarios](../scenarios.md) show what the run does, such as the r
 ### scenario.commands.registered — The runner runs a registered execution command
 
 - GIVEN a part that, when its code loads, registers the
-  [execution command](../../glossary.json#concept.execution-command) `check-it`
+  [execution command](../../glossary.json#concept.execution-command) `check-it` in the command
+  catalog
+- AND the part's [part registration](../../glossary.json#concept.part-registration) names
+  `check-it` among its commands, with an entry that hands the command line to the Execution runner
 - WHEN `concorde check-it` starts in a bound workspace
 - THEN the runner finds `check-it`'s definition in the command catalog
 - AND the runner runs `check-it`'s steps
-- AND the [run result](../../glossary.json#concept.run-result) has the `kind` `command` and no
-  `worker`
+- AND the [run result](../../glossary.json#concept.run-result) has the `kind` `command`, `worker`
+  null and `worker_runs` empty
 
 ### scenario.commands.listed — The catalog lists a command with its Module, part and writes
 

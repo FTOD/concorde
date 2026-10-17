@@ -2,13 +2,17 @@
 
 from __future__ import annotations
 
+import contextlib
+import io
+import json
+import os
 import unittest
 from unittest.mock import patch
 
 from concorde.execution.commands.catalog import COMMANDS
 from concorde.execution.context import Continue, command
 from concorde.execution.operations.catalog import Catalog, CatalogError
-from concorde.execution.runner import UsageError, execute
+from concorde.execution.runner import UsageError, execute, run_main
 from concorde.spec.verification import verifies
 from tests.concorde.support.operation_project import OperationProject
 
@@ -18,6 +22,11 @@ def check_step(context):
 
 
 CHECK_IT = command("check-it", (check_step,), writes=False, module="module.checker")
+
+
+def check_it(words, root=None) -> int:
+    """The entry a part registration names for ``check-it``, as the provider interface shows."""
+    return run_main("command", "check-it", words)
 
 
 def records(project) -> set:
@@ -34,13 +43,23 @@ class CommandCatalogTests(unittest.TestCase):
     def test_a_registered_command_runs(self):
         project = OperationProject(self)
         project.open_task("t1")
-        with patch.dict(COMMANDS.definitions), patch.dict(COMMANDS.parts):
+        printed = io.StringIO()
+        before = os.getcwd()
+        self.addCleanup(os.chdir, before)
+        with (
+            patch.dict(COMMANDS.definitions),
+            patch.dict(COMMANDS.parts),
+            contextlib.redirect_stdout(printed),
+        ):
             COMMANDS.register("checker", CHECK_IT)
-            status, envelope = project.run("check-it", "--task", "t1")
+            # The command line reaches the runner through the registered entry.
+            os.chdir(project.worktree("t1"))
+            status = check_it([])
+        envelope = json.loads(printed.getvalue())
         self.assertEqual((0, "ok"), (status, envelope["status"]))
         self.assertEqual(("check-it", "command"), (envelope["name"], envelope["kind"]))
         self.assertEqual({"checked": ["module.a"]}, envelope["output"])
-        self.assertIsNone(envelope.get("worker"))
+        self.assertEqual((None, []), (envelope["worker"], envelope["worker_runs"]))
 
     @verifies("scenario.commands.listed")
     def test_a_complete_command_is_listed_with_its_module_part_and_writes(self):

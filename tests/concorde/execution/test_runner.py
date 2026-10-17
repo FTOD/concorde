@@ -2546,7 +2546,9 @@ class UnboundCheckoutTests(unittest.TestCase):
                 self.assertEqual("input", cause["unhandled"]["reason"])
                 self.assertIn(changed[name], cause["detail"])
                 self.assertEqual([], envelope["worker_runs"])
-                node = json.loads((self.run_folder(envelope) / "trace.json").read_text())
+                node = json.loads(
+                    (self.run_folder(envelope) / "trace.json").read_text()
+                )
                 self.assertEqual([], node["content"]["data"]["steps"])
                 self.assertEqual([self.root], worktrees(self.root))
                 validate(envelope, RESULT_SCHEMA)

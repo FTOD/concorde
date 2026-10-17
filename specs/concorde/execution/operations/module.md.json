@@ -39,6 +39,21 @@
         "kind": "document",
         "target": "document.execution.runner",
         "reason": "the runner's exact behaviour, whose section What a definition gives the runner is the runner's half of the definition contract every Operation's definition and steps rely on"
+      },
+      {
+        "kind": "document",
+        "target": "document.workers.launch",
+        "reason": "the worker harness's launch interface, round validation and write audit, through which every worker-backed step of a providing part meets req.operations.workers-through-workers and req.operations.status-mapping; included for explanation, since Operations imports nothing of the worker harness"
+      },
+      {
+        "kind": "document",
+        "target": "document.workers.contracts",
+        "reason": "the grant input contract, the shape of the frozen grant a worker-backed step hands the worker harness under req.operations.grant-frozen"
+      },
+      {
+        "kind": "document",
+        "target": "document.method.workers",
+        "reason": "the standard worker sequence, which shows how Method's steps compute, freeze and hand over each worker's grant"
       }
     ],
     "participates": []

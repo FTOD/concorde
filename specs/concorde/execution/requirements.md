@@ -402,6 +402,11 @@ migration exists, since runs are short-lived trace data.
 A run started with `--detach` SHALL check, record and report exactly as the same run started
 without it.
 
+This sameness concerns the run: its checks, its trace node, its run progress file and its saved
+result. It does not concern the command that launched it. That command prints the announcement
+instead of the result, and its exit status says only whether the run was announced
+([Command lines](runner.md#command-lines)).
+
 ### req.execution.detached-announced — A detached run is announced once it exists
 
 Only once the run's [run progress file](../glossary.json#concept.run-progress-file) exists in the
@@ -414,7 +419,8 @@ printing:
 
 An existing run progress file wins. Once that file exists, the command announces the run, even
 when the runner ended by then. When none exists by the time the runner ends or the announcement
-wait runs out, the command reports `detach_failed` instead.
+wait runs out, the command reports `detach_failed` instead. The exit status 0 confirms the announcement, never
+the run's work.
 [How a run is executed](runner.md#detached-runs) describes this.
 
 ### req.execution.detach-failed-ends-runner — An unannounced runner is ended
