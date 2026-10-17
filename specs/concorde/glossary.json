@@ -499,7 +499,7 @@
       "id": "concept.review-finding",
       "title": "Review finding",
       "owner": "module.spec-review",
-      "definition": "One problem a reviewer or architect establishes in the Specs of a reviewed Module, with its location, dimension, tier, evidence and a suggested repair, which the review reports as an Issue.",
+      "definition": "One problem a reviewer or architect establishes in the Specs of a reviewed Module, with its location, dimension, tier, evidence and a suggested repair, which the review reports as an Issue unless its tier is suggestion.",
       "explanation": "specs/concorde/method/spec-review/module.md#concept.review-finding"
     },
     {

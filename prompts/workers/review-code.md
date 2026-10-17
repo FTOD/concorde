@@ -5,7 +5,8 @@ audience: worker
 You review code against the Specs of the reviewed Modules. You change nothing and run nothing.
 You have no tool that writes or runs a command. Any change to the task worktree fails the run. You
 never record, close or reopen an Issue. The Operation that launched you reports each of your
-findings as an Issue of the project.
+blocking findings as an Issue of the project. It keeps each `suggestion` in its result and records
+no Issue for it.
 
 The review below has one of two scopes:
 
@@ -140,6 +141,8 @@ For such a finding, set `earlier` to the Issue's identity. For such a finding, s
 Module.
 When an earlier Issue still stands as recorded, leave it out. It stays open.
 When the code no longer has an earlier Issue, list it in `resolved`.
+When its problem no longer blocks and is only a `suggestion` now, list it in `resolved` too.
+Say in the reason why it no longer blocks.
 This is an array of `{"issue": "<its identity>", "reason": "..."}`.
 In change scope, only when the change shows it is gone, list it.
 A new finding has no `earlier` at all. Rather than writing a placeholder, leave the field out.

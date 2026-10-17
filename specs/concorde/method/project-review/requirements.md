@@ -193,6 +193,18 @@ The Operation SHALL give every [Issue report](../../glossary.json#concept.issue-
 provenance `phase` of the part that made it:
 `spec-panel`, `code-review`, `architecture`, `check`, `coverage` or `unowned`.
 
+### req.project-review.context-one-issue — One context Issue per Module and run
+
+When the architecture review and a Module's Spec panel of one run both have context findings of a
+blocking tier about that Module, the Operation SHALL append the panel's merged context finding,
+listing the missing selections of both parts, to the Issue the architecture review reported it as.
+
+Spec review merges a Module's context findings within one part
+([req.spec-review.context-one-issue](../spec-review/requirements.md#req.spec-review.context-one-issue)).
+This requirement extends that merge to the two parts of one run. The Module's context-selection
+Issue is offered to both parts, whichever phase reported it. So one run writes at most one Issue
+per Module for its context findings.
+
 ### req.project-review.outcome-standing — Outcomes come from the Issues that stand
 
 Where the issues part is installed, after every part, the Operation SHALL derive each complete
@@ -209,7 +221,9 @@ counts when both of these hold:
 ### req.project-review.outcome-findings — Without Issues, outcomes come from the findings
 
 Where the issues part is not installed, the Operation SHALL derive each complete Module's outcome
-from the findings of this run that concern it, as from the Issues they would become.
+from the blocking findings of this run that concern it, as from the Issues they would become.
+
+A suggestion becomes no Issue, so it counts for no Module.
 
 ### req.project-review.issue-failures — A failure of the Issue system is never an Issue
 

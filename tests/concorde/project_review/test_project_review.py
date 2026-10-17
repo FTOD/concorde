@@ -17,6 +17,7 @@ from concorde.method.project_review import findings, record
 from concorde.method.project_review.operation import PAYLOAD_SCHEMA, code_digest
 from concorde.worker_harness.runs import read_record
 from concorde.spec.repository import SpecRepository
+from concorde.method.spec_review.reporting import CONTEXT_TITLE
 from concorde.spec.schema import validate
 from concorde.spec.verification import verifies
 from tests.concorde.spec_review.test_panel import without_issues
@@ -253,6 +254,59 @@ class ProjectReviewTests(unittest.TestCase):
                 check=True,
             ).stdout,
         )
+
+    @verifies("scenario.project-review.context-one-issue")
+    def test_one_context_issue_per_module_across_the_runs_parts(self):
+        selection = {"dimension": "context", "tier": "preferred-fix"}
+        architects = {**selection, "title": "Select B's contract", "problem": "Arch."}
+        reviewers = {**selection, "title": "Select the glossary", "problem": "Panel."}
+        advice = {"tier": "suggestion", "title": "Name the reader"}
+        status, envelope = self.review(
+            {
+                "reviewer module.a 1": worker(
+                    findings=[spec_finding(**reviewers), spec_finding(**advice)]
+                ),
+                "chair module.a 1": worker(
+                    findings=[merged("r1.1", **reviewers), merged("r1.2", **advice)],
+                    rejected=[],
+                ),
+                "architect project 1": worker(findings=[spec_finding(**architects)]),
+                "chair project 1": worker(
+                    findings=[merged("a1.1", **architects)], rejected=[]
+                ),
+            }
+        )
+        self.assertEqual((0, "ok"), (status, envelope["status"]), envelope)
+        validate(envelope["output"], PAYLOAD_SCHEMA)
+        titled = [
+            (issue, value)
+            for issue, value in self.issues().items()
+            if value["reports"][-1]["report"]["title"] == CONTEXT_TITLE
+        ]
+        # The architecture review created the Issue; the panel appended to it, listing both.
+        [(issue, value)] = titled
+        self.assertEqual(
+            ["architecture", "spec-panel"],
+            [item["source"]["phase"] for item in value["reports"]],
+        )
+        latest = value["reports"][-1]["report"]["description"]
+        self.assertIn("Arch.", latest)
+        self.assertIn("Panel.", latest)
+        a = self.module(envelope)
+        findings = a["panel"]["review"]["findings"]
+        self.assertEqual(
+            [(CONTEXT_TITLE, issue), ("Name the reader", None)],
+            [(item["title"], item["issue"]) for item in findings],
+        )
+        self.assertNotIn(
+            "Name the reader",
+            [
+                item["report"]["title"]
+                for v in self.issues().values()
+                for item in v["reports"]
+            ],
+        )
+        self.assertIn(issue, [item["issue"] for item in a["standing"]])
 
     def first(self):
         """A first review whose only worker findings are module.a's Spec and code problems."""

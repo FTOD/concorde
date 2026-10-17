@@ -200,7 +200,10 @@ worker it launches:
    Modules from the **workspace's** Specs through [Spec core](../spec-tooling/spec/module.md).
    When its provider withholds writes, the step lowers every writable level to read. It freezes
    the result with the computed grant's [context identity](../glossary.json#concept.context-identity).
-   It converts the result into the worker harness's input format.
+   It converts the result into the worker harness's input format. A step may instead reuse the
+   frozen grant an earlier worker of the same run received. It then computes no grant and only
+   lowers the writable levels
+   ([req.method.workspace-specs](requirements.md#req.method.workspace-specs)).
 2. **Instruct.** It composes the task instructions from:
    - The provider's prompt.
    - The definitions of the glossary terms the bound Modules use.

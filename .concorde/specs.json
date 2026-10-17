@@ -138,7 +138,9 @@
             "req.method.grant-as-data",
             "req.method.trace-writes-reported",
             "req.method.glossary-by-entry",
-            "req.method.gaps-never-repaired"
+            "req.method.gaps-never-repaired",
+            "req.method.suggestions-not-issues",
+            "req.method.suggestions-not-offered"
           ]
         },
         {
@@ -1690,7 +1692,9 @@
             "req.method.grant-as-data",
             "req.method.trace-writes-reported",
             "req.method.glossary-by-entry",
-            "req.method.gaps-never-repaired"
+            "req.method.gaps-never-repaired",
+            "req.method.suggestions-not-issues",
+            "req.method.suggestions-not-offered"
           ]
         },
         {
@@ -1803,7 +1807,9 @@
             "req.method.grant-as-data",
             "req.method.trace-writes-reported",
             "req.method.glossary-by-entry",
-            "req.method.gaps-never-repaired"
+            "req.method.gaps-never-repaired",
+            "req.method.suggestions-not-issues",
+            "req.method.suggestions-not-offered"
           ]
         },
         {

@@ -62,6 +62,7 @@ severity, tier, title, description and evidence as its latest report states them
 - The Issue is open and is an Issue of one of the reviewer's reviewed Modules.
 - One of its reports was made by a `code_review` run, or by a
   [Project review](../project-review/module.md) run with the provenance phase `code-review`.
+- Its latest report's tier is not `suggestion`.
 
 Where the issues part is not installed, there are no earlier Issues. In that case, the reviewer
 receives none.
@@ -122,15 +123,18 @@ Its Modules' outcomes follow from the findings that stand.
 
 ## Issues and verdict
 
-### req.code-review.findings-as-issues — Every finding is reported as an Issue where Issues exist
+### req.code-review.findings-as-issues — Every blocking finding is reported as an Issue where Issues exist
 
-The code review Operation SHALL report every finding of a Module whose evidence resolved through the
-Issue store as one [Issue report](../../glossary.json#concept.issue-report) with the finding's
-[tier](../../glossary.json#concept.issue-tier) and
-[severity](../../glossary.json#concept.issue-severity), owned by the finding's Module, appending a
-finding that names an offered earlier Issue to that Issue at the
+The code review Operation SHALL report every finding of a blocking
+[tier](../../glossary.json#concept.issue-tier) of a Module whose evidence resolved through the
+Issue store as one [Issue report](../../glossary.json#concept.issue-report) with the finding's tier
+and [severity](../../glossary.json#concept.issue-severity), owned by the finding's Module, appending
+a finding that names an offered earlier Issue to that Issue at the
 [revision](../../glossary.json#concept.issue-revision) read just before, and creating an Issue for
-every other finding, wherever the issues part is installed.
+every other such finding, wherever the issues part is installed.
+
+A `suggestion` is never recorded as an Issue. It stays in the report with its `issue` null
+([req.method.suggestions-not-issues](../requirements.md#req.method.suggestions-not-issues)).
 
 Where the issues part is not installed, the review does all of these:
 
@@ -146,6 +150,13 @@ part. The review's judgement, its evidence checks and its verdict are the same e
 The code review Operation SHALL treat a reviewer's finding whose `earlier` is empty or blank as
 naming no earlier Issue, as if the field were left out, while every other `earlier` is checked
 against the earlier Issues it offered.
+
+### req.code-review.suggestion-resolves — A suggestion naming an earlier Issue resolves it
+
+When a `suggestion` names an offered earlier Issue that no finding of a blocking tier names, the code
+review Operation SHALL list that Issue as resolved, with a reason that names the suggestion's title.
+
+The problem of that Issue no longer blocks, and no suggestion becomes an Issue.
 
 ### req.code-review.no-closing — The review closes no Issue
 

@@ -51,7 +51,8 @@ finding exactly once:
   whose `sources` lists all their labels. Write the merged finding in your own words, with the
   best evidence and suggestion among them. Give it its **severity** and **tier** as described
   above. These may differ from what the workers chose. The tier decides who fixes the problem.
-  The severity decides which problems are fixed first. Choose both with care. When any of its
+  A `suggestion` stays in the result and becomes no Issue. The severity decides which problems
+  are fixed first. Choose both with care. When any of its
   sources named one of the task's earlier Issues, set `earlier` to that Issue. Otherwise leave
   `earlier` out, never a placeholder such as `none`. Say in `note` what you verified. Also say
   there why you chose that severity and tier.

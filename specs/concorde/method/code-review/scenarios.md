@@ -97,6 +97,22 @@ records every report, the configured checks run, and the reviewer finishes.
 - AND the Operation appends the finding to the first Issue instead of creating one
 - AND the second is listed as `carried` and makes the outcome `changes_required`
 
+### scenario.code-review.suggestion-kept — A suggestion stays in the report
+
+- GIVEN a change whose reviewer returns one finding of the tier `suggestion`
+- WHEN the Operation reports the Module's findings
+- THEN the verdict is `accepted` and the finding stays in the report with its `issue` null
+- AND the `suggestions-kept` host evidence names the Module
+- BUT no Issue is recorded
+
+### scenario.code-review.suggestion-resolves — A suggestion naming an earlier Issue resolves it
+
+- GIVEN a Module with an open Issue of a blocking tier and one of the tier `suggestion`, both reported by an earlier `code_review`
+- WHEN its reviewer rates the first a `suggestion` now and names it as `earlier`
+- THEN the reviewer received the first as an earlier Issue and not the second
+- AND the first is listed as resolved, with a reason that names the suggestion's title, and takes no report
+- AND the outcome is `accepted`
+
 ### scenario.code-review.blank-earlier — An empty earlier names no earlier Issue
 
 - GIVEN a reviewer that returns new findings, one with `earlier` empty and one with `earlier` blank

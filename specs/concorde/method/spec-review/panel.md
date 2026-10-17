@@ -90,11 +90,15 @@ rules:
 ### Earlier Issues
 
 A Module's **earlier Issues** are the open [Issues](../../glossary.json#concept.issue) of the
-project that meet both conditions:
+project that meet all of these conditions:
 
 - Their owner is the Module.
 - One of their reports was made by a `spec_panel` run, or by a `project_review` run with the
-  provenance phase `spec-panel` or `architecture`.
+  provenance phase `spec-panel` or `architecture`. The Module's
+  [context-selection Issue](#context-findings) needs only a report of one of those Operations, of
+  any phase.
+- Their latest report's tier is not `suggestion`. No suggestion is offered, since a review records
+  none ([Reporting findings](#reporting-findings)).
 
 The Operation reads them from the primary worktree of the worktree the run started in. It reads
 them in the order of their identities. A worker receives each as its latest report states it, with
@@ -107,14 +111,16 @@ these fields:
 - Its description.
 - Its evidence.
 
-Settling them follows the chair's claims under these rules. A finding whose `earlier` names an
-earlier Issue is that Issue's new report. In either of these cases, a finding keeps no `earlier`
-and becomes a new Issue:
+Settling them follows the chair's claims under these rules. A finding of a blocking tier whose
+`earlier` names an earlier Issue is that Issue's new report. In either of these cases, a finding
+keeps no `earlier` and becomes a new Issue:
 
 - Its `earlier` names any other Issue.
 - It names an Issue another finding of the report already named.
 
-In those cases, the name is listed under `ignored`. When a resolution names an earlier Issue that
+In those cases, the name is listed under `ignored`. A `suggestion` whose `earlier` names an Issue
+keeps no `earlier`. It counts as a resolution of that Issue, since the problem no longer blocks.
+The resolution's reason says so and names the suggestion's title. When a resolution names an earlier Issue that
 no finding names, it lists the Issue as `resolved` with its reason. When a resolution names any of
 these, it is listed under `ignored`:
 
@@ -124,17 +130,52 @@ these, it is listed under `ignored`:
 
 Every earlier Issue that is neither named nor resolved is `carried`.
 
+<a id="context-findings"></a>
+
+**Merged context findings.** A finding of the dimension `context` says that the Module's declarations do
+not select a contract, document or concept its Specs rely on. Before it settles the earlier Issues,
+the Operation merges every context finding of a blocking tier about one Module into one finding,
+in the place of the first:
+
+- Its title is the fixed **context-selection title**, "The Module's declarations do not select
+  everything its Specs rely on".
+- Its problem names the Module and lists every missing selection. Each item gives the merged
+  finding's title, document, anchor, line and problem.
+- Its impact, evidence and suggestion list those of the merged findings in the same order.
+- Its tier is the highest of their tiers in the order `obvious-fix`, `preferred-fix`,
+  `decision-needed`. Its severity is the most severe of theirs.
+- Its `sources` and `related` join theirs. Its `note` says that the Operation merged them and
+  joins their notes.
+- Its document is the first merged finding's document.
+
+The Module's **context-selection Issue** is its open Issue whose latest title is the
+context-selection title. The merged finding names, in this order:
+
+1. The Issue that a merged finding of the same Module was reported as earlier in the same run. The
+   merged finding then also lists that finding's missing selections.
+   [Project review](../project-review/module.md)'s architecture review and the Module's panel are
+   two such parts of one run.
+2. Otherwise, the Module's context-selection Issue, when it is offered.
+3. Otherwise, the first earlier Issue that one of the merged findings named.
+
+Every other earlier Issue a merged finding named is listed under `ignored`, with the reason that
+its missing selection is merged into the Module's one context finding. It is carried. Thus one run
+writes at most one Issue per Module for its context findings. A context finding of the tier
+`suggestion` is not merged.
+
 ### Reporting findings
 
-In bound and unbound runs alike, the Operation reports each finding through the Issue store as one
-[Issue report](../../glossary.json#concept.issue-report). It never reports through a worker. When a
+In bound and unbound runs alike, the Operation reports each finding of a blocking tier through the
+Issue store as one [Issue report](../../glossary.json#concept.issue-report). It never reports
+through a worker. A `suggestion` is never recorded as an Issue. It stays in the result with its
+`issue` null, and the `suggestions-kept` host evidence names it. When a
 finding names an earlier Issue, the Operation appends it to that Issue. It uses the
 [revision](../../glossary.json#concept.issue-revision) it reads just before the append. Any other
 finding creates a new Issue. The report is:
 
 | Field | Value |
 | --- | --- |
-| `report_key` | `<module>/<n>`: the reviewed Module and the finding's position in the chair's report, prefixed with `architecture/` for an architects' finding |
+| `report_key` | `<module>/<n>`: the reviewed Module and the finding's position in the chair's report once its context findings are merged, prefixed with `architecture/` for an architects' finding |
 | `tier` | the finding's tier |
 | `severity` | the finding's severity |
 | `type`, `subtype` | `gap` and `missing-contract` for the dimension `context`, `gap` and `spec-conflict` for `consistency`, `bug` and `null` for every other dimension |

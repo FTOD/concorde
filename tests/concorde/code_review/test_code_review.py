@@ -280,14 +280,40 @@ class CodeReviewTests(unittest.TestCase):
         self.assertEqual(1, len(envelope["worker_runs"]))
         self.assertEqual(before, status_lines(self.worktree))
 
-    def test_suggestions_keep_the_verdict_accepted_and_are_reported(self):
+    @verifies("scenario.code-review.suggestion-kept")
+    def test_suggestions_keep_the_verdict_accepted_and_stay_in_the_result(self):
         _, envelope = self.change(finding(tier="suggestion"))
         self.assertEqual("ok", envelope["status"], envelope)
         self.assertEqual("accepted", envelope["output"]["verdict"])
         [item] = self.module_entry(envelope)["findings"]
-        self.assertEqual(
-            "suggestion", self.issues()[item["issue"]]["reports"][-1]["report"]["tier"]
-        )
+        self.assertEqual(("suggestion", None), (item["tier"], item["issue"]))
+        self.assertEqual({}, self.issues())
+        [kept] = [
+            item
+            for item in envelope["host_evidence"]
+            if item["kind"] == "suggestions-kept"
+        ]
+        self.assertEqual("module.a", kept["ref"])
+
+    @verifies("scenario.code-review.suggestion-resolves")
+    def test_a_suggestion_naming_an_earlier_issue_resolves_it(self):
+        demoted = self.earlier("demoted")
+        advisory = self.earlier("advisory", tier="suggestion")
+        _, envelope = self.change(finding(tier="suggestion", earlier=demoted))
+        self.assertEqual("ok", envelope["status"], envelope)
+        _, prompt = self.worker(envelope)
+        self.assertIn(demoted, prompt)
+        self.assertNotIn(advisory, prompt)
+        entry = self.module_entry(envelope)
+        [item] = entry["findings"]
+        self.assertIsNone(item["issue"])
+        self.assertNotIn("earlier", item)
+        [resolved] = entry["earlier_issues"]["resolved"]
+        self.assertEqual(demoted, resolved["issue"])
+        self.assertIn("add subtracts", resolved["reason"])
+        self.assertEqual([], entry["earlier_issues"]["carried"])
+        self.assertEqual(1, len(self.issues()[demoted]["reports"]))
+        self.assertEqual("accepted", entry["outcome"])
 
     @verifies("scenario.code-review.spec-gap")
     def test_behaviour_the_spec_does_not_settle(self):
@@ -462,7 +488,8 @@ class CodeReviewTests(unittest.TestCase):
         repair = record["rounds"][0]["validation"]
         self.assertIn("'src/a/calc.py:40' gives lines beyond the file's end", repair)
         self.assertIn("add subtracts", repair)
-        self.assertEqual(2, len(self.issues()))
+        # The suggestion stays in the result alone.
+        self.assertEqual(1, len(self.issues()))
 
     def test_a_citation_still_wrong_after_the_resume_is_rejected(self):
         wrong = finding(locations=["src/a/calc.py:40"])
@@ -493,7 +520,7 @@ class CodeReviewTests(unittest.TestCase):
         entry = self.module_entry(envelope)
         self.assertEqual(4, len(entry["rejected"]))
         self.assertEqual(["suggestion"], [item["tier"] for item in entry["findings"]])
-        self.assertEqual(1, len(self.issues()))
+        self.assertEqual({}, self.issues())
 
     @verifies("scenario.code-review.unknown-location")
     def test_a_relative_link_out_of_the_project_is_no_location(self):
@@ -821,7 +848,7 @@ class CodeReviewTests(unittest.TestCase):
     def test_a_blank_earlier_names_no_earlier_issue(self):
         _, envelope = self.change(
             finding(earlier=""),
-            finding(earlier=" ", tier="suggestion"),
+            finding(earlier=" ", tier="preferred-fix"),
         )
         self.assertEqual("ok", envelope["status"], envelope)
         entry = self.module_entry(envelope)

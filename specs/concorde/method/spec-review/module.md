@@ -4,8 +4,9 @@
 
 Spec review judges whether the Specs of one or more Modules are good enough for their reader.
 No deterministic check can establish this. Where the issues part is installed, Spec review records
-every problem it finds as an [Issue](../../glossary.json#concept.issue) of the project.
-Where it is not installed, Spec review records every problem in its run result alone. It provides
+every blocking problem it finds as an [Issue](../../glossary.json#concept.issue) of the project.
+A suggestion stays in its run result alone. Where the issues part is not installed, Spec review
+records every problem in its run result alone. It provides
 one Operation, `spec_panel`.
 
 A Spec panel is one run of `spec_panel`. For each named
@@ -15,7 +16,7 @@ Protocol's criteria of Module quality. From every Module's Specs, two architects
 criteria of architecture quality. A chair audits all their findings. It merges them into one
 report. Thus, one worker's blind spots and false alarms do not decide what reaches the project.
 
-Where Issues exist, the Operation reports every finding that stands as an Issue. It derives a
+Where Issues exist, the Operation reports every blocking finding that stands as an Issue. It derives a
 verdict from the blocking findings and Issues that stand. It does none of these things:
 
 - Edit a [Spec](../../glossary.json#concept.spec).
@@ -27,8 +28,8 @@ verdict from the blocking findings and Issues that stand. It does none of these 
 
 ## Core concepts
 
-A Spec panel returns findings. It reports each as an Issue. It derives a verdict from the Issues
-that stand.
+A Spec panel returns findings. It reports each blocking finding as an Issue. It derives a verdict
+from the Issues that stand.
 
 <a id="concept.review-finding"></a>
 
@@ -58,13 +59,21 @@ establish in one pass. Thus, one round of changes can address them all.
 
 **Earlier Issues** are the open Issues of a reviewed Module that an earlier Spec panel reported:
 a `spec_panel` run, or a [Project review](../project-review/module.md) run with one of its Spec
-panels or its architecture review. Every worker receives them before it judges. A problem already recorded is therefore reported again
+panels or its architecture review. An Issue whose latest report is a suggestion is not one. Every
+worker receives them before it judges. A problem already recorded is therefore reported again
 only when it changed, as a finding naming that Issue and never as a new one. As **resolved**, a
 worker lists every earlier Issue the Specs no longer have. It gives its reason for each. The chair
 settles what its report names and resolves. An earlier Issue the report neither names nor resolves
 still stands, **carried**. The Operation, never a worker, writes the Issues. When a finding names
-an earlier Issue, the Operation appends it to that Issue. It records any other finding as a new
-Issue. It closes none. The Operation lists the resolved Issues in the result for the task to close.
+an earlier Issue, the Operation appends it to that Issue. It records any other blocking finding as a
+new Issue. It records no suggestion. A suggestion that names an earlier Issue resolves it, since its
+problem no longer blocks. It closes none. The Operation lists the resolved Issues in the result for
+the task to close.
+
+All the blocking `context` findings about one Module become one finding with a fixed title, which
+lists every missing selection. One run therefore writes at most one Issue per Module for them. That
+Issue is the Module's open **context-selection Issue** when there is one
+([Context findings](panel.md#context-findings)).
 
 Earlier Issues exist only where the issues part is installed. Without it, a review does the
 following:
@@ -292,10 +301,27 @@ The task handles them by their tier as the
 
 - It fixes an `obvious-fix` or `preferred-fix` Issue with later `specify` work.
 - It escalates a `decision-needed` one by its identity.
-- It leaves a `suggestion`.
+- It may follow a `suggestion` of the result. No Issue tracks it.
 - It closes each resolved Issue.
 
 ## Why it is built this way
+
+### Suggestions stay in the result
+
+A suggestion says that the Spec can be relied upon. No task has to act on it. Recorded as Issues,
+suggestions made up a third of the project's open Issues after a few reviews. Most of them were
+stricter standards rather than defects. They buried the blocking Issues a task must fix. So the
+developer decided that a review records no suggestion as an Issue. The result still returns each
+suggestion, so that a task that touches the passage can follow it.
+
+### One Issue per Module for its context findings
+
+Each missing selection of a Module's declarations has the same repair: a `uses` or an inclusion
+in the Module's metadata. One task makes that repair for all of them at once. Recorded one Issue
+per missing selection, they multiplied the Issues of one problem. So the developer decided that
+the Operation merges them into one Issue per Module and run. It appends that Issue's new report to
+the Module's open context-selection Issue. The latest report then lists every missing selection
+the review found.
 
 ### Issues are the review's memory
 
@@ -512,6 +538,10 @@ review -> workflows
   ([req.method.glossary-by-entry](../requirements.md#req.method.glossary-by-entry)).
 - [Spec gaps](../../glossary.json#concept.spec-gap) and grant denials are never repaired
   ([req.method.gaps-never-repaired](../requirements.md#req.method.gaps-never-repaired)).
+- A suggestion is never recorded as an Issue
+  ([req.method.suggestions-not-issues](../requirements.md#req.method.suggestions-not-issues)).
+- No suggestion is offered as an earlier Issue
+  ([req.method.suggestions-not-offered](../requirements.md#req.method.suggestions-not-offered)).
 
 [How an Operation runs its workers](../workers.md) gives the sequence's steps and the
 [errors](../workers.md#errors-of-the-worker-sequence) that Spec review's results pass on.
