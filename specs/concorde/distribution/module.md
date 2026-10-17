@@ -322,16 +322,21 @@ Neither binds a file of its own.
 
 ### The package
 
-`concorde.json` is the package's identity. It names:
+`concorde.json` is the package's identity
+([its contract](contracts.md#contract.distribution.package-descriptor)). Its commands read these
+fields:
 
-- The name.
-- The version.
-- The licence.
-- The roots the installer ships.
-- The install locations.
-- The client `claude-code` the build renders workflows for.
+- The version, which every part carries.
+- The Python version requirement `runtime.python`, for which the installer creates Concorde's own
+  environment.
 - The pinned third-party programs under `tools` (today `d2`).
 - The entry of [Dogfooding's](#uses-dogfooding) develop source check under `develop.check`.
+- The package's top-level directories under `package_roots`, among which the docsite build needs
+  `docsite`.
+
+Its other fields describe the package to a reader: the name, the licence, the install locations
+and the client `claude-code` the build renders workflows for. No command reads them. The installed
+parts' registrations, not the descriptor, decide what the installer copies.
 
 The programs are pinned by:
 

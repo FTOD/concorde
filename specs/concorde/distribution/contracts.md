@@ -2,6 +2,7 @@
 
 This document describes:
 
+- The package descriptor `concorde.json`, the package's identity.
 - The [part registration](../glossary.json#concept.part-registration) every part gives Distribution.
 - The parts index the build records.
 - The [build manifest](../glossary.json#concept.build-manifest) the build records.
@@ -603,6 +604,191 @@ links of the [error contract](../kernel/tracing/contracts.md#contract.tracing.er
 | `host_outdated` | `environment` | the call object names another protocol than the call's process speaks: the server started before an update changed that protocol; nothing ran, and the options are to reconnect the server with `/mcp` or to restart the session |
 | `call_failed` | `environment` | the process of a call could not be started, exited or was stopped after its time without printing an answer, or asked twice to route the call otherwise; the detail names the command and worktree, its exit status and the end of what it printed |
 | any other code | `capability` | an unexpected error of the host, or of loading the installed parts' code, as a link built from the exception |
+
+## Package descriptor
+
+`concorde.json` at the package root is the package's identity. The build, the installer and
+`concorde update` read it. Each reader checks only the fields it reads, when it reads them.
+
+```concorde-contract
+{
+  "id": "contract.distribution.package-descriptor",
+  "version": 1,
+  "schema": {
+    "type": "object",
+    "required": [
+      "version",
+      "runtime"
+    ],
+    "properties": {
+      "schema_version": {
+        "type": "integer",
+        "minimum": 1
+      },
+      "name": {
+        "type": "string",
+        "minLength": 1
+      },
+      "version": {
+        "type": "string",
+        "minLength": 1
+      },
+      "description": {
+        "type": "string"
+      },
+      "license": {
+        "type": "string",
+        "minLength": 1
+      },
+      "license_file": {
+        "type": "string",
+        "minLength": 1
+      },
+      "repository": {
+        "type": "string",
+        "minLength": 1
+      },
+      "architecture_profile": {
+        "type": "integer",
+        "minimum": 1
+      },
+      "runtime": {
+        "type": "object",
+        "required": [
+          "python"
+        ],
+        "properties": {
+          "python": {
+            "type": "string",
+            "minLength": 1
+          },
+          "venv": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "package_roots": {
+        "type": "array",
+        "uniqueItems": true,
+        "items": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_.-]+$"
+        }
+      },
+      "install": {
+        "type": "object",
+        "properties": {
+          "framework_root": {
+            "type": "string",
+            "minLength": 1
+          },
+          "receipt": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "clients": {
+        "type": "array",
+        "uniqueItems": true,
+        "items": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "tools": {
+        "type": "object",
+        "properties": {
+          "d2": {
+            "type": "object",
+            "required": [
+              "version",
+              "url",
+              "sha256"
+            ],
+            "properties": {
+              "version": {
+                "type": "string",
+                "minLength": 1
+              },
+              "url": {
+                "type": "string",
+                "minLength": 1
+              },
+              "sha256": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{64}$"
+                }
+              }
+            }
+          }
+        }
+      },
+      "develop": {
+        "type": "object",
+        "required": [
+          "check"
+        ],
+        "properties": {
+          "check": {
+            "type": "string",
+            "pattern": ":"
+          }
+        }
+      }
+    }
+  },
+  "semantics": "The package descriptor concorde.json at the root of a Concorde checkout or package copy, which the build, the installer and concorde update read as the package's identity. The build records its digest among its sources (contract.distribution.build-manifest), so a changed descriptor makes every render stale. Fields this schema does not name are ignored, and a reader checks only the fields it reads, when it reads them. version is the one version every part carries: the receipt records it as version and as the version of each installed part. runtime.python is the Python version requirement, in uv's syntax, for which the installer creates Concorde's own environment; an install or update whose descriptor names none is refused with invalid_descriptor before anything is written. tools.d2 pins the d2 release the installer places when the installed parts need d2 and the install does not leave it out: version is the release, url the archive's address with {version} and {platform} replaced, and sha256 maps each release platform name (linux, macos or windows, then amd64 or arm64, joined by -, such as linux-amd64) to the archive's hexadecimal SHA-256; no tools.d2 is refused with invalid_descriptor, a machine whose platform the map lacks with unsupported_platform, and an archive whose digest differs with d2_digest_mismatch, before d2 is placed. develop.check names the develop source check as <Python module>:<attribute>, split at its first colon, which the installer imports and calls with the package root for a develop install and its updates; a develop install whose descriptor names no text with a colon there is refused with invalid_descriptor before anything is written. package_roots lists the top-level directories of the package; the docsite build refuses a package whose package_roots lacks docsite. What the installer copies into the framework copy is decided by the installed parts' registrations, never by package_roots. schema_version, name, description, license, license_file, repository, architecture_profile, runtime.venv, install.framework_root, install.receipt and clients describe the package and its install locations to a reader; no command reads them. Every path is relative to the package root, with / as separator. A field a reader starts to read, or a change of a read field's meaning, increments the version.",
+  "example": {
+    "schema_version": 6,
+    "name": "concorde",
+    "version": "9.0.0",
+    "description": "Concorde Framework: Spec tooling that checks, serves and publishes architecture Specs, and Operations that run headless Claude Code or pi workers under Spec-derived permissions for a Claude Code main agent",
+    "license": "MIT",
+    "license_file": "LICENSE",
+    "repository": "https://github.com/FTOD/concorde",
+    "architecture_profile": 17,
+    "runtime": {
+      "python": ">=3.11",
+      "venv": ".concorde/framework/python"
+    },
+    "package_roots": [
+      "docsite",
+      "prompts",
+      "protocol",
+      "scripts",
+      "src"
+    ],
+    "install": {
+      "framework_root": ".concorde/framework",
+      "receipt": ".concorde/install.json"
+    },
+    "clients": [
+      "claude-code"
+    ],
+    "tools": {
+      "d2": {
+        "version": "v0.9.0",
+        "url": "https://github.com/d2lang/d2/releases/download/{version}/d2-{version}-{platform}.tar.gz",
+        "sha256": {
+          "linux-amd64": "5669ddc46b99e942cc96078f4a4e36d5e62103348f4c05179ede27802fdd87a9",
+          "linux-arm64": "ac2c028697199479acb321db1e3d68caee9f2ba492ed73caa3cd13f3829bf913",
+          "macos-amd64": "cad39576a480d6bb02ea142fef1726647914b0d2da51ccc9b30b660a2b1babf0",
+          "macos-arm64": "eaf6c0c143e56dd9fa97bfb6df25ea9c1ebce40245f056a0768cf1a6c15d3064",
+          "windows-amd64": "5f63b643de8f5a6dfb922d172e1b5496e4caf47497c33c4427cf1127f28c340f",
+          "windows-arm64": "dd05cab459410c287d7ca3eb9cf78145a071742ee8e1b81a0122f84f471883e1"
+        }
+      }
+    },
+    "develop": {
+      "check": "concorde.dogfooding.develop:check"
+    }
+  }
+}
+```
 
 ## Build manifest
 
