@@ -865,15 +865,24 @@ def install(
         raise InstallError("stale_build", str(error)) from error
     composed = _guidance(package, registrations)
     skill, block = composed["skill"] or "", composed["claude_md"] or ""
+    task_session = composed["task_session"]
     installed_from = None
     if develop:
         checked = _develop(package)
         installed_from = checked["source"]
         # Dogfooding's guidance has the main agent report defects as Issues through its tasks,
-        # so it is composed only where the coordination and issues parts are installed.
+        # so it is composed only where the coordination and issues parts are installed. Its
+        # task-session section tells the task sessions, which observe the runs, to pass a
+        # suspected defect up to the main agent.
         if DEVELOP_GUIDANCE_NEEDS <= set(registrations):
             skill = skill.rstrip("\n") + "\n\n" + checked["guidance"]["skill"]
             block = block.rstrip("\n") + "\n\n" + checked["guidance"]["claude_md"]
+            if task_session is not None:
+                task_session = (
+                    task_session.rstrip("\n")
+                    + "\n\n"
+                    + checked["guidance"]["task_session"]
+                )
     previous = {}
     if (project / RECEIPT).is_file():
         try:
@@ -961,7 +970,7 @@ def install(
             protocol=protocol,
             skill=skill,
             block=block,
-            task_session=composed["task_session"],
+            task_session=task_session,
             installed_from=installed_from,
             develop=develop,
             requirement=requirement,

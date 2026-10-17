@@ -59,6 +59,13 @@ The develop guidance SHALL tell the project's main agent never to work around a
 
 The develop guidance SHALL tell the project's main agent to report every Concorde defect it finds.
 
+### req.dogfooding.task-session-escalates — A task session passes a suspected defect up
+
+The develop guidance SHALL tell every [task session](../glossary.json#concept.task-session) to escalate a suspected [Concorde defect](../glossary.json#concept.concorde-defect) to the project's main agent, naming the run that showed it, instead of reporting or working around it.
+
+The task session keeps the run's evidence and changes no part of Concorde. The main agent then
+classifies the defect and reports it, as for one it saw itself.
+
 ### req.dogfooding.boundary-classified — A blocked boundary is placed in a case first
 
 The develop guidance SHALL require the main agent to place every refused read, write or tool in one

@@ -15,6 +15,7 @@ from pathlib import Path
 
 SKILL_SECTION = "generated/dogfooding/skill.md"
 CLAUDE_MD_SECTION = "generated/dogfooding/claude-md.md"
+TASK_SESSION_SECTION = "generated/dogfooding/task-session.md"
 # How many uncommitted paths a refusal names before it only counts the rest.
 SHOWN_CHANGES = 10
 
@@ -156,29 +157,37 @@ def develop_source(package: str | Path) -> dict:
     }
 
 
-def guidance(package: str | Path) -> tuple[str, str]:
-    """The rendered develop sections of the skill and of the ``CLAUDE.md`` block."""
+def guidance(package: str | Path) -> tuple[str, str, str]:
+    """The rendered develop sections of the skill, of the ``CLAUDE.md`` block and of the
+    task-session prompt."""
     package = Path(package)
     sections = []
-    for relative in (SKILL_SECTION, CLAUDE_MD_SECTION):
+    for relative in (SKILL_SECTION, CLAUDE_MD_SECTION, TASK_SESSION_SECTION):
         path = package / relative
         if not path.is_file():
             raise DevelopError("stale_build", f"{path} is missing; run the build")
         sections.append(path.read_text(encoding="utf-8"))
-    return sections[0], sections[1]
+    return sections[0], sections[1], sections[2]
 
 
 def check(package) -> dict:
     """The installer's entry, which the package descriptor names under ``develop``: the source
     a develop install of ``package`` installs from with the guidance it adds, as
-    ``{"source": {...}, "guidance": {"skill", "claude_md"}}``, or
+    ``{"source": {...}, "guidance": {"skill", "claude_md", "task_session"}}``, or
     ``{"refusal": {"code", "message"}}`` when the checkout may not be installed from."""
     try:
         source = develop_source(package)
-        skill, claude_md = guidance(package)
+        skill, claude_md, task_session = guidance(package)
     except DevelopError as error:
         return {"refusal": {"code": error.code, "message": str(error)}}
-    return {"source": source, "guidance": {"skill": skill, "claude_md": claude_md}}
+    return {
+        "source": source,
+        "guidance": {
+            "skill": skill,
+            "claude_md": claude_md,
+            "task_session": task_session,
+        },
+    }
 
 
 __all__ = ["DevelopError", "check", "develop_source", "guidance"]

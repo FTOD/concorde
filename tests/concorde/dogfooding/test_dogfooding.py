@@ -21,6 +21,7 @@ from tests.concorde.distribution.test_distribution import package_copy, write_bu
 from tests.concorde.support.paths import REPOSITORY_ROOT
 
 SECTION = "## Developing Concorde while using it"
+TASK_SESSION_SECTION = "## Concorde defects in a develop install"
 
 
 def git(root: Path, *argv: str) -> str:
@@ -79,6 +80,13 @@ class DevelopInstallTests(unittest.TestCase):
             "<!-- concorde:end -->"
         )[0]
         self.assertIn("This is a develop install", block)
+        # The task sessions, which observe the runs, are told to pass a defect up.
+        prompt = (
+            project / ".concorde/framework/generated/guidance/task-session.md"
+        ).read_text()
+        self.assertIn("# Concorde task session", prompt)
+        self.assertIn(TASK_SESSION_SECTION, prompt)
+        self.assertLess(prompt.index("## Issues"), prompt.index(TASK_SESSION_SECTION))
         # The framework is still a copy, so task worktrees behave as in a normal install.
         self.assertTrue((project / ".concorde/framework/scripts/concorde.py").is_file())
         self.assertIn(".concorde/framework/", (project / ".gitignore").read_text())
@@ -97,6 +105,12 @@ class DevelopInstallTests(unittest.TestCase):
             (project / ".claude/skills/concorde/SKILL.md").read_text(),
         )
         self.assertNotIn("develop install", (project / "CLAUDE.md").read_text())
+        self.assertNotIn(
+            "develop install",
+            (
+                project / ".concorde/framework/generated/guidance/task-session.md"
+            ).read_text(),
+        )
 
     def assert_refused(self, source: Path, project: Path, code: str, *fragments: str):
         """A develop install from ``source`` is refused with ``code`` and writes nothing."""
@@ -450,6 +464,30 @@ class GuidanceTests(unittest.TestCase):
         rows = [line for line in self.skill.split(" | ") if "type `" in line]
         self.assertTrue(any("`bug`" in row for row in rows))
         self.assertTrue(any("`limitation`" in row for row in rows))
+
+    @verifies("scenario.dogfooding.task-session-defect")
+    def test_the_task_session_section_says_to_escalate_a_defect(self):
+        section = words(
+            resolve_role_prompt(
+                REPOSITORY_ROOT, "prompts/dogfooding/task-session.md"
+            ).body
+        )
+        self.assertTrue(section.startswith(words(TASK_SESSION_SECTION)))
+        for fragment in (
+            "Observe every run of an Operation or execution command, every workflow and every "
+            "worker run closely",
+            "can end `ok` and still be wrong. Treat such a run like a failure",
+            "Keep the evidence",
+            "Do not work around the defect",
+            "Never change the Concorde repository, the framework copy under "
+            "`.concorde/framework/` or a file the installer placed",
+            "Escalate the defect to the main agent with `concorde task escalate`",
+            "Name the run with `--run`, so that its whole error chain is the cause of your link",
+            "the Spec text, the grant actually computed and the refused action",
+            "Go on with every part of the task that does not depend on the defect",
+            "Do not write a defect report yourself",
+        ):
+            self.assertIn(words(fragment), section)
 
 
 class ConcordeRepositoryTests(unittest.TestCase):

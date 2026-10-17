@@ -1282,7 +1282,7 @@ performs these steps:
 - Before writing anything, it calls Dogfooding's source check.
 - When the check refuses, the installer refuses with the check's code and message.
 - Then, where the coordination and issues parts are installed, it adds Dogfooding's rendered
-  guidance to the skill and the `CLAUDE.md` block
+  guidance to the skill, the `CLAUDE.md` block and the task-session prompt
   ([guidance composition](#guidance-composition)).
 - It records the mode and the checked commit in the receipt.
 
@@ -1405,7 +1405,8 @@ mentions is not installed. When a section may be composed without a part, a para
 part's command or project MCP tool names that part. It does so as in "where the execution part is
 installed" ([requirements](requirements.md#req.distribution.guidance-absent-parts)). Dogfooding's
 develop section is no part's. In a develop install that installs the coordination and issues
-parts, the installer appends Dogfooding's develop section to the composed skill and block.
+parts, the installer appends Dogfooding's develop sections to the composed skill, block and
+task-session prompt.
 Dogfooding's develop section relies on those parts. In any other develop install, the installer
 leaves that section out. Such an install is still a develop install in its source check and receipt.
 
