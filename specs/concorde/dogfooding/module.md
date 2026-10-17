@@ -128,7 +128,7 @@ project: The project {
     own: Ordinary work in the project
     write: Write the defect report, check it with concorde issues report --check
     log: Record it in the decision log, leave the blocked work open
-    update: "concorde update, then concorde spec-validation\nwhere the spec part is installed"
+    update: "concorde update, commit the updated files,\nthen concorde spec-validation\nwhere the spec part is installed"
     resume: "Have the open tasks' sessions merge the primary branch,\ntake up the blocked work"
     observe -> classify
     classify -> own: the project's own
@@ -422,9 +422,19 @@ the project has no `spec-validation` to run
 ([Distribution](../distribution/module.md#updating-an-installed-concorde)).
 While the update runs, the main agent starts nothing in the project because its check does not stop
 what starts afterward ([Distribution](../distribution/module.md#updating-an-installed-concorde)).
-Where the coordination part is installed and the update asks for it, the main agent then has the
-open tasks' sessions merge the primary branch into their task branches.
-The main agent takes up the blocked work.
+Once the update ends, the main agent follows the `next` steps of the
+[update result](../distribution/contracts.md#contract.distribution.update-result), in their order:
+
+1. It commits the updated files on the primary branch in the primary worktree. Until then, the
+   primary branch still holds the previous
+   [Protocol copy](../glossary.json#concept.protocol-copy) and configuration.
+2. Where the spec part is installed, it runs `concorde spec-validation` there and has what it
+   reports repaired.
+3. Where the coordination part is installed and the update asks for it, it has the open tasks'
+   sessions merge the primary branch into their task branches. Because of step 1, that branch now
+   carries the new Protocol copy.
+
+The main agent then takes up the blocked work.
 
 ## How it is built
 
