@@ -262,6 +262,30 @@ class DeliverTests(ProjectCase):
         return holder
 
     @verifies("scenario.tasks.deliver-refused")
+    def test_a_check_that_switches_the_branch_commits_nothing(self):
+        worktree = self.opened()
+        base = git(worktree, "rev-parse", "HEAD")
+        switch = shlex.join(["git", "switch", "-q", "-c", "elsewhere"])
+        error = self.refusal(
+            "deliver",
+            "t1",
+            "--check",
+            switch,
+            "--check",
+            python("open('ran', 'w')"),
+            cwd=worktree,
+        )
+        self.assertEqual("wrong_branch", error["code"])
+        self.assertIn("after check 1", error["detail"])
+        self.assertIn("elsewhere", error["detail"])
+        self.assertFalse((worktree / "ran").exists())
+        self.assertEqual(base, git(worktree, "rev-parse", "concorde/t1"))
+        self.assertEqual(base, git(worktree, "rev-parse", "elsewhere"))
+        self.assertIn("src/a/calc.py", git(worktree, "status", "--porcelain"))
+        node = trace.read(self.attempt())
+        self.assertEqual(("failed", "refused"), (node["status"], node["outcome"]))
+
+    @verifies("scenario.tasks.deliver-refused")
     def test_a_delivery_admits_the_task_again_once_it_holds_the_lock(self):
         worktree = self.opened()
         base = git(worktree, "rev-parse", "HEAD")

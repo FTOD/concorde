@@ -808,6 +808,8 @@ This illustrates [the Kernel's convention](requirements.md#req.tasks.deliver-con
   fails with `wrong_branch` naming the branch, committing nothing
 - AND when the worktree switches to another branch while a delivery waits for the workspace lock,
   the delivery fails with `wrong_branch` once it holds the lock
+- AND when a check that passes switches the worktree to another branch at the same commit, the
+  delivery fails with `wrong_branch` after that check, committing nothing on either branch
 - AND when a close retires the task's workspace while a delivery waits for the workspace lock, the
   delivery fails with `task_closed`, taking no lock file again
 

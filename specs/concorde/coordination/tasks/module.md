@@ -678,7 +678,10 @@ first check that fails, it refuses with `check_failed`, naming these details:
 - Its exit status.
 - Its log.
 
-With no check given, it runs none. When every check passes, it stages every change of the worktree
+With no check given, it runs none. A check could switch the branch or commit. So after each check,
+and again before it stages anything, it refuses with `wrong_branch` when the worktree is off the
+task branch or the branch's head is not where the delivery started. When every check passes, it
+stages every change of the worktree
 that Git does not ignore. It commits those changes with the subject `concorde: deliver <task-id>`
 and the task's goal as body, by the Kernel's
 [delivery commit convention](../../kernel/contracts.md#delivery-commit). Even when nothing is left

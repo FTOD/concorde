@@ -17,6 +17,7 @@ node ``deliveries/<n>/`` of the task with each check a node ``checks/<n>/`` belo
 from __future__ import annotations
 
 import os
+import shlex
 import subprocess
 from pathlib import Path
 
@@ -112,19 +113,41 @@ def _bound_task(here: Path, task_id: str) -> tuple[Path, Path, dict]:
             f"`concorde task deliver {task_id}` runs only in the worktree of task {task_id}, "
             f"{record['worktree']}, whose workspace binding names it; it ran in {worktree}",
         )
-    branch = store._git(worktree, "symbolic-ref", "-q", "--short", "HEAD", check=False)
-    if branch.returncode != 0 or branch.stdout.strip() != record["branch"]:
-        where = (
-            f"is on branch {branch.stdout.strip()}"
-            if branch.returncode == 0
-            else "has a detached HEAD"
-        )
+    where = _off_branch(worktree, record)
+    if where:
         raise TaskError(
             "wrong_branch",
             f"the worktree {worktree} of task {task_id} {where}, not on the task branch "
             f"{record['branch']}; a delivery commit is made only on the task branch",
         )
     return primary, worktree, record
+
+
+def _off_branch(worktree: Path, record: dict) -> str | None:
+    """Where the worktree's head is when it is not on the task branch, or None."""
+    branch = store._git(worktree, "symbolic-ref", "-q", "--short", "HEAD", check=False)
+    if branch.returncode == 0 and branch.stdout.strip() == record["branch"]:
+        return None
+    if branch.returncode == 0:
+        return f"is on branch {branch.stdout.strip()}"
+    return "has a detached HEAD"
+
+
+def _still_at(worktree: Path, record: dict, before: str, after: str) -> None:
+    """Refuse with ``wrong_branch`` when the worktree is no longer on the task branch at
+    ``before``: a check or a hook that switched the branch or moved its head would otherwise
+    have the delivery commit made elsewhere, or on top of a commit the checks did not judge."""
+    where = _off_branch(worktree, record)
+    head = None if where else _head(worktree)
+    if where is None and head == before:
+        return
+    raise TaskError(
+        "wrong_branch",
+        f"after {after}, the worktree {worktree} of task {record['id']} "
+        f"{where or f'has the task branch at {head}'} instead of the task branch "
+        f"{record['branch']} at {before}, where the delivery started; nothing was committed "
+        "and nothing was reset",
+    )
 
 
 def _next_folder(primary: Path, task_id: str) -> Path:
@@ -269,6 +292,8 @@ def _deliver(
                 f"{node.folder / 'checks' / str(number) / 'output.log'}, and nothing was "
                 "committed",
             )
+        _still_at(worktree, record, before, f"check {number} ({shlex.join(argv)})")
+    _still_at(worktree, record, before, "the checks")
     commit = _commit(worktree, record, before)
     data["commit"] = commit
     node.refer("commit", commit)
@@ -326,6 +351,16 @@ def _commit(worktree: Path, record: dict, before: str) -> str:
             f"{(committed.stdout + committed.stderr).strip()[-checks.OUTPUT_TAIL :] or '(no output)'}"
             f"; nothing was committed, the branch {record['branch']} is still at {before} and "
             "the changes stay staged",
+        )
+    where = _off_branch(worktree, record)
+    if where:
+        # A commit hook switched the branch: the commit is not on the task branch, which is
+        # still at ``before``, so nothing is reset.
+        raise TaskError(
+            "wrong_branch",
+            f"the worktree {worktree} of task {task_id} {where} after git commit, as a commit "
+            f"hook may make it, so the delivery commit {_head(worktree)} is not on the task "
+            f"branch {record['branch']}, which is still at {before}; nothing was reset",
         )
     head = _head(worktree)
     parents = store._git(
