@@ -1081,47 +1081,56 @@ def _current_open(primary: Path, task_id: str) -> dict:
     return load_unended(primary, task_id, "a session works only in an open task")
 
 
-def record_session(primary: Path, task_id: str, session: dict) -> dict:
+def record_session(
+    primary: Path, task_id: str, session: dict, *, locked: bool = False
+) -> dict:
     """Record a started task session as a node of the task's trace, for a task that has not
     ended, and its main session as the task's main. ``session`` names its identity, name, main
     session, model, the identity Claude Code reported and, when Claude Code told it, the full
-    session id."""
+    session id. ``locked`` says the caller holds the task's lock already."""
+    if locked:
+        return _record_session(primary, task_id, session)
     # Checked before taking the lock too, so no lock file is made again for a closed task.
     _current_open(primary, task_id)
     with task_locked(primary, task_id):
-        record = _current_open(primary, task_id)
-        # The node first, removed again when the record refuses its main: either refusal leaves
-        # the record as it was.
-        folder = session_folder(primary, task_id, session["id"])
-        node = Node(
-            folder,
-            session["id"],
-            "session",
-            content_type=SESSION_TRACE,
-            metadata={"task": task_id, "model": session.get("model")},
-            content=session_content(session),
-            started_at=session.get("started_at"),
+        return _record_session(primary, task_id, session)
+
+
+def _record_session(primary: Path, task_id: str, session: dict) -> dict:
+    """``record_session`` while holding the task's lock."""
+    record = _current_open(primary, task_id)
+    # The node first, removed again when the record refuses its main: either refusal leaves
+    # the record as it was.
+    folder = session_folder(primary, task_id, session["id"])
+    node = Node(
+        folder,
+        session["id"],
+        "session",
+        content_type=SESSION_TRACE,
+        metadata={"task": task_id, "model": session.get("model")},
+        content=session_content(session),
+        started_at=session.get("started_at"),
+    )
+    # Concorde does not see a session end; the task's end finishes the node.
+    node.record["status"] = "unknown"
+    node.start()
+    if node.failure is not None:
+        raise TaskError(
+            "record_unwritable",
+            f"the session node {folder} of task {task_id} cannot be written: {node.failure}",
         )
-        # Concorde does not see a session end; the task's end finishes the node.
-        node.record["status"] = "unknown"
-        node.start()
-        if node.failure is not None:
-            raise TaskError(
-                "record_unwritable",
-                f"the session node {folder} of task {task_id} cannot be written: {node.failure}",
+    if session.get("main"):
+        try:
+            record = _bind_main(
+                primary,
+                task_id,
+                session["main"],
+                "a session works only in an open task",
             )
-        if session.get("main"):
-            try:
-                record = _bind_main(
-                    primary,
-                    task_id,
-                    session["main"],
-                    "a session works only in an open task",
-                )
-            except TaskError:
-                shutil.rmtree(folder, ignore_errors=True)
-                raise
-        return record
+        except TaskError:
+            shutil.rmtree(folder, ignore_errors=True)
+            raise
+    return record
 
 
 def _still_unended(record: dict, purpose: str) -> None:

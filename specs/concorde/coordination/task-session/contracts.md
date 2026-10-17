@@ -200,10 +200,45 @@ Besides those shared codes, its refusals use these:
 
 | Command | Output |
 | --- | --- |
-| `concorde task session <task-id> --main <session> [--model <model>] [--dry-run]` | The recorded session, or with `--dry-run` `{"command": "<shell command without the prompt>", "cwd": "<task worktree>", "settings": "<path>", "mcp_config": "<path>"}` |
+| `concorde task session <task-id> --main <session> [--model <model>] [--dry-run]` | `{"id": "<identity>", "reported_id": "<identity>", "session_id": "<full session id>"\|null, "name": "task-<task-id>", "main": "<session>", "model": "<model>"\|null, "settings": "<path>", "started_at": "<UTC time>"}`, the session it started and recorded, as below; with `--dry-run` `{"command": "<shell command without the prompt>", "cwd": "<task worktree>", "settings": "<path>", "mcp_config": "<path>"}` |
+
+A start prints the session it recorded as one JSON object, with no wrapper:
+
+- `id` is the identity of the session's trace node `sessions/<id>/`, the short identity Claude Code
+  reported for the started background session.
+- `reported_id` is that same identity, by which Concorde names the session to Claude Code, as in
+  `claude stop <reported_id>` and `claude rm <reported_id>`.
+- `session_id` is the session's full session id, the `sessionId` of its entry in
+  `claude agents --json --all`. It is null when Claude Code did not list the session at its start.
+  The task's end then reads it into the node.
+- `name` is the session's name, `task-<task-id>`.
+- `main` is the `--main` given, which the task record names as its `main` from then on.
+- `model` is the `--model` given, or null.
+- `settings` is the absolute path of the session's settings file.
+- `started_at` is the time the start found the session started, in UTC.
+
+For example:
+
+```json
+{
+  "id": "33afbc14",
+  "reported_id": "33afbc14",
+  "session_id": "33afbc14-3ec3-4a74-b3d5-b2278eda5756",
+  "name": "task-severity",
+  "main": "concorde-7d",
+  "model": null,
+  "settings": "/work/project/.concorde/tasks/severity/runtime/settings.json",
+  "started_at": "2026-10-17T09:12:44Z"
+}
+```
+
+The session's trace node holds the same session as the
+[session trace](#contract.task-session.session-trace) content.
 
 `--main` is required: without it, the command is refused with `invalid_input`. The command starts a
-background Claude Code task session in these steps:
+background Claude Code task session in the steps below. It holds the task's lock from step 1 to step
+5, so two starts of one task never overlap. A second start waits for the lock and then reads the
+task record again. It is refused as below once the first start recorded its session.
 
 1. When the task has recorded task sessions, it asks `claude agents --json --all` once. When that
    list shows one of them in a state other than `done` or `failed`, it refuses with

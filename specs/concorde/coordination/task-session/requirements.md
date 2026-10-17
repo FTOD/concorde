@@ -98,6 +98,10 @@ listed does not refuse a start, so a stalled or ended session can be replaced. E
 and records a session of its own and never reuses an earlier one. A caller that retries a start
 whose result it did not see is refused while the session it started still works.
 
+Starts of one task SHALL NOT overlap: a start holds the task's lock from its check for a working
+session until it recorded the session it started. A second start waits for that lock. It then
+finds the first one's session and is refused while that session works.
+
 ### req.task-session.recorded — A started session is recorded
 
 Task sessions SHALL record a task session as a node of the task's

@@ -273,17 +273,31 @@ def start(
     dry_run: bool = False,
     run=None,
 ) -> dict:
-    """Write the session's boundary and, unless ``dry_run``, start it with ``claude --bg``."""
+    """Write the session's boundary and, unless ``dry_run``, start it with ``claude --bg``.
+
+    The whole start holds the task's lock, from the check for a working session to the record of
+    the one started, so that two starts of one task never both pass that check: the second waits
+    and then finds the first one's session."""
     run = run or subprocess.run
     primary = store.require_primary(here)
-    record = store.load_unended(
-        primary, task_id, "a session works only in an open task"
-    )
+    purpose = "a session works only in an open task"
+    store.load_unended(primary, task_id, purpose)
     if not main or not main.strip():
         raise store.TaskError(
             "invalid_input",
             "--main must name the main agent's session, which the task session reports to",
         )
+    with store.task_locked(primary, task_id):
+        # Read again under the lock: a close or another start may have come meanwhile.
+        record = store.load_unended(primary, task_id, purpose)
+        return _start(primary, record, main, model, dry_run, run)
+
+
+def _start(
+    primary: Path, record: dict, main: str, model: str | None, dry_run: bool, run
+) -> dict:
+    """``start`` while holding the task's lock."""
+    task_id = record["id"]
     worktree = Path(record["worktree"])
     if not worktree.is_dir():
         raise store.TaskError(
@@ -362,7 +376,7 @@ def start(
         "started_at": started_at,
     }
     try:
-        store.record_session(primary, task_id, session)
+        store.record_session(primary, task_id, session, locked=True)
     except store.TaskError as error:
         # A session no trace node names is never stopped, kept or removed by the task's end:
         # remove the one just started rather than leave it working untracked.

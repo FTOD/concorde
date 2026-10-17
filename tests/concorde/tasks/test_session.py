@@ -10,6 +10,7 @@ import os
 import shlex
 import subprocess
 import sys
+import threading
 import unittest
 from pathlib import Path
 from unittest.mock import patch
@@ -112,6 +113,20 @@ class TaskSessionTests(unittest.TestCase):
             ("33afbc14", "task-t1", "concorde-7d"),
             (started["id"], started["name"], started["main"]),
         )
+        # The command prints exactly the fields the commands contract names.
+        self.assertEqual(
+            {
+                "id": "33afbc14",
+                "reported_id": "33afbc14",
+                "session_id": SESSION_ID,
+                "name": "task-t1",
+                "main": "concorde-7d",
+                "model": None,
+                "settings": str(directory / "settings.json"),
+            },
+            {key: value for key, value in started.items() if key != "started_at"},
+        )
+        self.assertRegex(started["started_at"], r"^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ$")
         # Claude Code's list of sessions gives the full session id, its transcript's name.
         self.assertEqual(["claude", "agents", "--json", "--all"], listing)
         self.assertEqual(SESSION_ID, started["session_id"])
@@ -153,7 +168,7 @@ class TaskSessionTests(unittest.TestCase):
     def test_a_session_started_but_not_recorded_is_removed(self):
         claude = FakeClaude()
 
-        def closed(*_arguments):
+        def closed(*_arguments, **_options):
             raise store.TaskError("task_closed", "task t1 is closed")
 
         with patch.object(store, "record_session", closed):
@@ -211,6 +226,50 @@ class TaskSessionTests(unittest.TestCase):
         self.assertEqual(
             ["33afbc14"], [item["id"] for item in store.sessions(self.root, "t1")]
         )
+
+    @verifies("scenario.task-session.one-working")
+    def test_concurrent_starts_launch_one_session(self):
+        launching, release = threading.Event(), threading.Event()
+        first = FakeClaude()
+
+        def slow(command, **options):
+            # The first start holds its launch open until the second has begun.
+            if command[1] == "--bg":
+                launching.set()
+                release.wait(10)
+            return first(command, **options)
+
+        second = FakeClaude(stdout="backgrounded · 44bbcd25 · task-t1\n")
+        outcome = {}
+
+        def start_second():
+            launching.wait(10)
+            try:
+                outcome["second"] = session.start(
+                    self.root, "t1", "concorde-8e", run=second
+                )
+            except store.TaskError as error:
+                outcome["second"] = error
+
+        thread = threading.Thread(target=start_second)
+        thread.start()
+        try:
+            launched = threading.Timer(0.5, release.set)
+            launched.start()
+            started = session.start(self.root, "t1", "concorde-7d", run=slow)
+        finally:
+            release.set()
+            thread.join(30)
+        self.assertEqual("33afbc14", started["id"])
+        refused = outcome["second"]
+        self.assertIsInstance(refused, store.TaskError)
+        self.assertEqual("session_running", refused.code)
+        # The second start never launched Claude Code.
+        self.assertNotIn("--bg", [c[1] for c, _ in second.calls])
+        self.assertEqual(
+            ["33afbc14"], [item["id"] for item in store.sessions(self.root, "t1")]
+        )
+        self.assertEqual("concorde-7d", store.load_task(self.root, "t1")["main"])
 
     def test_a_start_that_cannot_read_claude_codes_sessions_is_refused(self):
         session.start(self.root, "t1", "concorde-7d", run=FakeClaude())

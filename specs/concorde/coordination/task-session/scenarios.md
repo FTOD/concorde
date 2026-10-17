@@ -47,6 +47,8 @@ Commands and the session's [trace node](../../glossary.json#concept.trace-node) 
   `claude stop 33afbc14`
 - AND no Claude Code session is started
 - AND the task's boundary files, record and trace are unchanged
+- AND when two starts of `severity` run at once while it records no session, one starts and
+  records its session, and the other fails with `session_running`, starting no session
 
 ### scenario.task-session.replace-ended — A task session that is done or gone is replaced
 
