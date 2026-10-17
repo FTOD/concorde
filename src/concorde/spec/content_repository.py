@@ -307,7 +307,6 @@ class DocumentUnitRepository:
         self.glossary_entries: dict[str, dict] = {}
         self._terms_cache: dict[str, dict[str, list[dict]]] = {}
         self._identity_paths: dict[str, str] = {}
-        self._external_cache: dict[str, tuple[tuple[str, ...], str]] = {}
         self._context_cache: dict[str, dict[str, list[dict]]] = {}
         self._registry()
         self._documents()
@@ -1693,26 +1692,24 @@ class DocumentUnitRepository:
         )
 
     def _external(self, entry: str) -> tuple[tuple[str, ...], str]:
-        """The files of one external entry and their digest, read together once per repository,
-        so that the listing and the digest describe the same moment."""
-        if entry not in self._external_cache:
-            files = tuple(
-                expand_entry(
-                    self.root, entry, skipped_suffixes=REFERENCE_SKIPPED_SUFFIXES
-                )
-            )
-            self._external_cache[entry] = (
-                files,
-                digest([(path, digest(read_file(self.root, path))) for path in files]),
-            )
-        return self._external_cache[entry]
+        """The files of one external entry and their digest, read together when asked, so that
+        the listing and the digest describe the same moment. External material is no loaded
+        Spec source: nothing of it is kept across queries."""
+        files = tuple(
+            expand_entry(self.root, entry, skipped_suffixes=REFERENCE_SKIPPED_SUFFIXES)
+        )
+        return files, digest(
+            [(path, digest(read_file(self.root, path))) for path in files]
+        )
 
     def external_files(self, entry: str) -> tuple[str, ...]:
         """Existing readable files below one external entry, media and archives excluded."""
-        return self._external(entry)[0]
+        return tuple(
+            expand_entry(self.root, entry, skipped_suffixes=REFERENCE_SKIPPED_SUFFIXES)
+        )
 
     def external_digest(self, entry: str) -> str:
-        """One digest per entry over its readable files' paths and bytes; cached per repository."""
+        """One digest per entry over its readable files' paths and bytes, read when asked."""
         return self._external(entry)[1]
 
     def external_context(self, module: ModuleRef) -> tuple:
@@ -1722,14 +1719,9 @@ class DocumentUnitRepository:
         result = []
         for entry in self.external_inclusions(module):
             exists = entry_exists(self.root, entry)
+            files, combined = self._external(entry) if exists else ((), digest([]))
             result.append(
-                ExternalEntry(
-                    entry,
-                    is_directory_entry(entry),
-                    self.external_files(entry) if exists else (),
-                    self.external_digest(entry) if exists else digest([]),
-                    exists,
-                )
+                ExternalEntry(entry, is_directory_entry(entry), files, combined, exists)
             )
         return tuple(result)
 

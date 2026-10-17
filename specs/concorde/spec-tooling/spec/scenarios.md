@@ -36,6 +36,15 @@ the Module as a whole. The obligations they illustrate are in the [requirements]
 - BUT it raises no exception
 - BUT it writes no file
 
+### scenario.spec.snapshot-external — Loaded Specs stay, external material is current
+
+- GIVEN a repository loaded from a project whose Module A includes external material
+- WHEN a loaded document changes on disk
+- AND a file is added below A's external inclusion and another file of it changes
+- THEN the Spec context of the document's owner answers from the document as it was loaded
+- AND A's external files, their digest and A's context identity reflect the current external
+  material
+
 ### scenario.spec.reject-unsupported-profile — Refusing an unaccepted Protocol
 
 - GIVEN a project whose configuration binds a Protocol version or manifest digest that differs from
