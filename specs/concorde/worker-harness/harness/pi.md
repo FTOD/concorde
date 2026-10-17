@@ -62,6 +62,7 @@ A path argument is resolved the way pi resolves it:
 - A leading `~` becomes the worker's `HOME`.
 - A `file://` URL becomes its path.
 - The result is resolved against the working directory.
+- A trailing separator is removed, so a directory named as `dir/` is judged as `dir`.
 
 When a name does not exist, pi's `read` may then open another spelling of that name, such as:
 
