@@ -45,6 +45,7 @@ export interface Policy {
     denyWrite: string[];
   };
   programs: { rg: string; fd: string };
+  groups: string;
   limits: Limits;
   resultSchema: Record<string, unknown>;
 }

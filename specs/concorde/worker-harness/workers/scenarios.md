@@ -536,12 +536,30 @@ the run. [The run mechanics](launch.md) give these exact details:
 
 ## Host failures
 
+### scenario.workers.validation-answer-refused — A malformed or conflicting round validation answer fails the run
+
+- GIVEN a worker that ends `ok` with a clean audit
+- AND a round validation that answers a value that is not a `RoundValidation`, evidence that is not
+  mappings, both a repair and a violation, a failure without a repair, or a `Refusal` without code
+- WHEN the host reads the answer
+- THEN the run ends `failed` with `validation_unavailable` and the reason `capability`
+- AND the error names what is wrong with the answer
+- AND no resume round starts
+
 ### scenario.workers.timeout — A round past its deadline is killed
 
 - GIVEN a worker still running at its round's timeout
 - WHEN the deadline passes
 - THEN the host kills the worker's whole process group
 - AND the run ends `failed` with `worker_timeout` and a run record
+
+### scenario.workers.tool-groups-killed — No pi tool command outlives its round
+
+- GIVEN a pi worker whose tool command runs in a process group of its own and is registered in the
+  runtime directory's `control/groups/`
+- WHEN the round ends, because the agent process ended or because the round timed out
+- THEN the host kills that process group too
+- AND it forgets the registration
 
 ### scenario.workers.interrupted-run — An interrupted run still ends
 

@@ -113,6 +113,13 @@ class RunPaths:
         return self.root / "config"
 
     @property
+    def groups(self) -> Path:
+        """Where the pi permission extension registers the process group of each tool command
+        it runs, one empty file named by the group's identifier, for the host to kill when the
+        round ends."""
+        return self.control / "groups"
+
+    @property
     def home(self) -> Path:
         return self.root / "home"
 

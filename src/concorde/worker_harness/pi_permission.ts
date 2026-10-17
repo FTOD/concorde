@@ -12,9 +12,10 @@
  */
 
 import { spawn } from "node:child_process";
-import { constants } from "node:fs";
+import { constants, rmSync, writeFileSync } from "node:fs";
 import { access, readFile, stat } from "node:fs/promises";
 import { homedir } from "node:os";
+import { join } from "node:path";
 import { StringDecoder } from "node:string_decoder";
 import { SandboxManager } from "@concorde/sandbox-runtime";
 import { Type } from "typebox";
@@ -102,6 +103,30 @@ async function inSandbox(
       detached: true,
       stdio: ["ignore", "pipe", "pipe"],
     });
+    // The command runs in a process group of its own, which the host's kill of pi's group does
+    // not reach: registered by its identifier, the host kills it when the round ends however it
+    // ends, and on macOS no parent-death signal does.
+    const registered = child.pid
+      ? join(POLICY.groups, String(child.pid))
+      : null;
+    if (registered) {
+      try {
+        writeFileSync(registered, "");
+      } catch (error) {
+        try {
+          process.kill(-(child.pid as number), "SIGKILL");
+        } catch {
+          child.kill("SIGKILL");
+        }
+        reject(
+          new Error(
+            `${PREFIX}the command was not run: its process group could not be registered ` +
+              `for the host to stop: ${error instanceof Error ? error.message : String(error)}`,
+          ),
+        );
+        return;
+      }
+    }
     let stdout = "";
     let stderr = "";
     let timedOut = false;
@@ -137,6 +162,11 @@ async function inSandbox(
     child.on("error", reject);
     child.on("close", (code) => {
       if (timer) clearTimeout(timer);
+      try {
+        if (registered) rmSync(registered, { force: true });
+      } catch {
+        // The host forgets the group anyway once it has killed it.
+      }
       options.signal?.removeEventListener("abort", kill);
       if (lines && !enough) {
         lines.push(decoder.end());

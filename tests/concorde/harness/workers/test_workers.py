@@ -1280,6 +1280,46 @@ class WorkerRunTests(unittest.TestCase):
                 self.assertEqual(deleted, not (self.root / "src/a/old.py").exists())
                 self.assertEqual(["src/a/old.py"] if deleted else [], record["deleted"])
 
+    @verifies("scenario.workers.validation-answer-refused")
+    def test_a_malformed_or_conflicting_answer_fails_the_run(self):
+        refusal = Refusal("checks_failed", "the check still fails")
+        answers = {
+            "not a RoundValidation": ({"repair": "x"}, "a dict, not a RoundValidation"),
+            "evidence": (RoundValidation(evidence=("x",)), "evidence that is not"),
+            "empty repair": (RoundValidation(repair=""), "a repair that is not"),
+            "repair and violation": (
+                RoundValidation(repair="x", violation=refusal),
+                "both repair and violation",
+            ),
+            "failure alone": (RoundValidation(failure=refusal), "a failure without"),
+            "evidence and unavailable": (
+                RoundValidation(evidence=({"a": 1},), unavailable=refusal),
+                "evidence with unavailable",
+            ),
+            "refusal without code": (
+                RoundValidation(violation=Refusal("", "not allowed")),
+                "violation has no code",
+            ),
+            "causes": (
+                RoundValidation(repair="x", failure=Refusal("c", "d", ("link",))),
+                "the causes of failure c",
+            ),
+        }
+        for name, (answer, named) in answers.items():
+            with self.subTest(answer=name):
+                record = self.project.run(
+                    [{}, {}],
+                    check_modules=None,
+                    round_validation=lambda *_, answer=answer: answer,
+                )
+                self.assertEqual("failed", record["status"])
+                error = record["error"]
+                self.assertEqual("validation_unavailable", error["code"])
+                self.assertEqual("capability", error["unhandled"]["reason"])
+                self.assertIn("does not accept", error["detail"])
+                self.assertIn(named, error["detail"])
+                self.assertEqual(1, len(record["rounds"]))
+
     def test_a_result_returned_before_a_process_failure_is_kept(self):
         for step, code in (
             ({"envelope": {"subtype": "error_max_turns"}}, "worker_limit_reached"),
@@ -2166,6 +2206,66 @@ class WorkerRunTests(unittest.TestCase):
             contract["schema"]["properties"]["transient"],
             workers_module.WORKER_ROUND_TRACE_SCHEMA["properties"]["transient"],
         )
+
+
+TOOL_GROUP_AGENT = """
+import pathlib, subprocess, sys, time
+groups, pid_file, linger = pathlib.Path(sys.argv[1]), pathlib.Path(sys.argv[2]), sys.argv[3]
+# A tool command in a process group of its own, as pi's permission extension runs each one.
+tool = subprocess.Popen(["sleep", "60"], start_new_session=True)
+(groups / str(tool.pid)).write_text("")
+pid_file.write_text(str(tool.pid))
+if linger == "yes":
+    time.sleep(60)
+"""
+
+
+class ToolGroupTests(unittest.TestCase):
+    """The host kills the process group of every tool command registered in ``control/groups/``
+    when the round ends, however it ends."""
+
+    @verifies("scenario.workers.tool-groups-killed")
+    def test_a_registered_tool_group_never_outlives_its_round(self):
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        base = Path(directory.name)
+        paths = RunPaths(base / "runtime")
+        for folder in (paths.work, paths.groups):
+            folder.mkdir(parents=True)
+        agent = base / "agent.py"
+        agent.write_text(TOOL_GROUP_AGENT)
+        for linger, timeout in (("no", 30), ("yes", 2)):
+            with self.subTest(timed_out=linger == "yes"):
+                pid_file = base / f"tool-{linger}.pid"
+                request = WorkerRequest(
+                    worktree=base,
+                    task_type="implement",
+                    grant={},
+                    instructions="",
+                    timeout=timeout,
+                )
+                outcome = workers_module._launch(
+                    request,
+                    paths,
+                    [
+                        sys.executable,
+                        str(agent),
+                        str(paths.groups),
+                        str(pid_file),
+                        linger,
+                    ],
+                    dict(os.environ),
+                    "",
+                    lambda line: None,
+                    lambda data: None,
+                )
+                self.assertEqual(linger == "yes", outcome["timed_out"])
+                tool = int(pid_file.read_text())
+                deadline = time.monotonic() + 5
+                while (running := alive(tool)) and time.monotonic() < deadline:
+                    time.sleep(0.05)
+                self.assertFalse(running, "the tool command outlived its round")
+                self.assertEqual([], list(paths.groups.iterdir()))
 
 
 class NestedRepositoryAuditTests(unittest.TestCase):

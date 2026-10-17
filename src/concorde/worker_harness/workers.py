@@ -30,7 +30,7 @@ import signal
 import subprocess
 import threading
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -234,7 +234,8 @@ class RoundValidation:
     folder in the round's node. ``repair`` is the text naming what the worker must repair, which
     becomes the next resume round's prompt; with it, ``failure`` says that the run ends ``failed``
     when no rounds are left for it. Instead of a repair, ``violation`` ends the run at once for what
-    the caller does not allow at all, and ``unavailable`` when it could not validate.
+    the caller does not allow at all, and ``unavailable``, alone, when it could not validate. Any
+    other combination ends the run with ``validation_unavailable`` (``answer_problem``).
     """
 
     evidence: tuple = ()
@@ -242,6 +243,51 @@ class RoundValidation:
     failure: Refusal | None = None
     violation: Refusal | None = None
     unavailable: Refusal | None = None
+
+
+def _refusal_problem(name: str, refusal) -> str | None:
+    if not isinstance(refusal, Refusal):
+        return f"{name} is a {type(refusal).__name__}, not a Refusal"
+    if not isinstance(refusal.code, str) or not refusal.code:
+        return f"{name} has no code"
+    if not isinstance(refusal.detail, str) or not refusal.detail:
+        return f"{name} {refusal.code} has no detail"
+    if not isinstance(refusal.causes, (tuple, list)) or not all(
+        isinstance(cause, Mapping) for cause in refusal.causes
+    ):
+        return f"the causes of {name} {refusal.code} are not a sequence of links"
+    return None
+
+
+def answer_problem(answer) -> str | None:
+    """What makes a round validation's answer one Workers refuses, or None for a valid one
+    (launch.md#round-validation): exactly one meaning, each field of its type."""
+    if not isinstance(answer, RoundValidation):
+        return f"a {type(answer).__name__}, not a RoundValidation"
+    if not isinstance(answer.evidence, (tuple, list)) or not all(
+        isinstance(item, Mapping) for item in answer.evidence
+    ):
+        return "evidence that is not a sequence of mappings"
+    if answer.repair is not None and (
+        not isinstance(answer.repair, str) or not answer.repair
+    ):
+        return "a repair that is not a non-empty string"
+    given = [
+        name
+        for name in ("repair", "violation", "unavailable")
+        if getattr(answer, name) is not None
+    ]
+    if len(given) > 1:
+        return f"both {' and '.join(given)}; an answer gives at most one of them"
+    if answer.failure is not None and answer.repair is None:
+        return "a failure without a repair"
+    if answer.unavailable is not None and answer.evidence:
+        return "evidence with unavailable; an answer that could not validate keeps none"
+    for name in ("failure", "violation", "unavailable"):
+        value = getattr(answer, name)
+        if value is not None and (problem := _refusal_problem(name, value)):
+            return problem
+    return None
 
 
 @dataclass
@@ -538,6 +584,7 @@ def _launch(
         timed_out = True
     finally:
         _kill_group(process)
+        _kill_registered(paths)
         process.wait()
         for thread in threads:
             thread.join(timeout=10)
@@ -556,6 +603,26 @@ def _kill_group(process) -> None:
         os.killpg(process.pid, signal.SIGKILL)
     except (ProcessLookupError, PermissionError):
         pass
+
+
+def _kill_registered(paths) -> None:
+    """Kill every process group the pi permission extension registered for a tool command, which
+    runs in a group of its own, and forget it: once the agent's group is killed, nothing of the
+    round may go on writing."""
+    try:
+        entries = list(paths.groups.iterdir())
+    except OSError:
+        return
+    for entry in entries:
+        if entry.name.isdigit() and int(entry.name) > 1:
+            try:
+                os.killpg(int(entry.name), signal.SIGKILL)
+            except (ProcessLookupError, PermissionError):
+                pass
+        try:
+            entry.unlink()
+        except OSError:
+            pass
 
 
 def worker_link(record: dict, result: dict) -> dict | None:
@@ -1287,12 +1354,18 @@ def _run(
             progress.phase("validation", round=number)
             try:
                 answer = request.round_validation(worktree, round_node.folder, result)
-                if not isinstance(answer, RoundValidation):
-                    raise TypeError(
-                        f"it answered a {type(answer).__name__}, not a RoundValidation"
-                    )
+                problem = answer_problem(answer)
+                detail = (
+                    f"the round validation answered what Workers does not accept: {problem}"
+                    if problem
+                    else None
+                )
             except Exception as error:  # noqa: BLE001 -- the caller's code, reported in full
-                detail = exception_detail(error)
+                detail = (
+                    "the round validation raised instead of answering: "
+                    + exception_detail(error)
+                )
+            if detail is not None:
                 round_record["evidence"] = []
                 round_record["validation"] = f"not run: {detail}"
                 _finish_round(
@@ -1300,11 +1373,10 @@ def _run(
                 )
                 return fail(
                     "validation_unavailable",
-                    f"round {number}: the round validation raised instead of answering: "
-                    f"{detail}",
+                    f"round {number}: {detail}",
                     "capability",
                     "Workers cannot validate a round itself and never accepts a round its "
-                    "caller could not validate",
+                    "caller could not validate, nor an answer that does not say one thing",
                     attempts=attempts,
                 )
             round_record["evidence"] = [dict(item) for item in answer.evidence]
@@ -1609,6 +1681,7 @@ __all__ = [
     "WORKER_RESULT_SCHEMA",
     "Refusal",
     "RoundValidation",
+    "answer_problem",
     "WorkerRequest",
     "brief",
     "result_schema",
