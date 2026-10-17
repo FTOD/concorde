@@ -17,7 +17,8 @@ been worked already, and it does not check.
 The repair of an adopted case's Specs SHALL NOT change the project's code.
 
 Whether the repair changes the Specs at all is the [bounded round](#req.swe-bench-cases.repair-specs-only)'s
-concern: a round whose first review accepts the Specs changes nothing.
+concern: a round whose first review accepts the Specs changes nothing. Such a round closes its
+task as completed, without delivery or merge.
 
 ### req.swe-bench-cases.graded-apart — A case's tests stay outside the project
 

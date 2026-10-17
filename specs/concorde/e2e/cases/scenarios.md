@@ -41,8 +41,10 @@ Concrete situations that show the [requirements](requirements.md) of
 
 - GIVEN an adopted case whose Spec review accepts its Specs
 - WHEN the developer runs `repair-specs` for it
-- THEN the task runs `spec_panel`, `task-validation` and `delivery`
-- BUT it runs no `specify` and no second review
+- THEN the task runs `spec_panel` alone
+- AND the task is closed as completed, its note naming the accepting review
+- BUT it runs no `specify`, no second review, no `task-validation` and no `delivery`, and it is not merged
+- AND the command prints the task's end as `closed` and no step it stopped at
 
 ### scenario.swe-bench-cases.repair-stopped — A step that does not end ok stops the repair
 

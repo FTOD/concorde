@@ -109,14 +109,19 @@ named `repair-specs`. The command follows these steps
 - Run `delivery`.
 - Merge the task.
 
+When the first review accepts the Specs, the round ends after it. The task then holds no change,
+and [Delivery](../../method/delivery/module.md) would refuse it with `nothing_to_deliver`. So
+`repair-specs` closes the task as completed, with a note naming the accepting review, and runs no
+`specify`, second review, `task-validation`, `delivery` or merge
+([scenario](scenarios.md#scenario.swe-bench-cases.repair-accepted)).
+
 Every run starts in the task's worktree. It names no task. The
 [Operations](../../glossary.json#concept.operation) start with `concorde run`. The
 [execution commands](../../glossary.json#concept.execution-command) start as
 `concorde task-validation` and `concorde delivery`. Each works on the worktree's [workspace
 binding](../../glossary.json#concept.workspace-binding). One round bounds the repair.
-What the second review still finds is reported. When a review's
-[verdict](../../glossary.json#concept.review-verdict) is `accepted`, `task-validation` and
-`delivery` follow with no repair. Whether its verdict is `accepted` or `changes_required`, a
+What the second review still finds is reported. Whether a review's
+[verdict](../../glossary.json#concept.review-verdict) is `accepted` or `changes_required`, a
 review ends `ok`. Because the second review ends `ok`, its remaining findings do not stop the round.
 When a step does not end `ok`, the repair stops with its result. It leaves the task open.
 The command prints the following:
@@ -130,6 +135,8 @@ The command prints the following:
   - The review's verdict, for a review.
   - The error, for a step that did not end `ok`.
 - The step the repair stopped at, or none.
+- How the task ended: `merged`, `closed` after an accepting first review, or `open` after a step
+  that did not end `ok`.
 
 When a task of the same name already exists, the command fails with `task open`'s error.
 The round, with its one branch and the exit every step shares:
@@ -144,10 +151,11 @@ again: "spec_panel again, findings reported"
 validate: "task-validation"
 delivery: "delivery"
 merge: "task merge" {shape: oval}
+close: "task close --completed:\nnothing to deliver" {shape: oval}
 stop: "Stopped at that step, the task left open" {shape: oval}
 open -> review
 review -> accepted
-accepted -> validate: yes
+accepted -> close: yes
 accepted -> specify: no
 specify -> again -> validate
 validate -> delivery -> merge
@@ -308,7 +316,8 @@ round finds its workspace there. `task open` refuses a task name already taken, 
 fails with that refusal. Tasks also merges the delivered task. A merge closes the task only when
 its branch holds a [delivery commit](../../glossary.json#concept.delivery-commit) that verifies
 ([requirement](../../coordination/tasks/requirements.md#req.tasks.merge-verified)). A step that
-does not end `ok` therefore leaves the task open and unmerged.
+does not end `ok` therefore leaves the task open and unmerged. After an accepting first review,
+`task close --completed` closes the task without a merge.
 
 <a id="uses-execution"></a>
 
@@ -339,7 +348,9 @@ second review still reports never block the round's validation, delivery or merg
 **Delivery** validates the whole workspace again in `delivery` and makes the delivery commit only
 when its own readiness is ready
 ([requirement](../../method/delivery/requirements.md#req.delivery.own-readiness)). A blocked
-delivery stops the round before the merge.
+delivery stops the round before the merge. Delivery also refuses a workspace with no change since
+its base commit, with `nothing_to_deliver`. The round therefore never delivers after an accepting
+first review.
 
 <a id="uses-specification"></a>
 
