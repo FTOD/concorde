@@ -190,6 +190,42 @@ class TracingTests(unittest.TestCase):
             roots.register(replace(TASK_ROOTS[1], state="current"))
         self.assertEqual("duplicate_root", refused.exception.code)
 
+    def test_a_root_definition_is_checked_field_by_field(self):
+        history = TASK_ROOTS[1]
+        # The contract's example registration is the registered history root.
+        roots.register(
+            roots.TraceRoot(
+                name="history",
+                folder="history",
+                place="primary",
+                kind="task",
+                state="closed",
+                listed="history",
+                period="history_days",
+                conversation_period="conversation_days",
+                conversation_files=("transcript.jsonl",),
+                conversation_folders=("transcript",),
+            )
+        )
+        with self.assertRaises(TypeError):
+            roots.TraceRoot("r", "r", "primary", "run", "current", "never")
+        for broken in (
+            {"folder": "a/b"},
+            {"place": "anywhere"},
+            {"kind": ""},
+            {"ended": ""},
+            {"period": "forever"},
+            {"conversation_files": ["transcript.jsonl"]},
+            {"conversation_folders": ("",)},
+            {"alive_lock": "merge"},
+        ):
+            with self.subTest(broken), self.assertRaises(roots.RootError) as refused:
+                roots.register(
+                    replace(history, **{"name": "other", "folder": "other", **broken})
+                )
+            self.assertEqual("invalid_root", refused.exception.code)
+        self.assertNotIn("other", {root.name for root in roots.registered()})
+
     def test_the_node_schema_is_the_contract(self):
         self.assertEqual(spec_contract("contract.tracing.node")["schema"], NODE_SCHEMA)
         self.assertEqual(

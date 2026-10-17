@@ -20,6 +20,9 @@ STATES = ("current", "closed")
 LISTINGS = ("always", "history", "unbound", "never")
 # The retention periods of the Tracing configuration a root may name.
 PERIODS = ("unbound_days", "history_days", "conversation_days")
+# The lock kinds of the layout named after what they lock, one of which may say a top node is
+# still written.
+ALIVE_LOCKS = ("task", "workspace", "workflow", "run", "attempt")
 
 
 class RootError(Exception):
@@ -31,7 +34,7 @@ class RootError(Exception):
         self.code = code
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, kw_only=True)
 class TraceRoot:
     """One registered trace root.
 
@@ -91,10 +94,18 @@ def register(root: TraceRoot) -> None:
         or root.place not in PLACES
         or root.state not in STATES
         or root.listed not in LISTINGS
+        or not root.kind
+        or not root.ended
         or any(
             period is not None and period not in PERIODS
             for period in (root.period, root.conversation_period)
         )
+        or any(
+            not isinstance(names, tuple)
+            or not all(isinstance(name, str) and name for name in names)
+            for names in (root.conversation_files, root.conversation_folders)
+        )
+        or (root.alive_lock is not None and root.alive_lock not in ALIVE_LOCKS)
     ):
         raise RootError("invalid_root", f"{root!r} is no trace root definition")
     for existing in _ROOTS.values():
@@ -123,6 +134,7 @@ def placed(roots: Iterable[TraceRoot], concorde: Path) -> tuple[TraceRoot, ...]:
 
 
 __all__ = [
+    "ALIVE_LOCKS",
     "LISTINGS",
     "PERIODS",
     "PLACES",
