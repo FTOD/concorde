@@ -862,8 +862,10 @@ workflow finds a model for each of them.
 [brownfield workflow](../glossary.json#concept.brownfield-workflow).
 It renders their scripts.
 It also renders the stand-in runtime of its tests that a driver run reuses.
-It provides the workflow result a run ends with.
-It provides the workflow record of each workspace.
+It provides the workflow result a run ends with
+([its contract](../workflows/contracts.md#contract.workflows.result)).
+It provides the workflow record of each workspace
+([its contract](../workflows/contracts.md#contract.workflows.workflow-trace)).
 In that record, `run` finds the latest saved result.
 In that record, `watch` finds the steps.
 End-to-end testing relies on the record listing the saved results in order and each step with its
@@ -880,7 +882,8 @@ run.
 When `prepare` opens the task, Tasks writes that workspace binding.
 End-to-end testing never writes it.
 For each run, `watch` reads the run store's
-[run progress files](../glossary.json#concept.run-progress-file).
+[run progress files](../glossary.json#concept.run-progress-file)
+([their fields](../execution/runner.md#run-progress-file)).
 It relies on them to name these fields:
 
 - Workspace.
@@ -897,10 +900,19 @@ The file can be absent for either reason:
 
 If the runner dies before writing the file, a run left out stays out.
 
+The owners case reads each run it judges from the run's folder in the run store
+([its contract](../execution/contracts.md#contract.execution.run-trace)) and from its
+[run result](../glossary.json#concept.run-result)
+([its contract](../execution/contracts.md#contract.execution.run-result)).
+Whether a run's runner still runs, End-to-end testing tells only by the run's
+[run lock](../glossary.json#concept.run-lock)
+([requirement](../execution/requirements.md#req.execution.run-lock-held)), never by `host_pid`.
+
 <a id="uses-kernel"></a>
 
 **Kernel** defines the [workspace binding](../glossary.json#concept.workspace-binding) that names
-each test project's task workspace.
+each test project's task workspace
+([its contract](../kernel/contracts.md#contract.kernel.workspace-binding)).
 End-to-end testing reads it.
 End-to-end testing never writes it.
 Kernel also defines the [workspace lock](../glossary.json#concept.workspace-lock).
@@ -922,7 +934,8 @@ It creates these:
 - The [workspace binding](../glossary.json#concept.workspace-binding) that every run there reads.
 - The task's folder, whose workspace folder holds the workflow record `run` reads.
 
-Tasks provides the [task record](../glossary.json#concept.task-record) in that folder.
+Tasks provides the [task record](../glossary.json#concept.task-record) in that folder
+([its contract](../coordination/tasks/contracts.md#contract.tasks.record)).
 `run` works in the worktree the record names.
 The owners case runs its unowned run there too.
 Tasks also provides `concorde task show`, which a Claude Code session asks.
