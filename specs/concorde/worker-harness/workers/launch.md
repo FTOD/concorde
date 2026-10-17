@@ -498,10 +498,17 @@ following:
 - the index digest
 - the digest of every tracked change and untracked file that already exists, including its content
   and, as Git sees it, its executable bit
+- for each **nested repository**, its `HEAD` and index digest, measured as the worktree's own
 
-After each round, the host runs read-only Git
-(`git status --porcelain=v2 -z --untracked-files=all` and the digests of the listed files) and
-compares with the snapshot. When Git no longer lists a file of the snapshot, the host measures the
+A nested repository is an initialized submodule, whose `.git` exists, or an untracked directory that
+Git reports as a nested repository. The host measures each one inside, at any depth, as it measures
+the worktree. It keys every file inside by its path relative to the worktree, such as
+`lib/src/x.py`. A submodule's own entry in the worktree's status is no file. A nested repository
+inside a path Git ignores is not observed.
+
+After each round, the host runs read-only Git in the worktree and in every nested repository
+(`git status --porcelain=v2 -z --untracked-files=all`, `git ls-files --stage` for the submodules
+and the digests of the listed files) and compares with the snapshot. When Git no longer lists a file of the snapshot, the host measures the
 file where it lies. If the file is equal to `HEAD` again, it changed. If the file is gone, as an
 untracked file deleted is, it was deleted.
 
@@ -510,7 +517,7 @@ untracked file deleted is, it was deleted.
 | a changed or new file whose level is `rw` | allowed |
 | a changed or new file of any other level, or of none | violation |
 | a deleted file | violation |
-| a changed `HEAD`, index or branch | violation |
+| a changed `HEAD`, index or branch, of the worktree or of a nested repository | violation |
 | a change under a path Git ignores | not observed |
 
 As the Harness reads it, a file's level is that of the grant's most specific entry for it. The
@@ -524,7 +531,7 @@ Each round records its audit as an object with:
 | --- | --- |
 | `verdict` | `clean` when nothing is a violation, otherwise `violation` |
 | `changed` | every path, relative to the worktree and in path order, whose file was created, changed or deleted since the snapshot |
-| `violations` | each violation as one string, in path order after any Git state: `HEAD` for a `HEAD` that names another branch or commit and `index` for a changed index; the path of a file created or changed outside `rw`; and the path followed by ` (deleted)` for a deleted file |
+| `violations` | each violation as one string, in path order after any Git state: `HEAD` for a `HEAD` that names another branch or commit and `index` for a changed index, then `<path>: HEAD` and `<path>: index` for those of the nested repository at that path; the path of a file created or changed outside `rw`; and the path followed by ` (deleted)` for a deleted file |
 
 A round whose audit did not run, such as one whose command could not be started, has `audit` null
 in its node.

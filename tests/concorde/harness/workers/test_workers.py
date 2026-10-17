@@ -2168,6 +2168,106 @@ class WorkerRunTests(unittest.TestCase):
         )
 
 
+class NestedRepositoryAuditTests(unittest.TestCase):
+    """The audit measures the files of initialized submodules and untracked nested repositories
+    with their worktree-relative paths, and their HEAD and index."""
+
+    def setUp(self):
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        base = Path(os.path.realpath(directory.name))
+        commit = ("-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "c")
+        library = base / "library"
+        library.mkdir()
+        git(library, "init", "-q")
+        for name in ("x.py", "y.py"):
+            (library / name).write_text(f"{name}\n")
+        git(library, "add", "-A")
+        git(library, *commit)
+        self.root = base / "project"
+        self.root.mkdir()
+        git(self.root, "init", "-q")
+        (self.root / "main.py").write_text("main\n")
+        git(self.root, "add", "-A")
+        git(self.root, *commit)
+        git(
+            self.root,
+            "-c",
+            "protocol.file.allow=always",
+            "submodule",
+            "add",
+            "-q",
+            str(library),
+            "lib",
+        )
+        git(self.root, *commit)
+        self.commit = commit
+        # An untracked nested repository, such as a checkout a project keeps beside its code.
+        self.nested = self.root / "vendor"
+        self.nested.mkdir()
+        git(self.nested, "init", "-q")
+        (self.nested / "v.py").write_text("v\n")
+        git(self.nested, "add", "-A")
+        git(self.nested, *commit)
+        self.writable = {"lib/x.py", "lib/new.py", "vendor/v.py"}
+
+    def audited(self, change, before=None):
+        from concorde.worker_harness.audit import audit, snapshot
+
+        if before is not None:
+            before()
+        start = snapshot(self.root)
+        change()
+        return audit(self.root, start, lambda path: path in self.writable)
+
+    @verifies("scenario.workers.audit-nested-repositories")
+    def test_a_permitted_edit_in_a_clean_submodule_is_clean(self):
+        result = self.audited(lambda: (self.root / "lib/x.py").write_text("changed\n"))
+        self.assertEqual(("lib/x.py",), result.changed)
+        self.assertEqual((), result.violations)
+
+    @verifies("scenario.workers.audit-nested-repositories")
+    def test_a_forbidden_edit_in_a_submodule_is_a_violation(self):
+        for name, before in {
+            "clean": None,
+            "dirty": lambda: (self.root / "lib/x.py").write_text("dirty\n"),
+        }.items():
+            with self.subTest(submodule=name):
+                git(self.root / "lib", "checkout", "-q", "--", ".")
+                result = self.audited(
+                    lambda: (self.root / "lib/y.py").write_text("changed\n"), before
+                )
+                self.assertEqual(("lib/y.py",), result.violations)
+
+    @verifies("scenario.workers.audit-nested-repositories")
+    def test_a_deletion_in_a_submodule_is_named_as_deleted(self):
+        new = self.root / "lib/new.py"
+        result = self.audited(new.unlink, lambda: new.write_text("new\n"))
+        self.assertEqual(("lib/new.py",), result.changed)
+        self.assertEqual(("lib/new.py (deleted)",), result.violations)
+        result = self.audited((self.root / "lib/x.py").unlink)
+        self.assertEqual(("lib/x.py (deleted)",), result.violations)
+
+    @verifies("scenario.workers.audit-nested-repositories")
+    def test_a_moved_submodule_head_or_index_is_a_violation(self):
+        def commit_inside():
+            (self.root / "lib/x.py").write_text("committed\n")
+            git(self.root / "lib", "add", "x.py")
+            git(self.root / "lib", *self.commit)
+
+        result = self.audited(commit_inside)
+        self.assertIn("lib: HEAD", result.violations)
+        self.assertIn("lib: index", result.violations)
+
+    @verifies("scenario.workers.audit-nested-repositories")
+    def test_an_untracked_nested_repository_is_measured_inside(self):
+        result = self.audited(lambda: (self.nested / "v.py").write_text("changed\n"))
+        self.assertEqual(("vendor/v.py",), result.changed)
+        self.assertEqual((), result.violations)
+        result = self.audited(lambda: (self.nested / "w.py").write_text("new\n"))
+        self.assertEqual(("vendor/w.py",), result.violations)
+
+
 class RetryRuleTests(unittest.TestCase):
     """Which errors are transient and how long a retry waits, apart from any run."""
 

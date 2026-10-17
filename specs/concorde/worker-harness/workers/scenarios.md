@@ -377,6 +377,17 @@ the run. [The run mechanics](launch.md) give these exact details:
 - AND the error's detail says that the worker result was invalid
 - AND the error has no cause from the worker
 
+### scenario.workers.audit-nested-repositories — Files inside a nested repository are audited
+
+- GIVEN a task worktree with an initialized submodule and an untracked nested repository
+- AND either one clean or already changed before the snapshot
+- WHEN a round changes, creates or deletes a file inside one of them, or moves its `HEAD` or index
+- THEN the audit lists the file by its path relative to the worktree
+- AND it allows a changed or new file whose level is `rw`
+- AND it names a file of any other level, or a deleted file followed by ` (deleted)`, as a violation
+- AND it names a moved `HEAD` or a changed index as `<path>: HEAD` or `<path>: index`
+- BUT it never names the submodule's own directory as a deleted file
+
 ### scenario.workers.audit-unavailable — A round that cannot be audited ends the run
 
 - GIVEN a worker round that ends with a valid `ok` result proposing the deletion of a `rw` file
