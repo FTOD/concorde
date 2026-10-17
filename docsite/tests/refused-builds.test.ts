@@ -36,6 +36,7 @@ import {
   glossaryFile,
   glossaryPath,
   put as putFile,
+  putDocument,
   read,
   readJson,
   updateMetadata,
@@ -617,3 +618,36 @@ it("a custom docs page with a broken internal link fails the build naming the li
   expect(existsSync(resolve(root, "docsite/.generated/candidate"))).toBe(false);
   expect(snapshot(published())).toEqual(previous);
 });
+
+// verifies: scenario.views.outputs-disjoint
+it("a build refuses a registered document inside its candidate before deleting the candidate", async () => {
+  const path = "docsite/.generated/candidate/notes.md";
+  project.modules.find((m) => m.id === "module.ledger")!.owns.push(path);
+  putDocument(project, path, {
+    owner: "module.ledger",
+    body: "# Notes\n\nKept.\n",
+  });
+  writeRegistry(project);
+  const before = read(project, path);
+  await expect(buildScript()()).rejects.toThrow(
+    /candidate\/notes\.md lies inside the publication output docsite\/\.generated\//,
+  );
+  expect(read(project, path)).toBe(before);
+  expect(read(project, path + ".json")).toContain("module.ledger");
+  expect(spawned).toBe(0);
+});
+
+// verifies: scenario.views.outputs-disjoint
+it.each(["docsite/.generated", "docsite/.generated/candidate"])(
+  "a build refuses a symbolic link at %s before deleting anything",
+  async (link) => {
+    const before = snapshot(resolve(root, "specs"));
+    mkdirSync(resolve(root, link, ".."), { recursive: true });
+    symlinkSync(resolve(root, "specs"), resolve(root, link));
+    await expect(buildScript()()).rejects.toThrow(
+      `Publication output ${link}/ is a symbolic link`,
+    );
+    expect(snapshot(resolve(root, "specs"))).toEqual(before);
+    expect(spawned).toBe(0);
+  },
+);

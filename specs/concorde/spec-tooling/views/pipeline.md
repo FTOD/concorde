@@ -77,16 +77,29 @@ When any of these conditions holds, loading fails with an `Error` naming the sou
 - A `relies_on` identity names no node defined by the relation's target.
 - An inclusion names an unknown Module or document.
 - Two documents would share a route.
+- The site identity is invalid.
 - A source lies inside a publication output directory: `docsite/.generated/`, `docsite/build/` or
   `docsite/.docusaurus/`.
-  The sources are the configuration, the registry, both members of every document, the glossary
-  and the site identity.
+  The sources are these:
+  - The configuration, the registry, both members of every document, the glossary and the site
+    identity.
+  - The authored documentation that publication reads: the user documents directory, every custom
+    docs collection directory and sidebar file, and the directory and sidebar file of every docs
+    plugin that `custom-docs/index.ts` adds.
+
   A source counts as inside when its path lies there or when its physical location, after every
   symbolic link is resolved, lies inside the output directory's physical location.
-- One of those output directories is a symbolic link, which would send its cleanup elsewhere.
+- A symbolic link would send cleanup or a write elsewhere. One of these paths is a symbolic link:
+  - One of those output directories.
+  - A path below them that publication clears, renames or writes by name: the staging directory of
+    each mode with its `content/`, `scoped-materialization.json` and `specs-sidebar.json`, the
+    production generated directory, the candidate and the backup.
+  - A directory between such a path and its output directory.
 
 Every command loads before it clears or writes anything. So a source that publication could
-delete is refused while it is still intact.
+delete is refused while it is still intact. To find the docs plugins that `custom-docs/index.ts`
+adds, loading loads that file when it exists. A file of the wrong shape then fails loading as it
+fails [custom docs admission](#build-hooks).
 
 These are the checks the publisher needs to produce correct pages.
 Spec core's validator handles these checks:
@@ -501,14 +514,17 @@ Validation repairs nothing.
 
 `buildSite()` performs these steps:
 
-- It checks the configuration.
-- It deletes `docsite/.generated/candidate`.
-- It runs `preparePublication` in `build` mode.
-- It runs `docusaurus build --out-dir` into the candidate with the production generated directory.
-- It validates the candidate.
-- It calls `promoteCandidate`.
+1. It checks the configuration.
+2. It runs `preparePublication` in `build` mode, which loads and admits every source before it
+   clears anything.
+3. It deletes `docsite/.generated/candidate`.
+4. It runs `docusaurus build --out-dir` into the candidate with the production generated
+   directory.
+5. It validates the candidate.
+6. It calls `promoteCandidate`.
 
-On any failure, `buildSite()` deletes the candidate and rethrows.
+A failure of steps 1 and 2 deletes nothing. On a later failure, `buildSite()` deletes the candidate
+and rethrows.
 
 `promoteCandidate(candidate, destination, backup)` performs these steps:
 

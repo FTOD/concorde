@@ -7,14 +7,18 @@ import {
  type ScopedRegistry,
 } from "../plugins/scoped-content/model";
 import { materializeScoped } from "../plugins/scoped-content/materialize";
-import type { PublicationMode } from "../plugins/scoped-content/staging";
+import {
+ PRODUCTION_GENERATED_DIRECTORY,
+ type PublicationMode,
+} from "../plugins/scoped-content/staging";
 
-export const productionGeneratedDirectory = ".generated/docusaurus-production";
+export const productionGeneratedDirectory = PRODUCTION_GENERATED_DIRECTORY;
 
 /**
  * Stage the registered Markdown and navigation this build publishes. Diagrams are the D2 fences of
  * the registered documents, rendered to images by the `d2` program; checkout-only extensions
- * register their own routes.
+ * register their own routes. Loading admits every source before anything is cleared, so a source
+ * publication could delete is refused while it is still intact.
  */
 export async function preparePublication(
  projectRoot: string,
