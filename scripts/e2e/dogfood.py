@@ -111,6 +111,12 @@ def scenario_problem(name: str, value) -> str | None:
             return (
                 f"edit {index} of its fault is no object with file, old and new texts"
             )
+        if not _clone_relative(edit["file"]):
+            # An absolute path or a .. segment would name a file outside the clone.
+            return (
+                f"edit {index} of its fault names the file {edit['file']!r}, which is no "
+                "relative path inside the clone without empty, . or .. segments"
+            )
         if edit["old"] in edit["new"]:
             # The old text would survive the injection, which could then be repeated.
             return f"edit {index} of its fault keeps its old text in its new text"
@@ -125,6 +131,13 @@ def scenario_problem(name: str, value) -> str | None:
     return None
 
 
+def _clone_relative(file: str) -> bool:
+    """Whether ``file`` is a relative POSIX path whose every segment names an entry."""
+    return not file.startswith("/") and all(
+        part not in ("", ".", "..") for part in file.split("/")
+    )
+
+
 def listing() -> list[dict]:
     return [
         {"name": item.stem, "description": scenario(item.stem)["description"]}
@@ -133,10 +146,31 @@ def listing() -> list[dict]:
 
 
 def inject(concorde: Path, fault: dict) -> str:
-    """Apply the fault's edits to the Concorde clone, commit them and return the commit."""
+    """Apply the fault's edits to the Concorde clone, commit them and return the commit.
+    Every edit is checked before any is written: one whose file resolves outside the clone,
+    such as through a symbolic link, or whose old text is not found exactly once is refused
+    with ``fault_not_applicable``, so nothing outside the clone is ever written."""
+    root = concorde.resolve()
+    # The text each edited file is to have, so that edits of one file apply in turn.
+    planned: dict[Path, str] = {}
     for index, edit in enumerate(fault["edits"]):
-        path = concorde / edit["file"]
-        text = path.read_text(encoding="utf-8") if path.is_file() else ""
+        if not _clone_relative(edit["file"]):
+            raise E2EError(
+                "fault_not_applicable",
+                f"edit {index} of the fault names {edit['file']!r}, which is no relative "
+                "path inside the clone",
+            )
+        path = (concorde / edit["file"]).resolve()
+        if not path.is_relative_to(root):
+            raise E2EError(
+                "fault_not_applicable",
+                f"edit {index} of the fault names {edit['file']}, which resolves to {path} "
+                f"outside the clone {root}; a fault edits only the clone",
+            )
+        if path in planned:
+            text = planned[path]
+        else:
+            text = path.read_text(encoding="utf-8") if path.is_file() else ""
         count = text.count(edit["old"])
         if count != 1:
             raise E2EError(
@@ -145,7 +179,9 @@ def inject(concorde: Path, fault: dict) -> str:
                 f"{edit['file']} instead of once; the Concorde source changed since the "
                 "scenario was written, so update the scenario's fault",
             )
-        path.write_text(text.replace(edit["old"], edit["new"]), encoding="utf-8")
+        planned[path] = text.replace(edit["old"], edit["new"])
+    for path, text in planned.items():
+        path.write_text(text, encoding="utf-8")
     run([*GIT, "commit", "-qam", f"Inject fault: {fault['summary']}"], cwd=concorde)
     return run(["git", "rev-parse", "HEAD"], cwd=concorde).stdout.strip()
 

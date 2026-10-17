@@ -198,6 +198,10 @@ The baselines are everything a session must leave as it was
 
 When an edit's old text is not found exactly once, `prepare` refuses it with `fault_not_applicable`
 because the Concorde source moved on.
+An edit names its file relative to the clone. `prepare` also refuses an edit whose file resolves
+outside the clone, such as through a symbolic link, with `fault_not_applicable`
+([requirement](requirements.md#req.dogfood-scenarios.checkout-untouched)).
+It checks every edit before it writes any.
 For that reason, the scenario must be updated.
 A valid scenario's edit never keeps its old text in its new text.
 So a fault injected once is refused when it is injected again, since its old text is gone.

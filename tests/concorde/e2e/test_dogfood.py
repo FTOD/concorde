@@ -85,6 +85,26 @@ class ScenarioTests(unittest.TestCase):
                 },
                 "edit 0",
             ),
+            "an edit of an absolute file": (
+                {
+                    **valid,
+                    "fault": {
+                        "summary": "x",
+                        "edits": [{**edit, "file": "/etc/hostname"}],
+                    },
+                },
+                "no relative path",
+            ),
+            "an edit leaving the clone by ..": (
+                {
+                    **valid,
+                    "fault": {
+                        "summary": "x",
+                        "edits": [{**edit, "file": "src/../../outside.py"}],
+                    },
+                },
+                "no relative path",
+            ),
             "an edit keeping its old text": (
                 {
                     **valid,
@@ -279,6 +299,50 @@ class FaultTests(unittest.TestCase):
         )
         self.assertEqual("x = 1\ny = 3\n", (self.root / "a.py").read_text())
         self.assertEqual("", git(self.root, "status", "--porcelain"))
+
+    @verifies("scenario.dogfood-scenarios.fault-outside-clone")
+    def test_an_edit_leading_outside_the_clone_is_refused_before_any_write(self):
+        with tempfile.TemporaryDirectory() as directory:
+            outside = Path(directory) / "outside.py"
+            outside.write_text("y = 2\n")
+            (self.root / "link.py").symlink_to(outside)
+            git(self.root, "add", "-A")
+            git(self.root, "commit", "-qm", "link")
+            head = git(self.root, "rev-parse", "HEAD")
+            cases = {
+                "a symbolic link": "link.py",
+                "an absolute path": str(outside),
+                "a .. segment": f"../{Path(directory).name}/outside.py",
+            }
+            for case, file in cases.items():
+                with self.subTest(case=case):
+                    fault = {
+                        "summary": "y is wrong",
+                        "edits": [
+                            # A valid first edit is not written either.
+                            {"file": "a.py", "old": "y = 2\n", "new": "y = 3\n"},
+                            {"file": file, "old": "y = 2\n", "new": "y = 3\n"},
+                        ],
+                    }
+                    with self.assertRaises(e2e.E2EError) as raised:
+                        dogfood.inject(self.root, fault)
+                    self.assertEqual("fault_not_applicable", raised.exception.code)
+                    self.assertIn(file, raised.exception.detail)
+                    self.assertEqual("y = 2\n", outside.read_text())
+                    self.assertEqual("x = 1\ny = 2\n", (self.root / "a.py").read_text())
+                    self.assertEqual(head, git(self.root, "rev-parse", "HEAD"))
+                    self.assertEqual("", git(self.root, "status", "--porcelain"))
+
+    def test_edits_of_one_file_apply_in_turn(self):
+        fault = {
+            "summary": "x and y are wrong",
+            "edits": [
+                {"file": "a.py", "old": "x = 1\n", "new": "x = 4\n"},
+                {"file": "a.py", "old": "y = 2\n", "new": "y = 3\n"},
+            ],
+        }
+        dogfood.inject(self.root, fault)
+        self.assertEqual("x = 4\ny = 3\n", (self.root / "a.py").read_text())
 
     @verifies("scenario.dogfood-scenarios.fault-reinjected")
     def test_a_fault_injected_again_is_refused(self):
