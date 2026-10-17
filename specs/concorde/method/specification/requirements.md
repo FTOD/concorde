@@ -20,8 +20,14 @@ status, before any document is created or another worker launched, as
 
 ### req.specification.no-code — Code is known by name only
 
-The specify worker's grant SHALL NOT give read or write access to the contents of any
-implementation file.
+The specify worker's grant SHALL NOT give write access to any implementation file, or read access
+to the contents of an implementation file that no bound Module selects into its Spec context with an
+`includes` of kind `bound`.
+
+A bound inclusion is the Module's own statement that the file belongs to its Spec context. The
+grant therefore makes the file `ro`, as
+[Spec core's bound inclusions](../../spec-tooling/spec/requirements.md#req.spec.bound-inclusion)
+require. Every other implementation file is known by name only.
 
 ### req.specification.no-implementation-files — Implementation files are neither created nor changed
 

@@ -54,7 +54,10 @@ A glossary entry added, changed or removed whose owner before or after is not a 
 the run `failed` with `audit_violation`, like a write outside the grant. The check after the worker
 run comes before the Operation creates any proposed document. So such a violation also prevents
 document creation and the second worker. Other Modules' selected documents stay read-only.
-Implementation files show by name only. A worker may bind to a realization only a file that exists.
+Implementation files show by name only. The one exception is a file that a bound Module selects
+into its own Spec context with an `includes` of kind `bound`. The grant makes such a file
+readable, as [Spec core's bound inclusions](../../spec-tooling/spec/requirements.md#req.spec.bound-inclusion)
+require. It stays read-only. A worker may bind to a realization only a file that exists.
 The task level creates and binds a new file before the run that fills it. A file is never declared
 before it exists.
 
@@ -309,9 +312,13 @@ guidelines, `.concorde/protocol/kinds/module.md`, as material:
 
 Together they cover machine-checkable structure and syntax and content requiring reader and editor
 judgment. Structural validation does not establish semantic sufficiency. The worker runs no
-[configured checks](../../glossary.json#concept.configured-check). It has only Read, Glob, Grep,
-Edit and Write. It has no Bash, web tools or MCP server. Its grant has no writable implementation
-path.
+[configured checks](../../glossary.json#concept.configured-check). Its tools are the tool set the
+worker harness gives task type `specify` on its backend
+([Claude Code](../../worker-harness/harness/claude-code.md#tool-sets),
+[pi](../../worker-harness/harness/pi.md#tool-sets)). That set reads, searches, edits and writes
+files within the grant. It also holds the backend's channel for the
+[worker result](../../glossary.json#concept.worker-result), such as pi's result tool. It has no
+shell, no web tool and no MCP server. Its grant has no writable implementation path.
 
 A finding is the same as a baseline one when its rule, file and message match. Line numbers are ignored, since any edit shifts them. An error that only moved thus stays
 pre-existing. Another occurrence with the same rule, file and message counts as pre-existing too.

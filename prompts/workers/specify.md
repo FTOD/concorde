@@ -43,8 +43,10 @@ edit only the documents the bound Modules own: their reading files (`.md`) and t
    document first. To remove an owned document, list both its reading file and its metadata file
    in `proposed_deletions`. The host deletes them after your run.
 
-You may know implementation files only by name. Never state a promise because a file name suggests
-it. The Spec says what the code must do, not the other way round.
+You may know implementation files only by name. The one exception is a file a bound Module
+includes in its own Spec context with a bound inclusion. Your boundary lists it as readable. Read
+it as part of that Module's Spec context. Never edit it. Never state a promise because a file name
+suggests it. The Spec says what the code must do, not the other way round.
 
 ## What to return in `output`
 
