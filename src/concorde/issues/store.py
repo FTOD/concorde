@@ -995,9 +995,23 @@ def _settle(
 
 def _put_back_all(root: Path, paths: list[str]) -> str | None:
     """Put every one of ``paths`` back, restoring the committed ones first; what went wrong, or
-    ``None``."""
-    problems = [_put_back(root, path) for path in reversed(paths)]
-    problems = [problem for problem in problems if problem is not None]
+    ``None``. When a committed record of a move could not be restored, the record the move
+    published in the other folder stays: removing it too would leave the committed record
+    deleted with nothing beside it, which recovery could no longer tell for an interrupted move
+    and put back whole. Every other path is still put back."""
+    problems, unrestored = [], set()
+    for path in reversed(paths):
+        other = next(place for place in issue_paths(Path(path).stem) if place != path)
+        if other in unrestored:
+            problems.append(
+                f"{path} is kept beside {other}, which could not be restored, so that "
+                "the next recovery puts the move back whole"
+            )
+            continue
+        problem = _put_back(root, path)
+        if problem is not None:
+            problems.append(problem)
+            unrestored.add(path)
     return "; ".join(problems) if problems else None
 
 

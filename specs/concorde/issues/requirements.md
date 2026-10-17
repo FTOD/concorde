@@ -281,6 +281,9 @@ A write that left such a record gave no receipt, so putting it back loses nothin
 Its writer may repeat the write. When a write fails after publishing its record, it puts the
 record back itself before it refuses. A move between the folders is put back whole. The record
 is restored where it was committed. The record is removed from the folder it was published in.
+When the write cannot restore the committed record, it keeps the record it published in the other
+folder. Without that copy, the next recovery could not tell the deleted committed record from one
+deleted by hand, and so could not put the move back whole.
 
 ### req.issues.temporaries-removed — An interrupted file transaction's temporaries are removed
 
