@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import fcntl
 import importlib.util
 import json
+import os
 import subprocess
 import tempfile
 import time
@@ -89,6 +91,27 @@ def event(**value) -> str:
 
 # A command longer than any display would show, whose end only a whole target keeps.
 LONG = "concorde run general " + "x" * 600 + " --end"
+
+
+class RunnerLivenessTests(unittest.TestCase):
+    def test_a_held_run_lock_is_a_living_runner_and_a_free_or_missing_one_a_gone_one(
+        self,
+    ):
+        with tempfile.TemporaryDirectory() as directory:
+            project = Path(directory)
+            (project / ".concorde/locks/runs").mkdir(parents=True)
+            self.assertFalse(sessions._alive(project, "r-missing"))
+            lock = project / ".concorde/locks/runs/r-1.lock"
+            lock.write_text("")
+            self.assertFalse(sessions._alive(project, "r-1"))
+            # The runner's exclusive flock makes the shared probe wait: contention is life.
+            descriptor = os.open(lock, os.O_RDWR)
+            try:
+                fcntl.flock(descriptor, fcntl.LOCK_EX)
+                self.assertTrue(sessions._alive(project, "r-1"))
+            finally:
+                os.close(descriptor)
+            self.assertFalse(sessions._alive(project, "r-1"))
 
 
 class HeadlessSessionTests(unittest.TestCase):
