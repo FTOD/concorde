@@ -868,7 +868,9 @@
             "concept.execution-runner",
             "concept.run-result",
             "concept.unbound-run",
-            "concept.unbound-checkout"
+            "concept.unbound-checkout",
+            "req.execution.inputs-same-workspace",
+            "contract.execution.run-result"
           ]
         },
         {
@@ -890,6 +892,11 @@
           "kind": "document",
           "target": "document.method.workers",
           "reason": "the steps and errors of Method's standard worker sequence, which this Module's workers run through and whose error codes its results pass on"
+        },
+        {
+          "kind": "document",
+          "target": "document.execution.runner",
+          "reason": "the runner's exact behaviour, whose sections Run identity and trace node, Unbound checkout and Composing the result define the run's trace node, the unbound checkout and how the general work result is wrapped in the run result"
         }
       ],
       "participates": []
@@ -1029,7 +1036,9 @@
           "meaning": "#uses-execution",
           "relies_on": [
             "concept.execution-runner",
-            "concept.run-result"
+            "concept.run-result",
+            "req.execution.inputs-same-workspace",
+            "contract.execution.run-result"
           ]
         },
         {
@@ -1055,6 +1064,11 @@
           "kind": "document",
           "target": "document.method.workers",
           "reason": "the steps and errors of Method's standard worker sequence, which this Module's workers run through and whose error codes its results pass on"
+        },
+        {
+          "kind": "document",
+          "target": "document.execution.runner",
+          "reason": "the runner's exact behaviour, whose sections Command lines, What a definition gives the runner and Composing the result define how it admits the Modules and inputs and wraps the code change or test report in the run result"
         }
       ],
       "participates": []
@@ -2398,7 +2412,10 @@
           "relies_on": [
             "concept.execution-runner",
             "concept.run-result",
-            "concept.unbound-run"
+            "concept.unbound-run",
+            "req.execution.unbound-read-only",
+            "req.execution.inputs-same-workspace",
+            "contract.execution.run-result"
           ]
         },
         {
@@ -2420,6 +2437,11 @@
           "kind": "document",
           "target": "document.method.workers",
           "reason": "the steps and errors of Method's standard worker sequence, which this Module's workers run through and whose error codes its results pass on"
+        },
+        {
+          "kind": "document",
+          "target": "document.execution.runner",
+          "reason": "the runner's exact behaviour, whose sections Command lines, What a definition gives the runner and Composing the result define how it admits the Modules and inputs, refuses an unbound plan_review and wraps the assessment or plan review report in the run result"
         }
       ],
       "participates": []

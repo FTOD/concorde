@@ -37,7 +37,9 @@
         "meaning": "#uses-execution",
         "relies_on": [
           "concept.execution-runner",
-          "concept.run-result"
+          "concept.run-result",
+          "req.execution.inputs-same-workspace",
+          "contract.execution.run-result"
         ]
       },
       {
@@ -63,6 +65,11 @@
         "kind": "document",
         "target": "document.method.workers",
         "reason": "the steps and errors of Method's standard worker sequence, which this Module's workers run through and whose error codes its results pass on"
+      },
+      {
+        "kind": "document",
+        "target": "document.execution.runner",
+        "reason": "the runner's exact behaviour, whose sections Command lines, What a definition gives the runner and Composing the result define how it admits the Modules and inputs and wraps the code change or test report in the run result"
       }
     ],
     "participates": []

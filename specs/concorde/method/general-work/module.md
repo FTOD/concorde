@@ -288,7 +288,10 @@ General work relies on it for these:
   [workspace binding](../../glossary.json#concept.workspace-binding).
 - The run's trace node, where the Operation keeps the instruction, the diff and the earlier files.
 - The [unbound checkout](../../glossary.json#concept.unbound-checkout) of an unbound run.
-- Wrapping the result in the run result.
+- Admitting only `ok` runs of the same workspace as inputs
+  ([requirement](../../execution/requirements.md#req.execution.inputs-same-workspace)).
+- Wrapping the result in the run result, which the [run result contract](../../execution/contracts.md#contract.execution.run-result) defines. How the [runner](../../execution/runner.md#runner) composes it
+  is in [Composing the result](../../execution/runner.md#composing-the-result).
 
 <a id="uses-workers"></a>
 
