@@ -264,6 +264,18 @@ the run. [The run mechanics](launch.md) give these exact details:
 - AND the host generates no permission extension
 - AND the host still writes the run record
 
+### scenario.workers.git-paths-unavailable-refused — A worker whose Git paths are not all found is refused
+
+- GIVEN a task worktree in the primary worktree's `.claude/worktrees/`
+- AND a `.git` file, a `commondir` file or a directory of the worktree that the host cannot read,
+  or a Git that cannot name its directories
+- WHEN the host is asked to start a worker there
+- THEN it refuses before launch with `git_paths_unavailable` and the reason `environment`
+- AND the refusal names the file, directory or command and the error
+- AND the host generates no settings
+- AND the host still writes the run record
+- BUT a Git directory without a `commondir` file is no failure
+
 ### scenario.workers.git-hidden-outside-home — Every Git path is hidden wherever the repository lies
 
 - GIVEN a primary worktree outside the user's home with a task worktree in its `.claude/worktrees/`

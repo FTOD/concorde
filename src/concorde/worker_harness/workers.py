@@ -941,7 +941,11 @@ def _run(
                 "environment",
                 "Workers hides a repository's Git metadata from a worker only where it knows "
                 "it, so it never launches a worker in another placement and cannot move the "
-                "worktree itself",
+                "worktree itself"
+                if error.code == "worktree_misplaced"
+                else "Workers cannot repair the repository or the file system Git metadata "
+                "is found in, and never launches a worker whose Git metadata it could not "
+                "find in full",
             )
         overlap = _runtime_overlap(request, worktree, view, placement, paths)
         if overlap is not None:

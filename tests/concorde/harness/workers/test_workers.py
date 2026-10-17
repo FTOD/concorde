@@ -1050,6 +1050,64 @@ class WorkerRunTests(unittest.TestCase):
                 runtime = self.project.runtime(record)
                 self.assertFalse((runtime / "control/settings.json").exists())
 
+    @verifies("scenario.workers.git-paths-unavailable-refused")
+    @unittest.skipIf(os.geteuid() == 0, "root reads every file whatever its mode")
+    def test_a_worker_whose_git_paths_are_not_all_found_is_refused(self):
+        from concorde.worker_harness import placement
+
+        root = self.project.root
+        nested = root / "src/a/vendor"
+        nested.mkdir()
+        dot_git = nested / ".git"
+        gitdir = self.project.base / "vendor-git"
+        gitdir.mkdir()
+        dot_git.write_text(f"gitdir: {gitdir}\n")
+        # A Git directory without commondir is no failure.
+        self.assertIn(gitdir, placement.git_paths(root))
+        locked = root / "src/locked"
+        locked.mkdir()
+        real_git = placement._git
+
+        def failing(worktree, *arguments):
+            if arguments[:1] == ("rev-parse",):
+                return subprocess.CompletedProcess(
+                    ["git", *arguments], 128, "", "fatal: not a git repository\n"
+                )
+            return real_git(worktree, *arguments)
+
+        cases = {
+            "rev-parse": (None, "fatal: not a git repository"),
+            "directory": (locked, str(locked)),
+            "dot-git": (dot_git, str(dot_git)),
+            "commondir": (gitdir / "commondir", str(gitdir / "commondir")),
+        }
+        for name, (path, named) in cases.items():
+            with self.subTest(case=name):
+                if name == "commondir":
+                    path.write_text("..\n")
+                if path is not None:
+                    path.chmod(0)
+                try:
+                    if name == "rev-parse":
+                        with patch.object(placement, "_git", failing):
+                            record = self.project.run([{}])
+                    else:
+                        record = self.project.run([{}])
+                finally:
+                    if path is not None:
+                        path.chmod(0o700)
+                    if name == "commondir":
+                        path.unlink()
+                self.assertEqual("failed", record["status"])
+                error = record["error"]
+                self.assertEqual("git_paths_unavailable", error["code"])
+                self.assertEqual("environment", error["unhandled"]["reason"])
+                self.assertIn(named, error["detail"])
+                self.assertEqual([], record["rounds"])
+                self.assertTrue((Path(record["run_directory"]) / "trace.json").exists())
+                runtime = self.project.runtime(record)
+                self.assertFalse((runtime / "control/settings.json").exists())
+
     @verifies("scenario.workers.malformed-grant-refused")
     def test_a_run_with_a_malformed_grant_is_refused(self):
         self.project.grant["entries"].append({"path": "src/x.py", "level": "write"})

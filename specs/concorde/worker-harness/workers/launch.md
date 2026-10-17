@@ -80,6 +80,22 @@ contributes beyond plain data:
   before the first round.
 - `round_validation` is the callback of [Round validation](#round-validation).
 
+The caller forwards every configured limit that `models.limits` gives. Each limit has its own
+field of the request:
+
+| Configured limit | Request field |
+| --- | --- |
+| `timeout_seconds` | `timeout`, in seconds |
+| `max_turns` | `max_turns` |
+| `max_budget_usd` | `max_budget_usd`, `None` when the configuration sets no budget |
+| `rounds` | `rounds` |
+| `retries` | `retries` |
+| `retry_delay_seconds` | `retry_delay`, in seconds |
+
+A field the caller leaves out takes the request's own default. That default equals the
+configuration's default for the limit. The run then ignores what the configuration sets for it.
+A budget of `None` means no budget limit, never a budget of zero.
+
 A representative call, as a step of Method makes it:
 
 ```python
@@ -106,7 +122,11 @@ record = run_worker(
         model_map=model["model_map"],
         reasoning=model["reasoning"],
         rounds=bounds["rounds"],
+        retries=bounds["retries"],
+        retry_delay=float(bounds["retry_delay_seconds"]),
         timeout=float(bounds["timeout_seconds"]),
+        max_turns=bounds["max_turns"],
+        max_budget_usd=bounds["max_budget_usd"],  # None: the run has no budget limit
         operation="implement",
         worker="worker",
         round_validation=validate_round,
@@ -131,6 +151,16 @@ holds, the host collects the repository's **Git administrative paths**, as real 
 | the worktree's own Git directory | `git rev-parse --git-dir` in the worktree |
 | every `.git` entry of the worktree, file or directory: its own and each submodule's or nested repository's | a walk of the worktree that enters no `.git`, no symbolic link and no runtime path |
 | for each `.git` file, the Git directory its `gitdir:` line names and that directory's `commondir` | reading the file |
+
+The host collects these paths in full or launches nothing. With `git_paths_unavailable`, the host
+refuses the run before it generates anything when any of these fails:
+
+- one of the two `git rev-parse` commands, or its answer names no path
+- the walk, for a directory it cannot list
+- the reading of a `.git` file
+- the reading of a `commondir` file that exists
+
+A Git directory without a `commondir` file is no failure: it has no other common directory.
 
 The host hands the Harness the primary worktree and these paths with the grant. Wherever the
 repository lies, the Harness hides them from every tool
@@ -780,6 +810,7 @@ round also timed out or failed otherwise.
 | `grant_unavailable` | which of the task type, grant, context identity or entries is missing | `input` | none |
 | `grant_malformed` | the first grant entry that is not an object with exactly a worktree-relative path and a level of `rw`, `ro` or `names`, or that names a path an earlier entry names, and what is wrong with it | `input` | none |
 | `worktree_misplaced` | the worktree, the primary worktree's `.claude/worktrees/` where it must lie directly, or what Git said when it found no primary worktree | `environment` | none |
+| `git_paths_unavailable` | the Git command that failed with its exit status and output, or the directory or file that could not be read with the operating system's error | `environment` | none |
 | `run_directory_denied` | the deny rule that would cover the worker's own directories of the runtime directory | `environment` | none |
 | `runtime_path_overlap` | the first runtime path that meets protected material, and the material or grant entry it meets | `input` | none |
 | `snapshot_failed` | the Git command that failed and its output | `environment` | none |
@@ -1053,6 +1084,10 @@ A worker SHALL have no access to Git metadata through any tool.
 
 On both backends, wherever the repository lies, the host SHALL deny every Git administrative path
 that [Placement](#placement) lists to the worker's file tools and sandbox.
+
+### req.workers.git-paths-complete — A worker launches only with every Git path found
+
+Before it generates any settings, write hook or [permission extension](../../glossary.json#concept.permission-extension), the host SHALL refuse with `git_paths_unavailable` a run whose Git administrative paths it could not collect in full as [Placement](#placement) lists them.
 
 ### req.workers.audit-every-round — Every round is audited
 

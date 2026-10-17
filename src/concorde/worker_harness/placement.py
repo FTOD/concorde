@@ -89,12 +89,26 @@ def check_placement(worktree: Path) -> Path:
     return primary
 
 
+def _unavailable(what: str) -> PlacementError:
+    return PlacementError(
+        "git_paths_unavailable",
+        f"{what}; Workers hides a repository's Git metadata from a worker only once it has "
+        "found every Git administrative path, so it never launches with a partial list",
+    )
+
+
 def _pointed(dot_git: Path) -> list[Path]:
-    """The Git directory a ``.git`` file points to, and that directory's common directory."""
+    """The Git directory a ``.git`` file points to, and that directory's common directory.
+
+    ``PlacementError`` ``git_paths_unavailable`` when the file, or a ``commondir`` that exists,
+    cannot be read; a Git directory without ``commondir`` has no other common directory.
+    """
     try:
         text = dot_git.read_text(encoding="utf-8", errors="replace")
-    except OSError:
-        return []
+    except OSError as error:
+        raise _unavailable(
+            f"the .git file {dot_git} cannot be read: {error}"
+        ) from error
     first = text.splitlines()[0] if text else ""
     if not first.startswith("gitdir:"):
         return []
@@ -108,8 +122,13 @@ def _pointed(dot_git: Path) -> list[Path]:
     common = directory / "commondir"
     try:
         named = common.read_text(encoding="utf-8").strip()
-    except OSError:
+    except FileNotFoundError:
         named = ""
+    except OSError as error:
+        raise _unavailable(
+            f"the common directory file {common}, named by the .git file {dot_git}, cannot be "
+            f"read: {error}"
+        ) from error
     if named:
         named_path = Path(named)
         found.append(
@@ -123,16 +142,30 @@ def git_paths(worktree: Path, skip: tuple[Path, ...] = ()) -> tuple[Path, ...]:
 
     The walk for ``.git`` entries does not descend into a ``.git`` entry, a symbolic link or a
     directory of ``skip``, such as the runtime paths, which are no part of the project.
+    ``PlacementError`` ``git_paths_unavailable`` when Git cannot name its directories, a directory
+    of the walk cannot be listed or a ``.git`` file cannot be read.
     """
     worktree = _real(worktree)
     found: list[Path] = []
-    reported = _git(
-        worktree, "rev-parse", "--path-format=absolute", "--git-dir", "--git-common-dir"
-    )
-    if reported.returncode == 0:
-        found += [_real(line) for line in reported.stdout.splitlines() if line.strip()]
+    command = ("rev-parse", "--path-format=absolute", "--git-dir", "--git-common-dir")
+    reported = _git(worktree, *command)
+    named = [line for line in reported.stdout.splitlines() if line.strip()]
+    if reported.returncode != 0 or len(named) != 2:
+        said = (reported.stderr or reported.stdout).strip() or "no output"
+        raise _unavailable(
+            f"`git {' '.join(command)}` in {worktree} exited {reported.returncode} "
+            f"naming {len(named)} of the 2 Git directories: {said}"
+        )
+    found += [_real(line) for line in named]
     skipped = {_real(path) for path in skip}
-    for directory, names, files in os.walk(worktree):
+
+    def refuse(error: OSError) -> None:
+        raise _unavailable(
+            f"the directory {error.filename} of the worktree {worktree} cannot be listed in "
+            f"the search for .git entries: {error.strerror or error}"
+        ) from error
+
+    for directory, names, files in os.walk(worktree, onerror=refuse):
         here = Path(directory)
         for name in (*names, *files):
             if name == ".git":
