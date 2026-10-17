@@ -241,7 +241,8 @@ That is also why it is bounded to one round that changes Specs and never code
 ([requirements](requirements.md#req.swe-bench-cases.specs-not-code)).
 The `specify` [task type](../../glossary.json#concept.task-type), not the intent, keeps the code
 unchanged. It may write the bound Modules' documents and none of their code. It cannot read the
-code either, beyond a file a bound Module includes in its Spec context with a bound inclusion
+code either, beyond a file a bound Module includes in its
+[Spec context](../../glossary.json#concept.spec-context) with a bound inclusion
 ([requirement](../../method/specification/requirements.md#req.specification.no-code)),
 and its validation is structural. The repair therefore cannot establish a fact about the code that
 the findings and the Specs do not state. It never claims to: such a gap stays an open question,
