@@ -301,6 +301,8 @@ A project may also provide `docsite/custom-docs/index.ts`, exporting an object w
 They are added to the site as they are. Their routes must stay outside `/specs`.
 A docs plugin among `plugins` is admitted like a collection: its `path`, `docs` by default, must
 name an existing directory that contains no registered Spec document.
+The plugin counts as a docs plugin in every form Docusaurus accepts: by name, by a resolved module
+path, or as the imported plugin function.
 After the build, a rendered route under `/specs` that is neither a registered document's route nor
 the glossary's fails the build, naming every such route.
 Duplicate routes fail the build.

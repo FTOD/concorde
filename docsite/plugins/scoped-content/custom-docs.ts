@@ -92,15 +92,45 @@ const DOCS_PLUGINS = new Set([
   "content-docs",
 ]);
 
+/** Where Node resolves a plugin name from the site directory, or from here when the site has no
+ * installed packages; undefined when it resolves nowhere. */
+function resolvedPlugin(siteDir: string, name: string): string | undefined {
+  for (const paths of [[siteDir], undefined]) {
+    try {
+      return realpathSync(require.resolve(name, paths && { paths }));
+    } catch {
+      continue;
+    }
+  }
+  return undefined;
+}
+
+/**
+ * Whether a plugin entry is Docusaurus's docs plugin in any form `PluginConfig` allows: one of its
+ * names, a module path that resolves to the same file, or the imported plugin function or module.
+ */
+function isDocsPlugin(siteDir: string, plugin: unknown): boolean {
+  const docs = resolvedPlugin(siteDir, "@docusaurus/plugin-content-docs");
+  if (typeof plugin === "string")
+    return (
+      DOCS_PLUGINS.has(plugin) ||
+      (docs !== undefined && resolvedPlugin(siteDir, plugin) === docs)
+    );
+  if (docs === undefined || !plugin) return false;
+  const module = require(docs);
+  return plugin === module || plugin === module.default;
+}
+
 /** The docs instances an extension adds, each with its id and its directory, which defaults to
  * Docusaurus's `docs`, and its sidebar file when it names one. */
 function extensionDocs(
+  siteDir: string,
   plugins: PluginConfig[],
 ): { id: string; path: string; sidebarPath?: string }[] {
   const docs = [];
   for (const plugin of plugins) {
     const [name, options] = Array.isArray(plugin) ? plugin : [plugin, {}];
-    if (typeof name !== "string" || !DOCS_PLUGINS.has(name)) continue;
+    if (!isDocsPlugin(siteDir, name)) continue;
     const option = (key: string) =>
       options && typeof options === "object" && key in options
         ? (options as Record<string, unknown>)[key]
@@ -124,7 +154,7 @@ function refuseExtensionDocs(
   plugins: PluginConfig[],
   registry: ScopedRegistry,
 ): void {
-  for (const { id, path } of extensionDocs(plugins)) {
+  for (const { id, path } of extensionDocs(siteDir, plugins)) {
     refuseRegisteredSpecs(
       collectionDirectory(
         siteDir,
@@ -179,7 +209,7 @@ export function authoredInputs(
           ]
         : []),
     ]),
-    ...extensionDocs(loadExtension(siteDir).plugins ?? []).flatMap(
+    ...extensionDocs(siteDir, loadExtension(siteDir).plugins ?? []).flatMap(
       ({ id, path, sidebarPath }) => [
         { path, field: `custom-docs/index.ts docs plugin ${id}.path` },
         ...(sidebarPath

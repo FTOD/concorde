@@ -26,7 +26,10 @@ Without it, every command fails with a message asking to initialize the project 
 
 The registry must be `{"schema_version": 3, "modules": [...]}` with a nonempty list of records.
 Each record must have exactly `id`, `title`, `entry`, `owns`, `contains`, `uses`, `includes` and
-`participates`. The publisher reads the Module relations from these records.
+`participates`. A record may also have `glossary`, as Spec core's
+[registry](../spec/contracts.md#registry-file) allows on the record of the one Module whose block
+declares the project glossary. The glossary checks below refuse it on any other Module.
+The publisher reads the Module relations from these records.
 It does not compare them with the entries' `module` blocks.
 That comparison is the [Spec](../../glossary.json#concept.spec) validator's mirror check.
 
@@ -392,7 +395,9 @@ When any of these conditions holds, custom docs admission fails:
 - `custom-docs/index.ts` does not export an object.
 - `custom-docs/index.ts` exports `plugins` or `navbarItems` that is not an array.
 - A docs plugin among those `plugins` names a missing directory, or one that contains a registered
-  document.
+  document. A plugin is the docs plugin when it is named `@docusaurus/plugin-content-docs`,
+  `docusaurus-plugin-content-docs` or `content-docs`, or by a module path that resolves to the
+  same file, or when it is that plugin's imported function or module.
 
 A directory contains a registered document when the document lies below it or when a symbolic
 link inside it reaches the document or a directory holding it. The check follows every link to a

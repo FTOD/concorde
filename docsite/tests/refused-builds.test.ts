@@ -578,18 +578,28 @@ it("user documents reaching a registered Spec through two links fail the build a
   expect(snapshot(published())).toEqual(previous);
 });
 
+const docsPlugin = JSON.stringify(
+  nativeRequire.resolve("@docusaurus/plugin-content-docs"),
+);
 // verifies: scenario.views.custom-docs-refused
-it("an extension's docs plugin over registered Specs fails the build and promotes nothing", async () => {
-  const previous = await publishedSite();
-  put(
-    "docsite/custom-docs/index.ts",
-    'module.exports.default = {plugins: [["@docusaurus/plugin-content-docs", {id: "extra", path: "../specs", routeBasePath: "extra"}]]};',
-  );
-  await expect(buildScript()()).rejects.toThrow(
-    /custom-docs\/index\.ts docs plugin extra includes registered Spec/,
-  );
-  expect(snapshot(published())).toEqual(previous);
-});
+it.each([
+  ["its package name", '"@docusaurus/plugin-content-docs"'],
+  ["its resolved module path", docsPlugin],
+  ["its imported plugin function", `require(${docsPlugin}).default`],
+])(
+  "an extension's docs plugin named by %s over registered Specs fails the build and promotes nothing",
+  async (_form, plugin) => {
+    const previous = await publishedSite();
+    put(
+      "docsite/custom-docs/index.ts",
+      `module.exports.default = {plugins: [[${plugin}, {id: "extra", path: "../specs", routeBasePath: "extra"}]]};`,
+    );
+    await expect(buildScript()()).rejects.toThrow(
+      /custom-docs\/index\.ts docs plugin extra includes registered Spec/,
+    );
+    expect(snapshot(published())).toEqual(previous);
+  },
+);
 
 // verifies: scenario.views.custom-docs-refused
 it("a custom docs page with a broken internal link fails the build naming the link", async () => {

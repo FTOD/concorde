@@ -238,8 +238,8 @@ See [req.views.production-preview-isolation](requirements.md#req.views.productio
 
 - GIVEN installed site dependencies and a valid registered project
 - WHEN `npm run build` runs
-- THEN it clears the previous candidate
-- AND it stages the Specs
+- THEN it stages the Specs, loading and admitting every source first
+- AND only then does it clear the previous candidate
 - AND it builds the candidate
 - AND it validates the candidate
 - AND only after all these steps does it promote the candidate
