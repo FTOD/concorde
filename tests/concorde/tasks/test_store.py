@@ -196,7 +196,7 @@ class TaskStoreTests(unittest.TestCase):
         worktree = self.root / ".claude/worktrees/severity"
         self.assertEqual(str(worktree), value["worktree"])
         self.assertEqual(
-            (5, "open", head, None, [], []),
+            (6, "open", head, None, [], []),
             (
                 value["schema_version"],
                 value["state"],
@@ -602,10 +602,18 @@ class TaskStoreTests(unittest.TestCase):
         )
         self.assertEqual((1, "unknown_escalation"), (status, value["error"]["code"]))
 
-    def started(self, task_id="t1", main="concorde-7d", session_id="s1"):
-        """Record a task session of ``task_id`` started for ``main``."""
+    def started(
+        self, task_id="t1", main="concorde-7d", session_id="s1", main_session=None
+    ):
+        """Record a task session of ``task_id`` started for ``main``, whose Claude Code session
+        id is ``main_session``."""
         session = {**self.session(task_id, session_id), "main": main}
-        store.record_session(self.root, task_id, {**session, "started_at": store.now()})
+        store.record_session(
+            self.root,
+            task_id,
+            {**session, "started_at": store.now()},
+            main_session=main_session,
+        )
 
     @verifies("scenario.tasks.session-record-refused")
     def test_a_refused_session_record_leaves_the_record(self):
@@ -626,7 +634,7 @@ class TaskStoreTests(unittest.TestCase):
         self.assertEqual("record_unwritable", refused.exception.code)
         self.assertEqual(before, path.read_bytes())
 
-        def conflicting(primary, task_id, main, purpose):
+        def conflicting(primary, task_id, main, session, purpose):
             raise store.TaskError("record_conflict", "changed concurrently")
 
         with patch.object(store, "_bind_main", conflicting):
@@ -756,6 +764,35 @@ class TaskStoreTests(unittest.TestCase):
         self.assertEqual(
             (1, "task_closed"), self.refusal("rebind", "t1", "--main", "concorde-9f")
         )
+
+    @verifies("scenario.tasks.rebind")
+    def test_a_rebind_keeps_the_main_agents_session_id(self):
+        self.project.open_task("t1")
+        self.started(main_session="sess-a")
+        self.assertEqual("sess-a", self.record()["main_session"])
+        # A resume keeps the session id and changes the name.
+        with patch.dict(os.environ, {locks.SESSION: "sess-a"}):
+            _, value = self.command("rebind", "t1", "--main", "concorde-8e")
+        record = value["record"]
+        self.assert_contract(record)
+        self.assertEqual(
+            ("concorde-8e", "sess-a"), (record["main"], record["main_session"])
+        )
+        # A new session that takes the task over under the same name is a change too.
+        with patch.dict(os.environ, {locks.SESSION: "sess-b"}):
+            _, value = self.command("rebind", "t1", "--main", "concorde-8e")
+        self.assertEqual(
+            [
+                ("concorde-7d", "sess-a"),
+                ("concorde-8e", "sess-a"),
+                ("concorde-8e", "sess-b"),
+            ],
+            [(item["main"], item["session"]) for item in value["record"]["mains"]],
+        )
+        # Without a session id in its environment, the rebind records none.
+        with patch.dict(os.environ, {locks.SESSION: ""}):
+            _, value = self.command("rebind", "t1", "--main", "concorde-9f")
+        self.assertIsNone(value["record"]["main_session"])
 
     @verifies("scenario.tasks.answer")
     def test_an_answer_marks_reports_answered(self):
@@ -890,7 +927,7 @@ class TaskStoreTests(unittest.TestCase):
     def test_the_main_hook_lists_the_tasks_not_ended_with_their_main(self):
         self.assertEqual((0, ""), self.main_hook({"source": "startup"}))
         self.project.open_task("t1")
-        self.started("t1", main="concorde-7d", session_id="s-t1")
+        self.started("t1", main="concorde-7d", session_id="s-t1", main_session="sess-a")
         self.project.open_task("t2")
         self.started("t2", main="concorde-8e", session_id="s-t2")
         self.project.open_task("t3")
@@ -902,16 +939,26 @@ class TaskStoreTests(unittest.TestCase):
         self.assertEqual(
             0, self.command("report", "t1", "--text", "x", cwd=worktree)[0]
         )
-        status, text = self.main_hook({"source": "resume", "cwd": str(self.root)})
+        status, text = self.main_hook(
+            {"source": "resume", "cwd": str(self.root), "session_id": "sess-a"}
+        )
         self.assertEqual(0, status)
         self.assertIn("this session resumed", text)
-        self.assertIn("- `t1`: main `concorde-7d`; unanswered reports 1.", text)
+        # The session that named t1 resumes with its session id: t1 is its own.
+        self.assertIn(
+            "- `t1`: main `concorde-7d` (this session); unanswered reports 1.", text
+        )
         self.assertIn("- `t2`: main `concorde-8e`.", text)
+        self.assertIn("Never rebind it on your own: ask the developer once", text)
         self.assertNotIn("`t3`", text)
         self.assertLess(text.index("`t1`"), text.index("`t2`"))
         self.assertIn("call the ListAgents tool", text)
         self.assertIn('Follow "When your session name changed"', text)
         self.assertIn("read the unanswered reports", text)
+        # Another session, such as a fresh one, owns none of them.
+        _, other = self.main_hook({"source": "startup", "session_id": "sess-z"})
+        self.assertNotIn("(this session);", other)
+        self.assertIn("- `t1`: main `concorde-7d`; unanswered reports 1.", other)
         # The command line runs it too, without hook input, as a compaction would name it.
         output = io.StringIO()
         with (
@@ -1005,7 +1052,7 @@ class TaskStoreTests(unittest.TestCase):
         store.rebind(self.root, "t1", "concorde-8e")
         stored = json.loads((folder / "task.json").read_text())
         self.assertEqual(
-            (5, "concorde-8e", ["concorde-7d", "concorde-8e"], 1),
+            (6, "concorde-8e", ["concorde-7d", "concorde-8e"], 1),
             (
                 stored["schema_version"],
                 stored["main"],
@@ -1024,7 +1071,17 @@ class TaskStoreTests(unittest.TestCase):
         (folder / "task.json").write_text(json.dumps(stored, indent=2) + "\n")
         answer = store.show_task(self.root, "t1")["record"]["reports"][0]["answer"]
         self.assertEqual(("Go on.", "main-agent"), (answer["text"], answer["by"]))
-        self.assertEqual(5, self.record()["schema_version"])
+        self.assertEqual(6, self.record()["schema_version"])
+        # A record of version 5 knows no Claude Code session id.
+        stored = json.loads((folder / "task.json").read_text())
+        del stored["main_session"]
+        for item in stored["mains"]:
+            del item["session"]
+        stored["schema_version"] = 5
+        (folder / "task.json").write_text(json.dumps(stored, indent=2) + "\n")
+        shown = store.show_task(self.root, "t1")["record"]
+        self.assertIsNone(shown["main_session"])
+        self.assertEqual([None, None], [item["session"] for item in shown["mains"]])
 
     @verifies("scenario.tasks.open-unknown-module")
     def test_an_unknown_module_is_refused(self):

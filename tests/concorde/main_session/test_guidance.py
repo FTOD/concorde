@@ -160,8 +160,13 @@ class GuidanceTests(unittest.TestCase):
         )
         self.assertIn("Concorde's session-start hook reminds you.", section)
         self.assertIn(
-            "When it lists tasks, call ListAgents before anything else and compare the name it "
-            "reports for your session with each task's `main`",
+            "When the hook lists tasks, call ListAgents before anything else and compare the "
+            "name it reports for your session with each task's `main`",
+            section,
+        )
+        self.assertIn(
+            "It marks a task `(this session)` when the task record keeps your session's Claude "
+            "Code session id.",
             section,
         )
         self.assertIn(
@@ -170,8 +175,18 @@ class GuidanceTests(unittest.TestCase):
             section,
         )
         self.assertIn(
-            "A task whose `main` is neither of these names your former name.", section
+            "A task marked `(this session)` whose `main` is not your current name names your "
+            "former name.",
+            section,
         )
+        # An absent main agent's tasks are the developer's to give.
+        self.assertIn("Never rebind such a task on your own.", section)
+        self.assertIn(
+            "Ask the developer once, in one question that lists every such task with its "
+            "`main`, whether you take them over. Rebind only the tasks the developer names",
+            section,
+        )
+        self.assertIn("Never rebind on your own a task that is not marked", self.block)
         self.assertIn(
             "When Concorde's session-start hook lists tasks not ended, call ListAgents first",
             self.block,
@@ -181,8 +196,12 @@ class GuidanceTests(unittest.TestCase):
     def test_the_main_agent_rebinds_its_tasks_after_its_name_changed(self):
         self.assertIn("### When your session name changed", self.skill)
         self.assertIn(
-            "`concorde task list --main <former name> --state open,active,delivered,merging`",
-            self.skill,
+            "Take as yours every task the hook marks `(this session)`.", self.skill
+        )
+        self.assertIn(
+            "run `concorde task list --state open,active,delivered,merging`. Take those whose "
+            "`main_session` is your session id",
+            " ".join(self.skill.split()),
         )
         self.assertIn("once a task has ended, nobody answers its", self.skill.lower())
         self.assertIn("`concorde task rebind <task> --main <current name>`", self.skill)

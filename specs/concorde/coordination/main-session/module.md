@@ -443,18 +443,28 @@ The installed guidance gives the main agent this working method:
   session tells the main agent of the new name. So Tasks' session-start hook
   ([Tasks](../tasks/module.md#listing-and-showing-tasks)) runs when the main agent's session
   starts, resumes or is compacted in the primary worktree. It adds the tasks not ended to the main
-  agent's context, with the `main` each names and their unanswered reports. The guidance tells the main agent then to call
-  ListAgents before anything else and compare its name with each task's `main`
+  agent's context, with the `main` each names and their unanswered reports. The hook marks as this
+  session each task whose record keeps the starting session's Claude Code session id. A resume and
+  a compaction keep that id while the name may change. The guidance tells the main agent then to
+  call ListAgents before anything else and compare its name with each task's `main`
   ([requirements](requirements.md#req.main-session.session-start-compare)). A task that names
-  another session ListAgents lists belongs to that main agent. When ListAgents reports
-  for its own session a name other than the one it gave its tasks, the main agent reconciles before
-  anything else. This can happen after a resume. The main agent reconciles as follows
+  another session ListAgents lists belongs to that main agent. When the hook marks as this session
+  a task whose `main` is not the name ListAgents reports, the main agent reconciles before anything
+  else. This can happen after a resume. The main agent reconciles as follows
   ([requirements](requirements.md#req.main-session.reconcile-after-restart)):
 
-  - Lists the tasks not ended whose record names its former name with
-    `concorde task list --main <former> --state open,active,delivered,merging`.
+  - Takes as its own the tasks not ended that the hook marks as this session. When the hook could
+    not list the tasks, it takes those that
+    `concorde task list --state open,active,delivered,merging` shows keeping its session id.
   - Rebinds each to its current name with `concorde task rebind`.
   - Reads their unanswered reports, those `concorde task show` lists with no answer.
+
+  Several main agents may work on one project. So a task whose `main` ListAgents does not list, and
+  that the hook does not mark, may be another main agent's. It may also be the main agent's own
+  from before a new session, `/clear` or a fork, which get a new session id. The main agent never
+  rebinds such a task on its own. It asks the developer once, listing every such task with its
+  `main`, and rebinds only the tasks the developer names
+  ([requirements](requirements.md#req.main-session.absent-owner-asked)).
 
   Since the restart may come between `concorde task answer` and SendMessage, an answer the main
   agent records may never have been sent. For each such task whose last report has an answer, the

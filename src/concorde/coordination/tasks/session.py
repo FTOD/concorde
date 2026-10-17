@@ -58,6 +58,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from ...kernel.schema import type_version
+from ...kernel.tracing import locks
 from ...kernel.tracing import node as trace
 from . import session_hook, store
 
@@ -405,7 +406,13 @@ def _start(
         "started_at": started_at,
     }
     try:
-        store.record_session(primary, task_id, session, locked=True)
+        store.record_session(
+            primary,
+            task_id,
+            session,
+            main_session=os.environ.get(locks.SESSION) or None,
+            locked=True,
+        )
     except store.TaskError as error:
         # A session no trace node names is never stopped, kept or removed by the task's end:
         # remove the one just started rather than leave it working untracked.

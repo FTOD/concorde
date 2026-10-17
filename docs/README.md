@@ -80,10 +80,11 @@ The task session and the main agent talk in Claude Code messages, but each side 
 says first, `concorde task report` and `concorde task answer`, in the task's record and decision
 log, so a lost message loses nothing, and a task's merge or close answers every report still
 unanswered. A session-start hook lists the tasks not ended for the main agent when its session
-starts, resumes or is compacted. When the main agent's session name changes, as after a resume, it lists the tasks not
-ended that name its former name with `concorde task list --main <former> --state
-open,active,delivered,merging` and rebinds each with `concorde task rebind`; a task session whose
-message reached nobody waits for that with `concorde task wait <task> --rebound <former>`.
+starts, resumes or is compacted, marking those whose record keeps the starting session's Claude Code
+session id, which a resume and a compaction keep. When the main agent's session name changes, as
+after a resume, it rebinds each task so marked with `concorde task rebind`; a task session whose
+message reached nobody waits for that with `concorde task wait <task> --rebound <former>`. A task
+of an absent main agent that is not marked is rebound only when the developer says so.
 
 A question that changes nothing, such as how a Module works today, needs no task: `understand`,
 `spec_panel` and `code_review` also run from the primary worktree without one.

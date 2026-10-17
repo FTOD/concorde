@@ -418,9 +418,13 @@ names. Given both filters, the command lists the tasks that satisfy both.
 `compact`. A Claude Code session's name may change at a restart or a resume, and nothing else
 makes the main agent look at its name then. So the hook prints, as plain text for the session's
 context, every task not ended with the main agent's session its record names and the numbers of
-its unanswered reports. The text then tells the main agent to call ListAgents and compare its
-current name with those. When a task names a former name of the main agent, the text tells it to
-follow the guidance's steps for a changed name first. It reads only the current tasks' records, as stored, and derives
+its unanswered reports. It marks `(this session)` each task whose record keeps the session id that
+the hook input gives for the starting session. The text then tells the main agent to call
+ListAgents and compare its current name with those. When a task marked as this session names a
+former name of the main agent, the text tells it to follow the guidance's steps for a changed name
+first. A task not marked whose main is neither the current name nor a listed session may belong to
+another main agent that is absent. The text tells the main agent never to rebind such a task on its
+own, but to ask the developer once about all of them. It reads only the current tasks' records, as stored, and derives
 no state, so it answers in a fraction of a second however long the history is. The hook runs in
 every session whose settings carry it, task sessions and workers in a task worktree too, so it
 prints nothing outside the primary worktree. It also prints nothing when no task is unended. A
@@ -507,7 +511,11 @@ Once its own session name changes, the main agent changes the recorded name with
 concorde task rebind severity --main concorde-8e
 ```
 
-The record keeps every name it had, so a later reader sees whom each report was sent to.
+The record keeps every name it had, so a later reader sees whom each report was sent to. Beside the
+name, it keeps the session's Claude Code session id, `main_session`, from the
+`CLAUDE_CODE_SESSION_ID` of the command that named it. A resume and a compaction keep that id while
+the name may change, and a new session gets a new one. So the id tells a starting main agent which
+tasks are its own, which the name alone cannot while several main agents may work on one project.
 `concorde task list --main concorde-7d --state open,active,delivered,merging` lists the tasks not
 ended whose record still names the former session. The main agent rebinds those tasks, since an
 ended task has no task session left to report.

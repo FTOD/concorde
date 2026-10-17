@@ -824,6 +824,17 @@ A Claude Code session's name does not survive a restart or resume of the session
 the name a task session was started with may no longer reach anyone. The record holds the name that
 does. Once its own name changed, the main agent changes the name in the record.
 
+### req.tasks.main-session-id — The record keeps the main agent's session id
+
+Tasks SHALL keep in each task record, beside the main agent's session it names, that session's
+Claude Code session id when the command that named it knew one, and the session id of every session
+named for the task before.
+
+A Claude Code session keeps its session id across a resume and a compaction, while its name may
+change. A new session, `/clear` and a fork get a new id. So the session id, not the name, tells a
+starting main agent which tasks it named itself. Several main agents may work on one project, so an
+absent name alone does not.
+
 ### req.tasks.report-recorded — A report is recorded before it is sent
 
 Before printing the session to message, `concorde task report` SHALL append these to the task record
@@ -867,8 +878,9 @@ that still name its former name.
 ### req.tasks.main-hook-lists — The session-start hook lists the tasks not ended
 
 In the primary worktree, `concorde task main-hook` SHALL print every task not ended, read from the
-current tasks' records alone, with the main agent's session its record names and the numbers of its
-unanswered reports, and print nothing outside the primary worktree or when no task is unended.
+current tasks' records alone, with the main agent's session its record names, whether the starting
+session's id is the one its record keeps, and the numbers of its unanswered reports, and print
+nothing outside the primary worktree or when no task is unended.
 
 A main agent learns of its tasks from this list after a restart, a resume or a compaction. It
 compares the names with the one ListAgents reports. The history holds only ended tasks, and
@@ -894,6 +906,8 @@ Tasks SHALL read a task record written before the current version by its `schema
   main agent gave.
 - A record of `schema_version` 4 or earlier, written before a task named the Issues it resolves, as
   resolving none.
+- A record of `schema_version` 5 or earlier, written before the record kept session ids, as knowing
+  no session id of its main agents' sessions.
 
 Tasks open across the change keep working. Their next change writes the current version. Their
 trace is unchanged, so a task worktree that still runs an earlier Concorde escalates there as

@@ -923,6 +923,8 @@ This illustrates [the parts Coordination does without](../module.md#optional-int
 - THEN the record's `main` is `concorde-8e`
 - AND the command prints the former `concorde-7d`
 - AND the record keeps both names in order in `mains`
+- AND the record keeps as `main_session` the `CLAUDE_CODE_SESSION_ID` of the rebind's environment,
+  and a rebind that changes only that id appends it to `mains` too
 - AND `concorde task list --main concorde-7d` no longer lists the task, while `--main concorde-8e`
   does
 - AND the task session's next `concorde task report` prints `main` `concorde-8e`
@@ -972,15 +974,19 @@ This illustrates [the parts Coordination does without](../module.md#optional-int
 
 ### scenario.tasks.main-hook — The session-start hook lists the tasks not ended
 
-- GIVEN an open task `t1` naming `concorde-7d` with an unanswered report 1, an open task `t2`
-  naming `concorde-8e` and a closed task `t3`
+- GIVEN an open task `t1` naming `concorde-7d` with session id `sess-a` and an unanswered report 1,
+  an open task `t2` naming `concorde-8e` and a closed task `t3`
 - WHEN Claude Code runs `concorde task main-hook` in the primary worktree with the `source` `resume`
+  and the `session_id` `sess-a`
 - THEN it says the session resumed
-- AND it lists `t1` with main `concorde-7d` and unanswered report 1, then `t2` with main
-  `concorde-8e`
+- AND it lists `t1` with main `concorde-7d`, marked as this session, and unanswered report 1, then
+  `t2` with main `concorde-8e`, not marked
 - AND it does not list `t3`
 - AND it tells the main agent to call ListAgents before anything else and to follow "When your
-  session name changed" for a former name
+  session name changed" for a task marked as this session
+- AND it tells the main agent never to rebind on its own a task of an absent main agent that is not
+  marked, but to ask the developer once about all of them
+- AND with another `session_id` it marks no task
 - AND with the `source` `compact` it says the session was compacted
 - BUT run in a task worktree it prints nothing
 - AND with no task it prints nothing either, and exits with status 0
@@ -1020,11 +1026,12 @@ This illustrates [never failing a start](requirements.md#req.tasks.main-hook-nev
 - WHEN the task is shown, reported to and rebound
 - THEN the task is shown with `main` `concorde-7d`, `mains` from its session and no reports
 - AND the report is recorded
-- AND after the rebind, the record has the current `schema_version`, 5
+- AND after the rebind, the record has the current `schema_version`, 6
 - AND after the rebind, the record satisfies the record contract
 - AND the task's trace node is unchanged in shape, so an earlier Concorde still writes it
 - AND a record of `schema_version` 3 with an answered report is read with that answer `by`
   `main-agent`
+- AND a record of `schema_version` 5 is read with no session id for its main or its `mains`
 
 ## History
 

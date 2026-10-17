@@ -137,6 +137,22 @@ class TaskSessionTests(unittest.TestCase):
         self.assertIn("`concorde task report` prints", brief)
 
     @verifies("scenario.task-session.start")
+    def test_a_start_keeps_the_main_agents_session_id(self):
+        with patch.dict(os.environ, {"CLAUDE_CODE_SESSION_ID": "sess-a"}):
+            session.start(self.root, "t1", "concorde-7d", run=FakeClaude())
+        record = store.load_task(self.root, "t1")
+        self.assertEqual(
+            ("concorde-7d", "sess-a"), (record["main"], record["main_session"])
+        )
+        self.assertEqual(
+            [{"main": "concorde-7d", "session": "sess-a"}],
+            [
+                {key: item[key] for key in ("main", "session")}
+                for item in record["mains"]
+            ],
+        )
+
+    @verifies("scenario.task-session.start")
     def test_a_coloured_start_line_is_recognised(self):
         # Claude Code 2.1.283 colours the id and adds dimmed help lines.
         claude = FakeClaude(

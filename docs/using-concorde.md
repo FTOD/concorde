@@ -715,23 +715,28 @@ The main agent learns of it from Concorde's session-start hook, which the instal
 project's `.claude/settings.json`. When a session starts, resumes or is compacted in the primary
 worktree, the hook runs `concorde task main-hook`, which adds to the session's context every task
 not ended with the session it names and its unanswered reports, and tells the main agent to call
-ListAgents and compare its own name with them. It prints nothing in a task worktree, nothing when
-no task is unended, and a single line, never an error, when it cannot read the tasks.
+ListAgents and compare its own name with them. It marks `(this session)` each task whose record
+keeps the starting session's Claude Code session id: `concorde task session --main` and
+`concorde task rebind` record it from `CLAUDE_CODE_SESSION_ID`, and a resume or a compaction keeps
+it while the session's name may change. It prints nothing in a task worktree, nothing when no task
+is unended, and a single line, never an error, when it cannot read the tasks.
 
 The main agent, as soon as it notices its own name changed, reconciles its tasks before anything
-else. It lists the tasks not ended whose record still names its former name, since an ended task has
-no task session left to report and its end answered its reports; rebinds each to its current name,
-which wakes every task session waiting for that; and then reads each task's unanswered reports with
-`concorde task show` and answers them:
+else. It takes as its own the tasks not ended that the hook marks as this session, since an ended
+task has no task session left to report and its end answered its reports; rebinds each to its
+current name, which wakes every task session waiting for that and records its session id again; and
+then reads each task's unanswered reports with `concorde task show` and answers them:
 
 ```bash
-concorde task list --main <former name> --state open,active,delivered,merging
 concorde task rebind retry --main <current name>
 ```
 
-`--state` takes one or more task states separated by commas, and with `--main` lists the tasks that
-satisfy both. The record keeps every session name a task had, so a later reader sees whom each
-report was sent to.
+Several main agents may work on one project. A task that the hook does not mark and whose session
+ListAgents does not list may be another main agent's, or the main agent's own from before a new
+session, `/clear` or a fork, which get a new session id. The main agent never rebinds such a task on
+its own: it asks the developer once, listing all of them, and rebinds only those the developer
+names. The record keeps every session name and session id a task had, so a later reader sees whom
+each report was sent to.
 
 ## Read results
 

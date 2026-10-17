@@ -270,8 +270,10 @@ task record again. It is refused as below once the first start recorded its sess
    [trace](../../glossary.json#concept.trace) ([session trace](#contract.task-session.session-trace)).
    The node holds the full session id that `claude agents --json --all` gives for the session, when
    it gives one. The command names `--main` as the
-   [task record](../../glossary.json#concept.task-record)'s `main`
-   ([record updates](../tasks/contracts.md#record-updates)).
+   [task record](../../glossary.json#concept.task-record)'s `main`, with the
+   `CLAUDE_CODE_SESSION_ID` of its environment, the Claude Code session id of the
+   [main agent](../../glossary.json#concept.main-agent)'s session, as its
+   `main_session`, or null without one ([record updates](../tasks/contracts.md#record-updates)).
 
 Every start starts and records a session of its own. A start never reuses an earlier one.
 
