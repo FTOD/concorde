@@ -21,7 +21,8 @@ class ToolError(SpecError):
         super().__init__(message, code, field, **details)
 
 
-STRINGS = {"type": "array", "items": {"type": "string"}, "minItems": 1}
+STRING = {"type": "string", "minLength": 1}
+STRINGS = {"type": "array", "items": STRING, "minItems": 1}
 TOOLS: dict[str, dict] = {
     "boundary": {
         "description": (
@@ -58,26 +59,28 @@ TOOLS: dict[str, dict] = {
         ),
         "inputSchema": {
             "type": "object",
-            "properties": {"id": {"type": "string"}},
+            "properties": {"id": STRING},
             "required": ["id"],
         },
     },
     "context": {
         "description": (
             "The Spec context of a Module, or of a scenario's owner: its context identity, "
-            "one source record per selected document member and one term record per selected "
-            "glossary entry, the definition of a word its documents link."
+            "one source record per selected document member, one bound record per file of its "
+            "bound inclusions and one term record per selected glossary entry, the definition "
+            "of a word its documents link."
         ),
         "inputSchema": {
             "type": "object",
-            "properties": {"id": {"type": "string"}},
+            "properties": {"id": STRING},
             "required": ["id"],
         },
     },
     "impact": {
         "description": (
             "Which Modules writing the given paths concerns: readers of a document member, "
-            "Modules whose terms come from the glossary, binders of any other file."
+            "Modules whose terms come from the glossary, binders of any other file and every "
+            "Module that uses one of them, directly or through further uses."
         ),
         "inputSchema": {
             "type": "object",
@@ -89,7 +92,7 @@ TOOLS: dict[str, dict] = {
         "description": "Run the structural checks, optionally for one Module, and return the findings.",
         "inputSchema": {
             "type": "object",
-            "properties": {"target": {"type": "string"}},
+            "properties": {"target": STRING},
         },
     },
 }
@@ -222,6 +225,7 @@ def context(root: Path, arguments: dict) -> dict:
         "module": value["module_id"],
         "context_identity": context_identity(repository, [value["module_id"]]),
         "sources": value["sources"],
+        "bound": value["bound"],
         "terms": value["terms"],
     }
 
@@ -248,7 +252,7 @@ def impact(root: Path, arguments: dict) -> dict:
                 if repository.terms(identity)
             )
         else:
-            concerned = sorted(repository.implemented_by(path))
+            concerned = list(repository.impact(paths=[path]))
         union.update(concerned)
         rows.append({"path": path, "modules": concerned})
     return {"paths": rows, "modules": sorted(union)}

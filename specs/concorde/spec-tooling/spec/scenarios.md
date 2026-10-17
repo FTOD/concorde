@@ -576,10 +576,12 @@ to it.
   document
 - AND Module C includes that same B document
 - AND Modules B and D bind the same file
+- AND Module E uses Module A
 - WHEN a caller asks which Modules a change concerns
 - THEN a change to that document concerns B, A and C through the selected-by index
 - AND a change to the listed requirement concerns A through the referenced-by index
-- AND a change to the shared file concerns B and D through the implemented-by index
+- AND a change to the shared file concerns B and D through the implemented-by index, A because it
+  uses B, and E because it uses A
 - AND a change to a concept's glossary entry concerns every Module whose terms hold the concept
 - BUT the indexes add nothing to any Module's
   [boundary sets](../../glossary.json#concept.boundary-set)

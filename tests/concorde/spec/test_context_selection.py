@@ -251,9 +251,17 @@ class ContextSelectionTests(unittest.TestCase):
             ("service.transfer", "module.ledger"), r.implemented_by("app/transfer.py")
         )
         self.assertEqual(
-            ("module.ledger", "scope.audit", "service.transfer"),
+            ("module.ledger", "scope.audit", "scope.bank", "service.transfer"),
             r.impact(nodes=["req.transfer.pure"], paths=["app/transfer.py"]),
         )
+        # A file concerns its binders and every Module using one of them, directly (Banking and
+        # Transfers use the ledger) or through further uses (Audit uses Transfers).
+        self.assertEqual(("module.ledger",), r.implemented_by("app/ledger.py"))
+        self.assertEqual(
+            ("module.ledger", "scope.audit", "scope.bank", "service.transfer"),
+            r.impact(paths=["app/ledger.py"]),
+        )
+        self.assertEqual((), r.impact(paths=["app/unbound.py"]))
         self.assertEqual(scopes, {module: r.spec_scope(module) for module in r.modules})
         self.assertNotIn("specs/transfer/obligations.md", r.spec_scope("scope.audit"))
 

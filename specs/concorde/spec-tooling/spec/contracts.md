@@ -303,6 +303,7 @@ chapters from declarations alone:
 | selected-by | the Modules whose Spec context contains a document | `selected_by` |
 | referenced-by | the declarations that name a concept, requirement, scenario or contract, each with its Module | `referenced_by` |
 | implemented-by | the Modules whose realizations bind a path or list it as an entry | `implemented_by` |
+| users | the Modules that use any of the given Modules, directly or through further `uses` | `users` |
 | binding Modules | per other Module, the files both it and this Module bind | `shared_files` |
 | covered-by | the verification declarations that name a scenario; `coverage` answers it for every scenario of a Module | `covered_by`, `coverage` |
 | changed definitions | between two repositories: the documents whose members differ, and the nodes whose definitions differ | `changed_documents(old, new, paths=None)`, `changed_nodes(old, new, paths)` |
@@ -315,7 +316,10 @@ paths=())` returns every Module that writing the given documents, nodes or files
 
 - The readers of the documents.
 - The Modules referencing the nodes.
-- The Modules binding the files.
+- The Modules binding the files, and every Module that uses one of them, directly or through
+  further `uses`.
+
+`users` follows a `uses` cycle once. Both answers are sorted by identity.
 
 `shared_files` is computed from entries alone. It finds each of these entries:
 

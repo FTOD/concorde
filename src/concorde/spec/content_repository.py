@@ -2043,7 +2043,8 @@ class DocumentUnitRepository:
 
     def impact(self, *, documents=(), nodes=(), paths=()) -> tuple[str, ...]:
         """Every Module a write concerns: readers of written documents, dependants of written
-        nodes and contracts, and binders of written files (Boundaries, impact of a write)."""
+        nodes and contracts, and binders of written files with every Module using one of them,
+        directly or through further ``uses`` (Boundaries, impact of a write)."""
         concerned: set[str] = set()
         for document_id in documents:
             concerned.update(self.selected_by(document_id))
@@ -2051,9 +2052,23 @@ class DocumentUnitRepository:
             concerned.update(item["module"] for item in self.referenced_by(identity))
             if identity in self.concept_nodes:
                 concerned.update(self.term_selected_by(identity))
-        for path in paths:
-            concerned.update(self.implemented_by(path))
+        binders = {module for path in paths for module in self.implemented_by(path)}
+        concerned.update(binders, self.users(binders))
         return tuple(sorted(concerned))
+
+    def users(self, modules) -> tuple[str, ...]:
+        """Every Module that uses one of ``modules``, directly or through further ``uses``,
+        sorted; a ``uses`` cycle is followed once."""
+        reached: set[str] = set()
+        frontier = {self._resolve(item).id for item in modules}
+        while frontier:
+            frontier = {
+                user.id
+                for user in self.modules.values()
+                if user.id not in reached and frontier & set(user.uses)
+            }
+            reached |= frontier
+        return tuple(sorted(reached))
 
     # --- checks ----------------------------------------------------------------------------
 

@@ -12,7 +12,7 @@ import unittest
 from pathlib import Path
 
 from concorde.spec.diagnostics import tool_envelope
-from concorde.spec.grants import TASK_TYPES, grant
+from concorde.spec.grants import TASK_TYPES, context_identity, grant
 from concorde.spec.repository import SpecRepository
 from concorde.spec.errors import ERROR_SCHEMA
 from concorde.spec.schema import validate
@@ -114,6 +114,15 @@ class Client:
         return value, result["isError"]
 
 
+def contract_input_schemas() -> dict:
+    """The tools' input schemas as the Spec MCP contracts state them, in their listed order."""
+    text = (
+        REPOSITORY_ROOT / "specs/concorde/spec-tooling/spec-mcp/contracts.md"
+    ).read_text()
+    block = text.split("The names and input schemas are:\n\n```json\n", 1)[1]
+    return json.loads(block.split("\n```", 1)[0])
+
+
 class SpecMcpTests(unittest.TestCase):
     def setUp(self):
         directory = tempfile.TemporaryDirectory()
@@ -166,6 +175,13 @@ class SpecMcpTests(unittest.TestCase):
         self.assertIn("tools", client.initialized["capabilities"])
         listed = client.request("tools/list")["tools"]
         self.assertEqual(TOOLS, {tool["name"] for tool in listed})
+        self.assertEqual(
+            contract_input_schemas(),
+            {tool["name"]: tool["inputSchema"] for tool in listed},
+        )
+        self.assertEqual(
+            list(contract_input_schemas()), [tool["name"] for tool in listed]
+        )
         value, error = client.call("modules")
         self.assertFalse(error)
         self.assertEqual(
@@ -391,25 +407,91 @@ class SpecMcpTests(unittest.TestCase):
 
     @verifies("scenario.spec-mcp.queries")
     def test_queries_equal_spec_core(self):
+        self.project.update(
+            "module.a",
+            includes=[
+                {
+                    "kind": "bound",
+                    "target": "src/a/one.py",
+                    "reason": "the text A defers to",
+                }
+            ],
+        )
         client = self.client(root=self.root)
         repository = self.repository()
         modules, _ = client.call("modules")
         self.assertEqual(
-            [(r["id"], r["entry"]) for r in repository.registry["modules"]],
-            [(m["id"], m["entry"]) for m in modules["modules"]],
+            [
+                {
+                    "id": r["id"],
+                    "title": r["title"],
+                    "entry": r["entry"],
+                    "parent": repository.modules[r["id"]].parent,
+                }
+                for r in repository.registry["modules"]
+            ],
+            modules["modules"],
         )
         module, error = client.call("module", id="module.a")
         self.assertFalse(error, module)
+        record = next(
+            r for r in repository.registry["modules"] if r["id"] == "module.a"
+        )
+        self.assertEqual(
+            {
+                "id": "module.a",
+                "title": record["title"],
+                "entry": record["entry"],
+                "documents": record["owns"],
+                "contains": record["contains"],
+                "uses": record["uses"],
+                "includes": record["includes"],
+                "participates": record["participates"],
+                "realizations": [
+                    {"id": item.id, "title": item.title, "entries": list(item.entries)}
+                    for item in repository.realizations("module.a")
+                ],
+            },
+            module,
+        )
         self.assertEqual(["module.b"], [item["target"] for item in module["uses"]])
         self.assertEqual(["src/a/"], module["realizations"][0]["entries"])
-        self.assertNotIn("pending", module["realizations"][0])
         context, _ = client.call("context", id="module.a")
+        value = repository.spec_context("module.a").value
         self.assertEqual(
-            repository.spec_context("module.a").value["sources"], context["sources"]
+            {
+                "module": value["module_id"],
+                "context_identity": context_identity(repository, ["module.a"]),
+                "sources": value["sources"],
+                "bound": value["bound"],
+                "terms": value["terms"],
+            },
+            context,
         )
-        impact, _ = client.call("impact", paths=["src/a/one.py", "specs/b/module.md"])
-        self.assertEqual(["module.a"], impact["paths"][0]["modules"])
+        self.assertEqual(["src/a/one.py"], [item["path"] for item in context["bound"]])
+        impact, _ = client.call(
+            "impact", paths=["src/a/one.py", "src/bmod/b.py", "specs/b/module.md"]
+        )
+        self.assertEqual(
+            [
+                {
+                    "path": "src/a/one.py",
+                    "modules": list(repository.impact(paths=["src/a/one.py"])),
+                },
+                {
+                    "path": "src/bmod/b.py",
+                    "modules": list(repository.impact(paths=["src/bmod/b.py"])),
+                },
+                {
+                    "path": "specs/b/module.md",
+                    "modules": list(repository.selected_by("document.b")),
+                },
+            ],
+            impact["paths"],
+        )
+        # B's file concerns B and A, which uses B.
         self.assertEqual(["module.a", "module.b"], impact["paths"][1]["modules"])
+        self.assertEqual(["module.a", "module.b"], impact["modules"])
         for text in json.dumps([modules, module, context, impact]).split('"'):
             self.assertFalse(text.startswith(str(self.root)), text)
 

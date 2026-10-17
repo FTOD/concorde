@@ -14,6 +14,66 @@ supports it. Otherwise, the result names the newest of the three, and a client t
 ends the session, as MCP's version negotiation says. The result declares the tools capability and
 no resources or prompts.
 
+This section and [Tools](#tools) define every message the server accepts and sends. An
+implementation therefore needs no text of the MCP or JSON-RPC standards. Every message is one JSON
+object on one line, terminated by a newline, with `"jsonrpc": "2.0"`. A request carries an `id`
+and a `method`, and optional `params`. A notification carries a `method` and no `id`. A response
+carries the request's `id` and either a `result` or an `error` of the form
+`{"code": <integer>, "message": <string>}`, with optional `data`. The server ignores blank lines.
+
+| Message | From | `params` | Answer |
+| --- | --- | --- | --- |
+| `initialize` request | client | `protocolVersion`: the requested revision; `capabilities`: an object, whose `roots` member declares the roots capability; other members are ignored | the result `{"protocolVersion", "capabilities": {"tools": {"listChanged": false}}, "serverInfo": {"name": "concorde-spec", "version": "1"}, "instructions"}`, with a one-sentence `instructions` text |
+| `notifications/initialized` notification | client | ignored | none; the first one resolves the root |
+| `ping` request | client | ignored | the result `{}` |
+| `tools/list` request | client | ignored, a `cursor` among them | the result `{"tools": [...]}` below, all tools in one page, without `nextCursor` |
+| `tools/call` request | client | `name`: a tool name; `arguments`: an object, `{}` when absent | the result `{"content": [{"type": "text", "text": <canonical JSON>}], "isError": <boolean>}` |
+| `roots/list` request | server, with the `id` `server-1` | `{}` | the client's result `{"roots": [{"uri": <string>, ...}]}`, or a JSON-RPC error |
+
+Any other request is answered with the error `-32601`. Any other notification is ignored.
+
+The `tools/list` result lists the six tools in this order, each as
+`{"name", "description", "inputSchema"}`. The `description` texts are informative and not part of
+this contract. The names and input schemas are:
+
+```json
+{
+  "boundary": {
+    "type": "object",
+    "properties": {
+      "modules": {"type": "array", "items": {"type": "string", "minLength": 1}, "minItems": 1},
+      "task_type": {"enum": ["understand", "specify", "implement", "test", "review-spec", "review-code", "code-to-spec", "review-architecture"]}
+    },
+    "required": ["modules", "task_type"]
+  },
+  "modules": {"type": "object", "properties": {}},
+  "module": {
+    "type": "object",
+    "properties": {"id": {"type": "string", "minLength": 1}},
+    "required": ["id"]
+  },
+  "context": {
+    "type": "object",
+    "properties": {"id": {"type": "string", "minLength": 1}},
+    "required": ["id"]
+  },
+  "impact": {
+    "type": "object",
+    "properties": {
+      "paths": {"type": "array", "items": {"type": "string", "minLength": 1}, "minItems": 1}
+    },
+    "required": ["paths"]
+  },
+  "validate": {
+    "type": "object",
+    "properties": {"target": {"type": "string", "minLength": 1}}
+  }
+}
+```
+
+The server checks every argument itself and refuses an argument against its schema with
+`invalid_input`. An argument that the schema does not name is ignored.
+
 After the client's first `initialized` notification, the server resolves its root once:
 
 - When set, `CLAUDE_PROJECT_DIR` provides the root. The server sends no `roots/list`.
@@ -80,9 +140,27 @@ Its JSON is `{"error": <record>}`, where the record is Spec tooling's
 | `boundary` | `modules`: nonempty array of [Module](../../glossary.json#concept.module) identities; `task_type`: one of the eight [task types](../../glossary.json#concept.task-type) | the boundary result below |
 | `modules` | none | `{"modules": [{"id", "title", "entry", "parent"}]}` in registry order; `parent` is `null` for a root |
 | `module` | `id`: a Module identity | `{"id", "title", "entry", "documents", "contains", "uses", "includes", "participates", "realizations"}`, where `realizations` lists `{"id", "title", "entries"}`; a Module's [configured checks](../../glossary.json#concept.configured-check) are Check execution's and not listed |
-| `context` | `id`: a Module or scenario identity | `{"module", "context_identity", "sources", "terms"}`, with Spec core's [source and term records](../spec/contracts.md#spec-context-records) for the Module, or for the scenario's owner |
-| `impact` | `paths`: nonempty array of paths | `{"paths": [{"path", "modules"}], "modules"}`: for a document member the Modules whose [Spec context](../../glossary.json#concept.spec-context) contains it, for the glossary the Modules that have terms, for any other path the Modules that bind it, and their union |
+| `context` | `id`: a Module or scenario identity | `{"module", "context_identity", "sources", "bound", "terms"}`, with Spec core's [source, bound and term records](../spec/contracts.md#spec-context-records) for the Module, or for the scenario's owner |
+| `impact` | `paths`: nonempty array of paths | `{"paths": [{"path", "modules"}], "modules"}`: for a document member the Modules whose [Spec context](../../glossary.json#concept.spec-context) contains it, for the glossary the Modules that have terms, for any other path Spec core's file impact (the Modules that bind it and every Module that uses one of them, directly or through further `uses`), and their union |
 | `validate` | optional `target`: a Module identity | Spec core's [validation result](../spec/contracts.md#validation-result), as `validate_repository` returns it, with `tool` `spec-validation`: without the update findings the `spec-validation` command adds in a project a `concorde update` marked, whose mark it never touches; Specs that cannot be loaded, such as a `protocol_mismatch`, give status `invalid` with one error finding describing the failure and its record as `result.load_error`, not a tool error |
+
+<a id="result-fields"></a>
+
+Every value in a result is Spec core's, unchanged. Each tool presents these values in the envelope
+the table above gives. The source in Spec core of each field is:
+
+| Tool | Field | Spec core's value |
+| --- | --- | --- |
+| `modules` | `id`, `title`, `entry` | the fields of the Module's [registry](../../glossary.json#concept.registry) record |
+| `modules` | `parent` | `modules[id].parent` of the repository |
+| `module` | `id`, `title`, `entry`, `contains`, `uses`, `includes`, `participates` | the same fields of the Module's registry record |
+| `module` | `documents` | the registry record's `owns` |
+| `module` | `realizations` | the `id`, `title` and `entries` of each realization the Module defines, in the order `realizations(id)` returns them |
+| `context` | `module`, `sources`, `bound`, `terms` | `module_id`, `sources`, `bound` and `terms` of `spec_context(id).value` |
+| `context` | `context_identity` | the [context identity](../../glossary.json#concept.context-identity) of the one Module, as `boundary` computes it |
+| `impact` | `modules` of a path | `selected_by` of the document; for the glossary, the Modules whose `terms` is not empty; otherwise `impact(paths=[path])` |
+| `boundary` | `context_identity`, `entries` | the same fields of the grant's value |
+| `validate` | the whole result | the validation result, as stated in the table |
 
 `boundary` returns exactly the `context_identity` and `entries` of Spec core's grant for:
 
