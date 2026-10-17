@@ -554,6 +554,7 @@ This illustrates [a merge running the Concorde it started with](requirements.md#
 - AND the task is still delivered with its worktree
 - AND a check stopped after its time limit fails the same way
 - AND the stopped check's log and the refusal keep what the check printed before it was stopped
+- AND no process that a check started, stopped or passed, writes after the check ended
 
 ### scenario.tasks.merge-commit-refused — A refused merge commit is undone
 

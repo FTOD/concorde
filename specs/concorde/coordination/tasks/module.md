@@ -778,6 +778,12 @@ Its answer says so. While a `concorde update` is not validated yet, and where th
 installed, the merge also runs `concorde spec-validation` after the given checks. This ensures that
 no checks let a merge pass that update's barrier.
 
+Each check of a merge or a `task deliver` runs as a process group of its own. When the check ends,
+whether it exited or was stopped after 1800 seconds, Tasks kills what is left of that group. Tasks
+waits until the group is gone before it goes on, so no process a check started writes after a
+reset or after a lock is released. A group still alive 10 seconds after it was killed fails the
+check. A process that left the group, as `setsid` does, is not stopped.
+
 If a check fails or checks leave uncommitted paths, Tasks returns the primary branch with
 `git reset --keep` to the commit it had. In either case, Tasks refuses with `check_failed`, naming:
 
