@@ -763,6 +763,9 @@ class PiPolicyTests(unittest.TestCase):
                 "src": f"{w}/src",
                 "root": f"{w}",
                 "b-only": f"{w}/src/b",
+                # A directory named with a trailing separator is judged as the directory.
+                "ro-files-slash": f"{w}/specs/",
+                "b-only-slash": f"{w}/src/b//",
                 "git": f"{w}/.git",
                 "common-git": f"{self.primary}/.git",
             },
@@ -786,6 +789,10 @@ class PiPolicyTests(unittest.TestCase):
         self.assertIsNone(out["search:src"])
         self.assertIsNone(out["search:root"])
         self.assertIn("holds nothing this task may read", out["search:b-only"])
+        self.assertIsNone(out["search:ro-files-slash"])
+        self.assertIn(
+            "src/b holds nothing this task may read", out["search:b-only-slash"]
+        )
         self.assertIn("Git metadata", out["search:git"])
         self.assertIn("Git metadata", out["search:common-git"])
 

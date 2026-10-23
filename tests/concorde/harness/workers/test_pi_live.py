@@ -86,6 +86,8 @@ class LivePiWorkerTests(unittest.TestCase):
             f"10. bash: ls {run_trace}",
             f"11. edit: in {root}/src/a/calc.py replace 'return a - b' with 'return a + b'",
             '12. bash: f=$(mktemp) && echo "temp file $f" && rm "$f"',
+            # A directory named with a trailing separator, whose one file is granted alone.
+            f"13. grep: pattern 'module' with path {root}/specs/a/",
         ]
         record = run_worker(
             self.request(
@@ -124,6 +126,10 @@ class LivePiWorkerTests(unittest.TestCase):
         grep = [text for name, _, text, _ in results if name == "grep"]
         self.assertTrue(
             grep and "pathlib" not in grep[0] and "def add" in grep[0], grep
+        )
+        self.assertTrue(
+            len(grep) > 1 and "Concorde grant:" not in grep[1] and "module" in grep[1],
+            grep,
         )
         bash = "".join(text for name, _, text, _ in results if name == "bash")
         self.assertNotIn("import pathlib", bash)

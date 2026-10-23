@@ -40,6 +40,7 @@ The policy also holds these items:
 
 - The sandbox's filesystem configuration.
 - The programs `rg` and `fd`.
+- The `groups` folder, where the extension registers each command's process group.
 - The run's limits, `max_turns` and `max_budget_usd`.
 - The [worker result](../../glossary.json#concept.worker-result) schema.
 
@@ -62,6 +63,7 @@ A path argument is resolved the way pi resolves it:
 - A leading `~` becomes the worker's `HOME`.
 - A `file://` URL becomes its path.
 - The result is resolved against the working directory.
+- A trailing separator is removed, so a directory named as `dir/` is judged as `dir`.
 
 When a name does not exist, pi's `read` may then open another spelling of that name, such as:
 
@@ -135,7 +137,14 @@ The following tools run their command through `@anthropic-ai/sandbox-runtime`:
 
 The extension's command engine is the engine Claude Code's own sandbox uses. The extension
 initializes the engine once per process with no allowed network domain and a strict allowlist.
-The extension passes the filesystem configuration with every command.
+The extension passes the filesystem configuration with every command. Each command runs in a
+process group of its own, so that the extension can stop the command with every process it started.
+Before the command goes on, the extension registers the group as an empty file named by the group's
+identifier in the policy's `groups` folder, `control/groups/` of the runtime directory. When the
+command ends, the extension removes the file. When the file cannot be written, the extension stops
+the command and refuses it. The reason is `Concorde grant: the command was not run: its process
+group could not be registered for the host to stop: <error>`. Workers kills each registered group
+when the round ends ([the pi run mechanics](../workers/pi.md#run-directory)).
 
 `denyRead` lists these paths:
 

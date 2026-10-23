@@ -31,7 +31,15 @@ differences:
 | Path | Content | Worker access |
 | --- | --- | --- |
 | `control/permission.ts` | The permission extension with the run's policy embedded | none |
+| `control/groups/` | One empty file per tool command that runs, named by the identifier of the command's process group, which the host creates before the first round | none |
 | `config/` | `PI_CODING_AGENT_DIR`: copies of the user's pi `auth.json` and `models.json`, a generated `settings.json` of Concorde's own, and `sessions/` with the session transcript | none |
+
+Each tool command runs in a process group of its own, which the host's kill of pi's group does not
+reach. So the permission extension registers each group in `control/groups/` before the command
+goes on, and removes the registration when the command ends. When the round ends, however it ends,
+the host kills pi's process group and then every registered group, and removes every registration.
+A command whose group cannot be registered is stopped and refused. On Linux the sandbox's own
+parent-death signal also ends the command with pi. On macOS nothing else does.
 
 There is no `control/settings.json` and no `control/write_hook.py`. The permission extension
 replaces both. Before the first round, the host copies `auth.json` and `models.json` from the

@@ -80,6 +80,22 @@ contributes beyond plain data:
   before the first round.
 - `round_validation` is the callback of [Round validation](#round-validation).
 
+The caller forwards every configured limit that `models.limits` gives. Each limit has its own
+field of the request:
+
+| Configured limit | Request field |
+| --- | --- |
+| `timeout_seconds` | `timeout`, in seconds |
+| `max_turns` | `max_turns` |
+| `max_budget_usd` | `max_budget_usd`, `None` when the configuration sets no budget |
+| `rounds` | `rounds` |
+| `retries` | `retries` |
+| `retry_delay_seconds` | `retry_delay`, in seconds |
+
+A field the caller leaves out takes the request's own default. That default equals the
+configuration's default for the limit. The run then ignores what the configuration sets for it.
+A budget of `None` means no budget limit, never a budget of zero.
+
 A representative call, as a step of Method makes it:
 
 ```python
@@ -106,7 +122,11 @@ record = run_worker(
         model_map=model["model_map"],
         reasoning=model["reasoning"],
         rounds=bounds["rounds"],
+        retries=bounds["retries"],
+        retry_delay=float(bounds["retry_delay_seconds"]),
         timeout=float(bounds["timeout_seconds"]),
+        max_turns=bounds["max_turns"],
+        max_budget_usd=bounds["max_budget_usd"],  # None: the run has no budget limit
         operation="implement",
         worker="worker",
         round_validation=validate_round,
@@ -131,6 +151,16 @@ holds, the host collects the repository's **Git administrative paths**, as real 
 | the worktree's own Git directory | `git rev-parse --git-dir` in the worktree |
 | every `.git` entry of the worktree, file or directory: its own and each submodule's or nested repository's | a walk of the worktree that enters no `.git`, no symbolic link and no runtime path |
 | for each `.git` file, the Git directory its `gitdir:` line names and that directory's `commondir` | reading the file |
+
+The host collects these paths in full or launches nothing. With `git_paths_unavailable`, the host
+refuses the run before it generates anything when any of these fails:
+
+- one of the two `git rev-parse` commands, or its answer names no path
+- the walk, for a directory it cannot list
+- the reading of a `.git` file
+- the reading of a `commondir` file that exists
+
+A Git directory without a `commondir` file is no failure: it has no other common directory.
 
 The host hands the Harness the primary worktree and these paths with the grant. Wherever the
 repository lies, the Harness hides them from every tool
@@ -212,16 +242,45 @@ whose worker ended `ok` with a clean audit, the host calls the callback once wit
 - the folder of the round's trace node
 - the round's [worker result](../../glossary.json#concept.worker-result), valid against its schema
 
-The caller may therefore judge what the worker returned as well as what it changed. The callback
-answers with:
+The caller may therefore judge what the worker returned as well as what it changed. In Python, the
+callback is `round_validation(worktree: Path, folder: Path, result: dict) -> RoundValidation`. It
+answers with a `workers.RoundValidation`, whose fields all have defaults:
 
-| Field | Meaning |
+| Field | Type, default | Meaning |
+| --- | --- | --- |
+| `evidence` | a tuple of mappings, `()` | The values to keep with the round as its evidence, in the caller's own shape; nodes of its own, such as check nodes, it places below the round's folder, and a top-level string of an evidence value that is an absolute path below that folder is an artifact path, which the round's node keeps relative to its folder and the returned record absolute |
+| `repair` | a non-empty string or `None`, `None` | The text naming what the worker must repair, which becomes the next resume round's prompt |
+| `failure` | a `Refusal` or `None`, `None` | Only with a repair: the run ends `failed` with this code and these causes when no rounds are left for the repair. Without a failure, a repair left over at the last round leaves the round's result for the caller to judge |
+| `violation` | a `Refusal` or `None`, `None` | Instead of a repair, when the round did something its caller does not allow at all: the run ends `failed` at once with this code and these causes, with no further round, as an audit violation does |
+| `unavailable` | a `Refusal` or `None`, `None` | Instead of every other field, when it could not validate at all: the run ends `failed` with this code and these causes, with no further round |
+
+A `workers.Refusal` names Workers' link with three fields:
+
+- `code`, a non-empty string
+- `detail`, a non-empty string
+- `causes`, a tuple of the links of an [error chain](../../glossary.json#concept.error-chain), `()`
+  by default
+
+An answer has exactly one meaning. These are the four valid answers:
+
+| Answer | Example |
 | --- | --- |
-| evidence | The values to keep with the round as its evidence, in the caller's own shape, possibly none; nodes of its own, such as check nodes, it places below the round's folder, and a top-level string of an evidence value that is an absolute path below that folder is an artifact path, which the round's node keeps relative to its folder and the returned record absolute |
-| repair | Nothing, or the text naming what the worker must repair, which becomes the next resume round's prompt |
-| failure | With a repair, whether the run must end `failed` when no rounds are left for it, and then the code and the causes of Workers' link; without, a repair left over at the last round leaves the round's result for the caller to judge |
-| violation | Instead of a repair, when the round did something its caller does not allow at all: the code and the causes of Workers' link, which ends the run `failed` at once, with no further round, as an audit violation does |
-| unavailable | Instead of the fields above, when it could not validate at all: the code and the causes of Workers' link, which ends the run `failed` with no further round |
+| nothing to repair | `RoundValidation(evidence=(check,))` |
+| a repair | `RoundValidation(evidence=(check,), repair="check.a fails: …", failure=Refusal("checks_failed", "1 configured check(s) still fail: check.a", (link,)))`, with or without `failure` |
+| a violation | `RoundValidation(violation=Refusal("audit_violation", "the worker changed 1 glossary entry that a Module outside its grant owns: …"))` |
+| unavailable | `RoundValidation(unavailable=Refusal("checks_unavailable", "the configured checks of module.a could not run: …", (link,)))` |
+
+The host refuses every other answer. The run then ends `failed` with `validation_unavailable`,
+and the error names what is wrong. The host refuses these answers:
+
+- a value that is not a `RoundValidation`
+- a field of another type than the table gives, an empty `repair`, or a `Refusal` without code or
+  detail
+- more than one of `repair`, `violation` and `unavailable`
+- a `failure` without a `repair`
+- `evidence` with `unavailable`
+
+A callback that raises instead of answering ends the run the same way.
 
 In Concorde, Method's round validation runs the
 [configured checks](../../glossary.json#concept.configured-check) through Check execution. These
@@ -468,10 +527,17 @@ following:
 - the index digest
 - the digest of every tracked change and untracked file that already exists, including its content
   and, as Git sees it, its executable bit
+- for each **nested repository**, its `HEAD` and index digest, measured as the worktree's own
 
-After each round, the host runs read-only Git
-(`git status --porcelain=v2 -z --untracked-files=all` and the digests of the listed files) and
-compares with the snapshot. When Git no longer lists a file of the snapshot, the host measures the
+A nested repository is an initialized submodule, whose `.git` exists, or an untracked directory that
+Git reports as a nested repository. The host measures each one inside, at any depth, as it measures
+the worktree. It keys every file inside by its path relative to the worktree, such as
+`lib/src/x.py`. A submodule's own entry in the worktree's status is no file. A nested repository
+inside a path Git ignores is not observed.
+
+After each round, the host runs read-only Git in the worktree and in every nested repository
+(`git status --porcelain=v2 -z --untracked-files=all`, `git ls-files --stage` for the submodules
+and the digests of the listed files) and compares with the snapshot. When Git no longer lists a file of the snapshot, the host measures the
 file where it lies. If the file is equal to `HEAD` again, it changed. If the file is gone, as an
 untracked file deleted is, it was deleted.
 
@@ -480,7 +546,7 @@ untracked file deleted is, it was deleted.
 | a changed or new file whose level is `rw` | allowed |
 | a changed or new file of any other level, or of none | violation |
 | a deleted file | violation |
-| a changed `HEAD`, index or branch | violation |
+| a changed `HEAD`, index or branch, of the worktree or of a nested repository | violation |
 | a change under a path Git ignores | not observed |
 
 As the Harness reads it, a file's level is that of the grant's most specific entry for it. The
@@ -494,7 +560,7 @@ Each round records its audit as an object with:
 | --- | --- |
 | `verdict` | `clean` when nothing is a violation, otherwise `violation` |
 | `changed` | every path, relative to the worktree and in path order, whose file was created, changed or deleted since the snapshot |
-| `violations` | each violation as one string, in path order after any Git state: `HEAD` for a `HEAD` that names another branch or commit and `index` for a changed index; the path of a file created or changed outside `rw`; and the path followed by ` (deleted)` for a deleted file |
+| `violations` | each violation as one string, in path order after any Git state: `HEAD` for a `HEAD` that names another branch or commit and `index` for a changed index, then `<path>: HEAD` and `<path>: index` for those of the nested repository at that path; the path of a file created or changed outside `rw`; and the path followed by ` (deleted)` for a deleted file |
 
 A round whose audit did not run, such as one whose command could not be started, has `audit` null
 in its node.
@@ -556,7 +622,7 @@ describes the worktree before these deletions.
 | invalid result, audit clean | not called | end `failed` with `worker_result_invalid` |
 | `blocked` or `failed`, audit clean | not called | end with the worker's status and `worker_blocked` or `worker_failed` |
 | `ok`, audit clean, no round validation given | — | end `ok` |
-| `ok`, audit clean | raises instead of answering | end `failed` with `validation_unavailable` |
+| `ok`, audit clean | raises instead of answering, or answers what [Round validation](#round-validation) refuses | end `failed` with `validation_unavailable` |
 | `ok`, audit clean | answers unavailable | end `failed` with the code and causes it names, reason `environment` |
 | `ok`, audit clean | answers a violation | end `failed` with the code and causes it names, reason `permission` |
 | `ok`, audit clean | nothing to repair | end `ok` |
@@ -780,6 +846,7 @@ round also timed out or failed otherwise.
 | `grant_unavailable` | which of the task type, grant, context identity or entries is missing | `input` | none |
 | `grant_malformed` | the first grant entry that is not an object with exactly a worktree-relative path and a level of `rw`, `ro` or `names`, or that names a path an earlier entry names, and what is wrong with it | `input` | none |
 | `worktree_misplaced` | the worktree, the primary worktree's `.claude/worktrees/` where it must lie directly, or what Git said when it found no primary worktree | `environment` | none |
+| `git_paths_unavailable` | the Git command that failed with its exit status and output, or the directory or file that could not be read with the operating system's error | `environment` | none |
 | `run_directory_denied` | the deny rule that would cover the worker's own directories of the runtime directory | `environment` | none |
 | `runtime_path_overlap` | the first runtime path that meets protected material, and the material or grant entry it meets | `input` | none |
 | `snapshot_failed` | the Git command that failed and its output | `environment` | none |
@@ -794,7 +861,7 @@ round also timed out or failed otherwise.
 | `worker_blocked`, `worker_failed` | the worker's code and detail | `capability` | the worker's link |
 | the code the round validation names for a violation, in Concorde `audit_violation` for a glossary entry another Module owns | every violating entry the round validation names | `permission` | the links the round validation names, none in Concorde |
 | the code the round validation names when it cannot validate, in Concorde `checks_unavailable` | the round and what the round validation reported | `environment` | the links the round validation names, in Concorde Check execution's |
-| `validation_unavailable` | the round and the error the round validation raised instead of answering | `capability` | none |
+| `validation_unavailable` | the round and the error the round validation raised instead of answering, or what is wrong with its answer | `capability` | none |
 | the code the round validation names for a repair that fails the run, in Concorde `checks_failed` | what still needs repair and the rounds used; `attempts` lists each round's repair | `exhausted` | the links the round validation names, in Concorde one per failing check, from Check execution |
 | `deletion_failed` | every proposed deletion the host performed, every one that failed with the operating system's error, and those it refused or found already absent | `environment` | the link the run would otherwise have ended with, if any |
 | `cleanup_failed` | the transcript the host could not keep and the runtime directory it could not remove, each with the operating system's error | `environment` | the link the run would otherwise have ended with, if any |
@@ -873,6 +940,10 @@ The host SHALL take a worker's grant only from its request, in the shape of the 
 ### req.workers.validation-after-clean-round — The round validation follows every clean ok round
 
 When a request gives a round validation, the host SHALL call it once after every round whose worker ended `ok` with a clean audit, and after no other round.
+
+### req.workers.validation-answer-checked — Only a valid round validation answer is acted on
+
+The host SHALL end a run `failed` with `validation_unavailable`, naming what is wrong, when its round validation answers anything but one of the four valid answers that [Round validation](#round-validation) lists.
 
 ### req.workers.validation-recorded — The round validation's answer is recorded
 
@@ -1054,6 +1125,10 @@ A worker SHALL have no access to Git metadata through any tool.
 On both backends, wherever the repository lies, the host SHALL deny every Git administrative path
 that [Placement](#placement) lists to the worker's file tools and sandbox.
 
+### req.workers.git-paths-complete — A worker launches only with every Git path found
+
+Before it generates any settings, write hook or [permission extension](../../glossary.json#concept.permission-extension), the host SHALL refuse with `git_paths_unavailable` a run whose Git administrative paths it could not collect in full as [Placement](#placement) lists them.
+
 ### req.workers.audit-every-round — Every round is audited
 
 The host SHALL audit the worktree against the grant after every round whose agent process started,
@@ -1210,7 +1285,7 @@ The host SHALL NOT create any file or directory in the worktree before or while 
 
 ### req.workers.process-group — No worker process outlives its round
 
-When a round ends, the host SHALL kill the worker's whole process group.
+When a round ends, the host SHALL kill the worker's whole process group and, on the pi backend, every process group the permission extension registered for a tool command ([the pi run mechanics](pi.md#run-directory)).
 
 ### req.workers.progress — A running run shows its progress
 

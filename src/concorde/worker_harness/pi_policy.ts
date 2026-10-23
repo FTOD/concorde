@@ -45,6 +45,7 @@ export interface Policy {
     denyWrite: string[];
   };
   programs: { rg: string; fd: string };
+  groups: string;
   limits: Limits;
   resultSchema: Record<string, unknown>;
 }
@@ -104,7 +105,18 @@ export function resolveLikePi(
   if (value === "~") value = home;
   else if (value.startsWith("~/")) value = join(home, value.slice(2));
   if (value.startsWith("file://")) value = fileURLToPath(value);
-  return isAbsolute(value) ? normalize(value) : resolve(cwd, value);
+  return isAbsolute(value) ? normal(value) : resolve(cwd, value);
+}
+
+/**
+ * The normalized absolute path without a trailing separator, so that `dir/` is judged as `dir`,
+ * as `resolve` and the operating system read it.
+ */
+export function normal(path: string): string {
+  const value = normalize(path);
+  return value.length > 1 && value.endsWith(sep)
+    ? value.replace(/\/+$/, "") || sep
+    : value;
 }
 
 /**
@@ -207,7 +219,7 @@ function readOne(policy: Policy, path: string): string | null {
 
 /** Decide a read of an absolute path: both the path and its real path must be allowed. */
 export function readDecision(policy: Policy, path: string): string | null {
-  const lexical = normalize(path);
+  const lexical = normal(path);
   const denied = readOne(policy, lexical);
   if (denied) return denied;
   const real = realOf(lexical);
@@ -228,7 +240,7 @@ function isLink(path: string): boolean {
  * change, and only `rw` paths allowed.
  */
 export function writeDecision(policy: Policy, path: string): string | null {
-  const absolute = normalize(path);
+  const absolute = normal(path);
   const resolved = realOf(absolute);
   const link = isLink(absolute);
   if (!within(resolved, policy.worktree) || resolved === policy.worktree) {
@@ -272,7 +284,7 @@ function readableBelow(policy: Policy, relative: string): boolean {
  * the sandbox then hides everything else below it.
  */
 export function searchDecision(policy: Policy, path: string): string | null {
-  const lexical = normalize(path);
+  const lexical = normal(path);
   for (const candidate of new Set([lexical, realOf(lexical)])) {
     let directory = false;
     try {

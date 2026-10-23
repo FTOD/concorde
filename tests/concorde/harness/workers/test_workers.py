@@ -1050,6 +1050,64 @@ class WorkerRunTests(unittest.TestCase):
                 runtime = self.project.runtime(record)
                 self.assertFalse((runtime / "control/settings.json").exists())
 
+    @verifies("scenario.workers.git-paths-unavailable-refused")
+    @unittest.skipIf(os.geteuid() == 0, "root reads every file whatever its mode")
+    def test_a_worker_whose_git_paths_are_not_all_found_is_refused(self):
+        from concorde.worker_harness import placement
+
+        root = self.project.root
+        nested = root / "src/a/vendor"
+        nested.mkdir()
+        dot_git = nested / ".git"
+        gitdir = self.project.base / "vendor-git"
+        gitdir.mkdir()
+        dot_git.write_text(f"gitdir: {gitdir}\n")
+        # A Git directory without commondir is no failure.
+        self.assertIn(gitdir, placement.git_paths(root))
+        locked = root / "src/locked"
+        locked.mkdir()
+        real_git = placement._git
+
+        def failing(worktree, *arguments):
+            if arguments[:1] == ("rev-parse",):
+                return subprocess.CompletedProcess(
+                    ["git", *arguments], 128, "", "fatal: not a git repository\n"
+                )
+            return real_git(worktree, *arguments)
+
+        cases = {
+            "rev-parse": (None, "fatal: not a git repository"),
+            "directory": (locked, str(locked)),
+            "dot-git": (dot_git, str(dot_git)),
+            "commondir": (gitdir / "commondir", str(gitdir / "commondir")),
+        }
+        for name, (path, named) in cases.items():
+            with self.subTest(case=name):
+                if name == "commondir":
+                    path.write_text("..\n")
+                if path is not None:
+                    path.chmod(0)
+                try:
+                    if name == "rev-parse":
+                        with patch.object(placement, "_git", failing):
+                            record = self.project.run([{}])
+                    else:
+                        record = self.project.run([{}])
+                finally:
+                    if path is not None:
+                        path.chmod(0o700)
+                    if name == "commondir":
+                        path.unlink()
+                self.assertEqual("failed", record["status"])
+                error = record["error"]
+                self.assertEqual("git_paths_unavailable", error["code"])
+                self.assertEqual("environment", error["unhandled"]["reason"])
+                self.assertIn(named, error["detail"])
+                self.assertEqual([], record["rounds"])
+                self.assertTrue((Path(record["run_directory"]) / "trace.json").exists())
+                runtime = self.project.runtime(record)
+                self.assertFalse((runtime / "control/settings.json").exists())
+
     @verifies("scenario.workers.malformed-grant-refused")
     def test_a_run_with_a_malformed_grant_is_refused(self):
         self.project.grant["entries"].append({"path": "src/x.py", "level": "write"})
@@ -1221,6 +1279,46 @@ class WorkerRunTests(unittest.TestCase):
                 self.assertEqual(code, record["error"]["code"])
                 self.assertEqual(deleted, not (self.root / "src/a/old.py").exists())
                 self.assertEqual(["src/a/old.py"] if deleted else [], record["deleted"])
+
+    @verifies("scenario.workers.validation-answer-refused")
+    def test_a_malformed_or_conflicting_answer_fails_the_run(self):
+        refusal = Refusal("checks_failed", "the check still fails")
+        answers = {
+            "not a RoundValidation": ({"repair": "x"}, "a dict, not a RoundValidation"),
+            "evidence": (RoundValidation(evidence=("x",)), "evidence that is not"),
+            "empty repair": (RoundValidation(repair=""), "a repair that is not"),
+            "repair and violation": (
+                RoundValidation(repair="x", violation=refusal),
+                "both repair and violation",
+            ),
+            "failure alone": (RoundValidation(failure=refusal), "a failure without"),
+            "evidence and unavailable": (
+                RoundValidation(evidence=({"a": 1},), unavailable=refusal),
+                "evidence with unavailable",
+            ),
+            "refusal without code": (
+                RoundValidation(violation=Refusal("", "not allowed")),
+                "violation has no code",
+            ),
+            "causes": (
+                RoundValidation(repair="x", failure=Refusal("c", "d", ("link",))),
+                "the causes of failure c",
+            ),
+        }
+        for name, (answer, named) in answers.items():
+            with self.subTest(answer=name):
+                record = self.project.run(
+                    [{}, {}],
+                    check_modules=None,
+                    round_validation=lambda *_, answer=answer: answer,
+                )
+                self.assertEqual("failed", record["status"])
+                error = record["error"]
+                self.assertEqual("validation_unavailable", error["code"])
+                self.assertEqual("capability", error["unhandled"]["reason"])
+                self.assertIn("does not accept", error["detail"])
+                self.assertIn(named, error["detail"])
+                self.assertEqual(1, len(record["rounds"]))
 
     def test_a_result_returned_before_a_process_failure_is_kept(self):
         for step, code in (
@@ -2108,6 +2206,166 @@ class WorkerRunTests(unittest.TestCase):
             contract["schema"]["properties"]["transient"],
             workers_module.WORKER_ROUND_TRACE_SCHEMA["properties"]["transient"],
         )
+
+
+TOOL_GROUP_AGENT = """
+import pathlib, subprocess, sys, time
+groups, pid_file, linger = pathlib.Path(sys.argv[1]), pathlib.Path(sys.argv[2]), sys.argv[3]
+# A tool command in a process group of its own, as pi's permission extension runs each one.
+tool = subprocess.Popen(["sleep", "60"], start_new_session=True)
+(groups / str(tool.pid)).write_text("")
+pid_file.write_text(str(tool.pid))
+if linger == "yes":
+    time.sleep(60)
+"""
+
+
+class ToolGroupTests(unittest.TestCase):
+    """The host kills the process group of every tool command registered in ``control/groups/``
+    when the round ends, however it ends."""
+
+    @verifies("scenario.workers.tool-groups-killed")
+    def test_a_registered_tool_group_never_outlives_its_round(self):
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        base = Path(directory.name)
+        paths = RunPaths(base / "runtime")
+        for folder in (paths.work, paths.groups):
+            folder.mkdir(parents=True)
+        agent = base / "agent.py"
+        agent.write_text(TOOL_GROUP_AGENT)
+        for linger, timeout in (("no", 30), ("yes", 2)):
+            with self.subTest(timed_out=linger == "yes"):
+                pid_file = base / f"tool-{linger}.pid"
+                request = WorkerRequest(
+                    worktree=base,
+                    task_type="implement",
+                    grant={},
+                    instructions="",
+                    timeout=timeout,
+                )
+                outcome = workers_module._launch(
+                    request,
+                    paths,
+                    [
+                        sys.executable,
+                        str(agent),
+                        str(paths.groups),
+                        str(pid_file),
+                        linger,
+                    ],
+                    dict(os.environ),
+                    "",
+                    lambda line: None,
+                    lambda data: None,
+                )
+                self.assertEqual(linger == "yes", outcome["timed_out"])
+                tool = int(pid_file.read_text())
+                deadline = time.monotonic() + 5
+                while (running := alive(tool)) and time.monotonic() < deadline:
+                    time.sleep(0.05)
+                self.assertFalse(running, "the tool command outlived its round")
+                self.assertEqual([], list(paths.groups.iterdir()))
+
+
+class NestedRepositoryAuditTests(unittest.TestCase):
+    """The audit measures the files of initialized submodules and untracked nested repositories
+    with their worktree-relative paths, and their HEAD and index."""
+
+    def setUp(self):
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        base = Path(os.path.realpath(directory.name))
+        commit = ("-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "c")
+        library = base / "library"
+        library.mkdir()
+        git(library, "init", "-q")
+        for name in ("x.py", "y.py"):
+            (library / name).write_text(f"{name}\n")
+        git(library, "add", "-A")
+        git(library, *commit)
+        self.root = base / "project"
+        self.root.mkdir()
+        git(self.root, "init", "-q")
+        (self.root / "main.py").write_text("main\n")
+        git(self.root, "add", "-A")
+        git(self.root, *commit)
+        git(
+            self.root,
+            "-c",
+            "protocol.file.allow=always",
+            "submodule",
+            "add",
+            "-q",
+            str(library),
+            "lib",
+        )
+        git(self.root, *commit)
+        self.commit = commit
+        # An untracked nested repository, such as a checkout a project keeps beside its code.
+        self.nested = self.root / "vendor"
+        self.nested.mkdir()
+        git(self.nested, "init", "-q")
+        (self.nested / "v.py").write_text("v\n")
+        git(self.nested, "add", "-A")
+        git(self.nested, *commit)
+        self.writable = {"lib/x.py", "lib/new.py", "vendor/v.py"}
+
+    def audited(self, change, before=None):
+        from concorde.worker_harness.audit import audit, snapshot
+
+        if before is not None:
+            before()
+        start = snapshot(self.root)
+        change()
+        return audit(self.root, start, lambda path: path in self.writable)
+
+    @verifies("scenario.workers.audit-nested-repositories")
+    def test_a_permitted_edit_in_a_clean_submodule_is_clean(self):
+        result = self.audited(lambda: (self.root / "lib/x.py").write_text("changed\n"))
+        self.assertEqual(("lib/x.py",), result.changed)
+        self.assertEqual((), result.violations)
+
+    @verifies("scenario.workers.audit-nested-repositories")
+    def test_a_forbidden_edit_in_a_submodule_is_a_violation(self):
+        for name, before in {
+            "clean": None,
+            "dirty": lambda: (self.root / "lib/x.py").write_text("dirty\n"),
+        }.items():
+            with self.subTest(submodule=name):
+                git(self.root / "lib", "checkout", "-q", "--", ".")
+                result = self.audited(
+                    lambda: (self.root / "lib/y.py").write_text("changed\n"), before
+                )
+                self.assertEqual(("lib/y.py",), result.violations)
+
+    @verifies("scenario.workers.audit-nested-repositories")
+    def test_a_deletion_in_a_submodule_is_named_as_deleted(self):
+        new = self.root / "lib/new.py"
+        result = self.audited(new.unlink, lambda: new.write_text("new\n"))
+        self.assertEqual(("lib/new.py",), result.changed)
+        self.assertEqual(("lib/new.py (deleted)",), result.violations)
+        result = self.audited((self.root / "lib/x.py").unlink)
+        self.assertEqual(("lib/x.py (deleted)",), result.violations)
+
+    @verifies("scenario.workers.audit-nested-repositories")
+    def test_a_moved_submodule_head_or_index_is_a_violation(self):
+        def commit_inside():
+            (self.root / "lib/x.py").write_text("committed\n")
+            git(self.root / "lib", "add", "x.py")
+            git(self.root / "lib", *self.commit)
+
+        result = self.audited(commit_inside)
+        self.assertIn("lib: HEAD", result.violations)
+        self.assertIn("lib: index", result.violations)
+
+    @verifies("scenario.workers.audit-nested-repositories")
+    def test_an_untracked_nested_repository_is_measured_inside(self):
+        result = self.audited(lambda: (self.nested / "v.py").write_text("changed\n"))
+        self.assertEqual(("vendor/v.py",), result.changed)
+        self.assertEqual((), result.violations)
+        result = self.audited(lambda: (self.nested / "w.py").write_text("new\n"))
+        self.assertEqual(("vendor/w.py",), result.violations)
 
 
 class RetryRuleTests(unittest.TestCase):

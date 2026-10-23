@@ -166,6 +166,7 @@ def policy(
         "userHome": user_home.as_posix(),
         "sandbox": filesystem,
         "programs": {"rg": programs["rg"], "fd": programs["fd"]},
+        "groups": paths.groups.as_posix(),
         "limits": {
             "maxTurns": request.max_turns,
             "maxBudgetUsd": request.max_budget_usd,
@@ -375,6 +376,7 @@ class PiBackend:
                 "input",
                 "the policy follows from the frozen grant, which Workers never repairs",
             ) from error
+        paths.groups.mkdir(parents=True, exist_ok=True)
         shutil.copy2(POLICY_SOURCE, paths.control / "pi_policy.ts")
         extension = paths.control / "permission.ts"
         extension.write_text(

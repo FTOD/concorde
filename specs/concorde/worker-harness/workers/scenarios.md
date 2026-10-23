@@ -264,6 +264,18 @@ the run. [The run mechanics](launch.md) give these exact details:
 - AND the host generates no permission extension
 - AND the host still writes the run record
 
+### scenario.workers.git-paths-unavailable-refused — A worker whose Git paths are not all found is refused
+
+- GIVEN a task worktree in the primary worktree's `.claude/worktrees/`
+- AND a `.git` file, a `commondir` file or a directory of the worktree that the host cannot read,
+  or a Git that cannot name its directories
+- WHEN the host is asked to start a worker there
+- THEN it refuses before launch with `git_paths_unavailable` and the reason `environment`
+- AND the refusal names the file, directory or command and the error
+- AND the host generates no settings
+- AND the host still writes the run record
+- BUT a Git directory without a `commondir` file is no failure
+
 ### scenario.workers.git-hidden-outside-home — Every Git path is hidden wherever the repository lies
 
 - GIVEN a primary worktree outside the user's home with a task worktree in its `.claude/worktrees/`
@@ -364,6 +376,17 @@ the run. [The run mechanics](launch.md) give these exact details:
 - THEN the run ends `failed` with `audit_violation` and the violating path as host evidence
 - AND the error's detail says that the worker result was invalid
 - AND the error has no cause from the worker
+
+### scenario.workers.audit-nested-repositories — Files inside a nested repository are audited
+
+- GIVEN a task worktree with an initialized submodule and an untracked nested repository
+- AND either one clean or already changed before the snapshot
+- WHEN a round changes, creates or deletes a file inside one of them, or moves its `HEAD` or index
+- THEN the audit lists the file by its path relative to the worktree
+- AND it allows a changed or new file whose level is `rw`
+- AND it names a file of any other level, or a deleted file followed by ` (deleted)`, as a violation
+- AND it names a moved `HEAD` or a changed index as `<path>: HEAD` or `<path>: index`
+- BUT it never names the submodule's own directory as a deleted file
 
 ### scenario.workers.audit-unavailable — A round that cannot be audited ends the run
 
@@ -513,12 +536,30 @@ the run. [The run mechanics](launch.md) give these exact details:
 
 ## Host failures
 
+### scenario.workers.validation-answer-refused — A malformed or conflicting round validation answer fails the run
+
+- GIVEN a worker that ends `ok` with a clean audit
+- AND a round validation that answers a value that is not a `RoundValidation`, evidence that is not
+  mappings, both a repair and a violation, a failure without a repair, or a `Refusal` without code
+- WHEN the host reads the answer
+- THEN the run ends `failed` with `validation_unavailable` and the reason `capability`
+- AND the error names what is wrong with the answer
+- AND no resume round starts
+
 ### scenario.workers.timeout — A round past its deadline is killed
 
 - GIVEN a worker still running at its round's timeout
 - WHEN the deadline passes
 - THEN the host kills the worker's whole process group
 - AND the run ends `failed` with `worker_timeout` and a run record
+
+### scenario.workers.tool-groups-killed — No pi tool command outlives its round
+
+- GIVEN a pi worker whose tool command runs in a process group of its own and is registered in the
+  runtime directory's `control/groups/`
+- WHEN the round ends, because the agent process ended or because the round timed out
+- THEN the host kills that process group too
+- AND it forgets the registration
 
 ### scenario.workers.interrupted-run — An interrupted run still ends
 
