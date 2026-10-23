@@ -240,6 +240,51 @@ class ClosedFolderTests(unittest.TestCase):
             self.changed(),
         )
 
+    @verifies("scenario.issues.store-move-put-back-failed")
+    def test_a_move_whose_old_record_could_not_be_restored_is_recovered_whole(self):
+        identifier = self.recorded()
+        source, target = OPEN.format(identifier), CLOSED.format(identifier)
+        committed = (self.root / source).read_bytes()
+        before, revision = self.head(), read_issue(self.root, identifier)[1]
+        really_put_back = store._put_back
+
+        def put_back(root, path):
+            if path == source:
+                return f"git checkout HEAD -- {path} exited 128: index.lock exists"
+            return really_put_back(root, path)
+
+        with (
+            patch(
+                "concorde.issues.store._commit",
+                return_value="git commit exited 1 on main: a hook refused the commit",
+            ),
+            patch("concorde.issues.store._put_back", side_effect=put_back),
+            self.assertRaises(IssueError) as raised,
+        ):
+            self.close(identifier, revision)
+        self.assertEqual("recovery_failed", raised.exception.code)
+        self.assertIn("index.lock exists", str(raised.exception))
+        # The published half stays beside the committed record it could not restore.
+        self.assertIn(f"{target} is kept", str(raised.exception))
+        self.assertFalse((self.root / source).exists())
+        self.assertTrue((self.root / target).is_file())
+        self.assertEqual(before, self.head())
+        # Once the cause is gone, recovery tells the interrupted move and puts it back whole.
+        recovery = store.recover_issues(self.root)
+        self.assertEqual(
+            [
+                {"path": source, "action": "restored"},
+                {"path": target, "action": "removed"},
+            ],
+            sorted(recovery["recovered"], key=lambda item: item["path"]),
+        )
+        self.assertEqual([], recovery["left"])
+        self.assertEqual(committed, (self.root / source).read_bytes())
+        self.assertEqual("", self.status())
+        # The repeated close moves the record, at the committed revision.
+        self.close(identifier, revision)
+        self.assertEqual(sorted([source, target]), self.changed())
+
     @verifies("scenario.issues.store-interrupted-move")
     def test_the_next_write_puts_back_a_killed_move_first(self):
         identifier = self.recorded()

@@ -976,6 +976,43 @@ class StepTests(unittest.TestCase):
             (ended["content"]["data"]["state"], ended["status"], ended["outcome"]),
         )
 
+    @verifies("scenario.workflows.launch-unanswered")
+    def test_a_launcher_that_gives_no_answer_leaves_the_step_starting(self):
+        timeout = steps.subprocess.TimeoutExpired(["concorde"], steps.LAUNCH_WAIT)
+        with patch.object(steps.subprocess, "run", side_effect=timeout):
+            status, value = run_step(self.space, self.request())
+        # Whether its runner lives on is not known: no refusal, nothing to retry yet.
+        self.assertEqual(
+            (3, "running", None, None),
+            (status, value["state"], value["run_id"], value["error"]),
+        )
+        [recorded] = store.load(self.space)["steps"]
+        self.assertTrue(store.starting(recorded))
+        self.assertIsNone(recorded.get("error"))
+        folder = self.space.directory / "steps/1-survey"
+        # The runner the ended launcher left entered the step's node: the next call adopts it.
+        run_id = self.runs.make("survey", output=SURVEY_OUTPUT, folder=folder / "run")
+        with self.starter(output=SURVEY_OUTPUT):
+            status, value = run_step(self.space, self.request())
+        self.assertEqual(
+            (0, "finished", run_id), (status, value["state"], value["run_id"])
+        )
+        self.assertEqual([], self.started)
+        [recorded] = store.load(self.space)["steps"]
+        self.assertEqual(run_id, recorded["run_id"])
+
+    def test_a_silent_launch_whose_run_never_came_starts_anew(self):
+        timeout = steps.subprocess.TimeoutExpired(["concorde"], steps.LAUNCH_WAIT)
+        with patch.object(steps.subprocess, "run", side_effect=timeout):
+            self.assertEqual(3, run_step(self.space, self.request())[0])
+        # No run entered the node and none holds the workspace: the run is started anew.
+        with self.starter(output=SURVEY_OUTPUT):
+            status, value = run_step(self.space, self.request())
+        self.assertEqual((0, "finished"), (status, value["state"]))
+        self.assertEqual(1, len(self.started))
+        recorded = store.load(self.space)["steps"]
+        self.assertEqual([True, False], [s["superseded"] for s in recorded])
+
     @verifies("scenario.workflows.refused-step")
     def test_a_launcher_that_cannot_run_makes_the_step_refused(self):
         with patch.object(

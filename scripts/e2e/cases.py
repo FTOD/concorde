@@ -76,8 +76,9 @@ def repair_specs(
     run_operation=concorde_run,
 ) -> dict:
     """Repair an adopted case's Specs from one review round, in a task of their own: review,
-    specify with the review as input, review again, validate, deliver and merge. A step that does
-    not end ok stops the repair with its result, and the task stays open."""
+    specify with the review as input, review again, validate, deliver and merge. A first review
+    that accepts the Specs leaves nothing to deliver, so the task is closed as completed instead.
+    A step that does not end ok stops the repair with its result, and the task stays open."""
     concorde = str(project / ".concorde/bin/concorde")
     if modules is None:
         registry = json.loads((project / ".concorde/specs.json").read_text())
@@ -106,36 +107,59 @@ def repair_specs(
         steps.append({"step": name, **_brief(result)})
         return result if result.get("status") == "ok" else None
 
+    def ended(stopped_at: str | None, task_end: str) -> dict:
+        return {
+            "task": task,
+            "modules": modules,
+            "steps": steps,
+            "stopped_at": stopped_at,
+            "task_end": task_end,
+        }
+
     def stopped(name: str) -> dict:
-        return {"task": task, "modules": modules, "steps": steps, "stopped_at": name}
+        return ended(name, "open")
 
     review = step("spec_panel", ["spec_panel", "--modules", bound])
     if review is None:
         return stopped("spec_panel")
-    if (review.get("output") or {}).get("verdict") != "accepted":
-        if (
-            step(
+    if (review.get("output") or {}).get("verdict") == "accepted":
+        # Nothing changed, so Delivery would refuse with nothing_to_deliver.
+        run(
+            [
+                concorde,
+                "task",
+                "close",
+                task,
+                "--completed",
+                "--note",
+                f"the review {review['run_id']} accepted the Specs; nothing to repair",
+            ],
+            cwd=project,
+        )
+        return ended(None, "closed")
+    if (
+        step(
+            "specify",
+            [
                 "specify",
-                [
-                    "specify",
-                    "--modules",
-                    bound,
-                    "--input",
-                    review["run_id"],
-                    "--intent",
-                    REPAIR_INTENT,
-                ],
-            )
-            is None
-        ):
-            return stopped("specify")
-        if step("spec_panel_again", ["spec_panel", "--modules", bound]) is None:
-            return stopped("spec_panel_again")
+                "--modules",
+                bound,
+                "--input",
+                review["run_id"],
+                "--intent",
+                REPAIR_INTENT,
+            ],
+        )
+        is None
+    ):
+        return stopped("specify")
+    if step("spec_panel_again", ["spec_panel", "--modules", bound]) is None:
+        return stopped("spec_panel_again")
     for name in ("task-validation", "delivery"):
         if step(name, [name]) is None:
             return stopped(name)
     run([concorde, "task", "merge", task], cwd=project)
-    return {"task": task, "modules": modules, "steps": steps, "stopped_at": None}
+    return ended(None, "merged")
 
 
 # The header lines of a Git patch that name the path a change comes from: the old side of a

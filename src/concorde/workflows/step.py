@@ -132,6 +132,12 @@ class StepError(Exception):
         self.state = state
 
 
+class LaunchUnanswered(Exception):
+    """A launcher that gave no answer within ``LAUNCH_WAIT`` seconds and was ended. Its detached
+    runner may live on and enter the step's node, so the step stays starting for the next call to
+    adopt that run or, once none can come, to start anew."""
+
+
 def actor(workflow: str, workspace: str) -> str:
     return f"workflow {workflow} (workspace {workspace})"
 
@@ -257,8 +263,9 @@ def start_run(
     An Operation starts with ``concorde run <argv> --detach``, an execution command with
     ``concorde <argv> --detach``. ``StepError`` carries a ``step_refused`` link when the runner
     rejected the command line (its standard error as the cause), the detached runner did not
-    start (its link as the cause), or the launcher could not be run, gave no answer within
-    ``LAUNCH_WAIT`` seconds, when it is ended, or is missing from the workspace.
+    start (its link as the cause), or the launcher could not be run or is missing from the
+    workspace. ``LaunchUnanswered`` when the launcher gave no answer within ``LAUNCH_WAIT``
+    seconds and was ended: whether its run started is not known yet.
     """
     prefix = [] if argv[0] in COMMANDS else ["run"]
     placed = ["--trace-at", str(trace_at)] if trace_at is not None else []
@@ -304,20 +311,19 @@ def start_run(
             check=False,
             timeout=LAUNCH_WAIT,
         )
-    except (OSError, subprocess.TimeoutExpired) as failure:
-        ended = (
-            f"gave no answer within {LAUNCH_WAIT:.0f} seconds and was ended"
-            if isinstance(failure, subprocess.TimeoutExpired)
-            else f"could not be run: {errors.exception_detail(failure)}"
-        )
+    except subprocess.TimeoutExpired as failure:
+        raise LaunchUnanswered(
+            f"`{shown}` gave no answer within {LAUNCH_WAIT:.0f} seconds and was ended"
+        ) from failure
+    except OSError as failure:
+        ended = f"could not be run: {errors.exception_detail(failure)}"
         cause = errors.link(
             "component",
             "Execution runner",
             "run_not_started",
             f"`{shown}` {ended}",
             reason="environment",
-            explanation="a launcher that cannot be run or does not answer starts no run the "
-            "workflow can name",
+            explanation="a launcher that cannot be run starts no run",
         )
         what = ended
     else:
@@ -620,6 +626,11 @@ def run_step(
                             run_id, error = announced["run_id"], None
                         except StepError as refusal:
                             run_id, error = None, refusal.link
+                        except LaunchUnanswered:
+                            # The step stays starting: the next call adopts the run that
+                            # entered its node, waits while the workspace is busy, or starts
+                            # the run anew once none can come.
+                            return waiting()
                         started = run_id
                         node = folder.relative_to(space.directory).as_posix()
                         store.set_run(space, node, run_id, error)

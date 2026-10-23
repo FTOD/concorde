@@ -14,7 +14,7 @@ A [dogfood scenario](../../glossary.json#concept.dogfood-scenario) is one file u
 ```concorde-contract
 {
   "id": "contract.dogfood-scenarios.scenario",
-  "version": 1,
+  "version": 2,
   "schema": {
     "type": "object",
     "required": [
@@ -127,7 +127,7 @@ A [dogfood scenario](../../glossary.json#concept.dogfood-scenario) is one file u
       }
     }
   },
-  "semantics": "One dogfood scenario, the file scripts/e2e/scenarios/<name>.json of this checkout. name is the file's name without .json. description says what the fault breaks, for the list. project names the test project: repository is its owner/name on GitHub and rev the tag, branch or commit it is cloned at. fault is the known defect: summary is the subject of its commit, \"Inject fault: <summary>\"; each edit replaces the old text, which must occur exactly once in file of this checkout's Concorde, by the new text, and new must not contain old, so that a fault injected once is never found applicable again. prompt is the developer's ordinary request, given unchanged to the headless session. expect is what the evaluation requires: types are the report types of which one report must be, basis the phrases its basis must all contain in any case, unchanged the project paths that must stay as prepared on every branch and in every worktree. Every command of the scenario runner reads the scenario first: a name no file has is refused with unknown_scenario naming the known ones; a file that is not JSON, breaks this schema, names another name or has an edit whose new text contains its old text is refused with invalid_scenario naming the file and what is wrong, before anything is prepared. Fields this schema does not name are ignored. A behaviour or field change increments the version.",
+  "semantics": "One dogfood scenario, the file scripts/e2e/scenarios/<name>.json of this checkout. name is the file's name without .json. description says what the fault breaks, for the list. project names the test project: repository is its owner/name on GitHub and rev the tag, branch or commit it is cloned at. fault is the known defect: summary is the subject of its commit, \"Inject fault: <summary>\"; each edit replaces the old text, which must occur exactly once in file of this checkout's Concorde, by the new text, and new must not contain old, so that a fault injected once is never found applicable again. file is a path relative to the root of the Concorde clone, with \"/\" between segments and no empty, . or .. segment; prepare refuses an edit whose file resolves outside the clone, symbolic links included, with fault_not_applicable before writing any edit. prompt is the developer's ordinary request, given unchanged to the headless session. expect is what the evaluation requires: types are the report types of which one report must be, basis the phrases its basis must all contain in any case, unchanged the project paths that must stay as prepared on every branch and in every worktree. Every command of the scenario runner reads the scenario first: a name no file has is refused with unknown_scenario naming the known ones; a file that is not JSON, breaks this schema, names another name or has an edit whose file is absolute or has an empty, . or .. segment or whose new text contains its old text is refused with invalid_scenario naming the file and what is wrong, before anything is prepared. Fields this schema does not name are ignored. A behaviour or field change increments the version.",
   "example": {
     "name": "write-hook-rw-directories",
     "description": "The workers' write checks ignore writable directory entries",
@@ -169,7 +169,7 @@ A [dogfood scenario](../../glossary.json#concept.dogfood-scenario) is one file u
 ```concorde-contract
 {
   "id": "contract.dogfood-scenarios.record",
-  "version": 1,
+  "version": 2,
   "schema": {
     "type": "object",
     "additionalProperties": false,
@@ -236,7 +236,7 @@ A [dogfood scenario](../../glossary.json#concept.dogfood-scenario) is one file u
       }
     }
   },
-  "semantics": "The record dogfood.json that prepare writes into a scenario directory, with the scenario's baselines. scenario names the scenario; worker_models the models its worker configuration enables; concorde and project the absolute paths of the faulty Concorde clone and the installed project. fault_commit is the clone's commit of the fault and project_head the project's commit of the adoption. framework is the digest of the framework copy's sources under .concorde/framework/ (its src, scripts, prompts and generated, each file's path and bytes in path order, Python's __pycache__ folders left out). receipt is the digest of the install receipt .concorde/install.json's bytes. installed maps every file the receipt's files list names outside .concorde/ to the digest of its bytes. unchanged maps every path the scenario expects unchanged to the Git blob it has at the project's head; a path the head lacks fails prepare with command_failed. Without a readable record, run and evaluate refuse the directory with not_prepared. A behaviour or field change increments the version.",
+  "semantics": "The record dogfood.json that prepare writes into a scenario directory, with the scenario's baselines. scenario names the scenario; worker_models the models its worker configuration enables; concorde and project the absolute paths of the faulty Concorde clone and the installed project. fault_commit is the clone's commit of the fault and project_head the project's commit of the adoption. framework is the digest of the framework copy's sources under .concorde/framework/ (its src, scripts, prompts and generated, each file's path and bytes in path order, Python's __pycache__ folders left out). receipt is the digest of the install receipt .concorde/install.json's bytes. installed maps every regular file the receipt's files list names, inside .concorde/ too, such as the installed command and the Protocol copy, to the digest of its bytes, except the files the receipt's defaults list names, which become the project's own. unchanged maps every path the scenario expects unchanged to the Git blob it has at the project's head; a path the head lacks fails prepare with command_failed. Without a readable record, run and evaluate refuse the directory with not_prepared. A behaviour or field change increments the version.",
   "example": {
     "scenario": "write-hook-rw-directories",
     "worker_models": [

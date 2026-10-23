@@ -584,7 +584,11 @@ run and only waits for it. `--retry` starts a new run for a key whose recorded r
 
 When a later call finds a step still starting, its step command ended between recording the step
 and writing its run. The command was killed meanwhile or could not write the record
-(`step_unrecorded`). That call adopts the run whose node lies in the step's node. It writes the
+(`step_unrecorded`). Or its launcher gave no answer within 90 seconds, and the command ended the
+launcher. That launcher's detached runner may live on, because Execution ends a silent runner only
+when its launcher answers. So that command records no refusal. It prints the outcome `running`
+with no run, as when the workspace is busy
+([scenario.workflows.launch-unanswered](scenarios.md#scenario.workflows.launch-unanswered)). That call adopts the run whose node lies in the step's node. It writes the
 run into the step. The call waits as it waits for the workspace lock below when both conditions
 hold:
 
@@ -631,7 +635,7 @@ the bound, by at most 90 seconds
 ([req.workflows.bounded-wait](requirements.md#req.workflows.bounded-wait)). When its recorded run
 has no result and no living runner, a step is **lost**. When the runner rejects the command line
 or the detached runner does not start, a step is **refused**. This includes a launcher that could
-not be run or gave no answer within 90 seconds. It also includes a workspace whose worktree has no
+not be run. It also includes a workspace whose worktree has no
 `concorde` of its own, neither `.concorde/bin/concorde` nor `scripts/concorde.py`. The command
 never starts the run with another Concorde instead. The command then records the step without a run
 and with that error. Before anything is recorded or started, the workflow record refuses either
@@ -998,6 +1002,8 @@ A `detach_failed` runner
 [has been ended](../execution/requirements.md#req.execution.detach-failed-ends-runner) and
 [left nothing behind](../execution/requirements.md#req.execution.detach-failed-leaves-nothing).
 Therefore, no run of a refused step starts later. For the same reason, a retry starts afresh.
+A launcher that gave no answer never makes a step refused, so this reasoning never rests on a
+runner nobody ended. Its step stays starting until a later call adopts its run or starts anew.
 When a run has no result and no living runner, the step is lost, with the end of the runner's
 output. Once nobody [holds the run lock](../execution/requirements.md#req.execution.run-lock-held), the
 [run lock](../glossary.json#concept.run-lock) tells that the run has no living runner. A run that

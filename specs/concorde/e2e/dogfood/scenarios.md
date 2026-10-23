@@ -23,8 +23,8 @@ Concrete situations that show the [requirements](requirements.md) of
 - THEN it is refused with `invalid_scenario`, naming the file and what is wrong
 
 A file is no valid scenario when it is not JSON or breaks [its contract](contracts.md#scenario-file).
-Examples are a missing field, another name, no edits, no expected types and an edit whose new text
-keeps its old text.
+Examples are a missing field, another name, no edits, no expected types, an edit whose file is an
+absolute path or has a `..` segment, and an edit whose new text keeps its old text.
 
 ### scenario.dogfood-scenarios.worker-configuration — The project gets a worker configuration
 
@@ -46,6 +46,18 @@ keeps its old text.
 - GIVEN a clean clone and a fault
 - WHEN the runner injects it
 - THEN the edits are applied and committed alone as "Inject fault: <summary>", leaving the clone clean
+
+### scenario.dogfood-scenarios.fault-outside-clone — An edit that leads outside the clone is refused
+
+- GIVEN a clean clone whose file `link.py` is a symbolic link to a file outside the clone
+- AND a fault whose edit names `link.py`
+- WHEN the runner injects the fault
+- THEN it is refused with `fault_not_applicable`, naming the file and that it resolves outside the clone
+- AND the file outside the clone is unchanged
+- AND nothing is committed
+
+A scenario file whose edit names an absolute path or a path with a `..` segment is no valid
+scenario ([scenario.dogfood-scenarios.invalid-scenario](#scenario.dogfood-scenarios.invalid-scenario)).
 
 ### scenario.dogfood-scenarios.fault-reinjected — A fault that no longer applies is refused
 
@@ -72,8 +84,9 @@ keeps its old text.
 ### scenario.dogfood-scenarios.untouched — A changed framework or installed file is seen
 
 - GIVEN a prepared scenario whose project has the framework copy and the installed files of its baselines
-- WHEN a framework source and an installed file outside `.concorde/` change and the scenario is evaluated
-- THEN `concorde_untouched` fails, naming the changed installed file and the changed framework copy
+- WHEN a framework source, an installed file outside `.concorde/`, the installed command `.concorde/bin/concorde` and a file of the [Protocol copy](../../glossary.json#concept.protocol-copy) change and the scenario is evaluated
+- THEN `concorde_untouched` fails, naming each changed installed file and the changed framework copy
+- BUT a changed default the receipt names, such as `.concorde/issues/.gitignore`, fails nothing
 
 ### scenario.dogfood-scenarios.receipt-unreadable — An unreadable install receipt is a touched Concorde
 
@@ -84,7 +97,8 @@ keeps its old text.
 
 A receipt cannot be read so when it is missing, is not JSON or is no JSON object.
 It cannot be read so either when it lacks its files or names them as something other than a list of
-paths, such as `null`, `false`, `0`, `""` or `{}`.
+paths, such as `null`, `false`, `0`, `""` or `{}`. It cannot be read so either when it names its
+defaults as something other than a list of paths.
 
 ### scenario.dogfood-scenarios.receipt-changed — A changed install receipt is a touched Concorde
 

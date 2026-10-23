@@ -35,7 +35,7 @@ from contextlib import contextmanager
 from datetime import UTC, datetime
 from pathlib import Path
 
-from common import E2EError
+from common import E2EError, recorded_worktree
 from live import LiveSession
 from sessions import records_of
 
@@ -453,12 +453,12 @@ def owners(
         )
     record_path = project / ".concorde/tasks" / task / "task.json"
     try:
-        worktree = Path(json.loads(record_path.read_text(encoding="utf-8"))["worktree"])
-    except (OSError, ValueError, KeyError, TypeError) as error:
+        worktree = recorded_worktree(record_path)
+    except (OSError, ValueError) as error:
         raise E2EError(
             "no_task",
-            f"{project} has no open task {task} with a worktree ({error}); prepare the project "
-            "with a task first",
+            f"{project} has no open task {task} whose record {record_path} names its "
+            f"worktree ({error}); prepare the project with a task first",
         ) from error
     if not worktree.is_dir():
         raise E2EError(

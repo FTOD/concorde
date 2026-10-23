@@ -116,9 +116,10 @@ answered step is taken as current.
 When the runner rejected a step's command line or its detached runner did not start, `concorde workflow step` SHALL record the step without a run and with its error link, unless the step was refused because its workspace was retired.
 
 A runner that did not start includes a launcher that could not be run at all, such as a
-workspace's `concorde` that cannot be executed. It also includes a launcher that gave no answer
-within 90 seconds, and a workspace whose worktree has no `concorde` of its own
-([req.workflows.steps-are-runs](#req.workflows.steps-are-runs)). A step refused because its workspace was retired is recorded nowhere, since
+workspace's `concorde` that cannot be executed. It also includes a workspace whose worktree has no
+`concorde` of its own ([req.workflows.steps-are-runs](#req.workflows.steps-are-runs)). A launcher
+that gave no answer within 90 seconds is no such refusal, since its runner may live on
+([req.workflows.bounded-wait](#req.workflows.bounded-wait)). A step refused because its workspace was retired is recorded nowhere, since
 nothing writes into a retired workspace's folder. Its outcome alone carries the
 `workspace_retired` link.
 
@@ -142,7 +143,12 @@ command that sees the run ended ends the node.
 The launch of a run is the one wait not cut short at the bound. This is because a launcher ended
 halfway could leave a run its step cannot name. Execution waits at most 60 seconds for a detached
 runner's announcement. Execution ends a runner that stayed silent. When a launcher gives no answer
-within 90 seconds, the step command ends the launcher, recording the step refused.
+within 90 seconds, the step command ends the launcher. Execution's promise to end a silent runner
+holds only when the launcher answers, so the detached runner may live on. The step command
+therefore records no refusal. It leaves the step starting and prints the outcome `running` with no
+run. The next call recovers the step as for any step still starting. It adopts the run that entered
+the step's node, waits while a run holds the workspace or waits for it, and otherwise starts the run
+anew.
 
 ### req.workflows.running-exit — A step still running exits with status 3
 

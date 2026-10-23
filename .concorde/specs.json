@@ -694,7 +694,9 @@
             "concept.workflow",
             "concept.workflow-result",
             "concept.workflow-record",
-            "concept.workflow-script"
+            "concept.workflow-script",
+            "contract.workflows.workflow-trace",
+            "contract.workflows.result"
           ]
         },
         {
@@ -731,7 +733,10 @@
           "meaning": "#uses-execution",
           "relies_on": [
             "concept.run-store",
-            "concept.run-progress-file"
+            "concept.run-progress-file",
+            "contract.execution.run-trace",
+            "contract.execution.run-result",
+            "req.execution.run-lock-held"
           ]
         },
         {
@@ -739,7 +744,8 @@
           "meaning": "#uses-kernel",
           "relies_on": [
             "concept.workspace-binding",
-            "concept.workspace-lock"
+            "concept.workspace-lock",
+            "contract.kernel.workspace-binding"
           ]
         },
         {
@@ -750,7 +756,8 @@
           "target": "module.tasks",
           "meaning": "#uses-tasks",
           "relies_on": [
-            "concept.task-record"
+            "concept.task-record",
+            "contract.tasks.record"
           ]
         }
       ],
@@ -764,6 +771,11 @@
           "kind": "document",
           "target": "document.spec.contracts",
           "reason": "Spec core's initialization contract, whose propose and apply `prepare` runs, creating the root Module and recording the interpreter `--python` names"
+        },
+        {
+          "kind": "document",
+          "target": "document.execution.runner",
+          "reason": "the run progress file's fields, among them `host_pid`, by which the owners case finds the runner of its launch, and the run lock protocol by which `watch` and the sessions tell a running run from a dead one"
         }
       ],
       "participates": []
@@ -1093,7 +1105,8 @@
             "concept.file-transaction",
             "concept.merge-lock",
             "concept.unfinished-merge-marker",
-            "req.kernel.marker-spans-merge"
+            "req.kernel.marker-spans-merge",
+            "concept.workspace-binding"
           ]
         },
         {
@@ -1117,6 +1130,15 @@
             "concept.part-registration",
             "contract.distribution.part-registration",
             "concept.project-mcp-server"
+          ]
+        },
+        {
+          "target": "module.tasks",
+          "meaning": "#uses-tasks",
+          "relies_on": [
+            "concept.task-record",
+            "concept.history",
+            "contract.tasks.record"
           ]
         }
       ],

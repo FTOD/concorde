@@ -454,22 +454,19 @@ class CaseTests(unittest.TestCase):
         self.assertIn("never the code", specify[specify.index("--intent") + 1])
         self.assertEqual("module.a,module.b", specify[specify.index("--modules") + 1])
         self.assertEqual([["task", "open"], ["task", "merge"]], commands)
-        # An accepted review needs no repair.
-        value, _, operations = repair(
-            [
-                result("review", verdict="accepted"),
-                result("task-validation"),
-                result("delivery"),
-            ]
-        )
-        self.assertEqual(
-            ["spec_panel", "task-validation", "delivery"], [a[0] for a in operations]
-        )
+        self.assertEqual("merged", value["task_end"])
+        # An accepted review needs no repair and leaves nothing to deliver: the task is closed.
+        value, commands, operations = repair([result("review", verdict="accepted")])
+        self.assertEqual(["spec_panel"], [a[0] for a in operations])
+        self.assertEqual([["task", "open"], ["task", "close"]], commands)
+        self.assertIsNone(value["stopped_at"])
+        self.assertEqual("closed", value["task_end"])
         # A step that does not end ok stops the repair, and the task is not merged.
         value, commands, _ = repair(
             [result("review", verdict="changes_required"), result("specify", "blocked")]
         )
         self.assertEqual("specify", value["stopped_at"])
+        self.assertEqual("open", value["task_end"])
         self.assertEqual("blocked", value["steps"][-1]["status"])
         self.assertEqual([["task", "open"]], commands)
 

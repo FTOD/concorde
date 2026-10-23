@@ -23,6 +23,7 @@ import subprocess
 import uuid
 from pathlib import Path
 
+from ..kernel import binding as binding_file
 from ..kernel.errors import from_exception, link
 from ..kernel.locking import MERGE_WAIT
 from ..kernel.refusal import KernelError
@@ -263,6 +264,27 @@ def registry(root: Path) -> tuple[str, bytes, list[dict]] | None:
         ) from error
 
 
+# A task's identity, as Tasks names a task and its workspace.
+TASK_ID = re.compile(r"[a-z0-9][a-z0-9-]{0,47}")
+
+
+def open_task(root: Path, change_id) -> str | None:
+    """The task ``change_id`` names when it is still open: its task record lies in the
+    ``tasks/`` folder of the ``.concorde`` that the workspace binding of ``root`` names, or of
+    ``root``'s own without a binding. ``None`` for no such task, also where the coordination part
+    is not installed and so no task record exists, and when the binding cannot be read."""
+    if not isinstance(change_id, str) or not TASK_ID.fullmatch(change_id):
+        return None
+    try:
+        bound = binding_file.load(root)
+    except KernelError:
+        bound = None
+    records = Path(bound["concorde"]) if bound else root / ".concorde"
+    return (
+        change_id if (records / "tasks" / change_id / "task.json").is_file() else None
+    )
+
+
 @action
 def check(root: Path) -> tuple[dict, int]:
     """Every record file of ``root`` reads and lies in the folder its status names, once; where
@@ -270,8 +292,9 @@ def check(root: Path) -> tuple[dict, int]:
     lists. The answer and the exit status: 1 when there are errors.
 
     One finding per problem names the record; hidden files are not records. A closed Issue of an
-    unknown owner is a note that does not fail the check; without the spec part one note says that
-    no owner was judged. An absent directory passes.
+    unknown owner is a note that does not fail the check; so is an open one whose latest report
+    came from a task still open, which may add that Module and whose merge registers it. Without
+    the spec part one note says that no owner was judged. An absent directory passes.
     """
     root = project(root)
     found = registry(root)
@@ -324,7 +347,24 @@ def check(root: Path) -> tuple[dict, int]:
             if modules is None or owner in modules:
                 continue
             message = f"{record['id']} names unknown owner {owner}"
-            (problems if record["status"] == "open" else notes).append(message)
+            if record["status"] != "open":
+                notes.append(message)
+                continue
+            change = latest["source"].get("change_id")
+            task = open_task(root, change)
+            if task is not None:
+                notes.append(
+                    f"{message}, which the open task {task} that reported it may add; its "
+                    "merge registers it"
+                )
+            elif isinstance(change, str) and TASK_ID.fullmatch(change):
+                problems.append(
+                    f"{message}; the task {change} that reported it is not open, and the "
+                    "registry does not list that Module: close the Issue as not-actionable or "
+                    "report it again with a registered owner"
+                )
+            else:
+                problems.append(message)
     for identifier, paths in sorted(places.items()):
         if len(paths) > 1:
             problems.append(doubled(identifier, paths, read))

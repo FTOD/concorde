@@ -311,8 +311,18 @@ start time the tool can read, the tool fails the session with `observation_faile
 ([requirement](requirements.md#req.headless-sessions.observation-visible)). Before the failure goes
 up, the tool writes `session.json` with the rounds so far, the end `observation_failed` and, under
 `file`, the file it could not read. The failure names the same file and the session's
-`session.json`. A run's lock file that is missing or cannot be locked is no observation failure. It
-means that the run's runner is gone.
+`session.json`.
+
+The tool tells whether a run's runner still runs by its
+[run lock](../../glossary.json#concept.run-lock). The runner holds that lock exclusively while it
+runs. The tool tries to lock it shared without waiting. It decides as follows:
+
+- When the lock is held, so that the try would have to wait, the runner still runs.
+- When the try takes the lock, the runner is gone.
+- When the lock file is missing, the runner is gone.
+- When the lock file cannot be opened or locked for any other reason, the runner is gone.
+
+None of these outcomes is an observation failure.
 
 When a workspace binding is there and cannot be read, or names no `.concorde`, the tool refuses
 the session with `binding_invalid` naming the binding. It does so before the first round, so it

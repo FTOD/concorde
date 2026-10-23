@@ -128,7 +128,7 @@ project: The project {
     own: Ordinary work in the project
     write: Write the defect report, check it with concorde issues report --check
     log: Record it in the decision log, leave the blocked work open
-    update: "concorde update, then concorde spec-validation\nwhere the spec part is installed"
+    update: "concorde update, commit the updated files,\nthen concorde spec-validation\nwhere the spec part is installed"
     resume: "Have the open tasks' sessions merge the primary branch,\ntake up the blocked work"
     observe -> classify
     classify -> own: the project's own
@@ -187,7 +187,8 @@ Because uncommitted changes would install a Concorde no commit records, the inst
 It then installs as a normal install does.
 It copies the framework into the project.
 Where the coordination and issues parts are installed, it adds Dogfooding's guidance to the
-installed skill and `CLAUDE.md` block. Otherwise, the project gets no develop guidance.
+installed skill, `CLAUDE.md` block and task-session prompt. Otherwise, the project gets no develop
+guidance.
 The receipt `.concorde/install.json` records:
 
 - `mode:
@@ -196,7 +197,7 @@ The receipt `.concorde/install.json` records:
 - the installed commit as `source_commit`
 
 The project's own task worktrees therefore work exactly as in a normal install.
-Only the main agent's guidance differs.
+Only the guidance of the main agent and of the task sessions differs.
 
 Under any of these conditions, the installer refuses a develop install without writing anything
 ([requirements](requirements.md#req.dogfooding.refusal-names-reason)):
@@ -242,6 +243,26 @@ The main agent never changes any of these
 The main agent never works around a defect in the project
 ([requirements](requirements.md#req.dogfooding.no-workaround)). It reports the defect
 ([requirements](requirements.md#req.dogfooding.defect-reported)).
+
+A [task session](../glossary.json#concept.task-session) starts the runs of its task and observes
+them, so it often sees a defect first. The main agent hears of such runs only through the task
+session's reports. So the develop guidance gives each task session these duties
+([requirements](requirements.md#req.dogfooding.task-session-escalates)):
+
+- It observes its runs closely, as the main agent does.
+- It keeps the evidence of a suspected defect: the run's folder, its run record and its error chain.
+- It never works around the defect, and it never changes Concorde.
+- It escalates the suspected defect to the main agent with `concorde task escalate`, naming the
+  run, so that the run's whole error chain is the cause of its link. Its link says what it saw,
+  why it thinks the defect is Concorde's and, for a refused access, the three pieces of
+  [boundary evidence](requirements.md#req.dogfooding.boundary-evidence).
+- It goes on with the rest of its task.
+
+A task session writes no defect report. The main agent places the escalated defect in its
+[boundary case](../glossary.json#concept.boundary-case), writes the defect report and records it in
+the task's decision log, as for a defect it saw itself
+([scenario](scenarios.md#scenario.dogfooding.task-session-defect)). So the main agent stays the one
+reporter of Concorde defects.
 
 ### Reporting a defect
 
@@ -422,9 +443,19 @@ the project has no `spec-validation` to run
 ([Distribution](../distribution/module.md#updating-an-installed-concorde)).
 While the update runs, the main agent starts nothing in the project because its check does not stop
 what starts afterward ([Distribution](../distribution/module.md#updating-an-installed-concorde)).
-Where the coordination part is installed and the update asks for it, the main agent then has the
-open tasks' sessions merge the primary branch into their task branches.
-The main agent takes up the blocked work.
+Once the update ends, the main agent follows the `next` steps of the
+[update result](../distribution/contracts.md#contract.distribution.update-result), in their order:
+
+1. It commits the updated files on the primary branch in the primary worktree. Until then, the
+   primary branch still holds the previous
+   [Protocol copy](../glossary.json#concept.protocol-copy) and configuration.
+2. Where the spec part is installed, it runs `concorde spec-validation` there and has what it
+   reports repaired.
+3. Where the coordination part is installed and the update asks for it, it has the open tasks'
+   sessions merge the primary branch into their task branches. Because of step 1, that branch now
+   carries the new Protocol copy.
+
+The main agent then takes up the blocked work.
 
 ## How it is built
 
@@ -589,6 +620,7 @@ The **develop guidance** is written under `prompts/dogfooding/` in these files:
 
 - `skill.md`, the section added to the installed skill.
 - `claude-md.md`, the paragraph added to the `CLAUDE.md` block.
+- `task-session.md`, the section added to the task-session prompt.
 - `common/observe-runs.md`, the observation rule both sides share.
 
 Distribution's build renders them into `generated/dogfooding/`.

@@ -22,7 +22,7 @@ The case judges only the run its own launch started.
 It finds that run in the [run store](../glossary.json#concept.run-store) as the new run of the task
 whose runner descends from the launcher.
 The runner is the process the [run progress file](../glossary.json#concept.run-progress-file)'s
-`host_pid` names.
+`host_pid` names ([its fields](../execution/runner.md#run-progress-file)).
 Another run of the same workspace, launched by any other process, is never taken for it.
 So the case reads the process tree of the operating system, Linux's `/proc`.
 It must share the launcher's PID namespace.

@@ -322,16 +322,21 @@ Neither binds a file of its own.
 
 ### The package
 
-`concorde.json` is the package's identity. It names:
+`concorde.json` is the package's identity
+([its contract](contracts.md#contract.distribution.package-descriptor)). Its commands read these
+fields:
 
-- The name.
-- The version.
-- The licence.
-- The roots the installer ships.
-- The install locations.
-- The client `claude-code` the build renders workflows for.
+- The version, which every part carries.
+- The Python version requirement `runtime.python`, for which the installer creates Concorde's own
+  environment.
 - The pinned third-party programs under `tools` (today `d2`).
 - The entry of [Dogfooding's](#uses-dogfooding) develop source check under `develop.check`.
+- The package's top-level directories under `package_roots`, among which the docsite build needs
+  `docsite`.
+
+Its other fields describe the package to a reader: the name, the licence, the install locations
+and the client `claude-code` the build renders workflows for. No command reads them. The installed
+parts' registrations, not the descriptor, decide what the installer copies.
 
 The programs are pinned by:
 
@@ -1019,9 +1024,14 @@ When the new Concorde no longer builds a part the receipt names, the update refu
    ([requirements](requirements.md#req.distribution.update-mark-kept)).
 
 The mark then decides what validation says. While it is there, `concorde spec-validation` in the
-primary worktree reports `CONCORDE-UPDATE-001` as an error. That error also stops a `task merge`.
-A validation that finds other errors keeps the mark.
-The first validation that finds none removes the mark and says so (`CONCORDE-UPDATE-002`).
+primary worktree has one of two outcomes:
+
+- When it finds another error, it keeps the mark and adds `CONCORDE-UPDATE-001` as an error. That
+  error also stops a `task merge`
+  ([requirement](requirements.md#req.distribution.unvalidated-reported)).
+- When it finds no other error, it removes the mark and says so with `CONCORDE-UPDATE-002`. It
+  adds no `CONCORDE-UPDATE-001`, so this first clean validation succeeds
+  ([requirement](requirements.md#req.distribution.unvalidated-cleared)).
 Only an update sets the mark, so a project that stops validating because of its own changes is
 never marked by it.
 
@@ -1277,7 +1287,7 @@ performs these steps:
 - Before writing anything, it calls Dogfooding's source check.
 - When the check refuses, the installer refuses with the check's code and message.
 - Then, where the coordination and issues parts are installed, it adds Dogfooding's rendered
-  guidance to the skill and the `CLAUDE.md` block
+  guidance to the skill, the `CLAUDE.md` block and the task-session prompt
   ([guidance composition](#guidance-composition)).
 - It records the mode and the checked commit in the receipt.
 
@@ -1400,7 +1410,8 @@ mentions is not installed. When a section may be composed without a part, a para
 part's command or project MCP tool names that part. It does so as in "where the execution part is
 installed" ([requirements](requirements.md#req.distribution.guidance-absent-parts)). Dogfooding's
 develop section is no part's. In a develop install that installs the coordination and issues
-parts, the installer appends Dogfooding's develop section to the composed skill and block.
+parts, the installer appends Dogfooding's develop sections to the composed skill, block and
+task-session prompt.
 Dogfooding's develop section relies on those parts. In any other develop install, the installer
 leaves that section out. Such an install is still a develop install in its source check and receipt.
 
@@ -1486,8 +1497,10 @@ project would otherwise be bound to a Protocol copy it no longer carries. The in
 the Git-ignored mark `.concorde/update.json`. The mark holds because Distribution's own
 `spec-validation` entry point does the following:
 
-- While the mark is present, the entry point adds `CONCORDE-UPDATE-001` to Spec core's result.
-- Unless a result is otherwise a success, the entry point does not remove the mark.
+- While the mark is present and Spec core's result holds an error, the entry point adds
+  `CONCORDE-UPDATE-001` to that result and keeps the mark.
+- While the mark is present and Spec core's result holds no error, the entry point removes the
+  mark and adds `CONCORDE-UPDATE-002`, not `CONCORDE-UPDATE-001`.
 
 A `task merge` has that validation in the primary worktree as its default check.
 It therefore stops until the project validates with the new Concorde

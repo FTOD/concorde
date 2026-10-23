@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import itertools
+import json
 import os
 import subprocess
 import tempfile
@@ -25,6 +26,20 @@ class E2EError(Exception):
         self.code = code
         self.detail = detail
         self.evidence = evidence
+
+
+def recorded_worktree(record: Path) -> Path:
+    """The worktree a task record names. Raises OSError when the record cannot be read,
+    ValueError when it is no JSON object naming its worktree by an absolute path: an empty or
+    relative path would be taken relative to the caller's directory, which is no task
+    worktree."""
+    value = json.loads(record.read_text(encoding="utf-8"))
+    if not isinstance(value, dict):
+        raise ValueError(f"it holds a JSON {type(value).__name__}, not an object")
+    worktree = value.get("worktree")
+    if not isinstance(worktree, str) or not Path(worktree).is_absolute():
+        raise ValueError(f"its worktree {worktree!r} is no absolute path")
+    return Path(worktree)
 
 
 def run(command: list[str], cwd: Path, **options) -> subprocess.CompletedProcess:

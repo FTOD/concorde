@@ -1044,6 +1044,32 @@ class PartsTests(unittest.TestCase):
         ]
         self.assertTrue(sentences.endswith(" ".join(contributed)))
 
+    def test_the_package_descriptor_satisfies_its_contract(self):
+        from concorde.distribution import install as installer
+
+        schema = contract_schema("contract.distribution.package-descriptor")
+        descriptor = json.loads((REPOSITORY_ROOT / "concorde.json").read_text())
+        validate(descriptor, schema)
+        for missing in ("version", "runtime"):
+            with self.subTest(missing=missing), self.assertRaises(ContractError):
+                validate({k: v for k, v in descriptor.items() if k != missing}, schema)
+        # The readers refuse as the contract's semantics says.
+        with self.assertRaises(InstallError) as raised:
+            installer._python_requirement({"runtime": {}}, REPOSITORY_ROOT)
+        self.assertEqual("invalid_descriptor", raised.exception.code)
+        with tempfile.TemporaryDirectory() as directory:
+            package = Path(directory)
+            for develop in ({}, {"check": "no colon"}):
+                (package / "concorde.json").write_text(
+                    json.dumps({**descriptor, "develop": develop})
+                )
+                with (
+                    self.subTest(develop=develop),
+                    self.assertRaises(InstallError) as raised,
+                ):
+                    installer._develop(package)
+                self.assertEqual("invalid_descriptor", raised.exception.code)
+
     def test_every_registration_satisfies_the_registration_contract(self):
         schema = contract_schema("contract.distribution.part-registration")
         for path in sorted(

@@ -51,11 +51,13 @@ Issues is the issues [part](../glossary.json#concept.part). It depends on the
 - Every write takes the [merge lock](../glossary.json#concept.merge-lock).
 - Every refusal is a link of the [error chain](../glossary.json#concept.error-chain).
 
-Two features reach further, as [optional integrations](../glossary.json#concept.optional-integration).
+Three features reach further, as [optional integrations](../glossary.json#concept.optional-integration).
 Only where the spec part is installed, an Issue's Module is checked against the
 [registry](../glossary.json#concept.registry). Otherwise, its Module is a plain label.
 Only where the coordination part is installed, a write is refused while a task's merge is
 unfinished. This is because without the coordination part there is no task merge to wait for.
+Only where the coordination part is installed, the store check excuses for a while an owner that
+an open task may add, as [Spec core](#uses-spec) explains.
 Which Operations report Issues is those parts' own integration with this one.
 Which task merges close Issues is those parts' own integration with this one.
 
@@ -776,11 +778,23 @@ The **Kernel** provides the following:
   ([req.kernel.marker-spans-merge](../kernel/requirements.md#req.kernel.marker-spans-merge)). In
   Concorde, Tasks is that writer. A merge that hands the lock on to close the Issues its task
   resolves has removed the marker before.
+- The [workspace binding](../glossary.json#concept.workspace-binding) of a task worktree. The
+  store check run there finds the open tasks in the `.concorde` its `concorde` names, the primary worktree's.
+  Without a binding, the check looks in the worktree's own `.concorde`.
 
 When a transaction is stale, it is refused. The refusal reports `stale_issue`. The transaction
 writes nothing. The store's error type,
 `IssueError`, is Issues' own. It has its own codes. The command prints each of the store's refusals
 as a `component` link, as the [interface](interface.md#store-operations) says.
+
+<a id="uses-tasks"></a>
+
+**Tasks** is an [optional integration](../glossary.json#concept.optional-integration). Issues reads
+no task through Tasks' code. A task is open while its [task record](../glossary.json#concept.task-record)
+`tasks/<task>/task.json` lies in the `.concorde` that holds the tasks
+([its contract](../coordination/tasks/contracts.md#contract.tasks.record)). Closing a task moves
+its folder to the [history](../glossary.json#concept.history). Where the coordination part is not
+installed, no task record exists, so the store check excuses no owner.
 
 <a id="uses-spec"></a>
 
@@ -799,7 +813,16 @@ In that case, the following applies:
 
 - A report's owner must be a registered Module.
 - A `null` owner falls to the root Module.
-- The store check fails an open Issue whose owner is not registered.
+- The store check fails an open Issue whose owner is not registered, with one exception.
+
+The exception is an owner that a task may add. A run of a task's workspace may review a Module its
+task adds before the task merges, so its report names an owner the primary registry lacks yet.
+While the task its latest report's `change_id` names is still open, the store check reports that
+owner in a note, which does not fail the check. The merge of the task registers the Module, and the
+note goes. The task may end while the registry still lacks the Module. The check then fails the
+Issue and names the task. The error says to close the Issue as `not-actionable` or to report it
+again with a registered owner
+([scenario](scenarios.md#scenario.issues.store-check-task-owner)).
 
 Where the file is absent, a Module is a plain label. In that case, the following applies:
 

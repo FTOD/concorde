@@ -12,6 +12,7 @@ Concrete situations that show the [requirements](requirements.md) at work.
 - THEN Concorde is installed as a normal install would install it
 - AND the receipt records mode `develop`, the repository as `source` and its `HEAD` as `source_commit`
 - AND the installed skill ends with the section "Developing Concorde while using it" and the `CLAUDE.md` block with the develop paragraph
+- AND the task-session prompt of the framework copy ends with the section "Concorde defects in a develop install"
 
 ### scenario.dogfooding.develop-install-without-coordination — A develop install of parts without Coordination carries no develop guidance
 
@@ -25,7 +26,7 @@ Concrete situations that show the [requirements](requirements.md) at work.
 - GIVEN the same Concorde repository and a project
 - WHEN the developer installs without `--develop`
 - THEN the receipt records mode `normal` and the source commit
-- BUT neither the skill nor the `CLAUDE.md` block mentions developing Concorde
+- BUT neither the skill, the `CLAUDE.md` block nor the task-session prompt mentions developing Concorde
 
 ### scenario.dogfooding.refused-source — Refuse a linked worktree as the source
 
@@ -58,6 +59,9 @@ worktree whose `HEAD` is detached is refused as a linked worktree.
 - WHEN the developer runs its installer on a project with `--develop`
 - THEN the install is refused with `develop_source_dirty`, naming the changed paths
 - BUT nothing is written into the project
+
+A submodule whose checked-out commit differs from its recorded one is such a change.
+It is one even when the repository's settings tell Git to ignore that submodule.
 
 ### scenario.dogfooding.refused-unreadable — Refuse a source Git cannot query
 
@@ -104,6 +108,16 @@ worktree whose `HEAD` is detached is refused as a linked worktree.
 - AND that a refusal whose reason is `environment` is no defect, and that after `merge_busy` it waits and writes again
 - AND that for every other such refusal, such as `commit_failed` or `recovery_failed`, it removes the cause the options name, or escalates it, before it writes again
 - AND to take the fix with `concorde update` while nothing runs, and to start nothing until the update ends
+
+### scenario.dogfooding.task-session-defect — A task session passes a defect it saw first up to the main agent
+
+- GIVEN the rendered develop task-session section
+- WHEN a develop install's [task session](../glossary.json#concept.task-session) reads it, after a run of its task showed a suspected [Concorde defect](../glossary.json#concept.concorde-defect)
+- THEN it is told to observe its runs closely and to treat a wrong `ok` run like a failure
+- AND to keep the run's evidence, never to work around the defect and never to change Concorde
+- AND to escalate the defect to the main agent with `concorde task escalate`, naming the run so that its whole error chain is the cause, with the boundary evidence for a refused access
+- AND to go on with the rest of its task
+- BUT to write no defect report, which the main agent writes once it has placed the defect in its [boundary case](../glossary.json#concept.boundary-case)
 
 ## Concorde repository
 

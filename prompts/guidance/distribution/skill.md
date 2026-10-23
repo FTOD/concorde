@@ -31,4 +31,8 @@ Where the spec part is installed, the update binds the new Protocol copy. Where 
 installed, it also marks the project Concorde unvalidated until `concorde spec-validation` finds no
 other error.
 
+When the update ends, follow the `next` steps of its result in their order. First commit the
+updated files on the primary branch. Only then does the primary branch carry the new Protocol copy
+that the open tasks merge.
+
 Where the coordination part is installed, the update's result lists the open tasks of the project.

@@ -976,6 +976,20 @@ This illustrates [committed visibility](requirements.md#req.issues.committed-vis
 This illustrates [durable receipts](requirements.md#req.issues.durable-receipt) and
 [refusals that record nothing](requirements.md#req.issues.refusal-writes-nothing).
 
+### scenario.issues.store-move-put-back-failed — A move whose committed record could not be restored is recovered whole
+
+- GIVEN a close whose commit Git refuses after it published its record in `closed/` and removed it from `.concorde/issues/`
+- AND a failure to restore only the committed record at `.concorde/issues/<id>.md`
+- WHEN the store is asked to close the Issue
+- AND then the store recovers
+- AND then the close is repeated
+- THEN the close is refused with `recovery_failed`, naming the failure to restore the committed record
+- AND the record published in `closed/` stays until the recovery
+- AND the recovery restores the record at `.concorde/issues/<id>.md` and removes the copy in `closed/`
+- AND the repeated close moves the record at the committed revision
+
+This illustrates [recovering uncommitted records](requirements.md#req.issues.uncommitted-recovered).
+
 ### scenario.issues.store-put-back-failed — A record that could not be put back is put back by the next write
 
 - GIVEN a commit Git refuses, and a failure to put the published record back too
@@ -1084,6 +1098,16 @@ This illustrates [recovering uncommitted records](requirements.md#req.issues.unc
 - WHEN the configured store check runs
 - THEN it reports an error naming the Issue and the unknown owner
 - AND it exits with a nonzero status
+
+### scenario.issues.store-check-task-owner — An owner an open task may add passes until the task ends
+
+- GIVEN a project where the spec part is installed, and an open Issue whose owner is not a Module of its registry
+- AND the Issue's latest report came from a run of the task `adopt`, whose [task record](../glossary.json#concept.task-record) lies in the project's `tasks/` folder
+- WHEN the configured store check runs, in the primary worktree or in a task worktree whose workspace binding names the primary worktree's `.concorde`
+- THEN it reports a note naming the Issue, the unknown owner and the open task
+- AND it passes
+- BUT once the task's record is no longer there, the check reports an error naming the Issue, the unknown owner and the task
+- AND the error says to close the Issue as `not-actionable` or report it again with a registered owner
 
 ### scenario.issues.store-check-misplaced — The store check fails for a misplaced or doubled record
 

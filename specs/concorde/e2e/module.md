@@ -334,9 +334,13 @@ loads them.
 Before anything is cloned, `prepare` hands the configuration it built to Workers' check of a
 configuration.
 That check validates it.
-Through that map, the check resolves the model of every worker of every Operation the
-[Operation catalog](../glossary.json#concept.operation-catalog) lists.
+Through that map, the check resolves the model of every [worker id](../glossary.json#concept.worker-id) that an Operation of the
+[Operation catalog](../glossary.json#concept.operation-catalog) declares, when that worker's
+entries set a model.
 `prepare` enumerates no worker itself.
+So `prepare` checks no worker of an Operation that declares no worker ids, such as `general`. It
+checks no worker whose entries set no model either. Each such worker is checked when it launches,
+as Workers checks every worker before its run.
 It passes Workers' refusal on with its code ([Around it](#uses-workers)).
 
 Before anything is cloned, `prepare` refuses each of these:
@@ -485,7 +489,9 @@ When a run continues a task, `--retry <key>` becomes the workflow's own `retry` 
 When a run continues a task, `--restart <key>=<label>` becomes its `restart` map.
 
 A workflow result whose status is not `ok` is printed like any other.
-When a task's record cannot be read or names no worktree, `run` refuses it with `no_task`.
+When a task's record cannot be read or names no worktree by an absolute path, `run` refuses it
+with `no_task`. An empty or relative path would be taken relative to the current directory,
+which is no task worktree.
 It fails instead in these cases:
 
 - When the headless session ends `exited` or `no_session`
@@ -832,7 +838,8 @@ each model.
 Its [contracts](../worker-harness/workers/contracts.md) define both.
 Workers' check of a whole configuration against the map validates it
 ([scenario.workers.model-map-checked](../worker-harness/workers/scenarios.md#scenario.workers.model-map-checked)).
-It resolves the model of every worker of every Operation.
+Asked for no Operation, it resolves the model of every declared worker id of every Operation whose
+entries set a model ([Workers' entry](../worker-harness/workers/module.md)).
 It refuses with these codes:
 
 - `config_invalid`.
@@ -860,8 +867,10 @@ workflow finds a model for each of them.
 [brownfield workflow](../glossary.json#concept.brownfield-workflow).
 It renders their scripts.
 It also renders the stand-in runtime of its tests that a driver run reuses.
-It provides the workflow result a run ends with.
-It provides the workflow record of each workspace.
+It provides the workflow result a run ends with
+([its contract](../workflows/contracts.md#contract.workflows.result)).
+It provides the workflow record of each workspace
+([its contract](../workflows/contracts.md#contract.workflows.workflow-trace)).
 In that record, `run` finds the latest saved result.
 In that record, `watch` finds the steps.
 End-to-end testing relies on the record listing the saved results in order and each step with its
@@ -878,7 +887,8 @@ run.
 When `prepare` opens the task, Tasks writes that workspace binding.
 End-to-end testing never writes it.
 For each run, `watch` reads the run store's
-[run progress files](../glossary.json#concept.run-progress-file).
+[run progress files](../glossary.json#concept.run-progress-file)
+([their fields](../execution/runner.md#run-progress-file)).
 It relies on them to name these fields:
 
 - Workspace.
@@ -895,10 +905,19 @@ The file can be absent for either reason:
 
 If the runner dies before writing the file, a run left out stays out.
 
+The owners case reads each run it judges from the run's folder in the run store
+([its contract](../execution/contracts.md#contract.execution.run-trace)) and from its
+[run result](../glossary.json#concept.run-result)
+([its contract](../execution/contracts.md#contract.execution.run-result)).
+Whether a run's runner still runs, End-to-end testing tells only by the run's
+[run lock](../glossary.json#concept.run-lock)
+([requirement](../execution/requirements.md#req.execution.run-lock-held)), never by `host_pid`.
+
 <a id="uses-kernel"></a>
 
 **Kernel** defines the [workspace binding](../glossary.json#concept.workspace-binding) that names
-each test project's task workspace.
+each test project's task workspace
+([its contract](../kernel/contracts.md#contract.kernel.workspace-binding)).
 End-to-end testing reads it.
 End-to-end testing never writes it.
 Kernel also defines the [workspace lock](../glossary.json#concept.workspace-lock).
@@ -920,7 +939,8 @@ It creates these:
 - The [workspace binding](../glossary.json#concept.workspace-binding) that every run there reads.
 - The task's folder, whose workspace folder holds the workflow record `run` reads.
 
-Tasks provides the [task record](../glossary.json#concept.task-record) in that folder.
+Tasks provides the [task record](../glossary.json#concept.task-record) in that folder
+([its contract](../coordination/tasks/contracts.md#contract.tasks.record)).
 `run` works in the worktree the record names.
 The owners case runs its unowned run there too.
 Tasks also provides `concorde task show`, which a Claude Code session asks.

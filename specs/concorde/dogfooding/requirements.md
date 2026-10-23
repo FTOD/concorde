@@ -15,6 +15,9 @@ conditions:
 - It is on a branch.
 - It has no uncommitted or untracked change.
 
+A change of a submodule counts as an uncommitted change, whatever ignore setting the repository
+gives that submodule.
+
 ### req.dogfooding.refusal-names-reason — A refused source names its reason
 
 A refusal of a develop install, or of an update of one, by
@@ -55,6 +58,13 @@ The develop guidance SHALL tell the project's main agent never to work around a
 ### req.dogfooding.defect-reported — The project reports a Concorde defect
 
 The develop guidance SHALL tell the project's main agent to report every Concorde defect it finds.
+
+### req.dogfooding.task-session-escalates — A task session passes a suspected defect up
+
+The develop guidance SHALL tell every [task session](../glossary.json#concept.task-session) to escalate a suspected [Concorde defect](../glossary.json#concept.concorde-defect) to the project's main agent, naming the run that showed it, instead of reporting or working around it.
+
+The task session keeps the run's evidence and changes no part of Concorde. The main agent then
+classifies the defect and reports it, as for one it saw itself.
 
 ### req.dogfooding.boundary-classified — A blocked boundary is placed in a case first
 

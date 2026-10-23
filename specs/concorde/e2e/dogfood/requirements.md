@@ -8,6 +8,11 @@ them in concrete situations.
 The runner SHALL apply a fault only to the scenario's own clone of Concorde, never to the checkout
 it runs from.
 
+Each edit names its file by a path relative to the clone's root. The runner resolves that path,
+symbolic links included, before it writes anything. It refuses the fault with
+`fault_not_applicable` when any edit's file resolves outside the clone. So no edit writes a file
+outside the clone, whatever its path names.
+
 ### req.dogfood-scenarios.fault-exact — A fault that no longer applies exactly is refused
 
 The runner SHALL refuse a fault whose old text of an edit is not found exactly once, naming the
