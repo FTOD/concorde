@@ -4,7 +4,7 @@
 {
   "schema_version": 4,
   "id": "I-2dbb980befa354c2833bb7e38caddd7e",
-  "status": "open",
+  "status": "closed",
   "reports": [
     {
       "id": "sha256:78ef216c2b7f4a1bbfe224f426e20159e90ac124079ac43132081aa27b9b341e",
@@ -39,6 +39,18 @@
       }
     }
   ],
-  "dispositions": []
+  "dispositions": [
+    {
+      "reason": "resolved",
+      "note": "Fixed by task r4-e2e-dist, merged into the primary branch at ad2f6af4d5d883cae87062430b9963cbcfc099b5.",
+      "evidence": [
+        "merge commit ad2f6af4d5d883cae87062430b9963cbcfc099b5",
+        "task r4-e2e-dist"
+      ],
+      "duplicate_of": null,
+      "actor": "main-agent",
+      "created_at": "2026-10-23T09:03:02.203314+00:00"
+    }
+  ]
 }
 ```
