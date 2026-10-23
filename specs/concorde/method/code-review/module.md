@@ -4,8 +4,9 @@
 
 Code review gives callers an independent judgement of code against the
 [Specs](../../glossary.json#concept.spec). Where the issues part is installed, it records every
-problem it finds as an [Issue](../../glossary.json#concept.issue) of the project. Where it is not,
-it records every problem in its run result alone. It provides the `code_review`
+blocking problem it finds as an [Issue](../../glossary.json#concept.issue) of the project. A
+suggestion stays in its run result alone. Where the issues part is not installed, it records every
+problem in its run result alone. It provides the `code_review`
 [Operation](../../glossary.json#concept.operation), which judges in one of two scopes:
 
 - A **change review** judges a workspace's code changes since a base commit.
@@ -16,7 +17,7 @@ A reviewer worker reads the Specs, code and tests. It changes nothing. It report
 can establish in one pass. Each problem is tied to the promise it judges the code against and to
 the code that shows it. When code and Spec disagree, it says which side is wrong. It may challenge
 a Spec requirement it judges unreasonable or unrealizable. The Operation checks every finding's
-evidence. Where it can, it reports each finding as an Issue. It derives the verdict from the tiers
+evidence. Where it can, it reports each blocking finding as an Issue. It derives the verdict from the tiers
 of what stands. Acting on them is later work of the task. The reviewer never edits a file or runs
 a command. The Operation's host steps compute the diff and run the configured checks through Check
 execution. They leave the workspace unchanged. A review without findings is evidence about the
@@ -104,12 +105,14 @@ the problem matters to the callers and the later tasks relying on the code. It r
 
 A reviewed Module's **earlier Issues** are its open Issues one of whose reports a `code_review` run
 made, or a [Project review](../project-review/module.md) run made with the provenance phase
-`code-review`. The reviewer receives them before it judges. A problem already recorded is reported again only
+`code-review`. An Issue whose latest report is a suggestion is not one. The reviewer receives them
+before it judges. A problem already recorded is reported again only
 when it changed, as a finding naming that Issue and never as a new one. It lists each earlier Issue
 the code no longer has, with its reason, as **resolved**. An earlier Issue it neither names nor
 resolves still stands, **carried**. The Operation, never the reviewer, writes the Issues. It appends
-a finding that names an earlier Issue to that Issue. It records every other finding as a new Issue.
-It closes none. The resolved Issues are listed in the report for the task to close.
+a finding that names an earlier Issue to that Issue. It records every other blocking finding as a
+new Issue. It records no suggestion. A suggestion that names an earlier Issue resolves it, since its
+problem no longer blocks. It closes none. The resolved Issues are listed in the report for the task to close.
 
 Earlier Issues exist only where the issues part is installed. Without it, the review does these:
 
@@ -245,7 +248,7 @@ The task handles the Issues as it handles a Spec review's, by their tier, as the
 
 - It fixes an `obvious-fix` or `preferred-fix` Issue in later `implement` or `specify` work.
 - It escalates a `decision-needed` one, every Spec challenge among them, by its identity.
-- It leaves a `suggestion`.
+- It may follow a `suggestion` of the report. No Issue tracks it.
 - It closes each Issue the review lists as resolved.
 
 ## How it is built
@@ -272,7 +275,7 @@ grant of its Module alone.
 | 4 | Launch the reviewer, await its [worker result](../../glossary.json#concept.worker-result); when a finding's Module, basis or location does not hold (step 6's check), resume it once with those citations to correct, its last result counting | Workers, worker | launch error, timeout, `blocked` or `failed`: its Modules `incomplete` |
 | 5 | [Audit](../../glossary.json#concept.write-audit) the worktree (no writable path, so any change is a violation); write the [run record](../../glossary.json#concept.run-record) | Workers | any change: its Modules `incomplete` |
 | 6 | Check every finding's Module, basis and locations in the last result | Operation, Spec core | — (a finding that still does not hold is rejected alone, with the reason) |
-| 7 | Settle the earlier Issues; report every finding as an Issue, Module by Module | Operation (Issues) | a store refusal: that Module `incomplete`, its later findings unreported |
+| 7 | Settle the earlier Issues; report every blocking finding as an Issue, Module by Module | Operation (Issues) | a store refusal: that Module `incomplete`, its later findings unreported |
 | 8 | Derive each Module's outcome and the verdict, and return the run's output | Operation, Execution runner | — |
 
 A reviewer gets reading tools only:
@@ -286,8 +289,9 @@ the path the brief gives. A very large diff is cut short in the brief. The revie
 current contents of the remaining changed files through its grant. In that case, the base side of
 the omitted part and the contents of deleted files are not available to it.
 
-In bound and unbound runs alike, the Operation reports each finding through the Issue store as
-one [Issue report](../../glossary.json#concept.issue-report). As Spec review does, it supplies its
+In bound and unbound runs alike, the Operation reports each finding of a blocking tier through the
+Issue store as one [Issue report](../../glossary.json#concept.issue-report). A `suggestion` stays in
+the report with its `issue` null, and the `suggestions-kept` host evidence names it. As Spec review does, it supplies its
 provenance itself:
 
 - `report_key` `<module>/<n>`, the finding's position among its Module's findings.
@@ -345,6 +349,10 @@ base, paths, check results, Issues, outcomes and verdict.
     ([req.method.glossary-by-entry](../requirements.md#req.method.glossary-by-entry)).
   - Spec gaps and grant denials are never repaired
     ([req.method.gaps-never-repaired](../requirements.md#req.method.gaps-never-repaired)).
+- A suggestion is never recorded as an Issue
+  ([req.method.suggestions-not-issues](../requirements.md#req.method.suggestions-not-issues)).
+- No suggestion is offered as an earlier Issue
+  ([req.method.suggestions-not-offered](../requirements.md#req.method.suggestions-not-offered)).
 
   [How an Operation runs its workers](../workers.md) gives the sequence's steps and the
   [errors](../workers.md#errors-of-the-worker-sequence) that Code review's results pass on.

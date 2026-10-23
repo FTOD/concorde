@@ -19,8 +19,8 @@ Its caller is the [main agent](../../glossary.json#concept.main-agent) or a
 [task session](../../glossary.json#concept.task-session) that wants
 to know how the whole project stands. The Operation runs unbound in the primary worktree, without a
 task, or in a bound workspace. It changes no [Spec](../../glossary.json#concept.spec) or code. Where
-the issues part is installed, it records every problem it finds as an
-[Issue](../../glossary.json#concept.issue). It returns an outcome per Module and one verdict for the
+the issues part is installed, it records every blocking problem it finds as an
+[Issue](../../glossary.json#concept.issue). A suggestion stays in its result alone. It returns an outcome per Module and one verdict for the
 project.
 
 A review of 37 Modules launches about 190 workers. A project changes a few Modules between two
@@ -258,6 +258,15 @@ The phase decides which reviews offer an Issue as an earlier Issue:
   ([Spec review](../spec-review/panel.md#reporting-findings)). A Module's Spec panel in this
   Operation has no architects, so it does not offer them.
 
+No review offers an Issue whose latest report is a suggestion, and none records a suggestion
+([req.method.suggestions-not-issues](../requirements.md#req.method.suggestions-not-issues)).
+A Module's context-selection Issue is offered to its Spec panel and to the architecture review,
+whichever phase reported it ([Spec review](../spec-review/panel.md#context-findings)). When both
+parts of one run have context findings about the Module, the panel appends its merged finding to
+the Issue the architecture review reported. That report lists the missing selections of both parts
+([req.project-review.context-one-issue](requirements.md#req.project-review.context-one-issue)). So
+one run writes at most one Issue per Module for its context findings.
+
 Thus `project_review`, `spec_panel` and `code_review` build on each other's Issues rather than
 reporting a problem again. Within one run, the report key of a phase other than `report` begins with
 that phase. Thus a Module's panel and code review never reuse each other's key.
@@ -296,7 +305,8 @@ The project's verdict is the highest Module outcome in the order `accepted`, `ch
 
 The result counts the Issues that stand by [severity](../../glossary.json#concept.issue-severity)
 and by [tier](../../glossary.json#concept.issue-tier). Where the issues part is not installed, each
-Module's outcome follows from this run's findings, exactly as from the Issues they would become.
+Module's outcome follows from this run's blocking findings, exactly as from the Issues they would
+become.
 
 ## How it is built
 
@@ -392,6 +402,10 @@ or not.
   ([req.method.glossary-by-entry](../requirements.md#req.method.glossary-by-entry)).
 - [Spec gaps](../../glossary.json#concept.spec-gap) and grant denials are never repaired
   ([req.method.gaps-never-repaired](../requirements.md#req.method.gaps-never-repaired)).
+- A suggestion is never recorded as an Issue
+  ([req.method.suggestions-not-issues](../requirements.md#req.method.suggestions-not-issues)).
+- No suggestion is offered as an earlier Issue
+  ([req.method.suggestions-not-offered](../requirements.md#req.method.suggestions-not-offered)).
 
 [How an Operation runs its workers](../workers.md) gives the sequence's steps and the
 [errors](../workers.md#errors-of-the-worker-sequence) that Project review's results pass on.

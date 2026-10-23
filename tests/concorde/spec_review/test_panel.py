@@ -19,6 +19,7 @@ from concorde.kernel.marker import write_marker
 from concorde.spec.verification import verifies
 from concorde.method.review_issues import NOT_RECORDED
 from concorde.method.spec_review import review
+from concorde.method.spec_review.reporting import CONTEXT_TITLE
 from concorde.method.spec_review.panel import PAYLOAD_SCHEMA, account
 from tests.concorde.support.operation_project import (
     OperationProject,
@@ -48,7 +49,9 @@ def without_issues():
     )
 
 
-def earlier_report(module, tier, title, operation="spec_panel", root=None):
+def earlier_report(
+    module, tier, title, operation="spec_panel", root=None, phase="report"
+):
     """Record an open Issue of ``module`` as an earlier review, or another reporter, made it."""
     receipt = report_issue(
         root,
@@ -69,7 +72,7 @@ def earlier_report(module, tier, title, operation="spec_panel", root=None):
             "invocation_id": f"r-earlier-{title}",
             "agent": "operation" if operation != "issues" else "task-session",
             "operation": operation,
-            "phase": "report",
+            "phase": phase,
             "target_id": module,
             "context_id": "sha256:" + "a" * 64,
             "change_id": None,
@@ -738,8 +741,9 @@ class SpecPanelTests(unittest.TestCase):
         (item,) = envelope["output"]["modules"][0]["findings"]
         self.assertEqual(("suggestion", "module.b"), (item["tier"], item["module"]))
         self.assertEqual("accepted", envelope["output"]["verdict"])
-        owner = self.issues()[item["issue"]]["reports"][0]["report"]["owner_target_id"]
-        self.assertEqual("module.b", owner)
+        # A suggestion stays in the result, whichever Module it names.
+        self.assertIsNone(item["issue"])
+        self.assertEqual({}, self.issues())
 
     @verifies("scenario.spec-review.panel-architects")
     def test_architects_judge_the_module_among_all_the_modules(self):
@@ -850,14 +854,16 @@ class SpecPanelTests(unittest.TestCase):
     def kinds(self, envelope):
         return [item["kind"] for item in envelope["host_evidence"]]
 
-    def earlier(self, tier, title, module="module.a", operation="spec_panel"):
-        return earlier_report(module, tier, title, operation, root=self.root)
+    def earlier(
+        self, tier, title, module="module.a", operation="spec_panel", phase="report"
+    ):
+        return earlier_report(module, tier, title, operation, self.root, phase)
 
     def resolved(self, *items):
         return [{"issue": issue, "reason": reason} for issue, reason in items]
 
     @verifies("scenario.spec-review.accepted")
-    def test_suggestions_only_are_accepted_and_recorded(self):
+    def test_suggestions_only_are_accepted_and_kept_in_the_result(self):
         suggestion = {"tier": "suggestion", "dimension": "readability"}
         exit_status, envelope = self.panel(
             {
@@ -884,43 +890,13 @@ class SpecPanelTests(unittest.TestCase):
         self.assertEqual(
             {"carried": [], "resolved": [], "ignored": []}, module["earlier_issues"]
         )
-        # The suggestion is a new Issue of the project, committed on the primary branch.
-        issues = self.issues()
-        self.assertEqual([item["issue"]], list(issues))
-        (entry,) = issues[item["issue"]]["reports"]
-        self.assertEqual(
-            ("suggestion", "module.a", "readability"),
-            (
-                entry["report"]["tier"],
-                entry["report"]["owner_target_id"],
-                entry["report"]["evidence"][0]["description"]
-                .split(", cited by the ")[1]
-                .split(" ")[0],
-            ),
-        )
-        self.assertEqual(
-            {
-                "invocation_id": envelope["run_id"],
-                "agent": "operation",
-                "operation": "spec_panel",
-                "phase": "report",
-                "target_id": "module.a",
-                "context_id": self.identity("review-spec"),
-                "change_id": "t1",
-            },
-            {key: value for key, value in entry["source"].items() if key != "head"},
-        )
-        log = subprocess.run(
-            ["git", "log", "-1", "--format=%s%n%b"],
-            cwd=self.root,
-            capture_output=True,
-            text=True,
-            check=True,
-        ).stdout
-        self.assertIn(f"Concorde-Issue: {item['issue']}", log)
+        # The suggestion stays in the result: no Issue records it.
+        self.assertIsNone(item["issue"])
+        self.assertEqual({}, self.issues())
+        self.assertIn("suggestions-kept", self.kinds(envelope))
         # The panel changes no file of the workspace.
         self.assertEqual("", self.status())
-        self.assertIn("issue", self.kinds(envelope))
+        self.assertNotIn("issue", self.kinds(envelope))
         for brief in self.briefs(envelope, "reviewer"):
             self.assertIn("You are a Concorde Spec reviewer", brief)
             self.assertIn("Your role: reviewer.", brief)
@@ -992,6 +968,28 @@ class SpecPanelTests(unittest.TestCase):
             ],
             issues[findings[0]["issue"]]["reports"][-1]["report"]["evidence"],
         )
+        # Each Issue is new, with the run's provenance, committed on the primary branch.
+        (entry,) = issues[findings[-1]["issue"]]["reports"]
+        self.assertEqual(
+            {
+                "invocation_id": envelope["run_id"],
+                "agent": "operation",
+                "operation": "spec_panel",
+                "phase": "report",
+                "target_id": "module.a",
+                "context_id": self.identity("review-spec"),
+                "change_id": "t1",
+            },
+            {key: value for key, value in entry["source"].items() if key != "head"},
+        )
+        log = subprocess.run(
+            ["git", "log", "-1", "--format=%s%n%b"],
+            cwd=self.root,
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout
+        self.assertIn(f"Concorde-Issue: {findings[-1]['issue']}", log)
         # Worker claims stay out of the host's summary and evidence.
         host_text = json.dumps(envelope["host_evidence"]) + envelope["summary"]
         self.assertNotIn("normal path", host_text)
@@ -1029,8 +1027,11 @@ class SpecPanelTests(unittest.TestCase):
         self.assertEqual("changes_required", output["verdict"])
         in_b = by_module["module.a"]["findings"][1]
         self.assertEqual(("module.b", "suggestion"), (in_b["module"], in_b["tier"]))
-        owner = self.issues()[in_b["issue"]]["reports"][-1]["report"]["owner_target_id"]
-        self.assertEqual("module.b", owner)
+        self.assertIsNone(in_b["issue"])
+        [recorded] = self.issues().values()
+        self.assertEqual(
+            "module.b", recorded["reports"][-1]["report"]["owner_target_id"]
+        )
         self.assertIn("finding-scope", self.kinds(envelope))
         self.assertEqual(6, len(envelope["worker_runs"]))
         for run_id in envelope["worker_runs"]:
@@ -1146,8 +1147,9 @@ class SpecPanelTests(unittest.TestCase):
     def test_a_repeated_panel_builds_on_the_earlier_issues(self):
         first = self.earlier("obvious-fix", "first")
         second = self.earlier("decision-needed", "second")
-        third = self.earlier("suggestion", "third")
+        third = self.earlier("preferred-fix", "third")
         fourth = self.earlier("obvious-fix", "fourth", operation="issues")
+        fifth = self.earlier("suggestion", "fifth")
         unknown = "I-" + "9" * 32
         before = self.issues()
         changed = {"earlier": second, "problem": "Changed problem."}
@@ -1179,8 +1181,10 @@ class SpecPanelTests(unittest.TestCase):
         self.assertEqual("changes_required", module["outcome"])
         updated, new = module["findings"]
         self.assertEqual((second, second), (updated["earlier"], updated["issue"]))
+        # The new suggestion stays in the result alone.
         self.assertNotIn("earlier", new)
-        self.assertNotIn(new["issue"], before)
+        self.assertIsNone(new["issue"])
+        self.assertEqual(set(before), set(self.issues()))
         summary = module["earlier_issues"]
         self.assertEqual(
             [
@@ -1208,21 +1212,151 @@ class SpecPanelTests(unittest.TestCase):
         self.assertIn(
             "Changed problem.", after[second]["reports"][-1]["report"]["description"]
         )
-        for unchanged in (first, third, fourth):
+        for unchanged in (first, third, fourth, fifth):
             self.assertEqual(before[unchanged], after[unchanged])
         self.assertEqual("open", after[third]["status"])
         for brief in self.briefs(envelope, "reviewer") + self.briefs(envelope, "chair"):
             self.assertIn("Earlier problem first.", brief)
             self.assertNotIn("Earlier problem fourth.", brief)
+            # A suggestion is never offered as an earlier Issue.
+            self.assertNotIn("Earlier problem fifth.", brief)
             self.assertNotIn("r-earlier", brief)
+
+    @verifies("scenario.spec-review.suggestion-resolves")
+    def test_a_suggestion_naming_an_earlier_issue_resolves_it(self):
+        demoted = self.earlier("obvious-fix", "demoted")
+        before = self.issues()
+        claimed = {"tier": "suggestion", "earlier": demoted, "title": "Now advisory"}
+        status, envelope = self.panel(
+            {
+                "reviewer module.a 1": worker(findings=[finding(**claimed)]),
+                "reviewer module.a 2": worker(findings=[]),
+                "chair module.a 1": worker(findings=[merged("r1.1", **claimed)]),
+            },
+            "--reviewers",
+            "2",
+        )
+        self.assertEqual((0, "ok"), (status, envelope["status"]), envelope)
+        (module,) = envelope["output"]["modules"]
+        (item,) = module["findings"]
+        self.assertNotIn("earlier", item)
+        self.assertIsNone(item["issue"])
+        [resolved] = module["earlier_issues"]["resolved"]
+        self.assertEqual(demoted, resolved["issue"])
+        self.assertIn("Now advisory", resolved["reason"])
+        self.assertEqual(before, self.issues())
+        self.assertEqual("accepted", module["outcome"])
+
+    @verifies("scenario.spec-review.context-one-issue")
+    def test_context_findings_become_the_modules_one_context_selection_issue(self):
+        titled = self.earlier(
+            "preferred-fix",
+            CONTEXT_TITLE,
+            operation="project_review",
+            phase="architecture",
+        )
+        single = self.earlier("preferred-fix", "Select the Kernel's lock contract")
+        before = self.issues()
+        claimed = [
+            {
+                "dimension": "context",
+                "tier": "decision-needed",
+                "title": "Select the Kernel's lock contract",
+                "problem": "The lock contract is not selected.",
+                "earlier": single,
+            },
+            {
+                "dimension": "context",
+                "tier": "obvious-fix",
+                "severity": "critical",
+                "title": "Select the Tracing contracts",
+                "problem": "The Tracing contracts are not selected.",
+            },
+            {"dimension": "context", "tier": "suggestion", "title": "Link the guide"},
+            {"title": "Two obligations in one requirement"},
+        ]
+        status, envelope = self.panel(
+            {
+                "reviewer module.a 1": worker(
+                    findings=[finding(**dict(extra)) for extra in claimed]
+                ),
+                "reviewer module.a 2": worker(findings=[]),
+                "chair module.a 1": worker(
+                    findings=[
+                        merged(f"r1.{n}", **extra) for n, extra in enumerate(claimed, 1)
+                    ]
+                ),
+            },
+            "--reviewers",
+            "2",
+        )
+        self.assertEqual((0, "ok"), (status, envelope["status"]), envelope)
+        # The Module's context-selection Issue is offered whichever phase reported it.
+        for brief in self.briefs(envelope, "reviewer"):
+            self.assertIn(titled, brief)
+        (module,) = envelope["output"]["modules"]
+        validate(envelope["output"], PAYLOAD_SCHEMA)
+        context, advice, other = module["findings"]
+        self.assertEqual(
+            (CONTEXT_TITLE, "decision-needed", "critical", titled, titled),
+            (
+                context["title"],
+                context["tier"],
+                context["severity"],
+                context["earlier"],
+                context["issue"],
+            ),
+        )
+        self.assertEqual(["r1.1", "r1.2"], context["sources"])
+        self.assertIn("The lock contract is not selected.", context["problem"])
+        self.assertIn("The Tracing contracts are not selected.", context["problem"])
+        self.assertEqual(("suggestion", None), (advice["tier"], advice["issue"]))
+        self.assertNotIn(other["issue"], before)
+        after = self.issues()
+        self.assertEqual(3, len(after))
+        latest = after[titled]["reports"][-1]["report"]
+        self.assertEqual(
+            (CONTEXT_TITLE, "decision-needed", "gap", "missing-contract"),
+            (latest["title"], latest["tier"], latest["type"], latest["subtype"]),
+        )
+        self.assertEqual(before[single], after[single])
+        summary = module["earlier_issues"]
+        self.assertEqual([single], [item["issue"] for item in summary["carried"]])
+        [ignored] = summary["ignored"]
+        self.assertEqual(single, ignored["issue"])
+        self.assertIn("merged into the one context finding", ignored["reason"])
+
+    @verifies("scenario.spec-review.context-one-issue")
+    def test_a_lone_context_finding_takes_the_context_selection_title(self):
+        single = self.earlier("preferred-fix", "Select the Kernel's lock contract")
+        claimed = {
+            "dimension": "context",
+            "title": "Select the Kernel's lock contract",
+            "earlier": single,
+        }
+        status, envelope = self.panel(
+            {
+                "reviewer module.a 1": worker(findings=[finding(**claimed)]),
+                "reviewer module.a 2": worker(findings=[]),
+                "chair module.a 1": worker(findings=[merged("r1.1", **claimed)]),
+            },
+            "--reviewers",
+            "2",
+        )
+        self.assertEqual((0, "ok"), (status, envelope["status"]), envelope)
+        ((context,),) = [item["findings"] for item in envelope["output"]["modules"]]
+        # With no context-selection Issue open, the Issue the finding named becomes it.
+        self.assertEqual((single, single), (context["earlier"], context["issue"]))
+        latest = self.issues()[single]["reports"][-1]["report"]
+        self.assertEqual(CONTEXT_TITLE, latest["title"])
 
     @verifies("scenario.spec-review.blank-earlier")
     def test_a_blank_earlier_names_no_earlier_issue(self):
         unknown = "I-" + "9" * 32
         claimed = [
             {"earlier": ""},
-            {"tier": "suggestion", "earlier": "  "},
-            {"tier": "suggestion", "earlier": unknown},
+            {"tier": "preferred-fix", "earlier": "  "},
+            {"tier": "decision-needed", "earlier": unknown},
         ]
         status, envelope = self.panel(
             {

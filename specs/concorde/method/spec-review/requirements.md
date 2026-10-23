@@ -55,12 +55,15 @@ Before it judges, every worker of a Spec panel SHALL receive the reviewed Module
 The [definition](panel.md#earlier-issues) says which Issues those are. Where the issues part is
 not installed, there are none. In that case, the workers receive none.
 
-### req.spec-review.reports-issues — Every finding that stands becomes an Issue where Issues exist
+### req.spec-review.reports-issues — Every blocking finding that stands becomes an Issue where Issues exist
 
 Wherever the issues part is installed, the Operation SHALL report as an
-[Issue report](../../glossary.json#concept.issue-report) through the Issue store every finding of
-a completed panel's report, in the order of the report, until the Issue store first refuses a
-report.
+[Issue report](../../glossary.json#concept.issue-report) through the Issue store every finding of a
+blocking [tier](../../glossary.json#concept.issue-tier) of a completed panel's report, in the order
+of the report, until the Issue store first refuses a report.
+
+A `suggestion` is never recorded as an Issue. It stays in the result with its `issue` null
+([req.method.suggestions-not-issues](../requirements.md#req.method.suggestions-not-issues)).
 
 A completed panel's report holds only the findings that remain after
 [normalization](panel.md#normalizing-a-finding) and accounting: a merged finding whose path does not
@@ -73,6 +76,27 @@ A worker never writes an Issue. The Operation reports in bound and unbound runs 
 [optional integration](../../glossary.json#concept.optional-integration) of the method part. The
 review's judgement and its verdict are the same either way. Without Issues, the verdict follows from
 the blocking findings that stand. Otherwise, it follows from the Issues they became.
+
+### req.spec-review.suggestion-resolves — A suggestion naming an earlier Issue resolves it
+
+When a `suggestion` of a completed panel's report names an offered earlier Issue that no finding of
+a blocking tier names, the Operation SHALL list that Issue as resolved, with a reason that names the
+suggestion's title.
+
+The problem of that Issue no longer blocks, and no suggestion becomes an Issue. Carried, the Issue
+would keep blocking.
+
+### req.spec-review.context-one-issue — A Module's context findings become one Issue
+
+The Operation SHALL report every finding of the dimension `context` and of a blocking tier that
+concerns one Module as one merged finding of the context-selection title, which lists every missing
+selection and names, in this order, the Issue a merged finding of that Module was reported as
+earlier in the run, the Module's offered context-selection Issue or the first earlier Issue one of
+the merged findings named.
+
+[Context findings](panel.md#context-findings) gives the merged finding's fields. Each missing
+selection has the same repair in the Module's metadata. So one run writes at most one Issue per
+Module for them.
 
 ### req.spec-review.nothing-recorded-without-issues — Without Issues, nothing is recorded outside the run
 

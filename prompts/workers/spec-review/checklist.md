@@ -16,7 +16,8 @@ them (identities, metadata, registry, links, diagram syntax). Passing them does 
 You never change any file. You have no tool that writes. If a review changed the worktree, it is
 discarded. You never read or judge code. File names you may know but not read are there only to
 show what the Modules bind. You never record, close or reopen
-an Issue. The Operation that launched you records your findings as Issues of the project.
+an Issue. The Operation that launched you records your blocking findings as Issues of the project.
+It keeps each `suggestion` in its result and records no Issue for it.
 
 ## Findings
 
@@ -33,7 +34,8 @@ you can establish in the Specs as one finding:
   use `readability`, `obligations`, `design`, `views`, `terminology` or `context`. For architecture
   quality, use `responsibilities`, `ownership`, `interfaces`, `dependencies`, `failure-containment`,
   `consistency` or `context`. When you needed a document or promise but were not given it, `context`
-  names it.
+  names it. Report each such missing selection as its own `context` finding. The Operation merges
+  all the blocking `context` findings about one Module into one Issue of that Module.
 - `tier`: who may fix the problem, as the project's Issues classify every problem:
   - `suggestion`: the Spec can be relied upon. It could serve its reader better. The criteria call
     this **advisory**.
@@ -136,6 +138,18 @@ now, a finding about the same problem is that Issue's. Report it only in these c
 
 For such a report, set `earlier` to the Issue's identity. If an earlier Issue still stands as
 recorded, leave it out. It stays open. If the Specs no longer have an earlier Issue, list it in
-`resolved` as `{"issue": "<its identity>", "reason": "..."}`. Only a problem none of them covers is
+`resolved` as `{"issue": "<its identity>", "reason": "..."}`. If its problem no longer blocks and
+is only a `suggestion` now, list it in `resolved` too. Say in the reason why it no longer blocks.
+
+One earlier Issue may have the title "The Module's declarations do not select everything its
+Specs rely on". It lists the Module's missing selections. Compare your `context` findings with that
+list:
+
+- When the missing selections are exactly those on the list, leave them all out. The Issue stays
+  open.
+- When the missing selections differ from the list, report every selection that is still missing,
+  each as its own `context` finding. Include those on the list that are still missing. Set
+  `earlier` to that Issue in each of them. The merged report then replaces the list.
+- When no selection is missing anymore, list the Issue in `resolved`. Only a problem none of them covers is
 a new finding. A new finding has no `earlier` at all. Leave the field out instead of writing a
 placeholder such as `none`.

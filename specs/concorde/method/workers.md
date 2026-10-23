@@ -186,7 +186,8 @@ that worker starts:
 
 The worker-backed provider step does the following:
 
-- Computes the grant.
+- Computes the grant, or reuses the frozen grant of an earlier worker of the same run, as
+  [below](#reusing-a-frozen-grant) says.
 - Freezes the grant.
 - Composes the task instructions.
 - Supplies the round validation.
@@ -371,6 +372,8 @@ harness receives. It turns `rw` into `ro`. It never does the following:
 - Adds a path.
 - Raises a level.
 - Changes the context identity.
+
+<a id="reusing-a-frozen-grant"></a>
 
 A step may instead give its worker the frozen grant that an earlier worker of the same run
 received. The step then computes no grant, and the worker runs under that grant's context identity.

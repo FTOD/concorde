@@ -48,6 +48,7 @@ from ..code_review import operation as code_review
 from ..prompts import load_prompt
 from ..specs import admission, spec_cause
 from ..spec_review import panel as spec_panel
+from ..spec_review import reporting as spec_reporting
 from ..spec_review import review
 from ..workers import grant_failure, operation
 from . import findings, record
@@ -752,7 +753,9 @@ def review_architecture(ctx: RunContext):
         subject.stop = missing
         return Continue(evidence=missing.evidence)
     try:
-        subject.earlier = review_issues.open_issues(ctx, ARCHITECTURE_SOURCES)
+        subject.earlier = review_issues.open_issues(
+            ctx, ARCHITECTURE_SOURCES, titles=(spec_reporting.CONTEXT_TITLE,)
+        )
     except review_issues.Refusal as refusal:
         subject.stop = ctx.fail(
             "failed",
@@ -1089,12 +1092,14 @@ def _resolved(ctx: RunContext, revisions: dict[str, str]) -> set[str]:
 
 
 def _standing_from_findings(ctx: RunContext) -> dict[str, list[dict]]:
-    """Without the issues part: each Module's findings of this run, as the Issues they would
-    become."""
+    """Without the issues part: each Module's blocking findings of this run, as the Issues they
+    would become; a suggestion never becomes one."""
     state = _state(ctx)
     standing: dict[str, list[dict]] = {}
 
     def add(module: str, item: dict) -> None:
+        if not review_issues.is_blocking(item.get("tier")):
+            return
         standing.setdefault(module, []).append(
             {
                 "issue": None,
@@ -1153,7 +1158,9 @@ def derive_verdict(ctx: RunContext):
     standing_stop = None
     if state.issues:
         try:
-            rows = review_issues.open_issues(ctx, STANDING_SOURCES) or []
+            rows = (
+                review_issues.open_issues(ctx, STANDING_SOURCES, suggestions=True) or []
+            )
         except review_issues.Refusal as refusal:
             rows = []
             standing_stop = ctx.fail(

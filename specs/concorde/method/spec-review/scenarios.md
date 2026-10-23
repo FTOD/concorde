@@ -6,13 +6,13 @@ and no architect.
 
 ## Reviewing
 
-### scenario.spec-review.accepted — A clear Spec is accepted and its suggestions recorded
+### scenario.spec-review.accepted — A clear Spec is accepted and its suggestions kept in the result
 
 - GIVEN a workspace whose [Module](../../glossary.json#concept.module) A validates without errors and has no earlier Issues
 - AND a panel whose reviewers find only suggestions in A's documents, which the chair merges into one suggestion
 - WHEN the caller runs `spec_panel` for Module A
 - THEN the verdict is `accepted` and A's outcome carries the [context identity](../../glossary.json#concept.context-identity) of its `review-spec` grant
-- AND the suggestion is returned and recorded as a new [Issue](../../glossary.json#concept.issue) of A with the tier `suggestion`, committed on the primary branch
+- AND the suggestion is returned in the result with its `issue` null, and no [Issue](../../glossary.json#concept.issue) records it
 - BUT no file of the workspace changes, apart from the run's own entries in the [run store](../../glossary.json#concept.run-store)
 
 ### scenario.spec-review.changes-required — All blocking findings in one result
@@ -28,7 +28,7 @@ and no architect.
 - GIVEN Modules A and B without earlier Issues, where A uses B
 - WHEN the caller runs `spec_panel` for Modules A and B
 - THEN each Module has its own panel, whose reviewers run under that Module's `review-spec` grant
-- AND a blocking problem A's chair reports in a B document becomes a `suggestion` naming B, recorded as an Issue owned by B
+- AND a blocking problem A's chair reports in a B document becomes a `suggestion` naming B, which stays in the result and is recorded as no Issue
 - AND the verdict combines both Modules' outcomes
 
 ### scenario.spec-review.unbound-reports — An unbound review reports to the project's Issues
@@ -50,13 +50,31 @@ and no architect.
 
 ### scenario.spec-review.earlier-issues — A repeated review builds on the earlier Issues
 
-- GIVEN the project's open Issues I1 and I2 of `module.a`, of blocking tiers, and I3, a `suggestion`, all reported by earlier Spec panels
+- GIVEN the project's open Issues I1, I2 and I3 of `module.a`, of blocking tiers, and I5, a `suggestion`, all reported by earlier Spec panels
 - AND I4, open and owned by `module.a` but reported by a [task session](../../glossary.json#concept.task-session)
-- WHEN the workers, given I1, I2 and I3 but not I4, report the problem of I2 changed but still blocking and one new suggestion
+- WHEN the workers, given I1, I2 and I3 but neither I4 nor I5, report the problem of I2 changed but still blocking and one new suggestion
 - AND the chair merges both and resolves I3 and an unknown I9
-- THEN I2 receives the changed finding as a new report, the new suggestion is recorded as a new Issue, and I1, I3 and I4 are unchanged
+- THEN I2 receives the changed finding as a new report, the new suggestion stays in the result as no Issue, and I1, I3, I4 and I5 are unchanged
 - AND the result lists I1 as carried with its severity, tier and title, I3 as resolved with the reason and I9 as ignored
 - AND the outcome is `changes_required`, since the carried I1 and the reported I2 are of blocking tiers
+
+### scenario.spec-review.suggestion-resolves — A suggestion naming an earlier Issue resolves it
+
+- GIVEN the open Issue I1 of `module.a`, of the tier `obvious-fix`, reported by an earlier Spec panel
+- WHEN the chair rates the problem of I1 a `suggestion` now and names I1 as its `earlier`
+- THEN the suggestion stays in the result with no `earlier` and its `issue` null
+- AND I1 is listed as resolved, with a reason that names the suggestion's title, and takes no report
+- AND the outcome is `accepted`
+
+### scenario.spec-review.context-one-issue — A Module's context findings become one Issue
+
+- GIVEN `module.a`'s open Issue T of the context-selection title, reported by a `project_review` architecture review, and its open Issue L about one missing selection
+- AND a chair whose report has two context findings of blocking tiers about A, the first naming L, a context finding of the tier `suggestion` and one other blocking finding
+- WHEN the Operation reports the findings
+- THEN the two blocking context findings become one finding of the context-selection title, with the higher tier and the more severe severity, which lists both missing selections
+- AND it is appended to T, which was offered to every worker although its phase is `architecture`
+- AND L takes no report, is carried and is listed as ignored, since its missing selection is merged
+- AND the context suggestion stays in the result as no Issue, and the other blocking finding becomes a new Issue
 
 ### scenario.spec-review.blank-earlier — An empty earlier names no earlier Issue
 

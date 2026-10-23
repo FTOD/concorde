@@ -8,14 +8,16 @@ no earlier Issues, report nothing outside the run and say so in their result.
 
 Before a review judges a Module, the host reads the Module's earlier Issues: its open Issues one of
 whose reports one of the review's sources made, an Operation or one provenance phase of an
-Operation's reports, since ``project_review`` makes several kinds of review. The review reports only what is new or what
+Operation's reports, since ``project_review`` makes several kinds of review. An Issue whose
+latest report is a suggestion is never offered. The review reports only what is new or what
 changed in an earlier Issue (naming it as ``earlier``) and lists the earlier Issues the Module no
 longer has as ``resolved``; an earlier Issue it neither names nor resolves is carried and still
-stands. The host, never a worker, then reports every finding through the command with the
+stands. The host, never a worker, then reports every blocking finding through the command with the
 provenance it vouches for: a finding that names an offered earlier Issue is appended to it at the
-revision read just before, any other creates an Issue. It never closes an Issue, and a refusal of
-the command stops the Module's reporting with the command's error link as the cause, never as an
-Issue.
+revision read just before, any other creates an Issue. A suggestion is never recorded as an Issue:
+it stays in the result, and a suggestion that names an offered earlier Issue resolves it, since its
+problem no longer blocks. The host never closes an Issue, and a refusal of the command stops the
+Module's reporting with the command's error link as the cause, never as an Issue.
 
 Each review supplies only what differs: which Operations made its earlier Issues, which findings
 it reports nowhere, and the Issue report of one finding.
@@ -205,16 +207,38 @@ def made_by(source: dict, sources: Mapping[str, frozenset | None]) -> bool:
     return phases is None or source.get("phase") in phases
 
 
+def _counts(
+    record: dict, sources: Mapping[str, frozenset | None], titles, suggestions: bool
+) -> bool:
+    """Whether an open Issue's ``record`` is one a review reads: one of whose reports one of
+    ``sources`` made, or, when its latest title is one of ``titles``, one of whose reports one of
+    ``sources``' Operations made in any phase; never one whose latest report is a suggestion,
+    unless ``suggestions``."""
+    latest = record["reports"][-1]["report"]
+    if latest.get("tier") == "suggestion" and not suggestions:
+        return False
+    if any(made_by(item["source"], sources) for item in record["reports"]):
+        return True
+    return latest["title"] in titles and any(
+        item["source"].get("operation") in sources for item in record["reports"]
+    )
+
+
 def earlier_issues(
     ctx: RunContext,
     module: str,
     sources: Iterable[str] | Mapping[str, Iterable[str] | None],
+    *,
+    titles: Iterable[str] = (),
 ) -> list[dict] | None:
     """The Module's open Issues one of whose reports one of ``sources`` made, each as its latest
     report states it; ``sources`` names Operations, every report of each counting, or maps each
-    Operation to the provenance phases of its reports that count. None where the issues part is
-    not installed. Raises ``Refusal`` when the project's Issues cannot be read."""
+    Operation to the provenance phases of its reports that count. An Issue whose latest title is
+    one of ``titles`` counts whichever phase its report gave it; an Issue whose latest report is a
+    suggestion never counts. None where the issues part is not installed. Raises ``Refusal`` when
+    the project's Issues cannot be read."""
     sources = sources_of(sources)
+    titles = frozenset(titles)
     try:
         rows = call(ctx, "list", "--module", module, "--status", "open")["issues"]
     except Absent:
@@ -224,7 +248,7 @@ def earlier_issues(
         if (row["owner_target_id"] or row["target_id"]) != module:
             continue
         record = call(ctx, "show", row["id"])["issue"]
-        if not any(made_by(item["source"], sources) for item in record["reports"]):
+        if not _counts(record, sources, titles, False):
             continue
         latest = record["reports"][-1]["report"]
         found.append(
@@ -244,13 +268,19 @@ def earlier_issues(
 
 
 def open_issues(
-    ctx: RunContext, sources: Iterable[str] | Mapping[str, Iterable[str] | None]
+    ctx: RunContext,
+    sources: Iterable[str] | Mapping[str, Iterable[str] | None],
+    *,
+    titles: Iterable[str] = (),
+    suggestions: bool = False,
 ) -> list[dict] | None:
     """Every open Issue of the project one of whose reports one of ``sources`` made, as
-    ``earlier_issues`` reads a Module's, each with the Module that owns it as ``module``; None
-    where the issues part is not installed. Raises ``Refusal`` when the project's Issues cannot be
-    read."""
+    ``earlier_issues`` reads a Module's, each with the Module that owns it as ``module``; with
+    ``suggestions``, an Issue whose latest report is a suggestion counts too, as for the Issues
+    that stand. None where the issues part is not installed. Raises ``Refusal`` when the
+    project's Issues cannot be read."""
     sources = sources_of(sources)
+    titles = frozenset(titles)
     try:
         rows = call(ctx, "list", "--status", "open")["issues"]
     except Absent:
@@ -258,7 +288,7 @@ def open_issues(
     found = []
     for row in rows:
         record = call(ctx, "show", row["id"])["issue"]
-        if not any(made_by(item["source"], sources) for item in record["reports"]):
+        if not _counts(record, sources, titles, suggestions):
             continue
         latest = record["reports"][-1]["report"]
         found.append(
@@ -322,18 +352,29 @@ def settle(
 ) -> dict:
     """Which offered earlier Issue each finding names and which the review resolves.
 
-    A finding keeps ``earlier`` only when it names an offered Issue no other finding named; a
-    resolution counts only for an offered Issue no finding named and none resolved before. Every
-    other name is listed under ``ignored``, a finding's unoffered one with the reason
-    ``unoffered``; every offered Issue neither named nor resolved is carried."""
+    A finding keeps ``earlier`` only when it is blocking and names an offered Issue no other
+    finding named. A suggestion is never recorded as an Issue, so the Issue it names is resolved
+    instead: its problem no longer blocks. A resolution counts only for an offered Issue no
+    finding named and none resolved before. Every other name is listed under ``ignored``, a
+    finding's unoffered one with the reason ``unoffered``; every offered Issue neither named nor
+    resolved is carried."""
     offered = {item["issue"]: item for item in earlier}
     named: set[str] = set()
     ignored: list[dict] = []
+    resolved = list(resolved)
     for finding in findings:
         name = finding.pop("earlier", None)
         if not (name or "").strip():
             continue
-        if name not in offered:
+        if not is_blocking(finding.get("tier")):
+            resolved.append(
+                {
+                    "issue": name,
+                    "reason": "a finding of this review rates its problem a suggestion now, "
+                    f"which is never recorded as an Issue: {finding.get('title')}",
+                }
+            )
+        elif name not in offered:
             ignored.append({"issue": name, "reason": unoffered})
         elif name in named:
             ignored.append(
@@ -429,9 +470,9 @@ def report(
     settled: dict | None = None,
     phase: str | Callable[[dict], str] = "report",
 ) -> tuple[list[dict], Stop | None]:
-    """Report every finding of one Module; returns the host evidence and, when the issues command
-    refused a report, the Module's stop. Each finding gets its ``issue``, which stays None where
-    the issues part is not installed.
+    """Report every blocking finding of one Module; returns the host evidence and, when the issues
+    command refused a report, the Module's stop. Each finding gets its ``issue``, which stays None
+    for a suggestion, never recorded as an Issue, and where the issues part is not installed.
 
     ``issue_report`` gives the Issue report of the finding at a position, counted from 1, without
     ``issue_id`` and ``expected_revision``; ``review`` names the review in the stop, such as
@@ -452,8 +493,24 @@ def report(
         "change_id": ctx.workspace_name,
         "head": ctx.commit or _head(ctx.worktree),
     }
+    kept = [
+        position
+        for position, finding in enumerate(findings, 1)
+        if not is_blocking(finding.get("tier"))
+    ]
+    if kept:
+        found.append(
+            evidence(
+                "suggestions-kept",
+                module,
+                f"{len(kept)} suggestion(s) (finding(s) {', '.join(map(str, kept))}) kept in "
+                "the result, never recorded as Issues",
+            )
+        )
     try:
         for position, finding in enumerate(findings, 1):
+            if not is_blocking(finding.get("tier")):
+                continue
             value = issue_report(position, finding)
             kind = phase(finding) if callable(phase) else phase
             if kind != "report":
@@ -477,16 +534,17 @@ def report(
             )
     except Absent:
         _unclaim(findings, earlier, settled)
-        return [evidence("issues-not-recorded", module, NOT_RECORDED)], None
+        return [*found, evidence("issues-not-recorded", module, NOT_RECORDED)], None
     except Refusal as refusal:
         _unclaim(findings, earlier, settled)
         reported = sum(1 for finding in findings if finding["issue"])
+        blocking = sum(1 for finding in findings if is_blocking(finding.get("tier")))
         stop = ctx.fail(
             "failed",
             "issues_unreported",
             f"The Issues of {module}'s {review} could not all be written.",
             f"the issues command refused a report of {module}'s {review} after {reported} of "
-            f"its {len(findings)} finding(s) were reported, so the rest were not: {refusal}",
+            f"its {blocking} blocking finding(s) were reported, so the rest were not: {refusal}",
             reason="environment",
             explanation="a failure of the Issue system is never reported as an Issue, and the "
             "Operation does not retry it; the findings stay in the result",

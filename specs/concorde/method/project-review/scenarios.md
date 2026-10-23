@@ -137,6 +137,14 @@ record's shapes are in the [contracts](contracts.md).
 - AND no new Issue states the same problem again
 - BUT A's Spec panel in that run is not offered the Issue, which still stands for A
 
+### scenario.project-review.context-one-issue — The run's parts share one context Issue per Module
+
+- GIVEN a first review whose architecture review and Module A's Spec panel each report a context finding of a blocking tier about A, and whose panel also reports a suggestion
+- WHEN the run reports their findings
+- THEN the architecture review creates A's Issue of the context-selection title, and the panel appends to it a report that lists both missing selections
+- AND that Issue stands for A
+- BUT the suggestion stays in the panel's result, and no Issue records it
+
 ### scenario.project-review.without-issues — Without the issues part nothing is skipped
 
 - GIVEN a project without the issues part, which a `project_review` judged

@@ -517,9 +517,13 @@ def report_findings(
     identity: str | None,
     phase: str | Callable[[dict], str] = reporting.finding_phase,
 ) -> list[dict]:
-    """Settle the earlier Issues and report the findings as Issues with the provenance ``phase``;
-    returns the host evidence."""
+    """Merge each Module's blocking context findings into one, settle the earlier Issues and
+    report the findings as Issues with the provenance ``phase``; returns the host evidence."""
+    review.findings, merged_away = reporting.consolidate_context(
+        ctx, review.findings, review.earlier, review.module
+    )
     review.summary = reporting.settle(review.earlier or [], review.findings, resolved)
+    review.summary["ignored"].extend(merged_away)
     review.settled = True
     if review.earlier is None:
         # No earlier Issue was read, so none is carried or resolved.
@@ -533,6 +537,7 @@ def report_findings(
         review.summary,
         phase=phase,
     )
+    reporting.remember_context(ctx, review.findings)
     if stop is not None:
         review.stop = stop
     return found

@@ -8,11 +8,20 @@ child [Module](../glossary.json#concept.module) states the precise behaviour of 
 
 ### req.method.workspace-specs — Grants come from the workspace
 
-Every worker-backed step of a Method Operation SHALL compute grants from these Specs:
+Every worker-backed step of a Method Operation SHALL compute its grant from these Specs, unless it
+reuses the frozen grant that an earlier worker of the same run received:
 
 - For a bound run, the Specs of the workspace the run works on, never the primary worktree's Specs.
 - For an [unbound run](../glossary.json#concept.unbound-run), the Specs of its
   [unbound checkout](../glossary.json#concept.unbound-checkout).
+
+A step that reuses a frozen grant computes no grant. Its worker runs under that grant's
+[context identity](../glossary.json#concept.context-identity). The reviewer of
+[General work](general-work/module.md) is the one such step, so that it reads what the worker it
+judges could read
+([req.general-work.reviewer-reads-only](general-work/requirements.md#req.general-work.reviewer-reads-only)).
+Thus every grant still comes from the Specs of the worktree the run works on, as the first worker
+of the run found them ([Standard worker sequence](workers.md#standard-worker-sequence)).
 
 ### req.method.models-placed-first — Every worker is placed before the first launches
 
@@ -41,11 +50,13 @@ Every worker-backed step of a Method Operation SHALL hand the worker harness bot
 
 - Its effective grant, converted into the worker harness's grant input unchanged in its paths and
   levels.
-- The [context identity](../glossary.json#concept.context-identity) of the grant it computed through
-  Spec core.
+- The [context identity](../glossary.json#concept.context-identity) of its base grant.
 
-For a provider that withholds writes, the effective grant is the computed grant with every writable
-level lowered to read. Otherwise, the effective grant is the computed grant. That narrowing is the
+The base grant is the grant the step computed through Spec core. For a step that reuses the frozen
+grant of an earlier worker of the same run
+([req.method.workspace-specs](#req.method.workspace-specs)), the base grant is that frozen grant.
+For a provider that withholds writes, the effective grant is the base grant with every writable
+level lowered to read. Otherwise, the effective grant is the base grant. That narrowing is the
 only change allowed between them. It never adds a path or raises a level. It keeps the context
 identity ([Standard worker sequence](workers.md#standard-worker-sequence)).
 
@@ -190,10 +201,28 @@ issues part is installed.
 ### req.method.issues-where-installed — Findings become Issues only where Issues are installed
 
 Where the issues part is installed, `spec_panel`, `code_review` and `project_review` SHALL report
-their findings as
+their findings of a blocking [tier](../glossary.json#concept.issue-tier) as
 [Issues](../glossary.json#concept.issue).
 
 Each review's own [Spec](../glossary.json#concept.spec) gives the shape.
+
+### req.method.suggestions-not-issues — A suggestion is never recorded as an Issue
+
+`spec_panel`, `code_review` and `project_review` SHALL record no finding of the tier `suggestion`
+as an Issue.
+
+A suggestion says that the reviewed material can be relied upon. It stays in the run result
+([req.method.findings-kept](#req.method.findings-kept)) with its `issue` null. The
+`suggestions-kept` host evidence names it. Thus the Issues a review leaves are the problems a task
+must fix.
+
+### req.method.suggestions-not-offered — No suggestion is offered as an earlier Issue
+
+`spec_panel`, `code_review` and `project_review` SHALL offer no Issue whose latest report has the
+tier `suggestion` as an earlier Issue.
+
+Since no review records a suggestion, such an Issue is one that a review recorded before suggestions
+stayed in the result, or one another reporter recorded. No review settles it.
 
 ### req.method.issues-own-concorde — Issues are reached only through the started worktree's concorde
 
