@@ -4,7 +4,7 @@
 {
   "schema_version": 4,
   "id": "I-eca2a1fa43605c82b01b3b7aab99e1bc",
-  "status": "open",
+  "status": "closed",
   "reports": [
     {
       "id": "sha256:1b76afb668370f683d0d1aedc1b54063deca9643011bbb63670ddc6bd02389d0",
@@ -39,6 +39,18 @@
       }
     }
   ],
-  "dispositions": []
+  "dispositions": [
+    {
+      "reason": "resolved",
+      "note": "Fixed by task r4-review-tuning, merged into the primary branch at 8328b239d9971b26dc187c33f366015d0f2ee8fe.",
+      "evidence": [
+        "merge commit 8328b239d9971b26dc187c33f366015d0f2ee8fe",
+        "task r4-review-tuning"
+      ],
+      "duplicate_of": null,
+      "actor": "main-agent",
+      "created_at": "2026-10-23T09:21:46.400980+00:00"
+    }
+  ]
 }
 ```
