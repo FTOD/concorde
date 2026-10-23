@@ -55,6 +55,7 @@ from .repository_base import (
     most_specific,
     read_file,
     reference_record,
+    shared_path,
 )
 from .syntax import Reading, parse_reading
 from .typed_data import (
@@ -306,7 +307,6 @@ class DocumentUnitRepository:
         self.glossary_entries: dict[str, dict] = {}
         self._terms_cache: dict[str, dict[str, list[dict]]] = {}
         self._identity_paths: dict[str, str] = {}
-        self._external_cache: dict[str, tuple[tuple[str, ...], str]] = {}
         self._context_cache: dict[str, dict[str, list[dict]]] = {}
         self._registry()
         self._documents()
@@ -1692,26 +1692,24 @@ class DocumentUnitRepository:
         )
 
     def _external(self, entry: str) -> tuple[tuple[str, ...], str]:
-        """The files of one external entry and their digest, read together once per repository,
-        so that the listing and the digest describe the same moment."""
-        if entry not in self._external_cache:
-            files = tuple(
-                expand_entry(
-                    self.root, entry, skipped_suffixes=REFERENCE_SKIPPED_SUFFIXES
-                )
-            )
-            self._external_cache[entry] = (
-                files,
-                digest([(path, digest(read_file(self.root, path))) for path in files]),
-            )
-        return self._external_cache[entry]
+        """The files of one external entry and their digest, read together when asked, so that
+        the listing and the digest describe the same moment. External material is no loaded
+        Spec source: nothing of it is kept across queries."""
+        files = tuple(
+            expand_entry(self.root, entry, skipped_suffixes=REFERENCE_SKIPPED_SUFFIXES)
+        )
+        return files, digest(
+            [(path, digest(read_file(self.root, path))) for path in files]
+        )
 
     def external_files(self, entry: str) -> tuple[str, ...]:
         """Existing readable files below one external entry, media and archives excluded."""
-        return self._external(entry)[0]
+        return tuple(
+            expand_entry(self.root, entry, skipped_suffixes=REFERENCE_SKIPPED_SUFFIXES)
+        )
 
     def external_digest(self, entry: str) -> str:
-        """One digest per entry over its readable files' paths and bytes; cached per repository."""
+        """One digest per entry over its readable files' paths and bytes, read when asked."""
         return self._external(entry)[1]
 
     def external_context(self, module: ModuleRef) -> tuple:
@@ -1721,14 +1719,9 @@ class DocumentUnitRepository:
         result = []
         for entry in self.external_inclusions(module):
             exists = entry_exists(self.root, entry)
+            files, combined = self._external(entry) if exists else ((), digest([]))
             result.append(
-                ExternalEntry(
-                    entry,
-                    is_directory_entry(entry),
-                    self.external_files(entry) if exists else (),
-                    self.external_digest(entry) if exists else digest([]),
-                    exists,
-                )
+                ExternalEntry(entry, is_directory_entry(entry), files, combined, exists)
             )
         return tuple(result)
 
@@ -2004,7 +1997,7 @@ class DocumentUnitRepository:
                 path
                 for mine in self.implementation_scope(target)
                 for theirs in self.implementation_scope(other)
-                if (path := _shared_path(mine, theirs)) is not None
+                if (path := shared_path(mine, theirs)) is not None
             }
             if shared:
                 result[other.id] = tuple(sorted(shared))
@@ -2043,7 +2036,8 @@ class DocumentUnitRepository:
 
     def impact(self, *, documents=(), nodes=(), paths=()) -> tuple[str, ...]:
         """Every Module a write concerns: readers of written documents, dependants of written
-        nodes and contracts, and binders of written files (Boundaries, impact of a write)."""
+        nodes and contracts, and binders of written files with every Module using one of them,
+        directly or through further ``uses`` (Boundaries, impact of a write)."""
         concerned: set[str] = set()
         for document_id in documents:
             concerned.update(self.selected_by(document_id))
@@ -2051,9 +2045,23 @@ class DocumentUnitRepository:
             concerned.update(item["module"] for item in self.referenced_by(identity))
             if identity in self.concept_nodes:
                 concerned.update(self.term_selected_by(identity))
-        for path in paths:
-            concerned.update(self.implemented_by(path))
+        binders = {module for path in paths for module in self.implemented_by(path)}
+        concerned.update(binders, self.users(binders))
         return tuple(sorted(concerned))
+
+    def users(self, modules) -> tuple[str, ...]:
+        """Every Module that uses one of ``modules``, directly or through further ``uses``,
+        sorted; a ``uses`` cycle is followed once."""
+        reached: set[str] = set()
+        frontier = {self._resolve(item).id for item in modules}
+        while frontier:
+            frontier = {
+                user.id
+                for user in self.modules.values()
+                if user.id not in reached and frontier & set(user.uses)
+            }
+            reached |= frontier
+        return tuple(sorted(reached))
 
     # --- checks ----------------------------------------------------------------------------
 
@@ -2073,17 +2081,6 @@ class DocumentUnitRepository:
 
 
 RepositoryCore = DocumentUnitRepository
-
-
-def _shared_path(first: str, second: str) -> str | None:
-    """The path two realization entries both bind, or None (see ``shared_files``)."""
-    if first == second:
-        return first
-    if is_directory_entry(first) and bound_by(first, second):
-        return second
-    if is_directory_entry(second) and bound_by(second, first):
-        return first
-    return None
 
 
 def _as_cause(error: BaseException, **location) -> SpecError:

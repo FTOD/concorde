@@ -36,6 +36,15 @@ the Module as a whole. The obligations they illustrate are in the [requirements]
 - BUT it raises no exception
 - BUT it writes no file
 
+### scenario.spec.snapshot-external — Loaded Specs stay, external material is current
+
+- GIVEN a repository loaded from a project whose Module A includes external material
+- WHEN a loaded document changes on disk
+- AND a file is added below A's external inclusion and another file of it changes
+- THEN the Spec context of the document's owner answers from the document as it was loaded
+- AND A's external files, their digest and A's context identity reflect the current external
+  material
+
 ### scenario.spec.reject-unsupported-profile — Refusing an unaccepted Protocol
 
 - GIVEN a project whose configuration binds a Protocol version or manifest digest that differs from
@@ -576,10 +585,12 @@ to it.
   document
 - AND Module C includes that same B document
 - AND Modules B and D bind the same file
+- AND Module E uses Module A
 - WHEN a caller asks which Modules a change concerns
 - THEN a change to that document concerns B, A and C through the selected-by index
 - AND a change to the listed requirement concerns A through the referenced-by index
-- AND a change to the shared file concerns B and D through the implemented-by index
+- AND a change to the shared file concerns B and D through the implemented-by index, A because it
+  uses B, and E because it uses A
 - AND a change to a concept's glossary entry concerns every Module whose terms hold the concept
 - BUT the indexes add nothing to any Module's
   [boundary sets](../../glossary.json#concept.boundary-set)
@@ -659,6 +670,14 @@ A `review-spec` grant for the same Module is equal to it apart from its task typ
 - WHEN a grant is computed for it with a task type that writes its implementation
 - THEN the computation fails with `installed_file`, naming the directory entry and the installed
   file
+
+### scenario.spec.grant-installed-link — An installation record behind a symbolic link is refused
+
+- GIVEN a worktree whose `.concorde/install.json` is a symbolic link to another worktree's
+  installation record
+- WHEN a grant is computed for a Module of that worktree
+- THEN the computation fails with `unsafe_path`, naming the link
+- AND validation reports `CHK.binds.installed` at `.concorde/install.json`
 - AND no grant is returned
 - BUT a grant for it with task type `understand` lists the directory as `names`
 
@@ -704,6 +723,13 @@ A `review-spec` grant for the same Module is equal to it apart from its task typ
 - AND no grant is returned
 - BUT a grant for task type `implement` and Modules A and D lists `src/shared.py` as `rw`
 - BUT a grant for task type `understand` and Module A alone lists it as `names`
+
+### scenario.spec.grant-shared-spec — A writable Spec document another Module binds is shared
+
+- GIVEN Module D whose realization also binds a document Module A owns, which validation reports
+  as `CHK.binds.no-spec`
+- WHEN a grant for task type `specify` and Module A alone is computed
+- THEN the computation fails with `shared_file`, naming that document and Module D
 
 ### scenario.spec.grant-invalid — An unanswerable request gets no grant
 

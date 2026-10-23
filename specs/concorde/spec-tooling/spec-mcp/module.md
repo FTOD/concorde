@@ -30,7 +30,9 @@ The server refuses with `outside_root` a path that resolves outside it through a
 - A symlink whose target lies elsewhere.
 
 Every answer is **Spec core's**. The server loads the Specs of its root through Spec core.
-The server returns what Spec core computes, unchanged:
+Every value the server returns is the value Spec core computes, unchanged. Each tool presents these
+values in the envelope its [contract](contracts.md#result-fields) gives, which names the source in
+Spec core of every field. The values include:
 
 - A [grant](../../glossary.json#concept.grant) with its
   [context identity](../../glossary.json#concept.context-identity).
@@ -110,8 +112,8 @@ A project using Concorde registers the **Spec MCP server** for Claude Code in it
 | `boundary(modules, task_type)` | The [grant](../../glossary.json#concept.grant) the task type gives the listed Modules: [context identity](../../glossary.json#concept.context-identity) and `{path, level}` entries (`names`, `ro`, `rw`); an unlisted path is denied. |
 | `modules()` | The Modules in [registry](../../glossary.json#concept.registry) order. |
 | `module(id)` | One [Module](../../glossary.json#concept.module)'s entry, owned documents, relations and realization entries. |
-| `context(id)` | One Module's [Spec context](../../glossary.json#concept.spec-context), or that of a scenario's owner, with a digest per member and the selecting relation, and the glossary entries of its terms. |
-| `impact(paths)` | Which Modules writing the given documents or files concerns. |
+| `context(id)` | One Module's [Spec context](../../glossary.json#concept.spec-context), or that of a scenario's owner, with a digest per member and per file of its bound inclusions and the selecting relations, and the glossary entries of its terms. |
+| `impact(paths)` | Which Modules writing the given documents or files concerns, a file's binders together with every Module that uses one of them. |
 | `validate(target?)` | The [structural checks](../../glossary.json#concept.structural-check)' findings. |
 
 For example, before opening a task the [main agent](../../glossary.json#concept.main-agent) calls
@@ -198,6 +200,8 @@ The session is tested over a real stdio connection.
 The session is written by hand because its wire is small and fully specified.
 The wire is newline-delimited JSON-RPC carrying `initialize`, `ping`, `tools/list` and `tools/call`.
 The wire also carries one `roots/list` request to the client.
+The [session contract](contracts.md#session) defines every one of these messages and each tool's
+input schema. Implementing the server therefore needs no text of the MCP or JSON-RPC standards.
 The server supports three MCP revisions and answers the requested one when it can
 ([session](contracts.md#session)).
 The server waits for the `roots/list` reply without a time limit. Claude Code answers it at once,
@@ -222,7 +226,7 @@ The server does the following:
 
 - Passes on its own root.
 - Confines every path argument.
-- Returns Spec core's result unchanged.
+- Returns Spec core's values unchanged, in the envelope its contract gives.
 
 On a refusal, the server returns that failure's code as a tool error, never a partial or cached
 answer.

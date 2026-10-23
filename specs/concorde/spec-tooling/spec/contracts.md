@@ -303,6 +303,7 @@ chapters from declarations alone:
 | selected-by | the Modules whose Spec context contains a document | `selected_by` |
 | referenced-by | the declarations that name a concept, requirement, scenario or contract, each with its Module | `referenced_by` |
 | implemented-by | the Modules whose realizations bind a path or list it as an entry | `implemented_by` |
+| users | the Modules that use any of the given Modules, directly or through further `uses` | `users` |
 | binding Modules | per other Module, the files both it and this Module bind | `shared_files` |
 | covered-by | the verification declarations that name a scenario; `coverage` answers it for every scenario of a Module | `covered_by`, `coverage` |
 | changed definitions | between two repositories: the documents whose members differ, and the nodes whose definitions differ | `changed_documents(old, new, paths=None)`, `changed_nodes(old, new, paths)` |
@@ -315,7 +316,10 @@ paths=())` returns every Module that writing the given documents, nodes or files
 
 - The readers of the documents.
 - The Modules referencing the nodes.
-- The Modules binding the files.
+- The Modules binding the files, and every Module that uses one of them, directly or through
+  further `uses`.
+
+`users` follows a `uses` cycle once. Both answers are sorted by identity.
 
 `shared_files` is computed from entries alone. It finds each of these entries:
 
@@ -464,6 +468,9 @@ An installed file meets all these conditions:
 - It lies outside `.concorde/`.
 - It is not under `amended`.
 
+Without an installation record, no file is installed. The computation reads the record like every
+other source, never through a symbolic link.
+
 Entries are unique and sorted by path. A path covered by no entry is denied.
 
 Computing fails with a `SpecError` whose `code` is the one below. It then returns no grant and
@@ -477,9 +484,11 @@ also names every registered Module:
 | `unknown_module` | a Module identity is not registered |
 | `shared_file` | an `rw` entry covers a file that a Module outside `modules` also binds; the message names each such file and Module |
 | `installed_file` | an `rw` directory entry covers an installed file, which validation reports as `CHK.binds.installed`; the message names each such directory entry and the installed files it covers |
+| `unsafe_path` | the installation record, or a directory on its path, is a symbolic link, which validation reports as `CHK.binds.installed`; the message names the link |
 
-A shared file is found with the binding-Modules index (`shared_files`). This detects all these
-cases:
+A shared file is found from entries alone, as the binding-Modules index (`shared_files`) finds
+one, for every `rw` entry, whichever set made it writable. A Spec document that another Module
+binds by mistake (`CHK.binds.no-spec`) is therefore shared too. This detects all these cases:
 
 - An exact entry.
 - An exact entry below a directory entry.

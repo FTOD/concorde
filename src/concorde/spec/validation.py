@@ -811,7 +811,16 @@ class Checks:
             {repository.glossary_path} if repository.glossary_path else set()
         )
         outputs = generated_outputs(repository.root)
-        installed = installed_files(repository.root)
+        try:
+            installed = installed_files(repository.root)
+        except SpecError as refused:
+            installed = frozenset()
+            self.add(
+                "CHK.binds.installed",
+                INSTALL_RECORD,
+                f"{refused}; {refused.remediation}, so that the installed files can be "
+                "checked",
+            )
         for module in repository.declarations.values():
             listed: Counter = Counter()
             for realization in repository.realizations(repository.modules[module.id]):

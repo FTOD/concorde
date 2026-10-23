@@ -29,8 +29,11 @@ A path resolves outside the root through any of these:
 
 ### req.spec-mcp.spec-core-answers — Every answer is Spec core's
 
-The server SHALL return as every successful tool result what Spec core computes for the server
-root and the same arguments.
+Every value of a successful tool result SHALL be the value Spec core computes for the server root
+and the same arguments, unchanged.
+
+Each tool presents these values in the envelope its [contract](contracts.md#result-fields) gives.
+The contract names the source in Spec core of every field.
 
 In particular, `boundary` returns the
 [context identity](../../glossary.json#concept.context-identity) and entries of Spec core's grant.

@@ -126,24 +126,39 @@ class LoadingTests(unittest.TestCase):
         }
         self.assertEqual(2, len(digests))
 
-    def test_queries_answer_from_the_loaded_snapshot(self):
+    @verifies("scenario.spec.snapshot-external")
+    def test_loaded_specs_are_a_snapshot_and_external_material_is_current(self):
         include_external(self.root, "module.ledger", "references/lib/")
         (self.root / "references/lib").mkdir(parents=True)
         (self.root / "references/lib/api.md").write_text("# API\n")
         repository = self.repository()
-        identity = context_identity(repository, ["module.ledger"], True)
+        before = repository.spec_context("scope.audit").value["sources"]
+        identity = context_identity(repository, ["module.ledger"])
         files = repository.external_files("references/lib/")
-        # The files change after loading: the repository's answers do not.
-        (self.root / "references/lib/more.md").write_text("# More\n")
+        old = repository.external_digest("references/lib/")
+        # A loaded Spec source changes after loading: the repository's answers do not.
         entry = self.root / entry_of(self.root, "scope.audit")
         entry.write_text(entry.read_text() + "\nMore text.\n")
         self.assertEqual(
-            identity, context_identity(repository, ["module.ledger"], True)
+            before, repository.spec_context("scope.audit").value["sources"]
         )
-        self.assertEqual(files, repository.external_files("references/lib/"))
-        fresh = self.repository()
-        self.assertNotEqual(
-            fresh.external_digest("references/lib/"),
+        self.assertEqual(identity, context_identity(repository, ["module.ledger"]))
+        # External material is read when queried: a new file and changed bytes are seen.
+        (self.root / "references/lib/more.md").write_text("# More\n")
+        self.assertEqual(
+            files + ("references/lib/more.md",),
+            repository.external_files("references/lib/"),
+        )
+        added = repository.external_digest("references/lib/")
+        self.assertNotEqual(old, added)
+        (self.root / "references/lib/api.md").write_text("# API v2\n")
+        self.assertNotEqual(added, repository.external_digest("references/lib/"))
+        [record] = repository.external_context("module.ledger")
+        self.assertEqual(repository.external_files("references/lib/"), record.files)
+        self.assertEqual(repository.external_digest("references/lib/"), record.digest)
+        self.assertNotEqual(identity, context_identity(repository, ["module.ledger"]))
+        self.assertEqual(
+            self.repository().external_digest("references/lib/"),
             repository.external_digest("references/lib/"),
         )
 

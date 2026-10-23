@@ -171,10 +171,29 @@ INSTALL_RECORD = ".concorde/install.json"
 
 def installed_files(root: Path) -> frozenset[str]:
     """The installed files of the project at ``root``: the installation record's ``files`` outside
-    ``.concorde/``, never a project file the installer only amends. No readable record, none."""
+    ``.concorde/``, never a project file the installer only amends. No readable record, none.
+
+    The record is read like every other source, never through a symbolic link: a record reached
+    through one could be another worktree's, so it is refused with ``unsafe_path``.
+    """
+    path = root
+    for component in INSTALL_RECORD.split("/"):
+        path = path / component
+        if path.is_symlink():
+            raise SpecError(
+                f"the installation record {INSTALL_RECORD} of {root} is reached through the "
+                f"symbolic link {path.relative_to(root).as_posix()}",
+                "unsafe_path",
+                path=INSTALL_RECORD,
+                reason="the installed files come only from the worktree's own installation "
+                "record, and a symbolic link may lead to another worktree's",
+                remediation=f"replace the symbolic link with the real {INSTALL_RECORD}",
+            )
+    if not path.is_file():
+        return frozenset()
     try:
-        record = json.loads((root / INSTALL_RECORD).read_text(encoding="utf-8"))
-    except (OSError, ValueError):
+        record = json.loads(read_file(root, INSTALL_RECORD).decode("utf-8"))
+    except (SpecError, ValueError):
         return frozenset()
     if not isinstance(record, dict):
         return frozenset()
@@ -247,6 +266,17 @@ def bound_by(entry: str, path: str) -> bool:
         and not unbindable(path)
         and (not is_directory_entry(entry) or not skipped_path(path[len(entry) :]))
     )
+
+
+def shared_path(first: str, second: str) -> str | None:
+    """The path two realization entries both bind, or None (see ``shared_files``)."""
+    if first == second:
+        return first
+    if is_directory_entry(first) and bound_by(first, second):
+        return second
+    if is_directory_entry(second) and bound_by(second, first):
+        return first
+    return None
 
 
 def entry_exists(root: Path, entry: str) -> bool:

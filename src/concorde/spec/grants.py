@@ -30,6 +30,7 @@ from .repository_base import (
     installed_files,
     is_directory_entry,
     read_file,
+    shared_path,
 )
 
 TASK_TYPES = (
@@ -245,20 +246,26 @@ def grant(repository, modules: Sequence[str], task_type: str) -> Grant:
             for path in paths:
                 if path not in levels or RANK[level] > RANK[levels[path]]:
                     levels[path] = level
-    if LEVELS[task_type]["ImplementationScope"] == "rw":
-        shared = []
-        for module in bound:
-            for other, files in sorted(repository.shared_files(module).items()):
-                if other not in bound:
-                    shared.extend(f"{path} (also bound by {other})" for path in files)
-        if shared:
-            raise SpecError(
-                f"the {task_type} grant for {', '.join(bound)} would make files writable "
-                "that Modules outside the grant also bind: "
-                + "; ".join(sorted(set(shared))),
-                "shared_file",
-                "modules",
-            )
+    # Every writable path, whichever set made it writable, is refused while a Module outside
+    # the grant also binds it: a Spec document another Module binds by mistake is shared too.
+    shared = sorted(
+        {
+            f"{path} (also bound by {other.id})"
+            for other in repository.modules.values()
+            if other.id not in bound
+            for theirs in repository.implementation_scope(other)
+            for mine, level in levels.items()
+            if level == "rw"
+            if (path := shared_path(mine, theirs)) is not None
+        }
+    )
+    if shared:
+        raise SpecError(
+            f"the {task_type} grant for {', '.join(bound)} would make files writable "
+            "that Modules outside the grant also bind: " + "; ".join(shared),
+            "shared_file",
+            "modules",
+        )
     # An installed file is the installer's: bound only by its exact path (CHK.binds.installed),
     # it is at most readable, whatever the Module binding it is granted. A writable directory
     # covering one would keep it writable below the directory, so the grant is refused.

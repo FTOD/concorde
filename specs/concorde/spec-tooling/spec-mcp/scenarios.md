@@ -10,6 +10,7 @@ Concrete situations of the [Spec MCP server](module.md). Exact tools and results
 - GIVEN a project whose `.mcp.json` registers `concorde spec-mcp` with `CLAUDE_PROJECT_DIR` set to `${CLAUDE_PROJECT_DIR}`
 - WHEN a Claude Code session opens in the project's primary worktree
 - THEN the server lists the tools `boundary`, `modules`, `module`, `context`, `impact` and `validate`
+  in that order, each with the input schema the contracts give
 - AND a `modules` call answers with the primary worktree's Modules
 
 ### scenario.spec-mcp.client-root — The client's root is used without the variable
@@ -80,16 +81,17 @@ Concrete situations of the [Spec MCP server](module.md). Exact tools and results
 
 ### scenario.spec-mcp.queries — Reading the model
 
-- GIVEN a root with several registered Modules
+- GIVEN a root with several registered Modules, where Module A uses Module B and has a bound
+  inclusion
 - WHEN the client calls `modules`
-- AND the client calls `module` for one of them
-- AND the client calls `context` for it
-- AND the client calls `impact` for one of its bound files
-- THEN the `modules` result equals Spec core's registry records for the same root
-- AND the `module` result equals Spec core's Module descriptor for the same root
-- AND the `context` result equals Spec core's [Spec context](../../glossary.json#concept.spec-context)
-  records for the same root
-- AND the `impact` result equals Spec core's binding Modules for the same root
+- AND the client calls `module` for A
+- AND the client calls `context` for A
+- AND the client calls `impact` for a file of A and a file of B
+- THEN every field of the `modules`, `module` and `context` results equals the Spec core value the
+  contracts name for it, for the same root
+- AND the `context` result lists the files of A's bound inclusion as Spec core's bound records
+- AND the `impact` result equals Spec core's file impact for the same root, which names A for B's
+  file because A uses B
 - AND every path in the results is project-relative
 
 ### scenario.spec-mcp.validate — Validating through the server
