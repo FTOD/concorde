@@ -4,7 +4,7 @@
 {
   "schema_version": 4,
   "id": "I-dfa0cfdd3aa2587cae40ad920d3fc764",
-  "status": "open",
+  "status": "closed",
   "reports": [
     {
       "id": "sha256:fbe57d36239527c1a822b06a3e0767e0df391110ae5a2603f5281ccffd61b3cf",
@@ -39,6 +39,17 @@
       }
     }
   ],
-  "dispositions": []
+  "dispositions": [
+    {
+      "reason": "not-actionable",
+      "note": "Suggestion-tier Issue closed by the developer's 2026-10-17 decision: reviews no longer record suggestions as Issues (task r4-review-tuning); suggestions stay in each review's run result. Reopen if it becomes a real problem.",
+      "evidence": [
+        ".concorde/decisions"
+      ],
+      "duplicate_of": null,
+      "actor": "main-agent",
+      "created_at": "2026-10-23T09:23:45.935664+00:00"
+    }
+  ]
 }
 ```
