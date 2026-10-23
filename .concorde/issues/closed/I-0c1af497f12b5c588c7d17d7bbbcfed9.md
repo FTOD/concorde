@@ -4,7 +4,7 @@
 {
   "schema_version": 4,
   "id": "I-0c1af497f12b5c588c7d17d7bbbcfed9",
-  "status": "open",
+  "status": "closed",
   "reports": [
     {
       "id": "sha256:53d39317b9f4fb741745f2511ebfec50e2a5c7f56cc6c1a60f6320f48ba22caa",
@@ -39,6 +39,18 @@
       }
     }
   ],
-  "dispositions": []
+  "dispositions": [
+    {
+      "reason": "resolved",
+      "note": "Fixed by task r4-method-work, merged into the primary branch at fbd1a1e92b64d950338cd035fc9adac07bcde8d2.",
+      "evidence": [
+        "merge commit fbd1a1e92b64d950338cd035fc9adac07bcde8d2",
+        "task r4-method-work"
+      ],
+      "duplicate_of": null,
+      "actor": "main-agent",
+      "created_at": "2026-10-23T09:02:28.644252+00:00"
+    }
+  ]
 }
 ```
