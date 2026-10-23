@@ -24,12 +24,13 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from contextlib import ExitStack
 from pathlib import Path
 
 from ...kernel import binding, errors
-from ...kernel.tracing import reader
+from ...kernel.tracing import locks, reader
 from ...kernel.refusal import KernelError
 from ...kernel.schema import validate
 from . import deliver, merge, parts, runs, session, store, wait
@@ -657,9 +658,13 @@ def main_hook_text(here: Path, data: dict) -> str:
     if not tasks:
         return ""
     how = HOOK_SOURCES.get(data.get("source"), "started")
+    # Claude Code keeps a session's id across a resume and a compaction, though not its name.
+    session = (
+        data.get("session_id") if isinstance(data.get("session_id"), str) else None
+    )
     lines = [
         f"Concorde: this session {how}. These tasks have not ended. Each names the main agent's "
-        "session its task session reports to:",
+        "session its task session reports to, marked (this session) when this session named it:",
         "",
     ]
     for record in tasks:
@@ -668,8 +673,10 @@ def main_hook_text(here: Path, data: dict) -> str:
             for item in record["reports"]
             if item.get("answer") is None
         ]
+        own = session is not None and record.get("main_session") == session
         lines.append(
             f"- `{record['id']}`: main `{record['main'] or '(none)'}`"
+            + (" (this session)" if own else "")
             + (f"; unanswered reports {', '.join(waiting)}" if waiting else "")
             + "."
         )
@@ -679,9 +686,13 @@ def main_hook_text(here: Path, data: dict) -> str:
         "session with the main each task names.",
         "A task whose main is another session that ListAgents lists belongs to that main agent. "
         "Leave it.",
-        "When a task names a main other than your current name, and no session that "
-        'ListAgents lists has that name, it is your former name. Follow "When your session '
-        'name changed" of the concorde skill for it before anything else.',
+        "A task marked (this session) whose main is not your current name names your former "
+        'name. Follow "When your session name changed" of the concorde skill for it before '
+        "anything else.",
+        "A task not marked (this session) whose main is neither your current name nor a session "
+        "ListAgents lists belongs to an absent main agent, which may be another one. Never "
+        "rebind it on your own: ask the developer once, listing every such task with its main, "
+        "and rebind only those the developer names.",
     ]
     if any(
         item.get("answer") is None for record in tasks for item in record["reports"]
@@ -775,7 +786,10 @@ def _answer(here: Path, command: str, arguments, held: ExitStack) -> tuple[int, 
             )
         elif arguments.command == "rebind":
             value = store.rebind(
-                store.require_primary(here), arguments.task_id, arguments.main
+                store.require_primary(here),
+                arguments.task_id,
+                arguments.main,
+                os.environ.get(locks.SESSION),
             )
         elif arguments.command == "escalate":
             value = escalate(here, arguments)

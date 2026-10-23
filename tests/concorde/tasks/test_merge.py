@@ -13,6 +13,7 @@ import subprocess
 import sys
 import tempfile
 import threading
+import time
 import unittest
 from pathlib import Path
 from unittest.mock import patch
@@ -673,6 +674,46 @@ class MergeTests(unittest.TestCase):
         self.assertIn("was stopped after 1 s", problem)
         self.assertIn("diagnostic", problem)
         self.assertIn("diagnostic", (folder / "output.log").read_text())
+
+    @verifies("scenario.tasks.merge-check-failed")
+    def test_a_stopped_check_leaves_no_process_writing(self):
+        folder = Path(tempfile.mkdtemp()) / "check"
+        self.addCleanup(shutil.rmtree, folder.parent, True)
+        late = folder.parent / "late"
+        # The child outlives its parent's stop unless the whole group is killed.
+        child = f"import time; time.sleep(2); open({str(late)!r}, 'w').write('late')"
+        argv = [
+            sys.executable,
+            "-c",
+            "import subprocess, sys, time; "
+            f"subprocess.Popen([sys.executable, '-c', {child!r}]); time.sleep(30)",
+        ]
+        with patch.object(checks, "TIMEOUT", 1):
+            result, problem = checks.run(
+                self.root,
+                argv,
+                folder,
+                identity="check-1",
+                kind="merge-check",
+                content_type=merge.MERGE_CHECK_TRACE,
+            )
+        self.assertIn("was stopped after 1 s", problem)
+        # A background child of a check that passed is killed as well.
+        passed, none = checks.run(
+            self.root,
+            [
+                sys.executable,
+                "-c",
+                f"import subprocess, sys; subprocess.Popen([sys.executable, '-c', {child!r}])",
+            ],
+            folder.parent / "passed",
+            identity="check-2",
+            kind="merge-check",
+            content_type=merge.MERGE_CHECK_TRACE,
+        )
+        self.assertEqual((0, None), (passed["exit_code"], none))
+        time.sleep(3)
+        self.assertFalse(late.exists())
 
     @verifies("scenario.tasks.merge-check-failed")
     def test_checks_that_leave_changes_undo_the_merge(self):

@@ -448,7 +448,9 @@ def task_escalate(call: Call, arguments: dict):
 
 
 def task_rebind(call: Call, arguments: dict):
-    return store.rebind(call.primary, arguments["task"], arguments["main"])
+    return store.rebind(
+        call.primary, arguments["task"], arguments["main"], call.session
+    )
 
 
 def task_report(call: Call, arguments: dict):

@@ -164,8 +164,9 @@ STATES = ("open", "active", "delivered", "merging", "closed", "failed")
 OUTCOMES = ("merged", "completed", "failed")
 ENDED = ("closed", "failed")
 # The version of the task record: 3 names the main agent's sessions and holds the reports, 4
-# says who answered each report.
-RECORD_VERSION = 5
+# says who answered each report, 5 lists the Issues it resolves, 6 keeps the Claude Code session
+# id of each main agent's session it names.
+RECORD_VERSION = 6
 ATTEMPTS = 3
 # Where task worktrees go by default, relative to the primary worktree; Git must ignore it.
 WORKTREES = ".claude/worktrees"
@@ -452,7 +453,8 @@ def upgraded(record: dict, folder: Path) -> dict:
     """``record`` in the current version. A record written before version 3 names no main
     agent's session and holds no reports: its sessions are those its task sessions were started
     for, from their nodes in ``folder``, the latest one its main, and it has no reports. A record
-    of version 3 does not say who answered a report: only the main agent answered then."""
+    of version 3 does not say who answered a report: only the main agent answered then. A record
+    before version 6 knows no Claude Code session id of its main agents' sessions."""
     version = record.get("schema_version", RECORD_VERSION)
     if version < 3:
         mains = []
@@ -471,6 +473,9 @@ def upgraded(record: dict, folder: Path) -> dict:
             else item
             for item in record["reports"]
         ]
+    if version < 6:
+        record["main_session"] = None
+        record["mains"] = [{**item, "session": None} for item in record["mains"]]
     record["schema_version"] = RECORD_VERSION
     return record
 
@@ -1081,47 +1086,65 @@ def _current_open(primary: Path, task_id: str) -> dict:
     return load_unended(primary, task_id, "a session works only in an open task")
 
 
-def record_session(primary: Path, task_id: str, session: dict) -> dict:
+def record_session(
+    primary: Path,
+    task_id: str,
+    session: dict,
+    *,
+    main_session: str | None = None,
+    locked: bool = False,
+) -> dict:
     """Record a started task session as a node of the task's trace, for a task that has not
     ended, and its main session as the task's main. ``session`` names its identity, name, main
     session, model, the identity Claude Code reported and, when Claude Code told it, the full
-    session id."""
+    session id. ``main_session`` is the Claude Code session id of the main agent's session that
+    started it, when known. ``locked`` says the caller holds the task's lock already."""
+    if locked:
+        return _record_session(primary, task_id, session, main_session)
     # Checked before taking the lock too, so no lock file is made again for a closed task.
     _current_open(primary, task_id)
     with task_locked(primary, task_id):
-        record = _current_open(primary, task_id)
-        # The node first, removed again when the record refuses its main: either refusal leaves
-        # the record as it was.
-        folder = session_folder(primary, task_id, session["id"])
-        node = Node(
-            folder,
-            session["id"],
-            "session",
-            content_type=SESSION_TRACE,
-            metadata={"task": task_id, "model": session.get("model")},
-            content=session_content(session),
-            started_at=session.get("started_at"),
+        return _record_session(primary, task_id, session, main_session)
+
+
+def _record_session(
+    primary: Path, task_id: str, session: dict, main_session: str | None
+) -> dict:
+    """``record_session`` while holding the task's lock."""
+    record = _current_open(primary, task_id)
+    # The node first, removed again when the record refuses its main: either refusal leaves
+    # the record as it was.
+    folder = session_folder(primary, task_id, session["id"])
+    node = Node(
+        folder,
+        session["id"],
+        "session",
+        content_type=SESSION_TRACE,
+        metadata={"task": task_id, "model": session.get("model")},
+        content=session_content(session),
+        started_at=session.get("started_at"),
+    )
+    # Concorde does not see a session end; the task's end finishes the node.
+    node.record["status"] = "unknown"
+    node.start()
+    if node.failure is not None:
+        raise TaskError(
+            "record_unwritable",
+            f"the session node {folder} of task {task_id} cannot be written: {node.failure}",
         )
-        # Concorde does not see a session end; the task's end finishes the node.
-        node.record["status"] = "unknown"
-        node.start()
-        if node.failure is not None:
-            raise TaskError(
-                "record_unwritable",
-                f"the session node {folder} of task {task_id} cannot be written: {node.failure}",
+    if session.get("main"):
+        try:
+            record = _bind_main(
+                primary,
+                task_id,
+                session["main"],
+                main_session,
+                "a session works only in an open task",
             )
-        if session.get("main"):
-            try:
-                record = _bind_main(
-                    primary,
-                    task_id,
-                    session["main"],
-                    "a session works only in an open task",
-                )
-            except TaskError:
-                shutil.rmtree(folder, ignore_errors=True)
-                raise
-        return record
+        except TaskError:
+            shutil.rmtree(folder, ignore_errors=True)
+            raise
+    return record
 
 
 def _still_unended(record: dict, purpose: str) -> None:
@@ -1133,24 +1156,32 @@ def _still_unended(record: dict, purpose: str) -> None:
         )
 
 
-def _bind_main(primary: Path, task_id: str, main: str, purpose: str) -> dict:
-    """Name ``main`` as the task's main agent's session in its record and, when it changes,
-    append it to the names the record keeps; the caller holds the task's lock and checked that
-    the task has not ended, which each attempt of the update checks again."""
+def _bind_main(
+    primary: Path, task_id: str, main: str, session: str | None, purpose: str
+) -> dict:
+    """Name ``main``, with ``session``, its Claude Code session id when known, as the task's main
+    agent's session in its record and, when either changes, append them to the sessions the
+    record keeps; the caller holds the task's lock and checked that the task has not ended, which
+    each attempt of the update checks again."""
     stamp = now()
 
     def change(record):
         _still_unended(record, purpose)
-        if record["main"] != main:
+        if (record["main"], record["main_session"]) != (main, session):
             record["main"] = main
-            record["mains"] = [*record["mains"], {"main": main, "at": stamp}]
+            record["main_session"] = session
+            record["mains"] = [
+                *record["mains"],
+                {"main": main, "session": session, "at": stamp},
+            ]
         return record
 
     return update(primary, task_id, change, locked=True)
 
 
-def rebind(primary: Path, task_id: str, main: str) -> dict:
-    """Name ``main`` as the session the task's task sessions report to from now on."""
+def rebind(primary: Path, task_id: str, main: str, session: str | None = None) -> dict:
+    """Name ``main`` as the session the task's task sessions report to from now on, and
+    ``session`` as that session's Claude Code session id, when known."""
     main = (main or "").strip()
     if not main:
         raise TaskError(
@@ -1161,7 +1192,7 @@ def rebind(primary: Path, task_id: str, main: str) -> dict:
     load_unended(primary, task_id, purpose)
     with task_locked(primary, task_id):
         former = load_unended(primary, task_id, purpose)["main"]
-        record = _bind_main(primary, task_id, main, purpose)
+        record = _bind_main(primary, task_id, main, session or None, purpose)
     return {"record": record, "former": former}
 
 
@@ -1612,6 +1643,7 @@ def _open_task(
         "worktree": os.path.realpath(worktree),
         "base_commit": base_commit,
         "main": None,
+        "main_session": None,
         "mains": [],
         "reports": [],
         "resolves": list(resolves),

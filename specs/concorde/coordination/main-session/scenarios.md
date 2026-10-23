@@ -137,23 +137,29 @@ This illustrates
 - THEN the main agent is told to call ListAgents before anything else
 - AND to compare the name it reports for the session with each task's `main`
 - AND to leave a task whose `main` is another session ListAgents lists
-- AND to take a `main` that is neither as its former name and follow "When your session name
-  changed"
+- AND to take the `main` of a task the hook marks as this session as its own name and, when it is
+  not the current name, follow "When your session name changed"
+- AND never to rebind on its own a task the hook does not mark whose `main` is neither its current
+  name nor a listed session
+- AND to ask the developer once, in one question listing every such task with its `main`, and to
+  rebind only the tasks the developer names
 
-This illustrates [comparing the name](requirements.md#req.main-session.session-start-compare).
+This illustrates [comparing the name](requirements.md#req.main-session.session-start-compare) and
+[asking the developer about an absent main agent's tasks](requirements.md#req.main-session.absent-owner-asked).
 
 ### scenario.main-session.reconcile-after-restart — The main agent rebinds its tasks after its session name changed
 
 - GIVEN the rendered main-session guidance
 - WHEN ListAgents reports for the main agent's session a name other than the one it gave its tasks,
   as after a resume
-- THEN the main agent is told to run
-  `concorde task list --main <former> --state open,active,delivered,merging`, which lists only the
-  tasks not ended
-- AND to rebind each task listed with `concorde task rebind <task> --main <current>`
+- THEN the main agent is told to take as its own the tasks not ended that the hook marks as this
+  session
+- AND when the hook could not list the tasks, to take those that
+  `concorde task list --state open,active,delivered,merging` shows keeping its session id
+- AND to rebind each task it took with `concorde task rebind <task> --main <current>`
 - AND to read the reports `concorde task show` lists without an answer
 - AND to do these three things before anything else
-- AND to send again the latest recorded answer of each listed task whose last report has one, naming
+- AND to send again the latest recorded answer of each rebound task whose last report has one, naming
   the reports it answers, since the restart may have come between recording it and sending it
 - AND to record each answer with `concorde task answer` before sending it, naming in it the reports
   it answers

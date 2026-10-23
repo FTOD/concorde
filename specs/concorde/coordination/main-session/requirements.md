@@ -986,42 +986,62 @@ since it cannot tell whether one was sent.
 
 The guidance SHALL tell the main agent, when the session-start hook lists tasks not ended, to call
 ListAgents before anything else and compare the name it reports for its session with the `main` of
-each task listed, treating a `main` that is neither its current name nor a session ListAgents lists
-as its former name.
+each task listed, treating the `main` of a task the hook marks as this session as its own name,
+current or former.
 
 A restart, a resume or a compaction gives the main agent no sign that its name changed. The hook's
 list is that sign. A task that names another listed session belongs to another main agent, which
-the main agent leaves alone.
+the main agent leaves alone. The hook marks a task as this session when its record keeps the
+starting session's Claude Code session id
+([Tasks](../tasks/requirements.md#req.tasks.main-session-id)). A resume and a compaction keep that id.
+Several main sessions may work on one project, so a `main` that ListAgents does not list may be
+another main agent's that is absent.
+
+### req.main-session.absent-owner-asked — The developer decides about an absent main agent's tasks
+
+The guidance SHALL tell the main agent never to rebind on its own a task not ended whose `main` is
+neither its current name nor a session ListAgents lists and that the hook does not mark as this
+session, but to ask the developer once, in one question listing every such task with its `main`,
+and to rebind only the tasks the developer names.
+
+Such a task may be the main agent's own from before a new session, `/clear` or a fork, which get a
+new session id, or a record that keeps no session id. It may also be another main agent's whose
+session ended. Only the developer can tell these apart. One question lists them all, so the
+developer answers once.
 
 ### req.main-session.reconcile-after-restart — A main agent whose name changed lists its tasks first
 
-The guidance SHALL tell the main agent, when ListAgents reports another name for its session than it
-gave its tasks, to list before anything else the tasks not ended that still name the former one.
+The guidance SHALL tell the main agent, when the hook marks as this session a task whose `main` is
+not the name ListAgents reports for its session, to take before anything else every task not ended
+that the hook so marks as its own, and, when the hook could not list the tasks, those that
+`concorde task list --state open,active,delivered,merging` shows keeping its own session id.
 
 An ended task cannot be rebound. Because the task's end answered its reports, the task has no report
-left unanswered. Therefore, listing the task would only look like work pending.
+left unanswered. Therefore, listing the task would only look like work pending. The main agent reads
+its own session id as `CLAUDE_CODE_SESSION_ID` in its shell.
 
 ### req.main-session.reconcile-rebind — Each listed task is rebound
 
-The guidance SHALL tell the main agent to rebind each task it listed after its name changed to its
-current name with `concorde task rebind`, before anything else.
+The guidance SHALL tell the main agent to rebind each task it took as its own after its name
+changed, and each task the developer named, to its current name with `concorde task rebind`, before
+anything else.
 
 A task session whose message was lost waits for that rebind. Because its report is already in the
 task record, the rebind wakes the task session.
 
-### req.main-session.reconcile-unanswered — The listed tasks' unanswered reports are read
+### req.main-session.reconcile-unanswered — The rebound tasks' unanswered reports are read
 
-The guidance SHALL tell the main agent to read the unanswered reports of each task it listed after
+The guidance SHALL tell the main agent to read the unanswered reports of each task it rebound after
 its name changed before anything else.
 
 They tell the main agent what it missed while its name did not reach it.
 
 ### req.main-session.reconcile-resend-answer — A recorded answer is sent again after a restart
 
-The guidance SHALL tell the main agent to resend the latest recorded answer to each listed task's
+The guidance SHALL tell the main agent to resend the latest recorded answer to each rebound task's
 task session, naming the reports it answers, under these conditions:
 
-- The main agent listed the task after its name changed.
+- The main agent rebound the task after its name changed.
 - The task's last report has an answer.
 
 The restart may have come after `concorde task answer` recorded the answer and before SendMessage

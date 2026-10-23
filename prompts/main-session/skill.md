@@ -269,22 +269,33 @@ session that messages the old name reaches nobody.
 
 Concorde's session-start hook reminds you. When your session starts, resumes or is compacted in the
 primary worktree, the hook adds to your context the tasks not ended. It gives each task's `main`
-and its unanswered reports. When it lists tasks, call ListAgents before anything else and compare
-the name it reports for your session with each task's `main`:
+and its unanswered reports. It marks a task `(this session)` when the task record keeps your
+session's Claude Code session id. A resume and a compaction keep that id, though not always your
+name. A new session, `/clear` and a fork get a new id. When the hook lists tasks, call ListAgents
+before anything else and compare the name it reports for your session with each task's `main`:
 
 - A task whose `main` is your current name needs nothing.
 - A task whose `main` is another session that ListAgents lists belongs to that main agent. Leave
   it.
-- A task whose `main` is neither of these names your former name. Nobody receives its reports.
+- A task marked `(this session)` whose `main` is not your current name names your former name.
+  Nobody receives its reports. Follow the steps below for it.
+- A task not marked `(this session)` whose `main` is neither your current name nor a listed session
+  belongs to an absent main agent. Several main agents may work on one project, so it may be
+  another main agent's. It may also be yours from before a new session, `/clear` or a fork. Never
+  rebind such a task on your own. Ask the developer once, in one question that lists every such
+  task with its `main`, whether you take them over. Rebind only the tasks the developer names, with
+  the steps below.
 
-Whenever ListAgents reports a name for your session other than the one you gave your tasks, follow
-these steps before anything else:
+When the hook marks as `(this session)` a task whose `main` is not your current name, follow these
+steps before anything else:
 
-1. List the tasks not ended that still name your former name:
-   `concorde task list --main <former name> --state open,active,delivered,merging`. A task that
+1. Take as yours every task the hook marks `(this session)`. When the hook could not list the
+   tasks, run `concorde task list --state open,active,delivered,merging`. Take those whose
+   `main_session` is your session id, which `echo $CLAUDE_CODE_SESSION_ID` prints. A task that
    ended has no task session left to report and cannot be rebound.
-2. Rebind each to your current name: `concorde task rebind <task> --main <current name>`. A task
-   session whose message failed waits for exactly that. It sends its report again to the new name.
+2. Rebind each to your current name: `concorde task rebind <task> --main <current name>`. The
+   command also records your session id. A task session whose message failed waits for exactly
+   that. It sends its report again to the new name.
 3. Read each task's unanswered reports with `concorde task show <task>`, those whose `answer` is
    null, and answer them as above.
 4. For each task whose last report has an answer, send that latest recorded answer again to its task

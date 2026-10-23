@@ -47,6 +47,8 @@ Commands and the session's [trace node](../../glossary.json#concept.trace-node) 
   `claude stop 33afbc14`
 - AND no Claude Code session is started
 - AND the task's boundary files, record and trace are unchanged
+- AND when two starts of `severity` run at once while it records no session, one starts and
+  records its session, and the other fails with `session_running`, starting no session
 
 ### scenario.task-session.replace-ended — A task session that is done or gone is replaced
 
@@ -131,8 +133,10 @@ Commands and the session's [trace node](../../glossary.json#concept.trace-node) 
   worktree
 - AND the hook denies a hook input that is not JSON or names no file
 - BUT the settings restrict nothing else
-- AND the settings carry no sandbox, so the session's commands reach every path, process, socket and
-  network host
+- AND the settings turn the sandbox off, so the session's commands reach every path, process, socket
+  and network host
+- AND when the managed settings turn the sandbox on, a start fails with `session_failed` naming the
+  managed settings file, writing nothing and starting no session
 
 ### scenario.task-session.closed-log — A closed task's decision log is refused
 

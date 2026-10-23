@@ -10,6 +10,7 @@ import os
 import shlex
 import subprocess
 import sys
+import threading
 import unittest
 from pathlib import Path
 from unittest.mock import patch
@@ -112,6 +113,20 @@ class TaskSessionTests(unittest.TestCase):
             ("33afbc14", "task-t1", "concorde-7d"),
             (started["id"], started["name"], started["main"]),
         )
+        # The command prints exactly the fields the commands contract names.
+        self.assertEqual(
+            {
+                "id": "33afbc14",
+                "reported_id": "33afbc14",
+                "session_id": SESSION_ID,
+                "name": "task-t1",
+                "main": "concorde-7d",
+                "model": None,
+                "settings": str(directory / "settings.json"),
+            },
+            {key: value for key, value in started.items() if key != "started_at"},
+        )
+        self.assertRegex(started["started_at"], r"^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ$")
         # Claude Code's list of sessions gives the full session id, its transcript's name.
         self.assertEqual(["claude", "agents", "--json", "--all"], listing)
         self.assertEqual(SESSION_ID, started["session_id"])
@@ -120,6 +135,22 @@ class TaskSessionTests(unittest.TestCase):
         self.assertEqual("concorde-7d", store.load_task(self.root, "t1")["main"])
         self.assertIn("Main agent session when this session started", brief)
         self.assertIn("`concorde task report` prints", brief)
+
+    @verifies("scenario.task-session.start")
+    def test_a_start_keeps_the_main_agents_session_id(self):
+        with patch.dict(os.environ, {"CLAUDE_CODE_SESSION_ID": "sess-a"}):
+            session.start(self.root, "t1", "concorde-7d", run=FakeClaude())
+        record = store.load_task(self.root, "t1")
+        self.assertEqual(
+            ("concorde-7d", "sess-a"), (record["main"], record["main_session"])
+        )
+        self.assertEqual(
+            [{"main": "concorde-7d", "session": "sess-a"}],
+            [
+                {key: item[key] for key in ("main", "session")}
+                for item in record["mains"]
+            ],
+        )
 
     @verifies("scenario.task-session.start")
     def test_a_coloured_start_line_is_recognised(self):
@@ -153,7 +184,7 @@ class TaskSessionTests(unittest.TestCase):
     def test_a_session_started_but_not_recorded_is_removed(self):
         claude = FakeClaude()
 
-        def closed(*_arguments):
+        def closed(*_arguments, **_options):
             raise store.TaskError("task_closed", "task t1 is closed")
 
         with patch.object(store, "record_session", closed):
@@ -211,6 +242,50 @@ class TaskSessionTests(unittest.TestCase):
         self.assertEqual(
             ["33afbc14"], [item["id"] for item in store.sessions(self.root, "t1")]
         )
+
+    @verifies("scenario.task-session.one-working")
+    def test_concurrent_starts_launch_one_session(self):
+        launching, release = threading.Event(), threading.Event()
+        first = FakeClaude()
+
+        def slow(command, **options):
+            # The first start holds its launch open until the second has begun.
+            if command[1] == "--bg":
+                launching.set()
+                release.wait(10)
+            return first(command, **options)
+
+        second = FakeClaude(stdout="backgrounded · 44bbcd25 · task-t1\n")
+        outcome = {}
+
+        def start_second():
+            launching.wait(10)
+            try:
+                outcome["second"] = session.start(
+                    self.root, "t1", "concorde-8e", run=second
+                )
+            except store.TaskError as error:
+                outcome["second"] = error
+
+        thread = threading.Thread(target=start_second)
+        thread.start()
+        try:
+            launched = threading.Timer(0.5, release.set)
+            launched.start()
+            started = session.start(self.root, "t1", "concorde-7d", run=slow)
+        finally:
+            release.set()
+            thread.join(30)
+        self.assertEqual("33afbc14", started["id"])
+        refused = outcome["second"]
+        self.assertIsInstance(refused, store.TaskError)
+        self.assertEqual("session_running", refused.code)
+        # The second start never launched Claude Code.
+        self.assertNotIn("--bg", [c[1] for c, _ in second.calls])
+        self.assertEqual(
+            ["33afbc14"], [item["id"] for item in store.sessions(self.root, "t1")]
+        )
+        self.assertEqual("concorde-7d", store.load_task(self.root, "t1")["main"])
 
     def test_a_start_that_cannot_read_claude_codes_sessions_is_refused(self):
         session.start(self.root, "t1", "concorde-7d", run=FakeClaude())
@@ -452,15 +527,37 @@ class TaskSessionTests(unittest.TestCase):
             str(self.worktree), denied["hookSpecificOutput"]["permissionDecisionReason"]
         )
         settings = json.loads(Path(shown["settings"]).read_text())
-        # Nothing but the hook restricts the session: no sandbox, no deny rules.
-        self.assertNotIn("sandbox", settings)
+        # Nothing but the hook restricts the session: the sandbox turned off, which a sandbox
+        # of the user's or the project's settings would keep were the key omitted, and no deny
+        # rules.
+        self.assertEqual({"enabled": False}, settings["sandbox"])
         self.assertNotIn("permissions", settings)
         self.assertEqual(
-            {"enabledMcpjsonServers", "disabledMcpjsonServers", "hooks"},
+            {"enabledMcpjsonServers", "disabledMcpjsonServers", "hooks", "sandbox"},
             set(settings),
         )
         # A dry run records no session.
         self.assertEqual([], store.sessions(self.root, "t1"))
+
+    @verifies("scenario.task-session.boundary")
+    def test_a_managed_sandbox_refuses_the_start(self):
+        _, managed = self.claude_config()
+        self.write(managed / "managed-settings.json", {"sandbox": {"enabled": True}})
+        claude = FakeClaude()
+        with patch.object(session, "MANAGED", managed):
+            with self.assertRaises(store.TaskError) as raised:
+                session.start(self.root, "t1", "m", run=claude)
+            self.assertEqual("session_failed", raised.exception.code)
+            self.assertIn(str(managed / "managed-settings.json"), str(raised.exception))
+            self.assertEqual([], claude.calls)
+            self.assertFalse((self.folder / "runtime/settings.json").exists())
+            # A later drop-in that turns it off again decides.
+            self.write(
+                managed / "managed-settings.d/20-off.json",
+                {"sandbox": {"enabled": False}},
+            )
+            session.start(self.root, "t1", "m", run=claude)
+        self.assertEqual(1, len(store.sessions(self.root, "t1")))
 
     @verifies("scenario.task-session.boundary")
     def test_the_hook_denies_what_it_cannot_judge(self):

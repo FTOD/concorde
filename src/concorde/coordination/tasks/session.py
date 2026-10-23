@@ -58,6 +58,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from ...kernel.schema import type_version
+from ...kernel.tracing import locks
 from ...kernel.tracing import node as trace
 from . import session_hook, store
 
@@ -197,12 +198,15 @@ def mcp_approvals(primary: Path, worktree: Path, managed: Path | None = None) ->
 def settings(primary: Path, record: dict, hook: Path, python: str) -> dict:
     """The complete ``settings.json`` of one task session: its MCP approvals and its write hook.
 
-    It carries no sandbox. A task session must change nothing outside its task worktree and
+    It turns the sandbox off. A task session must change nothing outside its task worktree and
     nothing else about it is restricted, so the hook guards the file tools and the shell is left
-    as the developer's own, with every path, process, socket and host open to it.
+    as the developer's own, with every path, process, socket and host open to it. Omitting the
+    key would keep a sandbox the user's or a project's settings enable, since Claude Code keeps
+    the lower-level value of a key ``--settings`` omits.
     """
     return {
         **mcp_approvals(primary, Path(record["worktree"])),
+        "sandbox": {"enabled": False},
         "hooks": {
             "PreToolUse": [
                 {
@@ -217,6 +221,23 @@ def settings(primary: Path, record: dict, hook: Path, python: str) -> dict:
             ]
         },
     }
+
+
+def managed_sandbox(managed: Path | None = None) -> Path | None:
+    """The managed settings file that turns the sandbox on for every session, which a session's
+    own settings cannot turn off, or None. Claude Code merges the drop-ins in name order over
+    ``managed-settings.json``, so the last file that sets ``sandbox.enabled`` decides."""
+    managed = managed or MANAGED
+    deciding = None
+    for path in (
+        managed / "managed-settings.json",
+        *sorted((managed / "managed-settings.d").glob("*.json")),
+    ):
+        sandbox = _json_object(path).get("sandbox")
+        enabled = sandbox.get("enabled") if isinstance(sandbox, dict) else None
+        if isinstance(enabled, bool):
+            deciding = path if enabled else None
+    return deciding
 
 
 def mcp_config(python: str) -> dict:
@@ -273,17 +294,31 @@ def start(
     dry_run: bool = False,
     run=None,
 ) -> dict:
-    """Write the session's boundary and, unless ``dry_run``, start it with ``claude --bg``."""
+    """Write the session's boundary and, unless ``dry_run``, start it with ``claude --bg``.
+
+    The whole start holds the task's lock, from the check for a working session to the record of
+    the one started, so that two starts of one task never both pass that check: the second waits
+    and then finds the first one's session."""
     run = run or subprocess.run
     primary = store.require_primary(here)
-    record = store.load_unended(
-        primary, task_id, "a session works only in an open task"
-    )
+    purpose = "a session works only in an open task"
+    store.load_unended(primary, task_id, purpose)
     if not main or not main.strip():
         raise store.TaskError(
             "invalid_input",
             "--main must name the main agent's session, which the task session reports to",
         )
+    with store.task_locked(primary, task_id):
+        # Read again under the lock: a close or another start may have come meanwhile.
+        record = store.load_unended(primary, task_id, purpose)
+        return _start(primary, record, main, model, dry_run, run)
+
+
+def _start(
+    primary: Path, record: dict, main: str, model: str | None, dry_run: bool, run
+) -> dict:
+    """``start`` while holding the task's lock."""
+    task_id = record["id"]
     worktree = Path(record["worktree"])
     if not worktree.is_dir():
         raise store.TaskError(
@@ -291,6 +326,15 @@ def start(
             f"the worktree {worktree} of task {task_id} does not exist",
         )
     refuse_working(primary, task_id, run)
+    enforced = managed_sandbox()
+    if enforced is not None:
+        raise store.TaskError(
+            "session_failed",
+            f"the managed settings {enforced} turn Claude Code's sandbox on for every session, "
+            "which a task session's settings cannot turn off; a task session runs with every "
+            "path, process, socket and host open to its commands, so none is started; a task "
+            "session starts once the managed settings no longer turn the sandbox on",
+        )
     directory = session_directory(primary, task_id)
     directory.mkdir(parents=True, exist_ok=True)
     hook = directory / "write_hook.py"
@@ -362,7 +406,13 @@ def start(
         "started_at": started_at,
     }
     try:
-        store.record_session(primary, task_id, session)
+        store.record_session(
+            primary,
+            task_id,
+            session,
+            main_session=os.environ.get(locks.SESSION) or None,
+            locked=True,
+        )
     except store.TaskError as error:
         # A session no trace node names is never stopped, kept or removed by the task's end:
         # remove the one just started rather than leave it working untracked.
