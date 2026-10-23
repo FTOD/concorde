@@ -83,8 +83,10 @@ tree before the worker launches. When the worker ends `ok` and its audit is clea
 worktree again. The difference between the two trees is the **observed change**:
 
 - The files the worker added, modified or deleted.
-- A unified diff of the change, kept as `change.diff` in the run's trace node.
-- The earlier content of every modified or deleted file, kept under `before/` in that node.
+- A unified diff of the change, kept as `change/change.diff` in the run's trace node.
+- The earlier content of every modified or deleted file, kept under `change/before/` in that node.
+
+The `change/` folder holds only these two. It is the host material the reviewer may read.
 
 Files Git ignores are not observed, as in the
 [write audit](../../glossary.json#concept.write-audit). The observed change is host evidence. The
@@ -286,9 +288,13 @@ General work relies on it for these:
 
 - The workspace's goal and Modules, from the
   [workspace binding](../../glossary.json#concept.workspace-binding).
-- The run's trace node, where the Operation keeps the instruction, the diff and the earlier files.
+- The run's trace node, where the Operation keeps the instruction and, in its `change/` folder, the
+  diff and the earlier files.
 - The [unbound checkout](../../glossary.json#concept.unbound-checkout) of an unbound run.
-- Wrapping the result in the run result.
+- Admitting only `ok` runs of the same workspace as inputs
+  ([requirement](../../execution/requirements.md#req.execution.inputs-same-workspace)).
+- Wrapping the result in the run result, which the [run result contract](../../execution/contracts.md#contract.execution.run-result) defines. How the [runner](../../execution/runner.md#runner) composes it
+  is in [Composing the result](../../execution/runner.md#composing-the-result).
 
 <a id="uses-workers"></a>
 
@@ -301,7 +307,12 @@ sequence. For each worker, it does these:
 - Writes the [run record](../../glossary.json#concept.run-record).
 
 Any audit violation is a failed run. The reviewer may also read the run's kept diff and earlier
-files, which lie outside its grant, as host material.
+files, which lie outside its grant, as host material. As
+[Workers' reading beside the grant](../../worker-harness/workers/launch.md#reading-beside-the-grant)
+requires, the Operation admits only the `change/` folder of the run's trace node among the
+reviewer's runtime paths. That folder holds nothing but that material. The trace node around it,
+with the worker's records and transcripts, stays unreadable. The reviewer's instructions name the
+diff and the earlier files at their absolute paths.
 
 <a id="uses-spec"></a>
 

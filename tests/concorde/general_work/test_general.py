@@ -14,7 +14,11 @@ from unittest.mock import patch
 from pathlib import Path
 
 from concorde.execution.operations.catalog import OPERATIONS
-from concorde.method.general_work.operation import RESULT_SCHEMA
+from concorde.method.general_work.operation import (
+    RESULT_SCHEMA,
+    REVIEWER_OUTPUT,
+    WORKER_OUTPUT,
+)
 from concorde.method.workers import declared_workers
 from concorde.spec.verification import verifies
 from concorde.worker_harness.runs import read_record
@@ -118,6 +122,13 @@ class GeneralTests(unittest.TestCase):
         self.assertEqual([{"path": SPEC, "change": "modified"}], change["files"])
         self.assertEqual(earlier, (Path(change["before"]) / SPEC).read_text())
         self.assertIn("+One more sentence.", Path(change["diff"]).read_text())
+        # The reviewer may read the folder that holds only the kept change, never the run's
+        # trace node around it.
+        material = Path(change["diff"]).parent
+        self.assertEqual(material, Path(change["before"]).parent)
+        self.assertEqual(
+            ["before", "change.diff"], sorted(p.name for p in material.iterdir())
+        )
         self.assertEqual(rewritten, spec.read_text())
         review = result["review"]
         self.assertEqual("the meaning is kept", review["summary"])
@@ -428,10 +439,18 @@ class GeneralTests(unittest.TestCase):
         text = (
             REPOSITORY_ROOT / "specs/concorde/method/general-work/contracts.md"
         ).read_text()
-        block = text.split("```concorde-contract\n")[1].split("\n```")[0]
-        contract = json.loads(block)
-        self.assertEqual("contract.general-work.result", contract["id"])
-        self.assertEqual(contract["schema"], RESULT_SCHEMA)
+        blocks = [
+            json.loads(block.split("\n```")[0])
+            for block in text.split("```concorde-contract\n")[1:]
+        ]
+        self.assertEqual(
+            [
+                ("contract.general-work.result", RESULT_SCHEMA),
+                ("contract.general-work.worker-output", WORKER_OUTPUT),
+                ("contract.general-work.review-output", REVIEWER_OUTPUT),
+            ],
+            [(contract["id"], contract["schema"]) for contract in blocks],
+        )
 
 
 class WorkerConfigurationTests(unittest.TestCase):

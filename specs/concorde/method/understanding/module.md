@@ -384,14 +384,16 @@ Understanding never calls another Operation. Neither of its Operations calls the
 steps:
 
 - It reads the [workspace binding](../../glossary.json#concept.workspace-binding).
-- It settles the Modules and inputs.
-- It wraps the assessment or the plan review report in the run result.
+- It settles the Modules and [admits](../../execution/requirements.md#req.execution.inputs-same-workspace) the inputs.
+- It wraps the assessment or the plan review report in the run result, which the [run result contract](../../execution/contracts.md#contract.execution.run-result)
+  defines. How the [runner](../../execution/runner.md#runner) composes it is in [Composing the result](../../execution/runner.md#composing-the-result).
 
 Understanding relies on it for:
 
 - The workspace's goal and Modules.
 - The run's trace node, where `plan_review` keeps its copy of the plan.
-- Refusing a `plan_review` run without a workspace binding.
+- Refusing a `plan_review` run without a workspace binding
+  ([requirement](../../execution/requirements.md#req.execution.unbound-read-only)).
 - Refusing an input that is not an `ok` run of the same workspace, or, for an unbound run, of no
   workspace.
 

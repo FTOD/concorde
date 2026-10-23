@@ -7,8 +7,14 @@ against its [Spec](../../glossary.json#concept.spec). It provides two Operations
 lets a worker change the bound Modules' code toward a stated goal. It then performs the audit and
 runs the configured checks. For a limited number of rounds, it resumes the worker with failures.
 `test` runs the checks itself and lets a read-only worker interpret the results into a test report.
-Neither worker ever changes a Spec. A missing or contradictory promise stops the run with a
-[Spec gap](../../glossary.json#concept.spec-gap). Neither
+Neither worker ever changes a Spec. A missing or contradictory promise that prevents the work a
+worker was given stops the run `blocked` with a
+[Spec gap](../../glossary.json#concept.spec-gap). An `implement` worker cannot change code toward
+a promise the Spec does not state. A `test` worker whose job is to diagnose failures differs. It
+interprets a failing check whose cause is a wrong or missing promise and names the Spec as at
+fault. Its run still ends `ok` with that test report, as
+[Method's rule for Spec gaps](../requirements.md#req.method.gaps-never-repaired) allows. Only a
+gap that keeps it from interpreting a check at all stops it. Neither
 [Operation](../../glossary.json#concept.operation) edits a Spec either. Readiness and delivery are
 the [execution commands](../../glossary.json#concept.execution-command) of other Modules.
 
@@ -52,8 +58,9 @@ decide pass/fail. Per failure, the worker adds these details:
 - Its cause.
 - Whether the defect is code, a test, the Spec or the environment.
 
-Each worker returns only its own output part (`addresses`, or `failures` and `notes`). The
-Operation adds everything it observed itself.
+Each worker returns only its own claims: the `implement` worker its `summary` and `addresses`,
+the `test` worker its `summary`, `failures` and `notes`. The Operation passes these on unchanged,
+as the [contracts](contracts.md) state. It adds everything it observed itself.
 
 ### The checked Modules
 
@@ -130,7 +137,10 @@ other Issues files. It returns once the checks pass or the rounds run out.
 
 `implement`'s `status` has these cases:
 
-- When the last round's checks passed, it is `ok`.
+- It is `ok` only when all these conditions hold: the worker's last round ended `ok`, the audit
+  was clean, every proposed deletion the host performed succeeded, and every check the last round
+  ran passed. When no configured check runs, the last condition holds with no check results. The
+  other conditions still apply.
 - When the worker reported a Spec gap or another problem it cannot solve within its grant, it is
   `blocked`, unless a host failure below overrides it. Such a problem may be a change that needs a file only an unbound Module binds. The
   [error chain](../../glossary.json#concept.error-chain) ends in the worker's own link, unresumed.
@@ -149,8 +159,8 @@ ended with as its cause.
   - The grant could not be computed. For instance, a writable file may also be bound by an unbound
     Module. This is refused before any worker starts.
 
-When no configured check runs, the run ends `ok` with no check results. Its evidence states that
-no configured check ran. The caller should run `test` or add checks. Whenever the run record holds
+When no configured check runs and the other conditions for `ok` hold, the run ends `ok` with no
+check results. Its evidence states that no configured check ran. The caller should run `test` or add checks. Whenever the run record holds
 a valid worker result, the output holds the code change whatever the status. The worker's last valid
 result gives its claims, even when a later resume round could not be launched. Without a valid
 result, as after a launch error, a timeout or an invalid result of the first round, the run has no
@@ -315,8 +325,9 @@ steps. It does these things:
 - It reads the [workspace binding](../../glossary.json#concept.workspace-binding).
 - It refuses an unbound run.
 - It holds the [workspace lock](../../glossary.json#concept.workspace-lock).
-- It settles the Modules and inputs.
-- It wraps the code change or test report in the run result.
+- It settles the Modules and [admits](../../execution/requirements.md#req.execution.inputs-same-workspace) the inputs.
+- It wraps the code change or test report in the run result, which the [run result contract](../../execution/contracts.md#contract.execution.run-result)
+  defines. How the [runner](../../execution/runner.md#runner) composes it is in [Composing the result](../../execution/runner.md#composing-the-result).
 
 Implementation relies on it for the workspace's goal and Modules. While its audit compares the
 workspace with the state before the worker started, Implementation relies on the lock for no other

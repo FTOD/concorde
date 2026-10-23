@@ -10,9 +10,10 @@ Steps (the step table of "How it is built" in the General work Module Spec):
 3. ``work``: the standard worker sequence for the ``--type`` grant with the worker ``worker``,
    writes withheld with ``--read-only``, no checks and no resume round.
 4. ``record_after``: record the worktree again; keep the diff between the two trees as
-   ``change.diff`` and the earlier content of every modified or deleted file under ``before/``.
+   ``change/change.diff`` and the earlier content of every modified or deleted file under
+   ``change/before/``, a folder that holds only this material.
 5. ``review``: the standard worker sequence with the worker ``reviewer``, under the worker's grant
-   with every writable level withheld, the kept diff and earlier files readable.
+   with every writable level withheld, the ``change/`` folder readable as host material.
 6. ``check_review``: the finding ids are distinct; derive the verdict and return the result.
 
 The reviewer only reports: acting on a finding is the caller's decision.
@@ -39,6 +40,9 @@ NAME = "general"
 WORKER = "worker"
 REVIEWER = "reviewer"
 INSTRUCTION_COPY = "instruction.md"
+# The folder of the run's trace node that holds only the kept change, which the reviewer may read
+# as host material; the node around it, with the worker's records, stays unreadable.
+MATERIAL = "change"
 DIFF = "change.diff"
 BEFORE = "before"
 KINDS = ["instruction", "meaning", "scope", "error", "claim"]
@@ -320,9 +324,11 @@ def record_after(ctx: RunContext):
     # Only an ok run carries an output; the final one is assembled after the review.
     ctx.output = None
     before = ctx.state["tree_before"]
-    diff = ctx.run_dir / DIFF
-    folder = ctx.run_dir / BEFORE
+    material = ctx.run_dir / MATERIAL
+    diff = material / DIFF
+    folder = material / BEFORE
     try:
+        material.mkdir(parents=True, exist_ok=True)
         after = record_tree(ctx.worktree)
         files = changed_files(ctx.worktree, before, after)
         text = _git(
@@ -473,7 +479,7 @@ def review(ctx: RunContext):
         output_schema=REVIEWER_OUTPUT,
         worker=REVIEWER,
         read_only=True,
-        readable=(Path(change["diff"]), Path(change["before"])),
+        readable=(Path(change["diff"]).parent,),
         checks=False,
         rounds=0,
         frozen=ctx.state["grants"][0],

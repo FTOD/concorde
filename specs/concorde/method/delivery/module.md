@@ -147,9 +147,10 @@ to be ready. These steps cover every commit since the base and every uncommitted
 An earlier `task-validation` run is only a preview. Delivery never trusts it or the checks of
 single steps. When a changed path outside `specs/` and `.concorde/` is bound by a Module's
 realization, the workspace **changed code**. Tests are included. When the workspace changed code, Delivery also
-requires a test with a
-[verification declaration](../../glossary.json#concept.verification-declaration). That declaration
-names every scenario the workspace added or changed. When ready, Delivery commits every
+requires, for each scenario the workspace added or changed, at least one test whose
+[verification declaration](../../glossary.json#concept.verification-declaration) names that
+scenario. Different tests may verify different scenarios
+([requirement](requirements.md#req.delivery.scenarios-verified)). When ready, Delivery commits every
 uncommitted change on the bound branch as the
 [delivery commit](../../glossary.json#concept.delivery-commit). The
 [run result](../../glossary.json#concept.run-result) carries the commit
@@ -249,7 +250,7 @@ commit names the workspace, which the binding names, and nothing else.
 | 3 | Require a commit since the base commit or an uncommitted change | host, read-only Git | neither (`blocked`, `nothing_to_deliver`) |
 | 4 | Decide the whole workspace's readiness with Validation's steps | Validation | measurement, checks or inputs fail (`failed`) |
 | 5 | Require the readiness ready | host | not ready (`blocked`, `not_ready`) |
-| 6 | When the workspace changed code, require a test declaring that it verifies every scenario it added or changed since its base commit, unless `--adoption` | host, Spec core, read-only Git | an unverified scenario (`blocked`, `unverified_scenarios`, naming each with its document) |
+| 6 | When the workspace changed code, require for each scenario it added or changed since its base commit at least one test declaring that it verifies that scenario ([requirement](requirements.md#req.delivery.scenarios-verified)), unless `--adoption` | host, Spec core, read-only Git | an unverified scenario (`blocked`, `unverified_scenarios`, naming each with its document) |
 | 7 | Report the delivery commit step 2 noted, numbered among the delivery commits on the branch | host | it noted one (`ok`, `recovered`) |
 | 8 | Record the index with Git | host, Git | the index cannot be recorded (`failed`, `index_unrecorded`) |
 | 9 | Stage every change; record the staged tree; require a checkout of it to give back what the readiness examined; commit, taking the commit Git names | host, Git | Git refuses, or staging changed what the readiness examined (`failed`, `staged_unvalidated`; the index restored, a hook's worktree edits kept and named) |

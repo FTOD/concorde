@@ -806,7 +806,7 @@ def staged_differences(worktree: Path, tree: str, inputs: dict) -> list[str]:
         {
             entry[1]
             for path in examined
-            if (entry := staged.get(path)) and entry[0] != "160000"
+            if (entry := staged.get(path)) and entry[0] == "120000"
         },
     )
     for path, item in examined.items():
@@ -835,14 +835,14 @@ def staged_differences(worktree: Path, tree: str, inputs: dict) -> list[str]:
         elif entry[0] == "120000":
             given = sha256(b"symlink:" + contents[entry[1]])
         else:
-            given = sha256(contents[entry[1]])
-            if given != digest:
-                # What a checkout writes: the staged content through the smudge filters.
-                given = sha256(
-                    _index_git(
-                        worktree, "cat-file", "--filters", f"--path={path}", entry[1]
-                    )
+            # What a checkout writes: the staged content through the smudge filters, even when
+            # the staged bytes already equal the examined ones, since a smudge filter may rewrite
+            # them.
+            given = sha256(
+                _index_git(
+                    worktree, "cat-file", "--filters", f"--path={path}", entry[1]
                 )
+            )
         if given != digest:
             problems.append(
                 f"{shown} is staged with content a checkout would not give back as the "

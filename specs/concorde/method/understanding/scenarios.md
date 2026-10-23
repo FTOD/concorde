@@ -20,9 +20,19 @@ is in the [contracts](contracts.md).
 - THEN the result has status `ok` and a sufficient assessment with a plan
 - AND the plan names the Modules to change, the new files the change needs with the Module that will bind each, and the ordered next runs
 
+### scenario.understanding.new-promise — A new promise with a known place is planned, not a gap
+
+- GIVEN a goal that adds a new promise to a bound Module, such as a severity field of its reports
+- AND the Module's Spec already says which of its documents states such promises
+- WHEN the caller runs `understand` for that Module with the goal and `--plan`
+- THEN the result has status `ok` and a sufficient assessment
+- AND its plan writes the new promise in a `specify` step before the `implement` step
+- BUT the assessment reports no Spec gap for the new promise
+
 ### scenario.understanding.gap — A missing promise is reported, not inferred
 
-- GIVEN a goal that needs a promise the bound Module's [Spec](../../glossary.json#concept.spec) does not state
+- GIVEN a goal that relies on an existing behaviour whose promise the bound Module's [Spec](../../glossary.json#concept.spec) does not state
+- AND the promise is not a new promise of the goal's change whose place the Specs already give
 - AND the Module's code may well implement that behaviour
 - WHEN the caller runs `understand` for that Module with the goal and `--plan`
 - THEN the result has status `ok` and an assessment marked insufficient
