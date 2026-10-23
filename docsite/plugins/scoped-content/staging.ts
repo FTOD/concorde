@@ -24,3 +24,27 @@ export function publicationMode(
 export function stagingDirectory(mode: PublicationMode): string {
   return mode === "build" ? ".generated/production" : ".generated/preview";
 }
+
+/** The Docusaurus files of a production build, relative to `docsite/`; the preview's are `.docusaurus`. */
+export const PRODUCTION_GENERATED_DIRECTORY =
+  ".generated/docusaurus-production";
+/** Where a production build renders the site before promotion, relative to `docsite/`. */
+export const CANDIDATE_DIRECTORY = ".generated/candidate";
+/** Where promotion keeps the previous site until the new one is in place, relative to `docsite/`. */
+export const BACKUP_DIRECTORY = ".generated/previous-build";
+
+/**
+ * Every path below a publication output that publication clears, renames or writes by name,
+ * relative to the project root. None of them, and no directory between it and its output, may be a
+ * symbolic link, which would send its cleanup or its writes elsewhere.
+ */
+export const PUBLICATION_CLEARED: readonly string[] = [
+  ...(["preview", "build"] as const).flatMap((mode) =>
+    ["", "/content", "/scoped-materialization.json", "/specs-sidebar.json"].map(
+      (path) => `docsite/${stagingDirectory(mode)}${path}`,
+    ),
+  ),
+  `docsite/${PRODUCTION_GENERATED_DIRECTORY}`,
+  `docsite/${CANDIDATE_DIRECTORY}`,
+  `docsite/${BACKUP_DIRECTORY}`,
+];

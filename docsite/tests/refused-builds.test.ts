@@ -36,6 +36,7 @@ import {
   glossaryFile,
   glossaryPath,
   put as putFile,
+  putDocument,
   read,
   readJson,
   updateMetadata,
@@ -577,18 +578,28 @@ it("user documents reaching a registered Spec through two links fail the build a
   expect(snapshot(published())).toEqual(previous);
 });
 
+const docsPlugin = JSON.stringify(
+  nativeRequire.resolve("@docusaurus/plugin-content-docs"),
+);
 // verifies: scenario.views.custom-docs-refused
-it("an extension's docs plugin over registered Specs fails the build and promotes nothing", async () => {
-  const previous = await publishedSite();
-  put(
-    "docsite/custom-docs/index.ts",
-    'module.exports.default = {plugins: [["@docusaurus/plugin-content-docs", {id: "extra", path: "../specs", routeBasePath: "extra"}]]};',
-  );
-  await expect(buildScript()()).rejects.toThrow(
-    /custom-docs\/index\.ts docs plugin extra includes registered Spec/,
-  );
-  expect(snapshot(published())).toEqual(previous);
-});
+it.each([
+  ["its package name", '"@docusaurus/plugin-content-docs"'],
+  ["its resolved module path", docsPlugin],
+  ["its imported plugin function", `require(${docsPlugin}).default`],
+])(
+  "an extension's docs plugin named by %s over registered Specs fails the build and promotes nothing",
+  async (_form, plugin) => {
+    const previous = await publishedSite();
+    put(
+      "docsite/custom-docs/index.ts",
+      `module.exports.default = {plugins: [[${plugin}, {id: "extra", path: "../specs", routeBasePath: "extra"}]]};`,
+    );
+    await expect(buildScript()()).rejects.toThrow(
+      /custom-docs\/index\.ts docs plugin extra includes registered Spec/,
+    );
+    expect(snapshot(published())).toEqual(previous);
+  },
+);
 
 // verifies: scenario.views.custom-docs-refused
 it("a custom docs page with a broken internal link fails the build naming the link", async () => {
@@ -617,3 +628,36 @@ it("a custom docs page with a broken internal link fails the build naming the li
   expect(existsSync(resolve(root, "docsite/.generated/candidate"))).toBe(false);
   expect(snapshot(published())).toEqual(previous);
 });
+
+// verifies: scenario.views.outputs-disjoint
+it("a build refuses a registered document inside its candidate before deleting the candidate", async () => {
+  const path = "docsite/.generated/candidate/notes.md";
+  project.modules.find((m) => m.id === "module.ledger")!.owns.push(path);
+  putDocument(project, path, {
+    owner: "module.ledger",
+    body: "# Notes\n\nKept.\n",
+  });
+  writeRegistry(project);
+  const before = read(project, path);
+  await expect(buildScript()()).rejects.toThrow(
+    /candidate\/notes\.md lies inside the publication output docsite\/\.generated\//,
+  );
+  expect(read(project, path)).toBe(before);
+  expect(read(project, path + ".json")).toContain("module.ledger");
+  expect(spawned).toBe(0);
+});
+
+// verifies: scenario.views.outputs-disjoint
+it.each(["docsite/.generated", "docsite/.generated/candidate"])(
+  "a build refuses a symbolic link at %s before deleting anything",
+  async (link) => {
+    const before = snapshot(resolve(root, "specs"));
+    mkdirSync(resolve(root, link, ".."), { recursive: true });
+    symlinkSync(resolve(root, "specs"), resolve(root, link));
+    await expect(buildScript()()).rejects.toThrow(
+      `Publication output ${link}/ is a symbolic link`,
+    );
+    expect(snapshot(resolve(root, "specs"))).toEqual(before);
+    expect(spawned).toBe(0);
+  },
+);

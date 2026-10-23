@@ -40,6 +40,8 @@ it.each(['spawn', 'exit', 'validation', 'preparation'])(
     await expect(buildSite()).rejects.toThrow();
     expect(mocks.rename).not.toHaveBeenCalled();
     expect(mocks.rm.mock.calls.every(([path]) => path.endsWith('/.generated/candidate'))).toBe(true);
+    // Preparation admits the sources, so its failure must come before any deletion.
+    if (failure === 'preparation') expect(mocks.rm).not.toHaveBeenCalled();
     if (failure !== 'validation') expect(mocks.validate).not.toHaveBeenCalled();
   },
 );
@@ -47,6 +49,7 @@ it.each(['spawn', 'exit', 'validation', 'preparation'])(
 // verifies: scenario.views.build-site
 it('validation precedes directory replacement and production isolates generated modules', async () => {
   await buildSite();
+  expect(mocks.prepare.mock.invocationCallOrder[0]).toBeLessThan(mocks.rm.mock.invocationCallOrder[0]);
   expect(mocks.validate.mock.invocationCallOrder[0]).toBeLessThan(mocks.rename.mock.invocationCallOrder[0]);
   expect(mocks.prepare).toHaveBeenCalledWith(expect.any(String), {mode: 'build'});
   expect(mocks.spawn.mock.calls[0][2].env.DOCUSAURUS_GENERATED_FILES_DIR_NAME).toBe('.generated/docusaurus-production');

@@ -5,7 +5,7 @@ import {resolve} from 'node:path';
 import {requireScoped} from '../plugins/scoped-content/model';
 import {validateScopedBuild} from '../plugins/scoped-content';
 import {preparePublication, productionGeneratedDirectory} from './prepare-publication';
-import {PUBLICATION_MODE_VARIABLE} from '../plugins/scoped-content/staging';
+import {BACKUP_DIRECTORY, CANDIDATE_DIRECTORY, PUBLICATION_MODE_VARIABLE} from '../plugins/scoped-content/staging';
 
 const siteDir = resolve(__dirname, '..');
 const projectRoot = resolve(siteDir, '..');
@@ -58,12 +58,14 @@ async function runDocusaurus(candidate: string): Promise<void> {
 
 export async function buildSite(): Promise<void> {
   requireScoped(projectRoot);
-  const candidate = resolve(siteDir, '.generated/candidate');
+  const candidate = resolve(siteDir, CANDIDATE_DIRECTORY);
   const destination = resolve(siteDir, 'build');
-  const backup = resolve(siteDir, '.generated/previous-build');
+  const backup = resolve(siteDir, BACKUP_DIRECTORY);
+  // Staging loads and admits every source before it clears anything, so it comes before the first
+  // cleanup and outside the failure handler that removes the candidate.
+  await preparePublication(projectRoot,{mode:'build'});
   await rm(candidate, {recursive: true, force: true});
   try {
-    await preparePublication(projectRoot,{mode:'build'});
     await runDocusaurus(candidate);
     await validateScopedBuild(projectRoot,candidate);
     await promoteCandidate(candidate, destination, backup);

@@ -210,8 +210,13 @@ and Docusaurus's generated directory.
 
 ### req.views.outputs-disjoint — Cleanup never reaches a source
 
-Publication SHALL refuse a source that lies inside one of its output directories, or that an
-output directory reaches through a symbolic link, before it clears anything.
+Before it clears anything, publication SHALL refuse each of these:
+
+- A source that lies inside one of its output directories, or that an output directory reaches
+  through a symbolic link.
+- A symbolic link at an output directory or at a path below it that publication clears or writes.
+
+The sources include the authored documentation that publication reads, with its sidebar files.
 
 ### req.views.preview-follows-specs — The preview follows the Specs
 

@@ -12,8 +12,10 @@ import { materializeScoped } from "../../plugins/scoped-content/materialize";
 import { preparePublication } from "../../scripts/prepare-publication";
 import {
   bankProject,
+  put,
   putDocument,
   read,
+  readJson,
   writeRegistry,
   type Project,
 } from "../protocol-fixture";
@@ -77,6 +79,143 @@ it("refuses an output directory that is a symbolic link before clearing anything
       /docsite\/\.generated\/ is a symbolic link/,
     );
   expect(snapshot(resolve(project.root, "specs"))).toEqual(before);
+});
+
+const configure = (fields: Record<string, unknown>) =>
+  put(
+    project,
+    "docsite/site.json",
+    JSON.stringify({ ...readJson(project, "docsite/site.json"), ...fields }),
+  );
+
+// verifies: scenario.views.outputs-disjoint
+it.each([
+  [
+    "a user documents directory",
+    () => configure({ userDocs: { path: ".generated/production/content" } }),
+    /userDocs\.path \.generated\/production\/content lies inside the publication output docsite\/\.generated\//,
+  ],
+  [
+    "a custom docs directory",
+    () =>
+      configure({
+        customDocs: [
+          {
+            id: "guides",
+            label: "Guides",
+            path: "./.generated/preview/content",
+            routeBasePath: "guides",
+          },
+        ],
+      }),
+    /customDocs guides\.path \.\/\.generated\/preview\/content lies inside/,
+  ],
+  [
+    "a custom docs sidebar file",
+    () =>
+      configure({
+        customDocs: [
+          {
+            id: "guides",
+            label: "Guides",
+            path: "../guides",
+            routeBasePath: "guides",
+            sidebarPath: ".generated/production/content/sidebar.ts",
+          },
+        ],
+      }),
+    /customDocs guides\.sidebarPath \.generated\/production\/content\/sidebar\.ts lies inside/,
+  ],
+  [
+    "an extension's docs plugin directory",
+    () =>
+      put(
+        project,
+        "docsite/custom-docs/index.ts",
+        'module.exports.default = {plugins: [["@docusaurus/plugin-content-docs", {id: "extra", path: ".docusaurus/content", routeBasePath: "extra"}]]};',
+      ),
+    /custom-docs\/index\.ts docs plugin extra\.path \.docusaurus\/content lies inside the publication output docsite\/\.docusaurus\//,
+  ],
+])(
+  "refuses %s inside a publication output before clearing it",
+  async (_name, configureInput, message) => {
+    for (const directory of [
+      "docsite/.generated/production/content",
+      "docsite/.generated/preview/content",
+      "docsite/.docusaurus/content",
+    ])
+      put(project, `${directory}/sidebar.ts`, "authored\n");
+    configureInput();
+    const before = snapshot(resolve(project.root, "docsite"));
+    for (const mode of ["preview", "build"] as const)
+      await expect(preparePublication(project.root, { mode })).rejects.toThrow(
+        message,
+      );
+    expect(snapshot(resolve(project.root, "docsite"))).toEqual(before);
+  },
+);
+
+// verifies: scenario.views.outputs-disjoint
+it("refuses a user documents directory that physically lies inside an output", async () => {
+  put(project, "docsite/.generated/production/content/index.md", "# Home\n");
+  symlinkSync(
+    resolve(project.root, "docsite/.generated/production/content"),
+    resolve(project.root, "docs"),
+  );
+  configure({ userDocs: { path: "../docs" } });
+  await expect(
+    preparePublication(project.root, { mode: "build" }),
+  ).rejects.toThrow(
+    /userDocs\.path \.\.\/docs lies inside the publication output/,
+  );
+  expect(read(project, "docsite/.generated/production/content/index.md")).toBe(
+    "# Home\n",
+  );
+});
+
+// verifies: scenario.views.outputs-disjoint
+it.each([
+  ["docsite/.generated/production", "build"],
+  ["docsite/.generated/preview", "preview"],
+  ["docsite/.generated/production/content", "build"],
+  ["docsite/.generated/candidate", "build"],
+  ["docsite/.generated/previous-build", "preview"],
+  ["docsite/.generated/docusaurus-production", "preview"],
+] as const)(
+  "refuses a symbolic link at %s below a real output before clearing anything",
+  async (path, mode) => {
+    // Behind the link, a cleanup of `content/` would reach `specs/content/`.
+    putDocument(project, "specs/content/notes.md", {
+      owner: "module.ledger",
+      body: "# Notes\n\nKept.\n",
+    });
+    const before = snapshot(resolve(project.root, "specs"));
+    mkdirSync(resolve(project.root, path, ".."), { recursive: true });
+    symlinkSync(resolve(project.root, "specs"), resolve(project.root, path));
+    await expect(preparePublication(project.root, { mode })).rejects.toThrow(
+      `Publication output ${path}/ is a symbolic link`,
+    );
+    expect(snapshot(resolve(project.root, "specs"))).toEqual(before);
+  },
+);
+
+// verifies: scenario.views.outputs-disjoint
+it("refuses a staged sidebar that is a symbolic link to a source", async () => {
+  const path = "specs/ledger/module.md.json";
+  const before = read(project, path);
+  mkdirSync(resolve(project.root, "docsite/.generated/production"), {
+    recursive: true,
+  });
+  symlinkSync(
+    resolve(project.root, path),
+    resolve(project.root, "docsite/.generated/production/specs-sidebar.json"),
+  );
+  await expect(
+    preparePublication(project.root, { mode: "build" }),
+  ).rejects.toThrow(
+    "Publication output docsite/.generated/production/specs-sidebar.json is a symbolic link",
+  );
+  expect(read(project, path)).toBe(before);
 });
 
 // verifies: scenario.views.outputs-disjoint

@@ -210,14 +210,17 @@ See [req.views.diagram-source-identity](requirements.md#req.views.diagram-source
 
 ### scenario.views.outputs-disjoint — Sources inside publication output are refused
 
-- GIVEN a registered source inside `docsite/.generated/`, `docsite/build/` or `docsite/.docusaurus/`
+- GIVEN a registered source, a user documents directory, a custom docs directory or a sidebar file
+  inside `docsite/.generated/`, `docsite/build/` or `docsite/.docusaurus/`
 - WHEN `npm run start`, `npm run validate` or `npm run build` runs
 - THEN it fails naming the source and the output directory
 - AND it clears nothing
 - AND every source keeps its bytes
 
-A source is inside an output directory by its path or by its physical location. When one of those
-directories is a symbolic link, publication is refused the same way.
+A source is inside an output directory by its path or by its physical location. Publication is
+refused the same way when one of those directories is a symbolic link. It is also refused when a
+path that publication clears or writes below them is a symbolic link, such as a staging directory,
+the candidate or the backup.
 
 See [req.views.outputs-disjoint](requirements.md#req.views.outputs-disjoint).
 
@@ -235,8 +238,8 @@ See [req.views.production-preview-isolation](requirements.md#req.views.productio
 
 - GIVEN installed site dependencies and a valid registered project
 - WHEN `npm run build` runs
-- THEN it clears the previous candidate
-- AND it stages the Specs
+- THEN it stages the Specs, loading and admitting every source first
+- AND only then does it clear the previous candidate
 - AND it builds the candidate
 - AND it validates the candidate
 - AND only after all these steps does it promote the candidate

@@ -28,6 +28,9 @@ import {
   type ModuleBlock,
   type Selection,
 } from "./reading-format";
+import { authoredInputs } from "./custom-docs";
+import { parseSiteIdentity } from "./site-identity";
+import { PUBLICATION_CLEARED } from "./staging";
 
 export type ReadingCollection = "module" | "implementation";
 /** One registry record: the Module's identity, entry and the mirror of its `module` block. */
@@ -182,29 +185,55 @@ const within = (path: string, directory: string) => {
     (rest !== ".." && !rest.startsWith(`..${sep}`) && !isAbsolute(rest))
   );
 };
-/**
- * Refuses, before anything is cleared, every source that publication's cleanup could delete: a
- * source lying lexically or physically inside an output directory, or an output directory that
- * is a symbolic link, which would send its cleanup elsewhere.
- */
-export function requireDisjointOutputs(root: string, sources: string[]): void {
-  for (const output of PUBLICATION_OUTPUTS) {
+/** Refuses a symbolic link at `path` or at any directory between it and the output that holds it. */
+function requireNoLinkBelowOutput(root: string, path: string): void {
+  const output = PUBLICATION_OUTPUTS.find(
+    (output) => path === output || path.startsWith(output + "/"),
+  )!;
+  const parts = path.slice(output.length).split("/").filter(Boolean);
+  for (let depth = 0; depth <= parts.length; depth++) {
+    const current = [output, ...parts.slice(0, depth)].join("/");
     let link = false;
     try {
-      link = lstatSync(resolve(root, output)).isSymbolicLink();
+      link = lstatSync(resolve(root, current)).isSymbolicLink();
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+      return;
     }
+    // Only the staging's named files are files; every other cleared path is a directory.
+    const shown = /\.json$/.test(current) ? current : `${current}/`;
     requireThat(
       !link,
-      `Publication output ${output}/ is a symbolic link; remove it, since publication clears that directory.`,
+      `Publication output ${shown} is a symbolic link; remove it, since publication clears or writes it.`,
     );
+  }
+}
+/** A source that publication's cleanup must not reach, with the name its refusal gives it. */
+export interface ProtectedSource {
+  /** The path relative to the project root, normalized. */
+  path: string;
+  /** How the refusal names the source, such as `Source specs/a.md` or `userDocs.path ../docs`. */
+  name: string;
+}
+/**
+ * Refuses, before anything is cleared, every source that publication's cleanup could delete: a
+ * source lying lexically or physically inside an output directory, or an output directory, or a
+ * path below it that publication clears or writes, that is a symbolic link, which would send its
+ * cleanup elsewhere.
+ */
+export function requireDisjointOutputs(
+  root: string,
+  sources: ProtectedSource[],
+): void {
+  for (const path of [...PUBLICATION_OUTPUTS, ...PUBLICATION_CLEARED])
+    requireNoLinkBelowOutput(root, path);
+  for (const output of PUBLICATION_OUTPUTS) {
     const physical = physicalPath(resolve(root, output));
     for (const source of sources)
       requireThat(
-        !(source + "/").startsWith(output + "/") &&
-          !within(physicalPath(resolve(root, source)), physical),
-        `Source ${source} lies inside the publication output ${output}/, which publication clears; move it out.`,
+        !(source.path + "/").startsWith(output + "/") &&
+          !within(physicalPath(resolve(root, source.path)), physical),
+        `${source.name} lies inside the publication output ${output}/, which publication clears; move it out.`,
       );
   }
 }
@@ -734,13 +763,26 @@ export function loadScopedRegistry(root: string): ScopedRegistry {
     });
   }
   // The site identity shapes every page, so a candidate built from an older one is stale too.
+  // Publication also reads the authored documentation the site identity configures, which its
+  // cleanup must not reach either.
+  const authored: ProtectedSource[] = [];
   if (siteIdentityExists(root)) {
-    inputs.push([SITE_IDENTITY, hash(safeRead(root, SITE_IDENTITY))]);
+    const text = safeRead(root, SITE_IDENTITY);
+    inputs.push([SITE_IDENTITY, hash(text)]);
+    const siteDir = resolve(root, "docsite");
+    for (const { path, field } of authoredInputs(
+      siteDir,
+      parseSiteIdentity(parseJson(text, SITE_IDENTITY)),
+    ))
+      authored.push({
+        path: posix.normalize(`docsite/${path}`),
+        name: `${field} ${path}`,
+      });
   }
-  requireDisjointOutputs(
-    root,
-    inputs.map(([path]) => path),
-  );
+  requireDisjointOutputs(root, [
+    ...inputs.map(([path]) => ({ path, name: `Source ${path}` })),
+    ...authored,
+  ]);
   return {
     schema_version: 23,
     projectRoot: root,
