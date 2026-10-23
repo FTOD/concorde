@@ -184,6 +184,9 @@ def probing_step(ctx):
         "started_in": ctx.started_in.as_posix(),
         "commit": ctx.commit,
         "calc": (ctx.worktree / "src/a/calc.py").read_text(),
+        "built": (ctx.worktree / "build/out.txt").read_text()
+        if (ctx.worktree / "build/out.txt").exists()
+        else None,
         "venv": os.path.realpath(ctx.worktree / ".venv")
         if (ctx.worktree / ".venv").exists()
         else None,
@@ -2418,7 +2421,10 @@ class UnboundCheckoutTests(unittest.TestCase):
 
     def declare_preparation(self, *commands) -> str:
         """Commit a preparation file declaring ``commands``, each a Python program run with a
-        timeout of 30 seconds; the commit."""
+        timeout of 30 seconds, and a ``.gitignore`` that ignores ``build/``; the commit."""
+        ignore = self.root / ".gitignore"
+        if "build/\n" not in ignore.read_text():
+            ignore.write_text(ignore.read_text() + "build/\n")
         (self.root / ".concorde/preparation.json").write_text(
             json.dumps(
                 {
@@ -2433,12 +2439,13 @@ class UnboundCheckoutTests(unittest.TestCase):
 
     @verifies("scenario.execution.unbound-prepared")
     def test_an_unbound_checkout_is_prepared_before_the_first_step(self):
-        # The first command writes the checkout; the second tries the worktree the run started
-        # in, and the boundary refuses it.
+        # The first command writes what the commit's Git ignores in the checkout; the second
+        # tries the worktree the run started in, and the boundary refuses it.
         escaped = self.root / "escaped.txt"
         examined = self.declare_preparation(
             "from pathlib import Path\n"
-            "Path('src/a/calc.py').write_text('prepared\\n')\n"
+            "Path('build').mkdir()\n"
+            "Path('build/out.txt').write_text('prepared\\n')\n"
             "print('built the checkout')",
             "import sys\n"
             "try:\n"
@@ -2451,15 +2458,21 @@ class UnboundCheckoutTests(unittest.TestCase):
         status, envelope = self.probe()
         self.assertEqual((0, "ok"), (status, envelope["status"]), envelope)
         self.assertEqual(examined, envelope["commit"])
-        # The steps found what the preparation made; the starting worktree kept its file.
-        self.assertEqual("prepared\n", envelope["output"]["calc"])
-        self.assertNotEqual("prepared\n", (self.root / "src/a/calc.py").read_text())
+        # The steps found what the preparation made; the starting worktree has no build.
+        self.assertEqual("prepared\n", envelope["output"]["built"])
+        self.assertFalse((self.root / "build").exists())
         self.assertFalse(escaped.exists())
         prepared = [
             item for item in envelope["host_evidence"] if item["kind"] == "preparation"
         ]
         self.assertEqual(2, len(prepared))
         self.assertTrue(all("exited 0" in item["detail"] for item in prepared))
+        [compared] = [
+            item
+            for item in envelope["host_evidence"]
+            if item["kind"] == "preparation-check"
+        ]
+        self.assertIn("unchanged", compared["detail"])
         folder = self.run_folder(envelope)
         self.assertIn("built the checkout", (folder / "preparation/1.log").read_text())
         self.assertIn("refused", (folder / "preparation/2.log").read_text())
@@ -2497,6 +2510,48 @@ class UnboundCheckoutTests(unittest.TestCase):
         self.assertEqual([], node["content"]["data"]["steps"])
         self.assertEqual([self.root], worktrees(self.root))
         validate(envelope, RESULT_SCHEMA)
+
+    @verifies("scenario.execution.unbound-preparation-changed")
+    def test_a_preparation_that_changes_the_commit_runs_no_step(self):
+        # Each command exits 0, yet leaves the checkout other than the commit: a reviewed file
+        # with its size and timestamp kept, the worker configuration, a file the commit's Git
+        # would list, and one hidden by a new .gitignore.
+        changes = {
+            "reviewed": "import os\nfrom pathlib import Path\n"
+            "path = Path('src/a/calc.py'); text = path.read_text(); kept = os.stat(path)\n"
+            "path.write_text(text.replace('-', '+'))\n"
+            "os.utime(path, ns=(kept.st_atime_ns, kept.st_mtime_ns))",
+            "workers": "from pathlib import Path\n"
+            "Path('.concorde/workers.json').write_text('{}')",
+            "unignored": "from pathlib import Path\nPath('src/a/new.py').write_text('')",
+            "hidden": "from pathlib import Path\nPath('src/b').mkdir()\n"
+            "Path('src/b/.gitignore').write_text('*\\n')\nPath('src/b/x.py').write_text('')",
+        }
+        changed = {
+            "reviewed": "M src/a/calc.py",
+            "workers": ".concorde/workers.json",
+            "unignored": "?? src/a/new.py",
+            "hidden": "src/b/.gitignore (hides files)",
+        }
+        for name, code in changes.items():
+            with self.subTest(change=name):
+                self.declare_preparation(code)
+                status, envelope = self.probe()
+                self.assertEqual((1, "failed"), (status, envelope["status"]), envelope)
+                self.assertEqual(
+                    ["preparation_failed", "preparation_changed_commit"],
+                    codes(envelope["error"]),
+                )
+                [cause] = envelope["error"]["causes"]
+                self.assertEqual("input", cause["unhandled"]["reason"])
+                self.assertIn(changed[name], cause["detail"])
+                self.assertEqual([], envelope["worker_runs"])
+                node = json.loads(
+                    (self.run_folder(envelope) / "trace.json").read_text()
+                )
+                self.assertEqual([], node["content"]["data"]["steps"])
+                self.assertEqual([self.root], worktrees(self.root))
+                validate(envelope, RESULT_SCHEMA)
 
     @verifies("scenario.execution.unbound-preparation-failed")
     def test_an_invalid_preparation_file_runs_no_step(self):

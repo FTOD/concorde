@@ -256,6 +256,17 @@ The worktree the run started in, the primary worktree and the runtime paths the 
 stay read-only for the command, at the system call
 ([req.checks.writable-project-only](checks/boundary.md#req.checks.writable-project-only)).
 
+### req.execution.preparation-keeps-commit — A preparation leaves the commit as committed
+
+After the preparation commands of an unbound run, the runner SHALL start no step unless the checkout
+holds every tracked file of the examined commit with its committed content, and no file that the
+commit's Git does not ignore.
+
+Otherwise the run ends `failed` with `preparation_failed`, caused by `preparation_changed_commit`
+([Preparing the checkout](runner.md#preparing-the-checkout)). A command cannot evade the
+comparison by keeping a file's timestamp, by rewriting the checkout's `.git` file or by adding a
+`.gitignore`.
+
 ### req.execution.checkout-removed — The checkout does not outlive the run
 
 Whatever ended an unbound run's steps, the runner SHALL attempt to remove the run's checkout, as
@@ -391,6 +402,11 @@ migration exists, since runs are short-lived trace data.
 A run started with `--detach` SHALL check, record and report exactly as the same run started
 without it.
 
+This sameness concerns the run: its checks, its trace node, its run progress file and its saved
+result. It does not concern the command that launched it. That command prints the announcement
+instead of the result, and its exit status says only whether the run was announced
+([Command lines](runner.md#command-lines)).
+
 ### req.execution.detached-announced — A detached run is announced once it exists
 
 Only once the run's [run progress file](../glossary.json#concept.run-progress-file) exists in the
@@ -403,7 +419,8 @@ printing:
 
 An existing run progress file wins. Once that file exists, the command announces the run, even
 when the runner ended by then. When none exists by the time the runner ends or the announcement
-wait runs out, the command reports `detach_failed` instead.
+wait runs out, the command reports `detach_failed` instead. The exit status 0 confirms the announcement, never
+the run's work.
 [How a run is executed](runner.md#detached-runs) describes this.
 
 ### req.execution.detach-failed-ends-runner — An unannounced runner is ended

@@ -122,9 +122,21 @@ runner -> provider.definition: runs the steps of
 
 Every execution command is a `concorde` command of its own. Distribution composes the `concorde`
 command from the [part registrations](../../glossary.json#concept.part-registration) alone.
-So the part that provides an execution command also names it among the commands of its part
-registration. Its entry hands the command line to the [Execution runner](../runner.md).
-If no registration names a command the catalog lists, it is no `concorde` command. In Concorde,
+So exposing an execution command takes two registrations, which the part that provides it makes
+both:
+
+- It registers the command's definition in the command catalog when its code loads
+  ([What a provider declares](#what-a-provider-declares)). The runner looks the definition up there.
+- It names the command among the `commands` of its part registration, with an `entry` whose
+  `output` is `own`
+  ([part registration contract](../../distribution/contracts.md#contract.distribution.part-registration)).
+  Distribution routes the command line there.
+
+The entry hands the command line to the [Execution runner](../runner.md) with
+`run_main("command", <name>, words)`, as
+[The provider interface](../runner.md#the-provider-interface) shows. If no registration names a
+command the catalog lists, it is no `concorde` command. If the catalog lists no definition for a
+command a registration names, the runner refuses its command line as naming no known command. In Concorde,
 Method's registration names these commands:
 
 - `task-validation`
@@ -167,11 +179,12 @@ runner also keeps the following:
 
 Every execution command needs a bound workspace. In a worktree without a binding, the command
 is refused with `binding_required`. In that worktree, the command changes nothing. Its run result
-has these fields:
+follows the [run result contract](../contracts.md#contract.execution.run-result) like every run
+result, with these values:
 
-- `kind` `command`
-- no `worker`
-- no `worker_runs`
+- `kind` is `command`.
+- `worker` is null.
+- `worker_runs` is empty (`[]`).
 
 When the run result is not `ok`, its error link has the level `command`. `concorde run` naming an
 execution command is a command-line error that names the command to use. How a task usually ends
@@ -265,6 +278,14 @@ on the runner refusing unbound every definition that requires a binding
 ([req.execution.unbound-read-only](../requirements.md#req.execution.unbound-read-only)). Every
 command's definition requires one. A command reads what it needs of its workspace from
 the run context the runner fills.
+
+<a id="uses-distribution"></a>
+
+**Distribution** composes the `concorde` command from the part registrations. Commands relies on
+its [part registration contract](../../distribution/contracts.md#contract.distribution.part-registration)
+for the `commands` entry that exposes each execution command. Distribution calls that entry with
+the rest of the command line. For `output` `own`, it prints nothing of its own. Commands imports
+nothing of Distribution.
 
 <a id="uses-operations"></a>
 

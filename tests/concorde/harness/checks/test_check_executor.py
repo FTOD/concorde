@@ -128,6 +128,40 @@ print('confined')
         self.assertEqual(["file.txt"], [path.name for path in outside.iterdir()])
         self.assertFalse((self.root / "alias").exists())
 
+    @verifies("scenario.checks.writable-project-hard-link")
+    def test_a_writable_project_sharing_a_file_with_the_host_is_refused(self):
+        outside = self.parent / "outside.txt"
+        outside.write_text("original")
+        os.link(outside, self.root / "shared.txt")
+        # Two links of one inode inside the project share nothing with the host.
+        os.link(self.file, self.root / "alias.txt")
+        program = [sys.executable, "-c", "open('shared.txt', 'w').write('changed')"]
+        with self.assertRaises(CheckSandboxError) as refused:
+            execute_check(
+                self.root,
+                program,
+                timeout=10,
+                environment=child_environment(),
+                writable_project=True,
+            )
+        self.assertIn("shared.txt", str(refused.exception))
+        self.assertNotIn("alias.txt", str(refused.exception))
+        self.assertEqual("original", outside.read_text())
+        # Without the link outside, the same project runs writable.
+        (self.root / "shared.txt").unlink()
+        result = execute_check(
+            self.root,
+            [sys.executable, "-c", "open('alias.txt', 'w').write('changed')"],
+            timeout=10,
+            environment=child_environment(),
+            writable_project=True,
+        )
+        self.assertEqual(0, result.returncode, result)
+        self.assertEqual("changed", self.file.read_text())
+        # A read-only check of a project sharing a file runs, since nothing is writable.
+        os.link(outside, self.root / "shared.txt")
+        self.assertEqual(0, self.run_check("print('read')").returncode)
+
     @verifies("scenario.checks.read-only")
     def test_children_aliases_and_host_descriptors_do_not_restore_write_access(self):
         alias = self.parent / "alias"

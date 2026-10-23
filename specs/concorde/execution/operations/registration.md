@@ -24,34 +24,35 @@ So both catalogs are complete before a run looks a name up. In Concorde, Method'
 
 ## The definition
 
-A definition is a `Provider` value of `concorde.execution.context`. Execution owns that class. The
-value is frozen. The catalog reads these fields of it:
+A definition is a `Provider` value of `concorde.execution.context`. Execution owns that class and
+gives its constructor in [The provider interface](../runner.md#the-provider-interface). The value is
+frozen. The constructor requires `name`, `task_type`, `writes` and `steps`. Every other field has a
+default. The catalog reads these fields of it:
 
-- `name`: the name a command line gives the run. For an execution command, it is also the name of
-  its `concorde` command.
-- `kind`: `operation` or `command`.
-- `module`: the identity of the providing [Module](../../glossary.json#concept.module), such as
-  `module.understanding`.
-- `workers`: the [worker ids](../../glossary.json#concept.worker-id) of the workers the Operation
-  may launch. The first worker id is the default. An execution command has no worker id.
-- `task_type`: the [task type](../../glossary.json#concept.task-type) of the workers, or none when
-  each run names it.
-- `binding`: `required` or `optional`. With `optional`, the definition may run
-  [unbound](../../glossary.json#concept.unbound-run).
-- `writes`: whether a run may change the workspace. For an execution command, this field is what the
-  command catalog reports as what the command writes.
-- `output_schema`: the contract of the output, or none.
+| Field | Meaning | Default |
+| --- | --- | --- |
+| `name` | the name a command line gives the run; for an execution command, also the name of its `concorde` command | required |
+| `kind` | `operation` or `command` | `operation` |
+| `module` | the identity of the providing [Module](../../glossary.json#concept.module), such as `module.understanding` | none, which the catalog refuses |
+| `workers` | the [worker ids](../../glossary.json#concept.worker-id) of the workers the Operation may launch; the first is the default; an execution command has none | `("worker",)` |
+| `task_type` | the [task type](../../glossary.json#concept.task-type) of the workers, or none when each run names it | required |
+| `binding` | `required`, or `optional`, with which the definition may also run [unbound](../../glossary.json#concept.unbound-run) | `required` |
+| `writes` | whether a run may change the workspace; for an execution command, what the command catalog reports as what the command writes | required |
+| `output_schema` | the contract of the output | none: any output passes |
 
-The runner reads the other fields:
+The runner reads the other fields, as
+[What a definition gives the runner](../runner.md#what-a-definition-gives-the-runner) says:
 
-- `steps`
-- `add_arguments`
-- `admit`
-- `runtime_paths`
+| Field | Meaning | Default |
+| --- | --- | --- |
+| `steps` | the ordered step functions | required |
+| `add_arguments` | the function that adds the definition's own arguments | none: no argument of its own |
+| `admit` | the definition's admission of the Modules | none: the Modules as named |
+| `runtime_paths` | the runtime-path resolver of a definition that may run unbound | none: nothing is linked |
 
 The function `command(name, steps, **fields)` of `concorde.execution.context` builds the definition
 of an execution command. It sets the kind `command`, no task type and no worker id. It passes the
-other fields on unchanged.
+other fields on unchanged, so a command's `writes` and `module` are given among them.
 
 ## Registering
 

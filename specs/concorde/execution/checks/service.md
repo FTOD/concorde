@@ -486,8 +486,14 @@ selected test file.
 
 ### req.checks.service-link — A service failure reaches the caller as this Module's link
 
-The check service SHALL give every caller its failures as Check execution's own error link, which
-the caller keeps as a cause under its own link.
+For every error `run_checks` raises, `service_error(error)` SHALL return Check execution's own
+error link, which the caller keeps unchanged as a cause under its own link.
+
+`run_checks` itself raises its failures as exceptions and never returns a link. A `CheckError`, an
+operating-system error, a cancellation or an unexpected error goes on to the caller as the same
+object ([Running checks](#running-checks)). So a cancellation keeps its identity and still ends the
+caller's work. The caller turns the error into the link with `service_error`
+([Check execution's error as a link](#check-executions-error-as-a-link)) when it reports it.
 
 ### req.checks.logs-where-asked — Check output stays with the caller's run
 

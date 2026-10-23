@@ -18,8 +18,8 @@ Operation. It is an [execution command](../../glossary.json#concept.execution-co
 with [Commands](../commands/module.md).
 
 Operations provides no Operation of its own. In Concorde, [Method](../../method/module.md)
-registers every Operation. Each registration includes the steps that compute each worker's grant
-from the Specs and launch the worker through the
+registers every Operation. Each registration includes the steps that compute each worker's
+[grant](../../glossary.json#concept.grant) from the Specs and launch the worker through the
 [worker harness](../../worker-harness/module.md). A project that installs the execution part without
 Method runs only the Operations some other part registers. Operations never does any of these things:
 
@@ -173,9 +173,13 @@ OPERATIONS.register(
 )
 ```
 
-After that, `concorde run ask` runs `ask`'s steps. The catalog refuses a definition without a
-providing Module or without a worker id. [Registering a definition](registration.md) gives every
-field, every refusal and the lookups.
+After that, `concorde run ask` runs `ask`'s steps. The example leaves `kind` and `binding` at their
+defaults. `kind` is `operation`, so the Operation catalog accepts it. `binding` is `required`, so
+`ask` runs only in a bound workspace and is refused unbound with `binding_required`. A reading
+Operation that may also run unbound gives `binding="optional"`. The catalog refuses a definition
+without a providing Module or without a worker id. [Registering a definition](registration.md)
+gives every field with its default, every refusal and the lookups.
+[The provider interface](../runner.md#the-provider-interface) gives what a step receives and returns.
 
 ## Running an Operation
 

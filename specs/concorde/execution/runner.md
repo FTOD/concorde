@@ -87,7 +87,8 @@ Without `--detach`, standard output receives exactly the
 [run result](../glossary.json#concept.run-result) as one JSON value. With `--detach`, it receives
 the announcement described in [Detached runs](#detached-runs). Diagnostics go to standard error.
 
-The exit statuses have these meanings:
+Without `--detach`, the command is the runner itself, and its exit status tells how the run
+ended:
 
 - Exit status 0 means the result's status is `ok`.
 - Exit status 1 means `blocked` or `failed`, or that the run could not be recorded or its result
@@ -95,6 +96,16 @@ The exit statuses have these meanings:
   ([When records cannot be written](#when-records-cannot-be-written)).
 - Exit status 2 means the command line was malformed or named no known Operation or command.
   In this case, no run is created and no result is written.
+
+With `--detach`, the command only launches the runner, and its exit status tells only whether the
+run was announced ([Detached runs](#detached-runs)):
+
+- Exit status 0 means the run exists and was announced. It says nothing about the run's work. The
+  run may still run, or may already have ended `failed` or been refused. The caller learns how the
+  run ended only from the result the announcement's `result` names, or from its `lobby` when the
+  run never entered its workspace.
+- Exit status 1 means no run was announced: `run_unrecorded` or `detach_failed`.
+- Exit status 2 means the command line was malformed, as without `--detach`.
 
 ## Workspace binding
 
@@ -284,6 +295,132 @@ or the runner's own refusals of the checkout, what either raises ends the run as
 does. The result is `failed` with `host-error` evidence and the `host_error` link. The link's cause
 names the definition's admission or resolver and keeps the traceback. No step runs. The runner
 removes the checkout it made first.
+
+### The provider interface
+
+A definition's author builds it from these names of `concorde.execution.context`. Execution owns
+them:
+
+```python
+Provider(name: str, task_type: str | None, writes: bool,
+         steps: tuple[Callable[[RunContext], Continue | Stop], ...],
+         output_schema: dict | None = None,
+         add_arguments: Callable[[argparse.ArgumentParser], None] | None = None,
+         admit: Callable[[RunContext], None] | None = None,
+         binding: str = "required",              # or "optional"
+         workers: tuple[str, ...] = ("worker",),
+         kind: str = "operation",                # or "command"
+         runtime_paths: Callable[[Path], Sequence[str]] | None = None,
+         module: str | None = None)
+command(name: str, steps, **fields) -> Provider  # kind "command", task_type None, workers ()
+Continue(output: dict | None = None, evidence: list[dict] = [])
+Stop(status: str, summary: str, evidence: list[dict] = [], error: dict | None = None)
+Refused(code: str, message: str, *, actor: str, reason: str = "input",
+        explanation: str = <the Modules named for the run are refused>,
+        options = ("correct the command line and run it again",), causes = ())
+component(actor: str, code: str, detail: str, reason: str, explanation: str, **extra) -> dict
+```
+
+`Provider` is frozen. Its first four fields have no default. `module` defaults to none, but both
+catalogs refuse a definition without it
+([Registering a definition](operations/registration.md#registering)). So does an execution command
+whose `binding` is not `required`. `command` passes its other fields on to `Provider` unchanged.
+
+A step returns `Continue` or `Stop`. The runner adds the evidence of either to the run's host
+evidence. A `Continue` with an `output` replaces the run's output, and the next step runs. A `Stop`
+ends the steps. Its `status` is `ok`, `blocked` or `failed`. Its `summary` is the result's summary.
+Unless the status is `ok`, its `error` is the run's own error link. A `Stop` that is not `ok`
+without an `error` becomes the runner's `missing_error` link. When the last step returns
+`Continue`, the run ends `ok` with the summary the runner composes.
+
+An admission refuses by raising `Refused`, with the fields its signature lists. `component` builds
+the `component` link of a deterministic component a step called, such as Git or Check execution,
+for the `causes` of a refusal or an error.
+
+Every function of the definition receives the run's `RunContext`. Its steps may read these fields:
+
+| Field | Meaning |
+| --- | --- |
+| `name`, `kind`, `run_id`, `workers` | the definition's name and kind, the run identity and the definition's [worker ids](../glossary.json#concept.worker-id) |
+| `worktree` | the worktree the run works in: the bound workspace, or the unbound checkout |
+| `workspace`, `unbound`, `workspace_name`, `goal`, `base_commit`, `branch` | the workspace binding, none for an unbound run, and its fields |
+| `origin`, `started_in`, `commit` | for an unbound run, the worktree it started in and the commit its checkout holds |
+| `modules`, `modules_named` | the Modules the run works on, and whether `--modules` named them |
+| `arguments` | the parsed command line, the definition's own arguments included |
+| `inputs` | each admitted `--input` run's saved output, by its run identity |
+| `run_dir`, `store` | the run's trace node folder and the run store |
+
+The steps may change these fields:
+
+| Field | Meaning |
+| --- | --- |
+| `modules` | in admission only, narrowed to the Modules the run works on |
+| `evidence` | host evidence the step adds directly, beside the evidence of its outcome |
+| `output` | the run's output, as a `Continue` also sets it |
+| `worker` | the claims of the worker run whose result the run reports, as the [run result](contracts.md#contract.execution.run-result) holds them |
+| `state` | values the definition's own steps share during one run; the runner reads none of them |
+| `references` | `(relation, target)` pairs the runner adds to the run's trace node |
+
+A step that launches a worker calls `worker_started(run_id)` as soon as the worker run exists. The
+run's `worker_runs` then name it, even when the run is cancelled before the worker ends. These
+methods build a `Stop`:
+
+- `fail(status, code, summary, detail, *, reason, explanation, evidence=None,
+  host_evidence=None, causes=(), attempts=(), options=(), recommendation="")` gives the run's own
+  link, whose actor names the run and whose detail ends with its Modules. `evidence` belongs to
+  the link and to the run's host evidence. `host_evidence` belongs to the run's host evidence only.
+- `exception(actor, error, code, summary)` stops `failed` for an unexpected exception of a
+  component the step called, its traceback kept in the run's node.
+- `checks_unavailable(error, modules=None)` stops `failed` because Check execution could not run the
+  configured checks, with Check execution's own link as the cause.
+
+This definition stops when a named Module has no checks file, and refuses a run without one:
+
+```python
+from concorde.execution.context import Continue, Refused, Stop, command
+
+
+def admit(context):
+    if not context.modules:
+        raise Refused(
+            "modules_missing",
+            "name the Modules to check",
+            actor="Checking admission (module.checking)",
+            options=["run concorde check-it --modules <id>"],
+        )
+
+
+def check(context):
+    missing = [module for module in context.modules
+               if not (context.worktree / ".concorde/checks" / f"{module}.json").exists()]
+    if missing:
+        return context.fail(
+            "blocked", "checks_missing", "Some Modules have no checks.",
+            f"no checks file for {', '.join(missing)}",
+            reason="input", explanation="the command checks only configured Modules",
+            options=["add the checks files and run again"],
+        )
+    return Continue(output={"checked": context.modules})
+
+
+CHECK_IT = command("check-it", (check,), writes=False, admit=admit, module="module.checking")
+```
+
+The entry that a [part registration](../glossary.json#concept.part-registration) names for an
+execution command hands the command line to the
+runner with `run_main(kind, name, words)` of `concorde.execution.runner`:
+
+```python
+def check_it(words, root=None) -> int:
+    return run_main("command", "check-it", words)
+```
+
+`kind` is `command`. `name` is the command's name. `words` is the rest of the command line, as the
+[part registration contract](../distribution/contracts.md#contract.distribution.part-registration)
+gives it to a command's entry with `output` `own`. `root` is unused, since the run takes its
+workspace from the current worktree. `run_main` prints the result or the announcement and returns
+the exit status [Command lines](#command-lines) gives. `concorde run <operation>` is the
+execution part's own entry, which calls `run_main` with `kind` `operation` and no name.
 
 ## Runner
 
@@ -638,6 +775,25 @@ follows these steps:
 4. When the command exited 0, the runner goes on with the next command. Otherwise, no later
   command runs and no step runs. The run ends `failed` with `preparation_failed`.
 
+Before the first command, the runner reads the checkout's Git directory and its Git status. After
+the last command exited 0, it reads the status again and compares the two readings. Each reading
+does these things:
+
+- It reads the status against a fresh index of `HEAD`, never the checkout's own index. Git
+  therefore compares the content of every tracked file, not its timestamps.
+- It names Git's directory explicitly, as read before the first command. A command that rewrote
+  the checkout's `.git` file therefore cannot redirect it. The bytes of that file are part of the
+  reading.
+- It includes the files of the submodules and every file Git does not ignore.
+- It counts each new `.gitignore` whose directory the commit's own rules do not ignore. A command
+  can therefore not hide a file by ignoring it.
+
+When the readings differ, no step runs. The run ends `failed` with `preparation_failed`, and the
+cause's code is `preparation_changed_commit`. Its detail names what changed, the first 20 entries
+at most. When Git cannot read the status, the cause's code is `preparation_unverified`, with the
+reason `environment`. Either way, the runner records `preparation-check` host evidence with the
+`ref` `git status`, whose detail says what it found.
+
 A command fails in one of these ways:
 
 - It exits with a status other than 0. The cause's code is `preparation_command_failed`.
@@ -651,8 +807,8 @@ A file that cannot be read, is no JSON, or breaks its contract ends the run `fai
 `preparation_invalid`, before any command runs. The cause's code is `invalid_preparation`, with the
 place in the file that breaks the contract.
 
-What a command writes in the checkout lasts until the runner removes the checkout. The steps and
-the workers they launch read it there. The checks treat it like any other file of the checkout.
+What a command writes in the paths the commit's Git ignores lasts until the runner removes the
+checkout. The steps and the workers they launch read it there. The checks treat it like any other file of the checkout.
 The worker harness's [write audit](../glossary.json#concept.write-audit) measures each round
 against a snapshot taken before that round. What the preparation wrote is therefore never counted
 as a worker's write. A cancellation while a command runs ends its whole process tree, keeps its

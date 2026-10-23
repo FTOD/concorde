@@ -401,7 +401,7 @@ checkouts, as [Running unbound](module.md#preparation) explains.
 ```concorde-contract
 {
   "id": "contract.execution.preparation",
-  "version": 1,
+  "version": 2,
   "schema": {
     "type": "object",
     "additionalProperties": false,
@@ -441,7 +441,7 @@ checkouts, as [Running unbound](module.md#preparation) explains.
       }
     }
   },
-  "semantics": "The preparation file .concorde/preparation.json, which a project commits so that an unbound run's checkout holds what the project's build produces. Execution owns it and reads only the copy the checkout holds, the one the examined commit records; without the file nothing is prepared. commands are run in their order, after the admission and before the run's first step, each with the checkout as its working directory, in Check execution's boundary with the checkout writable. argv is the command line, taken literally: no placeholder is substituted. timeout_seconds is the command's time limit in seconds, after which its whole process tree is ended. A command that exits with a status other than 0, runs out of its time or cannot get its boundary fails the run with preparation_failed, and no later command or step runs; a file that breaks this schema fails it with preparation_invalid. A bound run is never prepared. A behaviour or field change increments the version.",
+  "semantics": "The preparation file .concorde/preparation.json, which a project commits so that an unbound run's checkout holds what the project's build produces. Execution owns it and reads only the copy the checkout holds, the one the examined commit records; without the file nothing is prepared. commands are run in their order, after the admission and before the run's first step, each with the checkout as its working directory, in Check execution's boundary with the checkout writable. argv is the command line, taken literally: no placeholder is substituted. timeout_seconds is the command's time limit in seconds, after which its whole process tree is ended. A command may write only paths the examined commit's Git ignores: when the commands leave a tracked file changed or a file the commit's Git does not ignore, the run fails with preparation_failed, caused by preparation_changed_commit, and no step runs. A command that exits with a status other than 0, runs out of its time or cannot get its boundary fails the run with preparation_failed, and no later command or step runs; a file that breaks this schema fails it with preparation_invalid. A bound run is never prepared. A behaviour or field change increments the version.",
   "example": {
     "commands": [
       {
