@@ -49,6 +49,7 @@ The formats are the [contracts](contracts.md).
 - WHEN the Kernel lists the deliveries of workspace `retry` on the branch since the base
 - THEN it lists exactly the two commits after the base with the subject `concorde: deliver retry`, oldest first
 - AND because each has exactly one parent, each verifies
+- AND listing the deliveries since the second of those commits gives an empty list
 
 ### scenario.kernel.delivery-message — A delivery message carries the subject and the goal
 

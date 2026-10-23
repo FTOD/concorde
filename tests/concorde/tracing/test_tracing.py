@@ -190,6 +190,42 @@ class TracingTests(unittest.TestCase):
             roots.register(replace(TASK_ROOTS[1], state="current"))
         self.assertEqual("duplicate_root", refused.exception.code)
 
+    def test_a_root_definition_is_checked_field_by_field(self):
+        history = TASK_ROOTS[1]
+        # The contract's example registration is the registered history root.
+        roots.register(
+            roots.TraceRoot(
+                name="history",
+                folder="history",
+                place="primary",
+                kind="task",
+                state="closed",
+                listed="history",
+                period="history_days",
+                conversation_period="conversation_days",
+                conversation_files=("transcript.jsonl",),
+                conversation_folders=("transcript",),
+            )
+        )
+        with self.assertRaises(TypeError):
+            roots.TraceRoot("r", "r", "primary", "run", "current", "never")
+        for broken in (
+            {"folder": "a/b"},
+            {"place": "anywhere"},
+            {"kind": ""},
+            {"ended": ""},
+            {"period": "forever"},
+            {"conversation_files": ["transcript.jsonl"]},
+            {"conversation_folders": ("",)},
+            {"alive_lock": "merge"},
+        ):
+            with self.subTest(broken), self.assertRaises(roots.RootError) as refused:
+                roots.register(
+                    replace(history, **{"name": "other", "folder": "other", **broken})
+                )
+            self.assertEqual("invalid_root", refused.exception.code)
+        self.assertNotIn("other", {root.name for root in roots.registered()})
+
     def test_the_node_schema_is_the_contract(self):
         self.assertEqual(spec_contract("contract.tracing.node")["schema"], NODE_SCHEMA)
         self.assertEqual(
@@ -745,6 +781,30 @@ class TracingTests(unittest.TestCase):
         self.assertEqual([layout.TRACE], sorted(item.name for item in run.iterdir()))
         self.assertEqual([str(run)], retention.prune(self.concorde)["removed"])
         self.assertFalse(run.exists())
+
+    @verifies("scenario.tracing.prune-placed")
+    def test_retention_called_directly_keeps_to_each_root_s_place(self):
+        linked = Path(self.temporary.name) / "linked"
+        linked.mkdir()
+        # A linked worktree's .git is a file naming its Git directory.
+        (linked / ".git").write_text(f"gitdir: {self.root / '.git'}\n")
+        concorde = linked / ".concorde"
+        named = concorde / "history" / "done"
+        ended(named, "done", "task", ended_at="2025-01-01T00:00:00.000000Z")
+        (named / "sessions" / "s1").mkdir(parents=True)
+        (named / "sessions" / "s1" / "transcript.jsonl").write_text("{}\n")
+        run = concorde / "unbound" / "r-20260101T000000-understand-00000001"
+        ended(run, run.name, "run", ended_at="2026-01-01T00:00:00.000000Z")
+        registered = {root.name: root for root in roots.registered()}
+        self.assertEqual("primary", registered["history"].place)
+        self.assertEqual("worktree", registered["unbound runs"].place)
+        # The default roots and roots the caller names alike keep to their place: the folder
+        # named like the primary worktree's history is neither removed nor stripped.
+        self.assertEqual([str(run)], retention.prune(concorde)["removed"])
+        self.assertEqual(
+            [], retention.prune(concorde, roots=roots.registered())["removed"]
+        )
+        self.assertTrue((named / "sessions" / "s1" / "transcript.jsonl").exists())
 
     def test_the_prune_command_reaches_a_linked_worktree_s_unbound_runs(self):
         identity = ("-c", "user.name=t", "-c", "user.email=t@t")

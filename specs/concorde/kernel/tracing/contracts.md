@@ -529,6 +529,48 @@ folder:
 - Lists.
 - Prunes.
 
+<a id="registering-a-root"></a>
+
+**Registering a root.** A part registers a root with `roots.register(roots.TraceRoot(...))`.
+`TraceRoot` is a frozen dataclass whose fields are all passed by name:
+
+| Field | Type | Accepted values | Default | Meaning |
+| --- | --- | --- | --- | --- |
+| `name` | `str` | any non-empty text, unique among the roots | required | the root's name in the table below and in refusals |
+| `folder` | `str` | one folder name, without `/`, not `.` or `..`, unique among the roots | required | the folder below a `.concorde` directory whose subfolders are the top nodes |
+| `place` | `str` | `primary` or `worktree` | required | `primary`: only the primary worktree's `.concorde` holds the root. `worktree`: the `.concorde` of the worktree a node started in holds it |
+| `kind` | `str` | the node kind of the top nodes | required | what a top node's `trace.json` names as its `kind` |
+| `state` | `str` | `current` or `closed` | required | whether the root's folders are still written |
+| `listed` | `str` | `always`, `history`, `unbound` or `never` | required | which option of `concorde trace list` lists the top nodes: always, `--history`, `--unbound` or none |
+| `ended` | `str` | a non-empty field name of the node contract | `"ended_at"` | the field of a top node's `trace.json` that dates its end |
+| `period` | `str` or `None` | `unbound_days`, `history_days` or `conversation_days` of the [Tracing configuration](#tracing-configuration) | `None` | the period after the end after which retention removes the whole top folder; `None` keeps it |
+| `conversation_period` | `str` or `None` | the same names as `period` | `None` | the period after the end after which retention removes the conversation records of a top folder it keeps; `None` keeps them |
+| `conversation_files` | `tuple[str, ...]` | non-empty file names | `()` | the files, at any depth of a top folder, that are conversation records |
+| `conversation_folders` | `tuple[str, ...]` | non-empty folder names | `()` | the folders, at any depth of a top folder, that are conversation records with all their content |
+| `alive_lock` | `str` or `None` | a lock kind of [Layout](#layout) named after what it locks: `task`, `workspace`, `workflow`, `run` or `attempt` | `None` | the lock, named after a top node's `id`, whose holder says the node is still written; retention never removes a top folder whose lock is held or whose `id` is no text |
+
+`register` refuses a definition that breaks these rules with `RootError` `invalid_root`. It refuses a
+root whose name or folder another registered root has with `duplicate_root`. The first registration
+stays. Registering an equal root again changes nothing. The history root of Tasks, for example, is
+registered as follows:
+
+```python
+roots.register(
+    roots.TraceRoot(
+        name="history",
+        folder="history",
+        place="primary",
+        kind="task",
+        state="closed",
+        listed="history",
+        period="history_days",
+        conversation_period="conversation_days",
+        conversation_files=("transcript.jsonl",),
+        conversation_folders=("transcript",),
+    )
+)
+```
+
 When its code loads, a part registers its roots with Tracing's library. The registration comes from
 a module its part registration names among those Distribution loads. Before Distribution routes
 any command of a part, including `concorde trace`, Distribution loads those modules.
@@ -677,10 +719,22 @@ When both conditions hold, the library performs these steps:
 - It writes its own holder line.
 
 Otherwise, it closes the descriptor and takes the lock as usual.
-Once the handing process closes its own descriptor or replaces itself, the lock is released
-exactly when the receiving process ends. The operating system's lock table keeps naming the
-process that first took the lock. Therefore, the holder line, not `/proc/locks`, says who holds a
-handed lock.
+The receiving process holds an adopted lock for its `hold` block, like any lock. When the block
+ends, however it ends, the process empties the holder line and closes its own descriptor. A lock
+whose handing process closed its own descriptor or replaced itself is then released. A handing
+process that keeps its own descriptor, as `locks.handed_on` does, still holds the lock.
+When the receiving process ends before its block ends, the operating system closes its
+descriptor in the same way.
+
+A receiving process may hand an adopted lock on in turn, as it hands any lock it holds, with
+`locks.handed_on`. No other way passes the lock on. The library has removed
+`CONCORDE_INHERITED_LOCKS` from the environment and marked the adopted descriptor not inherited, so
+a process started without `locks.handed_on` inherits neither. A `concorde task merge` that the
+project MCP server's process became, for example, adopts the merge lock and hands it on to
+`concorde issues recover` while the merge keeps holding it.
+
+The operating system's lock table keeps naming the process that first took the lock. Therefore,
+the holder line, not `/proc/locks`, says who holds a handed lock.
 
 **Waiting for a release.** A process that waits for a lock to be released performs these steps:
 
@@ -1502,9 +1556,10 @@ conventions hold for every operation:
 - Each module refuses with its own exception. The exception carries a stable `code`, except
   `LockBusy` and `LockGone`, and `str()` of it is the whole message. The table names each.
 - A lock is held by a context manager. The `with` block holds it. The lock is released when the
-  block ends, however it ends. The block receives the seconds spent waiting. A `wait` of `None`
-  waits as long as the lock is held. An operating-system error of the lock file passes as
-  `OSError`.
+  block ends, however it ends. A lock the block adopted from a handing process that still holds
+  its own descriptor stays held by that process, as [Handing a lock on](#handing-a-lock-on) says.
+  The block receives the seconds spent waiting. A `wait` of `None` waits as long as the lock is
+  held. An operating-system error of the lock file passes as `OSError`.
 - A failed write of a node's `trace.json` is no refusal. `Node` keeps its account in the list
   `failures`, as [Writing a node](#writing-a-node) says.
 
@@ -1512,7 +1567,7 @@ conventions hold for every operation:
 | --- | --- | --- | --- | --- |
 | Register node kinds | `kinds.register(*kinds)`, each a `kinds.NodeKind(kind, content_type, metadata)` | each kind's name, its content type and the tuple of its metadata dimensions | nothing; an equal kind registered again changes nothing | `kinds.KindError`: `invalid_kind`, `duplicate_kind` (the first registration stays) |
 | Look a kind up | `kinds.lookup(kind)`, `kinds.registered()` | a kind's name, or nothing | its registration or `None`; every registered kind | nothing |
-| Register a trace root | `roots.register(root)`, with `roots.TraceRoot(name, folder, place, kind, state, listed, ...)` | the fields of [Trace roots](#trace-roots) | nothing; an equal root registered again changes nothing | `roots.RootError`: `invalid_root`, `duplicate_root` |
+| Register a trace root | `roots.register(root)`, with `roots.TraceRoot(*, name, folder, place, kind, state, listed, ended="ended_at", period=None, conversation_period=None, conversation_files=(), conversation_folders=(), alive_lock=None)` | the fields of [Registering a root](#registering-a-root) | nothing; an equal root registered again changes nothing | `roots.RootError`: `invalid_root`, `duplicate_root` |
 | Find a folder or a lock file | `layout.run_folder(workspace, run_id)`, `layout.worker_folder(run, worker_run)`, `layout.round_folder(parent, number)`, `layout.checks_folder(parent)`, `layout.check_folder(checks, check_id)`, `layout.step_folder(workflow, number, key)`, `layout.lock_file(concorde, kind, name=None)` | the parent's folder or the `.concorde` and the names of [Layout](#layout) | the path, never created | `ValueError` for a lock that needs a name and has none or an unsafe one |
 | Make a node | `node.Node(folder, identity, kind, *, metadata=None, references=None, content_type=None, content=None, started_at=None)` | the folder its parent chose, its identity, its kind, and its content type when it records content | the node, not written yet, `running`, started now unless `started_at` says otherwise | `node.TraceError`: `node_invalid` (a metadata dimension that does not exist), `content_invalid` |
 | Name an artifact or a reference | `Node.keep(identity, relative, *, measured=True)`, `Node.refer(relation, target)` | a file of the folder, or a relation and its target | nothing; a repeated identity or reference is kept once | nothing; the next write refuses what breaks the node contract |
@@ -1521,7 +1576,7 @@ conventions hold for every operation:
 | Write the node's end | `Node.finish(status, *, outcome=None, error=None, used=None, content=None, ended_at=None, **metadata)` | the status, the finer outcome, the error link, the node's own usage fields | the record as written | `TraceError`: `node_invalid`, `content_invalid` |
 | Check, write or read a record | `node.check(record)`, `node.write(folder, record)`, `node.read(folder)` | a whole record, or a folder | the record; the path of the `trace.json` written; the record or `None` when none can be read | `TraceError`; `write` passes an operating-system error as `OSError` |
 | Take a lock | `with locks.hold(path, holder, *, wait=0, waiting=None, task=None, retake=True) as waited:` | the lock file, the holder's name, how long to wait, a callable told the holder once when the wait begins, the task, and whether to take a file its holder replaced meanwhile | holds it for the block | `locks.LockBusy` (`holder`, `entry`, `waited`), `locks.LockGone` (with `retake` false) |
-| Hand held locks on | `with locks.handed_on(*paths) as (environment, descriptors):` | lock files this process holds through `hold` | the variables to add to the started process's environment and the descriptors it must inherit, as [Handing a lock on](#handing-a-lock-on) says | `ValueError` for a lock this process does not hold |
+| Hand held locks on | `with locks.handed_on(*paths) as (environment, descriptors):` | lock files this process holds through `hold`, adopted locks included | the variables to add to the started process's environment and the descriptors it must inherit, as [Handing a lock on](#handing-a-lock-on) says | `ValueError` for a lock this process does not hold |
 | Read a lock's holder | `locks.holder(path)`, `locks.entry(path)` | a lock file | its holder line as text, or as an object; `None` when nobody holds it | nothing |
 | Wait for a lock's release | `locks.wait_released(path, timeout=None)` | a lock file and the longest wait in seconds | `True` once nobody holds it, `False` when the timeout passed first | nothing |
 | Wait for files to change | `watch.Changes(directory, names=None)`, then `.wait(timeout=None)` and `.close()` | a directory and the file names to watch | `True` once one changed since the last call, `False` when the timeout passed first | `watch.WatchError` |

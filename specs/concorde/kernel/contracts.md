@@ -132,6 +132,32 @@ A delivery commit is never amended.
 When a workspace is delivered again, it gets a new delivery commit on top.
 Thus, the first-parent history keeps every delivery.
 
+<a id="listing-deliveries"></a>
+
+**Listing deliveries.** The library's `delivery.deliveries` returns the delivery commits as a
+`list` of `dict`s, oldest first. Each entry has exactly two fields:
+
+- `commit`: the commit's full hexadecimal identity, as Git prints it.
+- `mismatches`: a `list` of texts, each saying how the commit fails to verify. It is empty when
+  the commit verifies. For a commit with another number of parents, it holds one text naming them.
+
+A branch without a delivery commit since the base gives an empty list. For example, a branch with
+one ordinary delivery commit and, on top of it, a merge commit given the same subject gives:
+
+```json
+[
+  {"commit": "4f1c2e0a9b7d6c5e4f3a2b1c0d9e8f7a6b5c4d3e", "mismatches": []},
+  {
+    "commit": "9a8b7c6d5e4f3a2b1c0d9e8f7a6b5c4d3e2f1a0b",
+    "mismatches": [
+      "it has 2 parent(s) (4f1c2e0a9b7d6c5e4f3a2b1c0d9e8f7a6b5c4d3e, 1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c) instead of one"
+    ]
+  }
+]
+```
+
+The workspace was then delivered once, by the first commit. The second commit does not verify.
+
 This convention says what a delivery commit is, not who makes one.
 The delivering command's own rules state these matters in its [Spec](../glossary.json#concept.spec):
 
@@ -256,7 +282,10 @@ A crash after step 1 and before step 5 leaves the marker. A marker whose writer'
 that no merge is unfinished is one a crash left at step 1 or step 5. Only its writer can tell, so
 only the writer removes it. A writer that cannot write the marker at step 1 changes nothing.
 A writer that cannot replace or remove it leaves the earlier marker, which still refuses every
-commit. The writer removes it once it can.
+commit. The writer removes it once it can. The writer's own commands do not read the marker as a
+reader does. While its own records say that the merge is not decided, the writer refuses every
+commit on the primary branch except those of the commands the marker names in `finish`
+([req.kernel.marker-writer-refuses-own-commits](requirements.md#req.kernel.marker-writer-refuses-own-commits)).
 
 A reader holds the merge lock. A marker present then belongs to a writer that ended, or to one that
 handed the lock on after it removed the marker. The reader refuses its commit with its own error
@@ -591,7 +620,10 @@ conventions hold for every operation:
   its `field` the JSON pointer or path, `str()` of it the message and `causes` the failures that
   led to it. Its `to_dict()` gives the refusal as JSON data, each cause as its own refusal.
 - A lock is taken by a context manager. The `with` block holds it. The lock is released when the
-  block ends, however it ends. The block receives the seconds spent waiting. A `wait` of `None`
+  block ends, however it ends. A lock the block adopted from a handing process that still holds
+  its own descriptor stays held by that process
+  ([Handing a lock on](tracing/contracts.md#handing-a-lock-on)). The block receives the seconds
+  spent waiting. A `wait` of `None`
   waits as long as the lock is held. A refusal of a lock is `concorde.kernel.locking.LockRefused`,
   a `KernelError` that also carries `holder`, the holder's line as `entry` and `waited`.
 - The final check of a file transaction is `verify`, a callable that takes no argument. Its return
@@ -610,7 +642,7 @@ conventions hold for every operation:
 | Check a record | `schema.validate(value, schema)` | a value and its contract schema | nothing | `invalid_input` (the schema), `invalid_field` (the value), and the codes of an embedded typed value |
 | Apply a file transaction | `files.apply_files(root, changes, allowed, *, verify=None)`; `files.file_change(root, path, content)` makes one change bound to the file's current bytes | a root, the changes, the allowed paths and an optional final check | the written paths | the outcomes of [File transactions](#file-transactions) |
 | Make a delivery message | `delivery.message(workspace, goal)` | a workspace's name and its goal | the message of a [delivery commit](#delivery-commit): the subject `concorde: deliver <workspace>`, a blank line and the goal without its surrounding whitespace, ending in one newline | nothing |
-| List deliveries | `delivery.deliveries(worktree, branch, base, workspace)` | a worktree, its branch, its base commit and the workspace's name | the delivery commits on the first-parent history since the base, oldest first, each with how it fails to verify, nothing when it verifies | `git_failed`, naming the Git command and its output |
+| List deliveries | `delivery.deliveries(worktree, branch, base, workspace)` | a worktree, its branch, its base commit and the workspace's name | a `list` of `{"commit", "mismatches"}`, the delivery commits on the first-parent history since the base, oldest first, `mismatches` holding how each fails to verify and empty when it verifies, as [Listing deliveries](#listing-deliveries) says | `git_failed`, naming the Git command and its output |
 | Take the [workspace lock](../glossary.json#concept.workspace-lock) | `with locking.workspace_lock(concorde, workspace, holder, *, wait=0, waiting=None, task=None, retake=True) as waited:` | the `.concorde` a binding names, the workspace, the holder, how long to wait and whether to take a lock file its holder removed meanwhile | holds it until released | `workspace_busy` naming the holder, `workspace_retired` (its holder removed the file while the taker waited, as a close does), `system_error` |
 | Take the merge lock | `with locking.merge_lock(concorde, holder, *, wait=300, task=None) as waited:` | the primary worktree's `.concorde`, the holder, the task when there is one and how long to wait, 300 seconds by default | holds it until released | `merge_busy` naming the holder, `system_error` |
 | Read a lock's holder | `locking.workspace_lock_holder(concorde, workspace)`, `locking.merge_lock_holder(concorde)` | the workspace lock or the merge lock | its holder line, or none when nobody holds it | nothing |

@@ -15,7 +15,7 @@ import sys
 from pathlib import Path
 
 from .. import errors
-from . import layout, reader, retention, roots
+from . import layout, reader, retention
 
 ACTOR = "Tracing (concorde trace)"
 
@@ -151,7 +151,6 @@ def prune(arguments, here: Path) -> int:
         pruned = retention.prune(
             directory,
             dry_run=arguments.dry_run,
-            roots=reader._placed(roots.registered(), directory),
             periods=periods,
         )
         removed.extend(pruned["removed"])

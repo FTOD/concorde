@@ -137,8 +137,20 @@ made. Thus, a reader that holds the merge lock finds the marker as its writer le
 
 While the [unfinished-merge marker](../glossary.json#concept.unfinished-merge-marker) it reads first is present or cannot be read, a part other than the marker's writer that commits on the primary branch while it holds the merge lock SHALL refuse, committing nothing.
 
-The refusal carries the marker's account, or names the file that cannot be read. Thus, no commit
-lands between a merge commit and the checks that decide whether it stays.
+The refusal carries the marker's account, or names the file that cannot be read. The marker's
+writer is bound by
+[req.kernel.marker-writer-refuses-own-commits](#req.kernel.marker-writer-refuses-own-commits)
+instead.
+
+### req.kernel.marker-writer-refuses-own-commits — The marker's writer restrains its own commits
+
+While its own records say that a merge it marked is not decided, the part that wrote the [unfinished-merge marker](../glossary.json#concept.unfinished-merge-marker) SHALL refuse every commit on the primary branch it would make, committing nothing, except a commit of the commands the marker names to finish that merge.
+
+The writer's records, not the marker, say whether its merge is decided, so the writer is not
+refused by its own marker. In Concorde, Tasks keeps this rule by refusing its other committing
+commands while a task is stored `merging`. Together with
+[req.kernel.marker-refuses-commits](#req.kernel.marker-refuses-commits), no commit lands between a
+merge commit and the checks that decide whether it stays.
 
 ### req.kernel.marker-read-whole — A marker is read whole or refused
 

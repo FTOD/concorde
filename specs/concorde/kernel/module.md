@@ -246,8 +246,9 @@ details:
 
 While it holds the lock, the holder writes these details into the lock file.
 A process may also be handed the lock by the process that started it.
-When handed the lock, the process holds it from its start without waiting, exactly as long as it
-runs ([Handing a lock on](tracing/contracts.md#handing-a-lock-on)). The lock keeps the name of its
+When handed the lock, the process holds it from its start without waiting, for as long as its
+work holds it and at most as long as it runs
+([Handing a lock on](tracing/contracts.md#handing-a-lock-on)). The lock keeps the name of its
 first taker, the task merge. The reason is that every other taker takes it so as not to land a
 commit between a merge commit and its checks.
 
@@ -267,7 +268,10 @@ A crash between leaves the marker behind. The marker names:
 - The commands that finish the merge.
 
 Every other part that commits on the primary branch reads the marker while it holds the merge lock.
-While the marker is present, that part refuses and commits nothing. The part also refuses when the
+While the marker is present, that part refuses and commits nothing. The part that wrote the marker
+restrains its own commits by its own records instead. While those records say that its merge is not
+decided, it refuses every commit on the primary branch except those of the commands that finish
+the merge. The part also refuses when the
 marker cannot be read, since such a marker may describe a merge. The reader holds the lock, so the
 writer has ended. The writer may still run only when it handed the lock on, and it removes the
 marker before it does.
