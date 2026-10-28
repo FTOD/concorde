@@ -40,10 +40,10 @@ class CheckExecutorTests(unittest.TestCase):
         self.file.write_text("original")
         (self.root / ".concorde/runs").mkdir(parents=True)
 
-    def run_check(self, code, *args, timeout=10):
+    def run_check(self, code, *args, timeout=10, flags=()):
         return execute_check(
             self.root,
-            [sys.executable, "-c", code, *map(str, args)],
+            [sys.executable, *flags, "-c", code, *map(str, args)],
             timeout=timeout,
             environment=child_environment(),
         )
@@ -208,6 +208,10 @@ print('child denied')
                 alias,
                 os.getpid(),
                 os.readlink("/proc/self/ns/pid"),
+                # Without site, Python never looks up the user's home in the passwd database.
+                # A configured check has no HOME, and on an SSSD host that lookup leaves its
+                # own descriptor to /var/lib/sss/mc/passwd open, which is no host descriptor.
+                flags=("-S",),
             )
         self.assertEqual(0, result.returncode, result)
         self.assertEqual("original", self.file.read_text())
