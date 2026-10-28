@@ -12,8 +12,9 @@ from unittest.mock import patch
 from concorde.spec.verification import verifies
 from tests.concorde.support.paths import REPOSITORY_ROOT
 
-# The lockfile of the fixture: a compiler, esbuild with its platform packages, and an optional
-# package for every platform that only a package left out would need.
+# The lockfile of the fixture: a compiler, esbuild with its platform packages, an optional
+# package for every platform that only a package left out would need, and a platform package that
+# only an optional peer dependency reaches.
 LOCK = {
     "lockfileVersion": 3,
     "packages": {
@@ -33,9 +34,18 @@ LOCK = {
             "cpu": ["arm64"],
         },
         "node_modules/@emnapi/core": {"version": "1.0.0", "optional": True},
+        "node_modules/vitest/node_modules/@esbuild/linux-x64": {
+            "version": "0.28.2",
+            "dev": True,
+            "optional": True,
+            "peer": True,
+            "os": ["linux"],
+            "cpu": ["x64"],
+        },
     },
 }
 EVERYTHING = ["typescript", "esbuild", "@esbuild/linux-x64"]
+OPTIONAL_PEER = "vitest/node_modules/@esbuild/linux-x64"
 PLATFORM = "linux x64 glibc\n"
 
 
@@ -141,6 +151,28 @@ class DocsiteTypeCheckTests(unittest.TestCase):
         status, calls, _ = self.check(None, [partial] * 3)
         self.assertEqual(1, status)
         self.assertEqual(["npm"] * 3, [argv[0] for argv, _ in calls])
+
+    @verifies("scenario.concorde.check-docsite-complete-install")
+    def test_a_package_only_optional_peers_reach_may_be_left_out(self):
+        # npm 11 leaves it out and npm 10 installs it: either install is used as it is.
+        for checkout in (EVERYTHING, [*EVERYTHING, OPTIONAL_PEER]):
+            with self.subTest(with_optional_peer=OPTIONAL_PEER in checkout):
+                status, calls, unchanged = self.check(checkout, [])
+                self.assertEqual(7, status)
+                self.assertFalse(any(argv[0] == "npm" for argv, _ in calls))
+                self.assertTrue(unchanged)
+        # Present at another version, it is still wrong.
+        with tempfile.TemporaryDirectory() as directory:
+            docsite = Path(directory)
+            install(docsite, [*EVERYTHING, OPTIONAL_PEER])
+            (docsite / "node_modules" / OPTIONAL_PEER / "package.json").write_text(
+                json.dumps({"version": "0.0.1"})
+            )
+            platform = dict(zip(("os", "cpu", "libc"), PLATFORM.split(), strict=True))
+            self.assertEqual(
+                [f"node_modules/{OPTIONAL_PEER}"],
+                self.module.lacking(docsite, LOCK, platform),
+            )
 
 
 if __name__ == "__main__":
