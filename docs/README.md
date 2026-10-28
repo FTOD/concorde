@@ -91,9 +91,9 @@ A question that changes nothing, such as how a Module works today, needs no task
 
 ## Install into a Git project
 
-Use Python 3.11+ and [uv](https://docs.astral.sh/uv/) on Linux with bubblewrap, a logged-in Claude
-Code for the main agent and a configured [pi](https://github.com/earendil-works/pi) for workers that
-run on pi. The installer places the
+Use Python 3.11+ and [uv](https://docs.astral.sh/uv/) on Linux with a root-owned bubblewrap 0.4.0
+or later, a logged-in Claude Code for the main agent and a configured
+[pi](https://github.com/earendil-works/pi) for workers that run on pi. The installer places the
 runtime, the `concorde` command, the Protocol copy and the main agent's guidance; it never writes
 your Specs. It installs every part of Concorde, or with `--parts spec` (or any other list of parts)
 only those and the parts they depend on.

@@ -94,11 +94,18 @@ The command's environment is the caller's `environment`, passed whole, with thes
 | `CONCORDE_CHECK_REPORT_DIR` | `<scratch>/reports` |
 | `PYTHONDONTWRITEBYTECODE` | `1` (avoids routine cache writes; it is not the boundary) |
 
+bubblewrap then sets `PWD` to the project, the command's working directory. The command's
+environment holds nothing else. Neither the host's environment nor bubblewrap's own reaches it.
+
 ## The Linux boundary
 
-The runner starts bubblewrap with a fixed system search path and a minimal loader environment.
-The runner passes the command's environment through an anonymous descriptor rather than its
-command line. The runner unshares these namespaces:
+The runner supports bubblewrap 0.4.0 and every later release. It uses only options that 0.4.0
+already has, and it uses them the same way on every release. It never probes the version. An
+older release is not supported.
+
+The runner starts bubblewrap with an empty environment. So bubblewrap gives the command only the
+environment that its options set. The runner passes the command's environment through an
+anonymous descriptor rather than its command line. The runner unshares these namespaces:
 
 - user
 - PID
@@ -125,9 +132,12 @@ user owns is never trusted. The host performs these actions:
 - reads both pipes
 
 Before the command runs, bubblewrap's own metadata descriptors are closed. Until the host holds
-a process file descriptor for the namespace's first process, the command stays stopped. At the
-end, before removing the scratch, the host kills the namespace. Before removing the scratch, the
-host also waits for the namespace.
+a process file descriptor for the namespace's first process, the command stays stopped. The host
+needs only the kernel's support for process file descriptors. Where Python or the C library lacks
+the calls, as on RHEL 8, it makes the system calls directly. At the end, before removing the
+scratch, the host kills the namespace. Before removing the scratch, the host also waits for the
+namespace. When the setup fails before the host holds that descriptor, the host kills bubblewrap's
+whole process group instead. So no namespace process still waiting to start the command survives.
 
 <a id="a-writable-project"></a>
 
@@ -292,6 +302,15 @@ This includes processes with these behaviours:
 - AND signal endings are reported as 128 plus the signal
 - AND large output on both pipes is drained without blocking the command
 - AND the caller's environment reaches the command without appearing in the sandbox's command line
+
+### scenario.checks.environment — The command sees only the environment the runner gives it
+
+- GIVEN the root-owned system bubblewrap, of release 0.4.0 or later
+- AND a host process whose own environment holds a variable that the caller's environment lacks
+- WHEN the runner runs a command with the caller's environment
+- THEN the command's environment is the caller's, with the runner's scratch values and
+  bubblewrap's `PWD` set
+- AND it holds no other variable, neither the host's nor one that bubblewrap started with
 
 ### scenario.checks.unavailable — Without the boundary nothing runs
 
