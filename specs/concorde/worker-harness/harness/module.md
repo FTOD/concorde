@@ -337,8 +337,8 @@ The path decisions resolve a tool's path argument exactly as pi resolves it.
 ### Calling the Harness
 
 Workers calls the Harness through the Python module `concorde.worker_harness.settings` and the two
-pi sources beside it. Workers calls it once per run, before the first round. These are its entry
-points:
+pi sources beside it. Through it, Workers generates a worker's configuration once per run, before
+the first round. These are its entry points:
 
 | Entry point | What it gives |
 | --- | --- |

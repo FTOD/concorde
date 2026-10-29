@@ -1,7 +1,8 @@
 # Harness library interface
 
-This document states the exact calling contract of the Harness as a library. Workers calls it once
-per worker run, before the first round. The contract covers these parts:
+This document states the exact calling contract of the Harness as a library. Through it, Workers
+generates a worker's configuration once per worker run, before the first round. The contract
+covers these parts:
 
 - the entry points and their inputs
 - what each entry point returns
@@ -75,8 +76,8 @@ the caller unchanged.
 Each entry point returns its value in a fixed order. Called again with equal inputs over an
 unchanged file tree, it returns an equal value. The
 [deny rules](../../glossary.json#concept.deny-rules) follow the file tree at the moment of the
-call. So a call after a file or directory appeared can return other rules. Workers therefore calls
-the Harness once per run and keeps the result for every round
+call. So a call after a file or directory appeared can return other rules. Workers therefore
+generates the configuration once per run and keeps it for every round
 ([req.workers.unchanged-across-rounds](../workers/launch.md#req.workers.unchanged-across-rounds)).
 The write hook and the
 [permission extension](../../glossary.json#concept.permission-extension) judge each tool call by

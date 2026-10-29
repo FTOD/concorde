@@ -420,9 +420,9 @@ def worker_choice(
             "backend_missing",
             f"the {worker} worker of {operation} runs on {backend} ({chosen['backend_source']}), "
             f"but the {backend} command is not installed: {looked}. A worker never falls back; "
-            f"install its program, or choose {other} for this worker by setting "
-            f'`operations.{operation}.workers.{worker}.backend` to "{other}" in {CONFIG}, '
-            f"whose model then needs an id on {other} in the model map.",
+            f"install its program or edit its backend in {CONFIG}: setting "
+            f'`operations.{operation}.workers.{worker}.backend` to "{other}" chooses {other} '
+            f"for this worker, whose model then needs an id on {other} in the model map.",
         )
     if chosen["model"] is None:
         names = ", ".join(where for _, where in _levels_of(config, operation, worker))

@@ -144,9 +144,10 @@ identifier in the policy's `groups` folder, `control/groups/` of the runtime dir
 ends when its shell exits and its output closes. A process the command started in the background
 with its output redirected may still run then. So when the command ends, the extension kills every
 process still in the group. Only then does it remove the file. A group the extension cannot kill
-keeps its file. When the file cannot be written, the extension stops the command and refuses it. The reason is `Concorde grant: the command was not run: its process
-group could not be registered for the host to stop: <error>`. Workers kills each registered group
-when the round ends ([the pi run mechanics](../workers/pi.md#run-directory)).
+keeps its file. When the file cannot be written, the extension stops the command and refuses it.
+The reason is `Concorde grant: the command was not run: its process group could not be registered
+for the host to stop: <error>`. Workers kills each registered group when the round ends
+([the pi run mechanics](../workers/pi.md#run-directory)).
 
 `denyRead` lists these paths:
 
