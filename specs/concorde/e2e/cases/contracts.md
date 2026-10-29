@@ -81,7 +81,8 @@ refused with `invalid_case`.
 - `resolved` is true when every FAIL_TO_PASS and every PASS_TO_PASS test passed.
 - `fail_to_pass` and `pass_to_pass` each count their list's tests. `passed` is the number that
   passed by their list's rule, `total` the number listed. `not_passed` maps each listed test that did
-  not pass to its status.
+  not pass to its status. Each listing counts, so a test listed twice counts twice in `total` and,
+  when it passed, in `passed`. `not_passed` names it once.
 - `command` is the pytest command line, as a list of arguments.
 - `exit_code` is pytest's exit code. It is kept for the reader. The verdict never depends on it.
 - `log` is the file that keeps pytest's whole output, or null when the caller named none.
@@ -93,7 +94,7 @@ reported.
 {
   "id": "contract.swe-bench-cases.verdict",
   "version": 1,
-  "semantics": "What grade prints when grading ends with a verdict. instance and ref name the case and the graded ref. fail_to_pass and pass_to_pass count their list: passed is the number that passed by the list's rule (PASSED or XFAIL for FAIL_TO_PASS; PASSED, XFAIL or SKIPPED for PASS_TO_PASS), total the number listed, and not_passed maps each other listed test to its status. resolved is true exactly when both lists passed whole. command is the pytest command line, exit_code pytest's exit code, which the verdict never depends on, and log the file that keeps pytest's whole output, or null.",
+  "semantics": "What grade prints when grading ends with a verdict. instance and ref name the case and the graded ref. fail_to_pass and pass_to_pass count their list: passed is the number that passed by the list's rule (PASSED or XFAIL for FAIL_TO_PASS; PASSED, XFAIL or SKIPPED for PASS_TO_PASS), total the number listed, each listing of a test counting once, and not_passed maps each other listed test to its status. resolved is true exactly when both lists passed whole. command is the pytest command line, exit_code pytest's exit code, which the verdict never depends on, and log the file that keeps pytest's whole output, or null.",
   "schema": {
     "type": "object",
     "required": [
