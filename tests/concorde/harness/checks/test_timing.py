@@ -72,6 +72,27 @@ class TimingTests(unittest.TestCase):
         )
 
     @verifies("scenario.checks.timing-spans")
+    def test_a_cancelled_task_ends_its_span_cancelled(self):
+        trace = Trace()
+
+        async def waiting(started):
+            with Span("awaited"):
+                started.set()
+                await asyncio.sleep(60)
+
+        async def main():
+            started = asyncio.Event()
+            task = asyncio.create_task(waiting(started))
+            await started.wait()
+            task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await task
+
+        with tracing(trace):
+            asyncio.run(main())
+        self.assertEqual(["cancelled"], [s["status"] for s in trace.records])
+
+    @verifies("scenario.checks.timing-spans")
     def test_a_span_finished_after_the_flush_changes_nothing_handed_over(self):
         handed = []
         trace = Trace(sink=handed.append)

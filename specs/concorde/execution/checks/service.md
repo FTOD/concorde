@@ -37,7 +37,9 @@ execution refuses the file or entry with `invalid_check`, naming the file and th
 - The file is not valid JSON. This includes a repeated field and these constants: `NaN` and
   `Infinity`.
 - The file holds another field or an entry with a field the table does not name.
-- The file's name is not a Module identity.
+- The file's name is not a Module identity, written as `module.` followed by one or more parts
+  separated by dots. Each part holds lower-case letters, digits and hyphens. The first part begins
+  with a letter. An example is `module.http`.
 - An `id` is used twice in the project.
 - An input is not a canonical project-relative path, as the Kernel's
   [typed values](../../kernel/contracts.md#typed-values) define it, or escapes the worktree through
@@ -142,13 +144,15 @@ Two of its arguments say what a check result is measured over:
 
 | Argument | Accepted value | When omitted or empty |
 | --- | --- | --- |
-| `measured` | A mapping from a Module label, as `modules` gives it, to the files that Module's results depend on besides its checks' inputs. In Concorde, these are its implementation files. Each file is a canonical project-relative POSIX path of a regular file of the worktree, reached through no symbolic link. A file named twice is measured once. | No implementation file is measured. A Module that `measured` does not name has none measured either. Its results still cover its checks' definitions, their inputs and `CHECK_POLICY`. |
+| `measured` | A mapping from a Module label, as `modules` gives it, to a list of the files that Module's results depend on besides its checks' inputs; a tuple is accepted as such a list. In Concorde, these are its implementation files. Each file is a canonical project-relative POSIX path of a regular file of the worktree, reached through no symbolic link. A file named twice is measured once. | No implementation file is measured. A Module that `measured` does not name has none measured either. Its results still cover its checks' definitions, their inputs and `CHECK_POLICY`. |
 | `tests` | A list of test identities, each `<path>` or `<path>::<name>`, where `<path>` is a canonical project-relative POSIX path of a regular file of the worktree, reached through no symbolic link. The order is kept. | No selective check is kept. |
 
 The service judges both arguments before any command runs:
 
 - The service refuses with `invalid_check` a `measured` of another shape. Such a `measured` is no
-  mapping, or has a Module label that is no string or files that are no list of strings.
+  mapping, or has a Module label that is no string or files that are no list of strings. A
+  mapping, a set or an iterator is no list of files, since its keys, its order or what a first
+  reading leaves of it would decide what is measured.
 - The service refuses with `invalid_check` a measured path that is not canonical, such as an
   absolute path or one holding `..`.
 - `tests` that are a string, an identity that is no string, or an identity whose path is not
@@ -235,8 +239,8 @@ The call runs these steps:
 
   When one of these events ends the call before the node ended, the log holds the output the
   boundary drained. Under this condition, the node ends `failed` with the outcome and status
-  `interrupted`. The error goes on to the caller as the same object. Only its `trace_failures`
-  attribute is added.
+  `interrupted`. The node ends so even when the log cannot be saved. The error goes on to the
+  caller as the same object. Only its `trace_failures` attribute is added.
 
   When the operating system refuses a write of `trace.json`, that write never changes the check
   or the call. The check result names the refused write in `trace_failures`. Whatever error the
@@ -591,6 +595,22 @@ start.
 - BUT when the call then fails, such as with `stale_evidence`, Check execution's link names each refused write of the checks it ran as `trace-write` evidence
 - AND a cancellation, an operating-system error or an unexpected error that ends the call after a first check completed goes on as the same object
 - AND that error's `trace_failures` and Check execution's link for it name the refused writes of both checks
+
+### scenario.checks.service-interrupted — An interrupted check ends its node
+
+- GIVEN a configured check whose command an interrupt ends after the boundary drained part of its output
+- WHEN the service runs it
+- THEN the interrupt goes on to the caller as the same object
+- AND the check's node ends `failed` with the outcome and status `interrupted`
+- AND its `output.log` holds the drained output
+
+### scenario.checks.service-interrupted-unlogged — An interrupted check whose log cannot be saved still ends its node
+
+- GIVEN a configured check whose command an interrupt ends
+- AND the place of the check node's `output.log` is taken by a directory
+- WHEN the service runs it
+- THEN the interrupt goes on to the caller as the same object
+- AND the check's node ends `failed` with the outcome and status `interrupted`
 
 ### scenario.checks.check-node-exists — A check node that exists is never written over
 

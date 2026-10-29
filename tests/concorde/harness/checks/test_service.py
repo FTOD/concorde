@@ -595,6 +595,7 @@ assert result['status'] == 'passed', result
                     ("failed", "stale_evidence"), (node["status"], node["outcome"])
                 )
 
+    @verifies("scenario.checks.service-interrupted")
     def test_an_interrupted_check_ends_its_node_with_the_drained_output(self):
         from concorde.execution.checks import checks
         from concorde.execution.checks.check_executor import CheckCancelled
@@ -629,6 +630,24 @@ assert result['status'] == 'passed', result
                         node["content"]["data"]["exit_code"],
                     ),
                 )
+
+    @verifies("scenario.checks.service-interrupted-unlogged")
+    def test_an_interrupted_check_ends_its_node_when_its_log_cannot_be_saved(self):
+        from concorde.execution.checks import checks
+
+        def interrupted(*_arguments, **_options):
+            # The log cannot be saved: its place is taken by a directory.
+            (self.logs / "check.a/output.log").mkdir()
+            raise KeyboardInterrupt
+
+        with patch.object(checks, "execute_check", interrupted):
+            with self.assertRaises(KeyboardInterrupt):
+                self.run_checks(["module.a"])
+        node = json.loads((self.logs / "check.a/trace.json").read_text())
+        self.assertEqual(
+            ("failed", "interrupted", "interrupted"),
+            (node["status"], node["outcome"], node["content"]["data"]["status"]),
+        )
 
     @verifies("scenario.checks.service-trace-write")
     def test_an_exceptional_exit_keeps_the_refused_trace_writes(self):
@@ -932,6 +951,11 @@ class ChecksFileTests(unittest.TestCase):
             ("module.c.json", {"checks": [], "extra": 1}, "module.c.json"),
             ("module.c.json", "{not json", "module.c.json"),
             ("checks.txt", {"checks": []}, "checks.txt"),
+            # A file name is a Module identity, never another identity.
+            ("foo.json", {"checks": []}, "foo.json"),
+            ("check.a.json", {"checks": []}, "check.a.json"),
+            ("module.json", {"checks": []}, "module.json"),
+            ("module..a.json", {"checks": []}, "module..a.json"),
             (
                 "module.c.json",
                 {"checks": [{"id": "check.c", "inputs": ["../outside"]}]},
@@ -1103,6 +1127,18 @@ class ChecksFileTests(unittest.TestCase):
         for name, options, code in (
             ("measured no mapping", {"measured": ["code.py"]}, "invalid_check"),
             ("paths a string", {"measured": {"module.a": "code.py"}}, "invalid_check"),
+            (
+                "paths a mapping",
+                {"measured": {"module.a": {"code.py": "x"}}},
+                "invalid_check",
+            ),
+            ("paths a set", {"measured": {"module.a": {"code.py"}}}, "invalid_check"),
+            (
+                "paths an iterator",
+                {"measured": {"module.a": iter(["code.py"])}},
+                "invalid_check",
+            ),
+            ("path no string", {"measured": {"module.a": [1]}}, "invalid_check"),
             ("path outside", {"measured": {"module.a": ["../x"]}}, "invalid_check"),
             ("path absolute", {"measured": {"module.a": ["/x"]}}, "invalid_check"),
             ("tests a string", {"tests": "code.py::t"}, "invalid_check"),
@@ -1164,8 +1200,8 @@ class ChecksFileTests(unittest.TestCase):
             self.root,
             modules=["module.a"],
             trace_directory=logs,
-            # A one-shot iterator is measured alike before and after the check.
-            measured={"module.a": iter(["code.py"])},
+            # A tuple is a list of files as well.
+            measured={"module.a": ("code.py",)},
             python=sys.executable,
         )
         self.assertEqual("passed", result["status"])

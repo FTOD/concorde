@@ -62,8 +62,11 @@ register_kinds(
 CHECKS_DIR = ".concorde/checks"
 # The fields of one checks file entry.
 ENTRY_FIELDS = ("id", "argv", "env", "when", "timeout_seconds", "inputs")
-# A Module identity, the name of a checks file without ``.json``.
+# An identity, such as a check's.
 IDENTITY = re.compile(r"^[a-z][a-z0-9]*(?:[.-][a-z0-9-]+)*$")
+# A Module identity, the name of a checks file without ``.json``: a label nothing looks up in a
+# registry, yet written as the Kernel's workspace binding writes a Module.
+MODULE_IDENTITY = re.compile(r"^module\.[a-z][a-z0-9-]*(?:\.[a-z0-9-]+)*$")
 
 
 class CheckError(Exception):
@@ -200,9 +203,16 @@ def measurement(
                 remediation="pass the files each Module's results depend on by Module",
             )
         for module, paths in measured.items():
-            if not isinstance(module, str) or isinstance(paths, (str, bytes)):
+            # A mapping, a set or an iterator is no list of files: its keys, its order or what
+            # is left of it after a first reading would decide what is measured.
+            if (
+                not isinstance(module, str)
+                or not isinstance(paths, (list, tuple))
+                or any(not isinstance(path, str) for path in paths)
+            ):
                 raise CheckError(
-                    f"measured names {module!r} with {paths!r}"[:300],
+                    f"measured names {module!r} with {paths!r}"[:300]
+                    + ", which is no list of strings",
                     refused,
                     "measured",
                     reason=why,
@@ -212,7 +222,7 @@ def measurement(
                 paths = tuple(dict.fromkeys(paths))
                 for path in paths:
                     safe_path(path, f"measured/{module}")
-            except (TypeError, KernelError) as error:
+            except KernelError as error:
                 raise CheckError(
                     f"measured names for {module} what is no list of canonical "
                     f"project-relative paths: {error}",
@@ -360,7 +370,11 @@ def checks_files(worktree: Path, modules=None) -> list[tuple[str, str]]:
         if modules is not None and module not in modules:
             continue
         entry = directory / name
-        if not IDENTITY.fullmatch(module) or entry.is_symlink() or not entry.is_file():
+        if (
+            not MODULE_IDENTITY.fullmatch(module)
+            or entry.is_symlink()
+            or not entry.is_file()
+        ):
             state = (
                 "a symbolic link"
                 if entry.is_symlink()
@@ -943,9 +957,11 @@ def _run_one(
         # did: it ends with the output drained so far, and the error goes on.
         if node.record["status"] == "running":
             stdout, stderr = getattr(error, "check_output", (b"", b""))
-            with contextlib.suppress(OSError, TraceError, KernelError):
-                if not logged:
+            # A log that cannot be saved never keeps the node from ending.
+            if not logged:
+                with contextlib.suppress(OSError):
                     log.write_bytes(header + stdout + b"\n" + stderr)
+            with contextlib.suppress(OSError, TraceError, KernelError):
                 node.finish(
                     "failed",
                     outcome="interrupted",
