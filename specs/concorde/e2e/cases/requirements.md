@@ -5,8 +5,12 @@ them in concrete situations.
 
 ### req.swe-bench-cases.repair-specs-only — A case's Specs are repaired in one bounded round
 
-The tool SHALL repair an adopted case's [Specs](../../glossary.json#concept.spec) in one bounded round: a review and, when that review
-does not accept the Specs, one `specify` and a second review.
+The tool SHALL repair an adopted case's [Specs](../../glossary.json#concept.spec) in one bounded
+round: a review, one `specify` only when that review ends `ok` and does not accept the Specs, and a
+second review only when that `specify` ends `ok`.
+
+A step that does not end `ok` stops the round with its result, as
+[Repairing the adopted Specs](module.md#repairing-the-adopted-specs) explains.
 
 The repair is meant to come before the case's issue is worked. That order is a condition on how the
 developer uses the tool, not a promise of the tool: `repair-specs` cannot tell whether the issue has
@@ -27,8 +31,12 @@ only there.
 
 ### req.swe-bench-cases.graded-like-swe-bench — Listed tests are graded under their complete identities
 
-The tool SHALL count a listed test as passed by SWE-bench's rules for its list, applied to the status
-pytest reports under the test's complete node identity.
+The tool SHALL count each listing of a test as passed by SWE-bench's rules for its list, applied to
+the status pytest reports under the test's complete node identity.
+
+A test listed twice therefore counts twice. A listed identity cut inside its parameters takes the
+status of the reported identities it begins only when they agree on passing by the same list's
+rule, as [the verdict](module.md#grading-a-case) explains.
 
 ### req.swe-bench-cases.patched-files-reset — Every file the test patch touches is reset
 

@@ -307,15 +307,18 @@ def read_report(path: Path) -> dict[str, str]:
     return statuses
 
 
-def status_of(test: str, statuses: dict[str, str]) -> str:
-    """The status of a listed test. Like SWE-bench, a listed identity cut inside its parameters
-    (more ``[`` than ``]``, as SWE-bench's datasets cut identities at their first space) stands
-    for the tests it begins when they agree on passing or not; otherwise it was ``not run``."""
+def status_of(test: str, statuses: dict[str, str], counted: tuple[str, ...]) -> str:
+    """The status of a test listed where ``counted`` are the passing statuses. Like SWE-bench, a
+    listed identity cut inside its parameters (more ``[`` than ``]``, as SWE-bench's datasets cut
+    identities at their first space) stands for the tests it begins when they agree on passing or
+    not; otherwise it was ``not run``. They agree by the list's own rule, so that a skipped and a
+    failed test never agree for PASS_TO_PASS, whatever order pytest reported them in (SWE-bench's
+    harness compares them by FAIL_TO_PASS's rule for both lists)."""
     if test in statuses:
         return statuses[test]
     if test.count("[") > test.count("]"):
         matches = [statuses[name] for name in statuses if name.startswith(test)]
-        if matches and len({status in PASSING for status in matches}) == 1:
+        if matches and len({status in counted for status in matches}) == 1:
             return matches[0]
     return "not run"
 
@@ -480,6 +483,8 @@ def grade(
                 stderr=stderr[-3000:],
                 **({"log": str(kept)} if kept else {}),
             ) from error
+        # The whole output is kept before the cleanup, which may fail grading.
+        _keep(log, completed.stdout + "\n" + completed.stderr)
         statuses = read_report(report)
     except BaseException as error:
         failure = error
@@ -506,12 +511,12 @@ def grade(
                     else {}
                 ),
             ) from failure
-    _keep(log, completed.stdout + "\n" + completed.stderr)
 
     def split(tests: list[str], counted: tuple[str, ...]) -> dict:
-        found = {test: status_of(test, statuses) for test in tests}
+        found = {test: status_of(test, statuses, counted) for test in tests}
+        # Like SWE-bench, every listing counts, a test listed twice twice.
         return {
-            "passed": sum(status in counted for status in found.values()),
+            "passed": sum(found[test] in counted for test in tests),
             "total": len(tests),
             "not_passed": {
                 test: status for test, status in found.items() if status not in counted

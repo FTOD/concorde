@@ -127,23 +127,23 @@ class CaseTests(unittest.TestCase):
         }
         return cases.grade(project, case, Path(sys.executable), **options)
 
+    STATUSES = (
+        "import pytest\n"
+        "from calc import add\n\n\n"
+        '@pytest.mark.parametrize("a", ["a b", "c d"])\n'
+        "def test_add(a):\n    assert add(1, 1) == 2\n\n\n"
+        '@pytest.mark.skip(reason="not here")\n'
+        "def test_skipped():\n    pass\n\n\n"
+        "@pytest.mark.xfail\n"
+        "def test_expected():\n    assert False\n"
+    )
+
     @verifies("scenario.swe-bench-cases.grade-statuses")
     def test_statuses_are_read_under_complete_test_identities(self):
-        test = (
-            "import pytest\n"
-            "from calc import add\n\n\n"
-            '@pytest.mark.parametrize("a", ["a b", "c d"])\n'
-            "def test_add(a):\n    assert add(1, 1) == 2\n\n\n"
-            '@pytest.mark.skip(reason="not here")\n'
-            "def test_skipped():\n    pass\n\n\n"
-            "@pytest.mark.xfail\n"
-            "def test_expected():\n    assert False\n\n\n"
-            "def test_broken():\n    assert False\n"
-        )
         with tempfile.TemporaryDirectory() as directory:
             graded = self._graded(
                 directory,
-                test,
+                self.STATUSES,
                 {
                     "FAIL_TO_PASS": [
                         "test_calc.py::test_add[a b]",
@@ -155,16 +155,22 @@ class CaseTests(unittest.TestCase):
                 },
             )
             self.assertTrue(graded["resolved"], graded)
-            self.assertEqual(3, graded["fail_to_pass"]["passed"])
-            self.assertEqual(1, graded["pass_to_pass"]["passed"])
+            self.assertEqual(
+                {"passed": 3, "total": 3, "not_passed": {}}, graded["fail_to_pass"]
+            )
+            self.assertEqual(
+                {"passed": 1, "total": 1, "not_passed": {}}, graded["pass_to_pass"]
+            )
+
+    @verifies("scenario.swe-bench-cases.grade-unresolved-statuses")
+    def test_a_skipped_or_unreported_fail_to_pass_test_is_no_resolution(self):
         with tempfile.TemporaryDirectory() as directory:
             graded = self._graded(
                 directory,
-                test,
+                self.STATUSES,
                 {
                     "FAIL_TO_PASS": [
                         "test_calc.py::test_skipped",
-                        "test_calc.py::test_broken",
                         "test_calc.py::test_missing",
                     ]
                 },
@@ -173,12 +179,101 @@ class CaseTests(unittest.TestCase):
             # A skipped FAIL_TO_PASS test is no resolution, and is named as skipped.
             self.assertEqual(
                 {
-                    "test_calc.py::test_skipped": "SKIPPED",
-                    "test_calc.py::test_broken": "FAILED",
-                    "test_calc.py::test_missing": "not run",
+                    "passed": 0,
+                    "total": 2,
+                    "not_passed": {
+                        "test_calc.py::test_skipped": "SKIPPED",
+                        "test_calc.py::test_missing": "not run",
+                    },
                 },
-                graded["fail_to_pass"]["not_passed"],
+                graded["fail_to_pass"],
             )
+
+    @verifies("scenario.swe-bench-cases.grade-cut-pass-to-pass")
+    def test_a_cut_pass_to_pass_identity_agrees_by_its_lists_rule(self):
+        # Each test's two parametrized identities share the part before their first space, so
+        # an identity cut there stands for both. Pytest reports them in parameter order.
+        skip_second = '["x 1", pytest.param("x 2", marks=pytest.mark.skip)]'
+        skip_first = '[pytest.param("x 1", marks=pytest.mark.skip), "x 2"]'
+        test = (
+            "import pytest\n\n\n"
+            f'@pytest.mark.parametrize("a", {skip_second})\n'
+            "def test_kept(a):\n    pass\n\n\n"
+            f'@pytest.mark.parametrize("a", {skip_first})\n'
+            "def test_skipped_first(a):\n    assert False\n\n\n"
+            f'@pytest.mark.parametrize("a", {skip_second})\n'
+            "def test_failed_first(a):\n    assert False\n"
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            graded = self._graded(
+                directory,
+                test,
+                {
+                    "FAIL_TO_PASS": ["test_calc.py::test_kept[x 1]"],
+                    "PASS_TO_PASS": [
+                        "test_calc.py::test_kept[x",
+                        "test_calc.py::test_skipped_first[x",
+                        "test_calc.py::test_failed_first[x",
+                    ],
+                },
+            )
+        # A passed and a skipped test are both maintained; a skipped and a failed test disagree,
+        # in either order, so the cut identity was not run.
+        self.assertEqual(
+            {
+                "passed": 1,
+                "total": 3,
+                "not_passed": {
+                    "test_calc.py::test_skipped_first[x": "not run",
+                    "test_calc.py::test_failed_first[x": "not run",
+                },
+            },
+            graded["pass_to_pass"],
+        )
+        self.assertFalse(graded["resolved"])
+        # FAIL_TO_PASS keeps its own rule: there a passed and a skipped test disagree.
+        statuses = {"t.py::t[x 1]": "PASSED", "t.py::t[x 2]": "SKIPPED"}
+        self.assertEqual(
+            "not run", cases.status_of("t.py::t[x", statuses, cases.PASSING)
+        )
+        self.assertEqual(
+            "PASSED", cases.status_of("t.py::t[x", statuses, cases.MAINTAINED)
+        )
+
+    @verifies("scenario.swe-bench-cases.grade-listed-twice")
+    def test_a_test_listed_twice_counts_twice(self):
+        test = (
+            "from calc import add\n\n\n"
+            "def test_add():\n    assert add(1, 1) == 2\n\n\n"
+            "def test_kept():\n    pass\n\n\n"
+            "def test_broken():\n    assert False\n"
+        )
+        add, kept, broken = (
+            f"test_calc.py::{name}" for name in ("test_add", "test_kept", "test_broken")
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            graded = self._graded(
+                directory,
+                test,
+                {"FAIL_TO_PASS": [add, add], "PASS_TO_PASS": [kept, kept]},
+            )
+        self.assertTrue(graded["resolved"], graded)
+        for listed in ("fail_to_pass", "pass_to_pass"):
+            self.assertEqual(
+                {"passed": 2, "total": 2, "not_passed": {}}, graded[listed]
+            )
+        # A failing test listed twice counts twice among the listed and is named once.
+        with tempfile.TemporaryDirectory() as directory:
+            graded = self._graded(
+                directory,
+                test,
+                {"FAIL_TO_PASS": [add], "PASS_TO_PASS": [broken, kept, broken]},
+            )
+        self.assertFalse(graded["resolved"])
+        self.assertEqual(
+            {"passed": 1, "total": 3, "not_passed": {broken: "FAILED"}},
+            graded["pass_to_pass"],
+        )
 
     @verifies("scenario.swe-bench-cases.grade")
     def test_pythonpath_directories_come_before_the_callers_own(self):
@@ -373,13 +468,21 @@ class CaseTests(unittest.TestCase):
                     if broken
                     else None,
                 )
+                log = Path(directory) / "runs/grade.log"
+                log.parent.mkdir()
+                log.write_text("an earlier run's output")
                 with (
                     patch.object(cases.subprocess, "run", refused_removal),
                     patch.object(cases.shutil, "rmtree", lambda *a, **k: None),
                     self.assertRaises(cases.E2EError) as raised,
                 ):
-                    cases.grade(project, case, Path(sys.executable))
+                    cases.grade(project, case, Path(sys.executable), log=log)
                 error = raised.exception
+                # Tests that ran keep their whole output in place of an earlier run's.
+                if broken:
+                    self.assertEqual("an earlier run's output", log.read_text())
+                else:
+                    self.assertIn("1 passed", log.read_text())
                 self.assertEqual("cleanup_failed", error.code)
                 tree = Path(error.evidence["worktree"])
                 left = "\n".join(error.evidence["left"])

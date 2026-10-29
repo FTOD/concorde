@@ -187,6 +187,8 @@ asks for. The test patch and the case's tests stay outside the project.
 No worker sees them. The project is left as it was
 ([requirements](requirements.md#req.swe-bench-cases.graded-apart)). The whole pytest output is
 kept under `.concorde/runs/e2e/`. It replaces the output of an earlier grading of the same case.
+It is kept before the throwaway worktree is removed, so a grading that then fails with
+`cleanup_failed` keeps it too.
 
 **The statuses.** Grading reads each test's status under its complete pytest node identity.
 A small pytest plugin of grading records that identity from pytest's own reports. Pytest's short
@@ -204,8 +206,16 @@ is `ERROR`. A listed identity that pytest never reports is `not run`.
   no regression.
 - SWE-bench's datasets cut some parametrized identities at their first space, inside their
   brackets. A listed identity with more `[` than `]` and no exact match stands for every reported
-  identity it begins. It takes their status when they agree on passing or not. Otherwise it is
-  `not run`.
+  identity it begins. It takes their status when they agree on passing or not by its list's rule.
+  Otherwise it is `not run`
+  ([scenario](scenarios.md#scenario.swe-bench-cases.grade-cut-pass-to-pass)). SWE-bench's harness
+  compares them by FAIL_TO_PASS's rule for both lists. For PASS_TO_PASS, a passed and a skipped
+  test then disagree. A skipped and a failed test then agree, and its verdict depends on the order
+  pytest reports them in. Grading compares them by the list's own rule, so that this order never
+  decides the verdict.
+- Every listing counts. A test listed twice counts twice in its list's tests and, when it passed,
+  twice in those that passed
+  ([scenario](scenarios.md#scenario.swe-bench-cases.grade-listed-twice)).
 
 When every FAIL_TO_PASS and every PASS_TO_PASS test passed, the case is resolved. Failing tests
 are a verdict, not an error. The [verdict contract](contracts.md#the-verdict) gives the fields of

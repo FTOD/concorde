@@ -24,10 +24,42 @@ Concrete situations that show the [requirements](requirements.md) of
 
 ### scenario.swe-bench-cases.grade-statuses — Statuses follow complete identities and SWE-bench's rules
 
-- GIVEN a case whose FAIL_TO_PASS lists a passing parametrized test whose identity holds a space, the same test's identity cut at that space and an expected failure, and whose PASS_TO_PASS lists a skipped test
+- GIVEN a case whose FAIL_TO_PASS lists a passing parametrized test under its complete identity, which holds a space
+- AND its FAIL_TO_PASS lists the same test's identity cut at that space
+- AND its FAIL_TO_PASS lists an expected failure
+- AND its PASS_TO_PASS lists a skipped test
+- WHEN the developer grades the project
+- THEN grading reports the case resolved, every listed test counted as passed
+
+### scenario.swe-bench-cases.grade-unresolved-statuses — A skipped or never-reported FAIL_TO_PASS test resolves nothing
+
+- GIVEN a case whose FAIL_TO_PASS lists a skipped test
+- AND its FAIL_TO_PASS lists a test pytest never reports
+- WHEN the developer grades the project
+- THEN grading reports the case unresolved
+- AND it names the skipped test with its status `SKIPPED` and the other with `not run`
+
+### scenario.swe-bench-cases.grade-cut-pass-to-pass — A cut PASS_TO_PASS identity agrees by its own list's rule
+
+- GIVEN a case whose PASS_TO_PASS lists three parametrized tests, each by an identity cut at its first space that begins two reported identities
+- AND the first test's two identities pass and are skipped
+- AND the second test's two identities are skipped and then fail
+- AND the third test's two identities fail and then are skipped
+- WHEN the developer grades the project
+- THEN the first cut identity counts as passed, since a skipped PASS_TO_PASS test is no regression
+- AND the second and the third are named with `not run`, since a skipped and a failed test disagree on passing for PASS_TO_PASS
+- BUT the order in which pytest reports their identities changes neither outcome
+
+For FAIL_TO_PASS, the first test's identities would disagree instead, since a skipped FAIL_TO_PASS
+test resolves nothing.
+
+### scenario.swe-bench-cases.grade-listed-twice — A test listed twice counts twice
+
+- GIVEN a case whose FAIL_TO_PASS lists one passing test twice
+- AND its PASS_TO_PASS lists another passing test twice
 - WHEN the developer grades the project
 - THEN grading reports the case resolved
-- BUT a skipped or never-reported FAIL_TO_PASS test is named with its status `SKIPPED` or `not run`, and the case is unresolved
+- AND each list counts 2 of its 2 listed tests as passed
 
 ### scenario.swe-bench-cases.repair-specs — An adopted case's Specs are repaired before its issue
 
@@ -73,4 +105,5 @@ Concrete situations that show the [requirements](requirements.md) of
 - GIVEN a grading whose worktree Git cannot remove
 - WHEN grading ends
 - THEN it fails with `cleanup_failed`, naming the worktree and listing its registration and its scratch directory as left
+- AND when the case's tests ran, the log the developer named holds their whole output in place of an earlier grading's
 - AND when grading had failed before, `cleanup_failed` names that earlier error
