@@ -497,8 +497,22 @@ class SettingsTests(unittest.TestCase):
             capture_output=True,
             text=True,
         )
-        decision = json.loads(denied.stdout)["hookSpecificOutput"]
-        self.assertEqual("deny", decision["permissionDecision"])
+        # The exact output of claude-code.md#write-hook: one line, the prefix, then the row.
+        self.assertEqual(0, denied.returncode)
+        self.assertEqual(
+            {
+                "hookSpecificOutput": {
+                    "hookEventName": "PreToolUse",
+                    "permissionDecision": "deny",
+                    "permissionDecisionReason": "Concorde grant: notes.txt is not in this "
+                    "task's grant; a new file outside the bound directories is created and "
+                    "bound to a Module by the task level before a worker fills it, and a "
+                    "file another Module binds needs that Module bound to the task",
+                }
+            },
+            json.loads(denied.stdout),
+        )
+        self.assertEqual(1, len(denied.stdout.splitlines()))
         allowed = subprocess.run(
             [sys.executable, str(hook)],
             input=json.dumps({"tool_input": {"file_path": f"{root}/src/a/calc.py"}}),

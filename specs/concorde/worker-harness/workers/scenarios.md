@@ -786,7 +786,8 @@ the run. [The run mechanics](launch.md) give these exact details:
 - THEN the answer names the file and says that the matching line is too long to show
 - AND the answer never says that nothing matched
 - AND when a line of `rg`'s output cannot be read, the answer says so
-- AND when the matches reach the limit, the extension stops `rg` and says that the limit was reached
+- AND once the extension has read the limit-th match and that match's own context lines, it stops
+  `rg` without reading further output and says that the limit was reached
 
 ### scenario.workers.pi-runtime-missing — A pi run without its runtime is refused
 

@@ -50,7 +50,7 @@ The extension registers exactly these tools, replacing pi's built-ins of the sam
 | --- | --- |
 | `read` | Checks the path with the read table below, then runs pi's own `read`, whose file operations check again the exact path it opens |
 | `write`, `edit` | Check the path with the write table below, then run pi's own tool |
-| `grep` | Runs `rg` inside the sandbox; files the sandbox hides do not exist for it. It reads `rg`'s output line by line and stops `rg` at the match limit. A line too long to read whole is shown as such, and a line it cannot read is reported, so an incomplete reading never answers that nothing matched |
+| `grep` | Runs `rg` inside the sandbox; files the sandbox hides do not exist for it. It reads `rg`'s output line by line. It stops `rg` as soon as it has read the limit-th match and that match's own context lines, as pi's own `grep` stops at that match. A line too long to read whole is shown as such, and a line it cannot read is reported, so an incomplete reading never answers that nothing matched |
 | `find` | Runs `fd` inside the sandbox |
 | `ls` | Lists a directory inside the sandbox |
 | `bash` | Runs the command inside the sandbox |

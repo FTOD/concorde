@@ -359,7 +359,7 @@ export default function (pi: ExtensionAPI) {
       const limit = Math.max(1, params.limit ?? 100);
       const context =
         params.context && params.context > 0 ? Math.floor(params.context) : 0;
-      const reader = new RipgrepReader(root, limit, LINE_CAP);
+      const reader = new RipgrepReader(root, limit, LINE_CAP, context);
       const completed = await inSandbox(
         [
           quote(POLICY.programs.rg),

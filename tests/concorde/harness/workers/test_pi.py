@@ -568,12 +568,13 @@ GREP_PROBE = """
 import { LineSplitter, RipgrepReader } from %(source)s;
 const out = {};
 for (const [name, case_] of Object.entries(%(cases)s)) {
-  const reader = new RipgrepReader("/w", case_.limit, case_.cap);
+  const reader = new RipgrepReader("/w", case_.limit, case_.cap, case_.context ?? 0);
   const splitter = new LineSplitter(case_.cap, (line, cut) => reader.read(line, cut));
-  let stopped = false;
-  for (const chunk of case_.chunks) if (!splitter.push(chunk)) { stopped = true; break; }
+  let stopped = false, stoppedAt = null;
+  for (const [index, chunk] of case_.chunks.entries())
+    if (!splitter.push(chunk)) { stopped = true; stoppedAt = index; break; }
   if (!stopped) splitter.end();
-  out[name] = { answer: reader.answer((text) => text), stopped };
+  out[name] = { answer: reader.answer((text) => text), stopped, stoppedAt };
 }
 console.log(JSON.stringify(out));
 """
@@ -662,6 +663,37 @@ class PiGrepTests(unittest.TestCase):
         self.assertTrue(out["limited"]["stopped"])
         self.assertIn("1 matches limit reached", out["limited"]["answer"])
         self.assertEqual("No matches found", out["none"]["answer"])
+
+    @verifies("scenario.workers.pi-grep-incomplete-output")
+    def test_grep_stops_at_the_limit_th_match(self):
+        first = rg_event("match", "/w/a.py", 1, "NEEDLE = 1")
+        second = rg_event("match", "/w/a.py", 9, "NEEDLE = 2")
+        after = rg_event("context", "/w/a.py", 10, "after = 2")
+        later = rg_event("context", "/w/a.py", 11, "later = 3")
+        end = '{"type":"end","data":{}}'
+        out = self.answers(
+            {
+                # Exactly the limit's matches, then a long remainder without one.
+                "exact": {
+                    "limit": 2,
+                    "cap": 1000,
+                    "chunks": [first + "\n", second + "\n", end + "\n", end + "\n"],
+                },
+                # With context, the last match's own context lines are read, then no more.
+                "context": {
+                    "limit": 2,
+                    "cap": 1000,
+                    "context": 1,
+                    "chunks": [first + "\n", second + "\n", after + "\n", later + "\n"],
+                },
+            }
+        )
+        self.assertEqual(1, out["exact"]["stoppedAt"])
+        self.assertIn("a.py:9: NEEDLE = 2", out["exact"]["answer"])
+        self.assertIn("2 matches limit reached", out["exact"]["answer"])
+        self.assertEqual(2, out["context"]["stoppedAt"])
+        self.assertIn("a.py-10- after = 2", out["context"]["answer"])
+        self.assertNotIn("later", out["context"]["answer"])
 
 
 @unittest.skipUnless(shutil.which("node"), "Node is needed to run pi_policy.ts")
