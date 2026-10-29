@@ -770,6 +770,14 @@ the run. [The run mechanics](launch.md) give these exact details:
 - AND bash's temporary files go to the run's private `TMPDIR`
 - AND bash can write that `TMPDIR`
 
+### scenario.workers.pi-command-group-stopped — A pi command's background process ends with the command
+
+- GIVEN a running pi `implement` worker
+- WHEN its bash command starts a process in the background with its output redirected and exits
+- THEN the bash tool returns
+- AND the background process no longer runs
+- AND the command's group is no longer registered in `control/groups/`
+
 ### scenario.workers.pi-grep-incomplete-output — pi's grep never takes an incomplete reading for no match
 
 - GIVEN a running pi worker

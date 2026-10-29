@@ -503,7 +503,9 @@ Harness's files for these promises:
 - the permission extension's file tools
   ([req.workers.pi-file-tools](../workers/pi.md#req.workers.pi-file-tools))
 - the permission extension's sandbox
-  ([req.workers.pi-sandbox](../workers/pi.md#req.workers.pi-sandbox))
+  ([req.workers.pi-sandbox](../workers/pi.md#req.workers.pi-sandbox)), whose command groups it
+  kills when each command ends
+  ([req.workers.pi-command-group-stopped](../workers/pi.md#req.workers.pi-command-group-stopped))
 - the permission extension's configuration
   ([req.workers.pi-only-extension](../workers/pi.md#req.workers.pi-only-extension))
 - the permission extension's limits

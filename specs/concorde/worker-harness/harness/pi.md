@@ -140,9 +140,11 @@ initializes the engine once per process with no allowed network domain and a str
 The extension passes the filesystem configuration with every command. Each command runs in a
 process group of its own, so that the extension can stop the command with every process it started.
 Before the command goes on, the extension registers the group as an empty file named by the group's
-identifier in the policy's `groups` folder, `control/groups/` of the runtime directory. When the
-command ends, the extension removes the file. When the file cannot be written, the extension stops
-the command and refuses it. The reason is `Concorde grant: the command was not run: its process
+identifier in the policy's `groups` folder, `control/groups/` of the runtime directory. A command
+ends when its shell exits and its output closes. A process the command started in the background
+with its output redirected may still run then. So when the command ends, the extension kills every
+process still in the group. Only then does it remove the file. A group the extension cannot kill
+keeps its file. When the file cannot be written, the extension stops the command and refuses it. The reason is `Concorde grant: the command was not run: its process
 group could not be registered for the host to stop: <error>`. Workers kills each registered group
 when the round ends ([the pi run mechanics](../workers/pi.md#run-directory)).
 

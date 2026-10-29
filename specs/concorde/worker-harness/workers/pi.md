@@ -36,7 +36,9 @@ differences:
 
 Each tool command runs in a process group of its own, which the host's kill of pi's group does not
 reach. So the permission extension registers each group in `control/groups/` before the command
-goes on, and removes the registration when the command ends. When the round ends, however it ends,
+goes on. When the command ends, the extension kills what is left of the group, such as a process
+the command started in the background. Only then does it remove the registration
+([the Harness's sandbox](../harness/pi.md#sandbox)). When the round ends, however it ends,
 the host kills pi's process group and then every registered group, and removes every registration.
 A command whose group cannot be registered is stopped and refused. On Linux the sandbox's own
 parent-death signal also ends the command with pi. On macOS nothing else does.
@@ -201,6 +203,10 @@ A `read`, `write` or `edit` call the permission extension denies SHALL return th
 ### req.workers.pi-sandbox — pi commands run sandboxed without network
 
 Every command the pi `bash`, `grep`, `find` or `ls` tool runs SHALL run inside the sandbox-runtime sandbox with the run's filesystem lists, no allowed network domain and a strict allowlist.
+
+### req.workers.pi-command-group-stopped — Nothing a pi tool command started outlives the command
+
+When a pi tool command ends, the permission extension SHALL kill every process left in the command's process group before it removes the group's registration.
 
 ### req.workers.pi-only-extension — The permission extension is a pi worker's only extension
 

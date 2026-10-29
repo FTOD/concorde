@@ -75,6 +75,16 @@ interface Completed {
   code: number | null;
 }
 
+/** Kill every process left in a process group; true once nothing of the group is left. */
+function stopGroup(group: number): boolean {
+  try {
+    process.kill(-group, "SIGKILL");
+    return true;
+  } catch (error) {
+    return (error as NodeJS.ErrnoException).code === "ESRCH";
+  }
+}
+
 /** The longest line of standard output `inSandbox` hands to a line reader whole. */
 const LINE_CAP = 8 * MAX_OUTPUT;
 
@@ -162,8 +172,13 @@ async function inSandbox(
     child.on("error", reject);
     child.on("close", (code) => {
       if (timer) clearTimeout(timer);
+      // A process the command left in its group, such as one it started in the background with
+      // its output redirected, holds no pipe whose closing ends the command. It is stopped before
+      // the registration goes, so nothing the command started outlives it; a group the extension
+      // cannot stop stays registered for the host to kill when the round ends.
       try {
-        if (registered) rmSync(registered, { force: true });
+        if (registered && stopGroup(child.pid as number))
+          rmSync(registered, { force: true });
       } catch {
         // The host forgets the group anyway once it has killed it.
       }

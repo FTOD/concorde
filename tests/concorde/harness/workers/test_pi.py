@@ -6,12 +6,16 @@ decisions of ``pi_policy.ts`` are checked here under Node when Node is available
 
 from __future__ import annotations
 
+import contextlib
 import json
 import os
+import shlex
 import shutil
+import signal
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
@@ -934,6 +938,36 @@ console.log(JSON.stringify(out));
 """
 
 
+BASH_PROBE = """
+import extension from "./permission.ts";
+const tools = {};
+extension({ registerTool: (tool) => { tools[tool.name] = tool; }, on: () => {}, appendEntry: () => {} });
+const sessionManager = { getSessionId: () => "s", getSessionFile: () => undefined };
+const ctx = { cwd: %(work)s, abort() {}, sessionManager };
+const result = await tools.bash.execute("b", { command: %(command)s }, undefined, undefined, ctx);
+console.log(JSON.stringify({ text: result.content[0].text }));
+"""
+
+
+def process_gone(pid: int, seconds: float = 10.0) -> bool:
+    """Whether ``pid`` ends within ``seconds``; a zombie counts as ended, since it runs nothing."""
+    deadline = time.monotonic() + seconds
+    while True:
+        try:
+            os.kill(pid, 0)
+        except ProcessLookupError:
+            return True
+        try:
+            state = Path(f"/proc/{pid}/stat").read_text().rsplit(")", 1)[1].split()[0]
+        except (OSError, IndexError):
+            state = ""
+        if state == "Z":
+            return True
+        if time.monotonic() > deadline:
+            return False
+        time.sleep(0.05)
+
+
 @unittest.skipUnless(
     shutil.which("node") and PI_PACKAGE is not None,
     "Node and an installed pi are needed to load the permission extension",
@@ -962,7 +996,17 @@ class PiExtensionTests(unittest.TestCase):
         (extension / "node_modules/typebox").symlink_to(dependencies / "typebox")
         stub = self.base / "sandbox-runtime"
         (stub / "dist").mkdir(parents=True)
-        (stub / "dist/index.js").write_text("export const SandboxManager = {};\n")
+        # A sandbox that runs each command as it is, so the extension's own handling of a command
+        # is what a test observes.
+        (stub / "dist/index.js").write_text(
+            "export const SandboxManager = {\n"
+            "  initialize: async () => {},\n"
+            "  wrapWithSandbox: async (command) => command,\n"
+            "  reset: async () => {},\n"
+            "};\n"
+        )
+        self.groups = self.base / "control/groups"
+        self.groups.mkdir(parents=True)
         shutil.copy2(POLICY_SOURCE, extension / "pi_policy.ts")
         policy = {
             "worktree": self.worktree.as_posix(),
@@ -982,6 +1026,7 @@ class PiExtensionTests(unittest.TestCase):
                 "denyWrite": [],
             },
             "programs": {"rg": "rg", "fd": "fd"},
+            "groups": self.groups.as_posix(),
             "limits": {"maxTurns": 10, "maxBudgetUsd": 0.5},
             "resultSchema": result_schema(None),
         }
@@ -1023,6 +1068,35 @@ class PiExtensionTests(unittest.TestCase):
         )
         self.assertEqual(0, completed.returncode, completed.stderr)
         return json.loads(completed.stdout.strip().splitlines()[-1])
+
+    @verifies("scenario.workers.pi-command-group-stopped")
+    def test_a_background_process_of_a_command_ends_with_the_command(self):
+        pid_file = self.base / "background.pid"
+        # The background process holds none of the command's pipes, so the command ends at once.
+        command = f"sleep 60 >/dev/null 2>&1 </dev/null & echo $! > {shlex.quote(pid_file.as_posix())}"
+        probe = self.extension / "bash.mts"
+        probe.write_text(
+            BASH_PROBE
+            % {
+                "work": json.dumps((self.base / "work").as_posix()),
+                "command": json.dumps(command),
+            }
+        )
+        completed = subprocess.run(
+            ["node", "--experimental-strip-types", "--no-warnings", str(probe)],
+            cwd=self.extension,
+            capture_output=True,
+            text=True,
+            timeout=120,
+        )
+        self.assertEqual(0, completed.returncode, completed.stderr)
+        pid = int(pid_file.read_text())
+        gone = process_gone(pid)
+        if not gone:
+            with contextlib.suppress(ProcessLookupError):
+                os.kill(pid, signal.SIGKILL)
+        self.assertTrue(gone, "the background process outlived its command")
+        self.assertEqual([], list(self.groups.iterdir()))
 
     @verifies("scenario.workers.pi-file-tools-denied")
     def test_a_read_is_checked_on_the_file_pi_opens(self):

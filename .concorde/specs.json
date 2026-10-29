@@ -952,6 +952,7 @@
             "req.workers.pi-same-grant",
             "req.workers.pi-file-tools",
             "req.workers.pi-sandbox",
+            "req.workers.pi-command-group-stopped",
             "req.workers.pi-only-extension",
             "req.workers.pi-limits",
             "req.workers.pi-round-limits",
