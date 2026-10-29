@@ -775,18 +775,23 @@ follows these steps:
 4. When the command exited 0, the runner goes on with the next command. Otherwise, no later
   command runs and no step runs. The run ends `failed` with `preparation_failed`.
 
-Before the first command, the runner reads the checkout's Git directory and its Git status. After
-the last command exited 0, it reads the status again and compares the two readings. Each reading
-does these things:
+Before the first command, the runner finds the checkout's repositories: the checkout itself and
+each submodule checked out in it, a submodule's submodules included. It reads the Git directory
+of each, and their Git status. After the last command exited 0, it reads the status again and
+compares the two readings. Each reading does these things:
 
-- It reads the status against a fresh index of `HEAD`, never the checkout's own index. Git
-  therefore compares the content of every tracked file, not its timestamps.
-- It names Git's directory explicitly, as read before the first command. A command that rewrote
-  the checkout's `.git` file therefore cannot redirect it. The bytes of that file are part of the
-  reading.
-- It includes the files of the submodules and every file Git does not ignore.
-- It counts each new `.gitignore` whose directory the commit's own rules do not ignore. A command
-  can therefore not hide a file by ignoring it.
+- It reads each repository on its own, never one through another. The checkout's reading leaves
+  out its submodules, which have readings of their own.
+- It reads a repository's status against a fresh index of the repository's `HEAD`, never its own
+  index. Git therefore compares the content of every tracked file, not its timestamps.
+- It names each repository's Git directory explicitly, as read before the first command. A
+  command that rewrote a `.git` file therefore cannot redirect it. The bytes of each `.git` file
+  are part of the reading.
+- It includes every untracked file Git does not ignore.
+- It counts each new `.gitignore` whose directory the rules of the repository's commit do not ignore.
+  A command can therefore not hide a file by ignoring it, in the checkout or in a submodule.
+- It includes every entry of a submodule that is not checked out, whose directory stays empty, as
+  in a fresh clone.
 
 When the readings differ, no step runs. The run ends `failed` with `preparation_failed`, and the
 cause's code is `preparation_changed_commit`. Its detail names what changed, the first 20 entries

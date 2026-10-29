@@ -163,6 +163,21 @@ and commands.
 - AND once the result is written, the checkout is gone
 - BUT a command that writes only what the commit's Git ignores leaves the run `ok`
 
+### scenario.execution.unbound-preparation-submodule — A preparation that changes a submodule runs no step
+
+- GIVEN a primary worktree whose commit records the submodule `references/lib`, which the primary
+  worktree checks out sparsely
+- AND its committed `.concorde/preparation.json` declares a command that exits 0
+- AND the command writes `references/lib/.gitignore` holding `*` and the file
+  `references/lib/x.py`
+- WHEN an unbound run is started there
+- THEN the result is `failed` with `preparation_failed`
+- AND its cause is the `preparation_changed_commit` link of `Execution (unbound preparation)`
+- AND that link names `references/lib/.gitignore (hides files)`
+- AND no step runs and no worker is launched
+- BUT a command that writes only what the commit's Git ignores leaves the run `ok`, although the
+  sparse submodule lacks some of its tracked files
+
 ### scenario.execution.unbound-preparation-failed — A failed preparation runs no step
 
 - GIVEN a primary worktree whose committed `.concorde/preparation.json` declares three commands

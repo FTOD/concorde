@@ -2561,6 +2561,68 @@ class UnboundCheckoutTests(unittest.TestCase):
                 self.assertEqual([self.root], worktrees(self.root))
                 validate(envelope, RESULT_SCHEMA)
 
+    @verifies("scenario.execution.unbound-preparation-submodule")
+    def test_a_preparation_that_changes_a_submodule_runs_no_step(self):
+        source = self.sparse_library("guide.md", "media/picture.png", "docs/skip.md")
+        # The origin checks the submodule out sparsely: its absent files are no change.
+        git(source, "sparse-checkout", "set", "--no-cone", "/guide.md", "/media/")
+        self.declare_preparation(
+            "from pathlib import Path\nPath('build').mkdir()\n"
+            "Path('build/out.txt').write_text('prepared')"
+        )
+        status, envelope = self.probe()
+        self.assertEqual((0, "ok"), (status, envelope["status"]), envelope)
+        [compared] = [
+            item
+            for item in envelope["host_evidence"]
+            if item["kind"] == "preparation-check"
+        ]
+        self.assertIn("unchanged", compared["detail"])
+        # Each command exits 0, yet leaves the submodule other than the commit records it.
+        changes = {
+            "hidden": "from pathlib import Path\n"
+            "Path('references/lib/.gitignore').write_text('*\\n')\n"
+            "Path('references/lib/x.py').write_text('')",
+            "nested hidden": "from pathlib import Path\n"
+            "Path('references/lib/media/.gitignore').write_text('*\\n')\n"
+            "Path('references/lib/media/x.py').write_text('')",
+            "reviewed": "import os\nfrom pathlib import Path\n"
+            "path = Path('references/lib/guide.md'); kept = os.stat(path)\n"
+            "path.write_text('guidf.md\\n')\n"
+            "os.utime(path, ns=(kept.st_atime_ns, kept.st_mtime_ns))",
+            "redirected": "from pathlib import Path\n"
+            "Path('references/lib/.git').write_text('gitdir: /nowhere\\n')",
+        }
+        changed = {
+            "hidden": "references/lib/.gitignore (hides files)",
+            "nested hidden": "references/lib/media/.gitignore (hides files)",
+            "reviewed": "M references/lib/guide.md",
+            "redirected": "references/lib/.git file of the checkout",
+        }
+        for name, code in changes.items():
+            with self.subTest(change=name):
+                self.declare_preparation(code)
+                status, envelope = self.probe()
+                self.assertEqual((1, "failed"), (status, envelope["status"]), envelope)
+                self.assertEqual(
+                    ["preparation_failed", "preparation_changed_commit"],
+                    codes(envelope["error"]),
+                )
+                [cause] = envelope["error"]["causes"]
+                self.assertIn(changed[name], cause["detail"])
+                self.assertEqual([], envelope["worker_runs"])
+                self.assertEqual([self.root], worktrees(self.root))
+        # A file written into a submodule the origin has not checked out is a change too.
+        git(self.root, "submodule", "deinit", "-q", "--force", "references/lib")
+        self.declare_preparation(
+            "from pathlib import Path\nPath('references/lib/x.py').write_text('')"
+        )
+        status, envelope = self.probe()
+        self.assertEqual((1, "failed"), (status, envelope["status"]), envelope)
+        [cause] = envelope["error"]["causes"]
+        self.assertEqual("preparation_changed_commit", cause["code"])
+        self.assertIn("references/lib/x.py", cause["detail"])
+
     @verifies("scenario.execution.unbound-preparation-failed")
     def test_an_invalid_preparation_file_runs_no_step(self):
         (self.root / ".concorde/preparation.json").write_text(

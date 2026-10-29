@@ -13,11 +13,13 @@ is never prepared: whoever prepares its workspace does that.
 A preparation writes only what the examined commit's Git ignores, such as build output: the run
 examines the commit, so the tracked files, the Specs, the code and the worker configuration among
 them, stay as committed, and no file appears that the commit's Git would list. The runner reads the
-checkout's Git status before the first command and after the last, each time from a fresh index
-of ``HEAD``, so Git compares every tracked file's content rather than its timestamps, and with the
-Git directory it read before any command ran, never the checkout's ``.git`` file as a command left
-it. A new ``.gitignore`` counts only where the commit's own rules already ignore its directory, so
-a command cannot hide a file by ignoring it. Any difference is ``preparation_changed_commit``.
+Git status of the checkout and of each submodule checked out in it on its own, before the first
+command and after the last, each time from a fresh index of the repository's ``HEAD``, so Git
+compares every tracked file's content rather than its timestamps, and with the Git directory it
+read before any command ran, never a ``.git`` file as a command left it. A new ``.gitignore``
+counts only where the commit's own rules already ignore its directory, so a command cannot hide a
+file by ignoring it, and a submodule that is not checked out must stay empty. Any difference is
+``preparation_changed_commit``.
 
 Each command's output is kept as ``preparation/<n>.log`` in the run's node, and each command that
 ran is ``preparation`` host evidence; the comparison is ``preparation-check`` host evidence. A file
@@ -33,6 +35,7 @@ import subprocess
 import tempfile
 import time
 from collections.abc import Callable
+from dataclasses import dataclass
 from pathlib import Path
 
 from ..kernel.errors import evidence, link
@@ -142,8 +145,8 @@ def prepare(
     commands = declared(checkout)
     if not commands:
         return
-    git_dir = _git_dir(checkout)
-    before = _state(checkout, git_dir)
+    layout = _layout(checkout)
+    before = _state(checkout, layout)
     logs = folder / LOGS
     logs.mkdir(parents=True, exist_ok=True)
     for number, command in enumerate(commands, start=1):
@@ -240,7 +243,7 @@ def prepare(
                 ],
             ),
         )
-    _unchanged(checkout, git_dir, before, found)
+    _unchanged(checkout, layout, before, found)
 
 
 class _Unverified(Exception):
@@ -286,54 +289,131 @@ def _run_git(
     return result.stdout
 
 
-def _git_dir(checkout: Path) -> str:
-    """The checkout's Git directory, read before any command could change its ``.git`` file."""
+def _git_dir(work_tree: Path) -> str:
+    """The Git directory of the repository checked out at ``work_tree``, read before any command
+    could change its ``.git`` file; ``_Unverified`` unless ``work_tree`` is that repository's
+    own top level."""
+    environment = {
+        key: value for key, value in os.environ.items() if not key.startswith("GIT_")
+    }
     try:
         result = subprocess.run(
-            [*GIT, "rev-parse", "--absolute-git-dir"],
-            cwd=checkout,
+            [*GIT, "rev-parse", "--absolute-git-dir", "--show-toplevel"],
+            cwd=work_tree,
             capture_output=True,
             text=True,
             check=False,
+            env=environment,
         )
     except OSError as error:
-        raise _unverified(
-            checkout, f"git rev-parse could not start: {error}"
-        ) from error
-    if result.returncode != 0 or not result.stdout.strip():
+        raise _Unverified(f"git rev-parse could not start: {error}") from error
+    lines = result.stdout.splitlines()
+    if result.returncode != 0 or len(lines) != 2:
         said = (result.stderr or result.stdout).strip() or "no output"
-        raise _unverified(
-            checkout,
-            f"git rev-parse --absolute-git-dir exited {result.returncode}: {said}",
+        raise _Unverified(
+            f"git rev-parse --absolute-git-dir in {work_tree} exited "
+            f"{result.returncode}: {said}"
         )
-    return result.stdout.strip()
+    if os.path.realpath(lines[1]) != os.path.realpath(work_tree):
+        raise _Unverified(
+            f"{work_tree} holds a .git, yet Git finds the top level {lines[1]} for it"
+        )
+    return lines[0]
 
 
-def _state(checkout: Path, git_dir: str) -> frozenset[str]:
-    """What the checkout holds beyond what the commit's Git ignores: each status entry, against a
-    fresh index of ``HEAD`` so that Git compares contents, each new ``.gitignore`` whose directory
-    the commit's own rules do not ignore, and the bytes of the ``.git`` file."""
+@dataclass(frozen=True)
+class _Layout:
+    """The repositories of a checkout, read before any command ran: each checked-out one as its
+    path relative to the checkout (empty for the checkout itself) with its Git directory, and
+    the path of each submodule no repository is checked out at."""
+
+    repositories: tuple[tuple[str, str], ...]
+    empty: tuple[str, ...]
+
+
+def _layout(checkout: Path) -> _Layout:
+    """The checkout's repositories, its submodules and theirs included: a submodule whose
+    directory holds a ``.git`` is a repository of its own, read with the Git directory found
+    now; any other is an empty directory, as in a fresh clone."""
+    try:
+        repositories = [("", _git_dir(checkout))]
+        empty: list[str] = []
+        for prefix, git_dir in repositories:
+            tree = _run_git(
+                _inside(checkout, prefix), git_dir, None, "ls-tree", "-r", "-z", "HEAD"
+            )
+            for record in tree.split(b"\0"):
+                head, _, name = record.partition(b"\t")
+                if not head.startswith(b"160000 "):
+                    continue
+                path = _joined(prefix, name.decode("utf-8", "surrogateescape"))
+                if os.path.lexists(checkout / path / ".git"):
+                    repositories.append((path, _git_dir(checkout / path)))
+                else:
+                    empty.append(path)
+    except _Unverified as error:
+        raise _unverified(checkout, str(error)) from error
+    return _Layout(tuple(repositories), tuple(empty))
+
+
+def _inside(checkout: Path, prefix: str) -> Path:
+    return checkout / prefix if prefix else checkout
+
+
+def _joined(prefix: str, path: str) -> str:
+    return f"{prefix}/{path}" if prefix else path
+
+
+def _state(checkout: Path, layout: _Layout) -> frozenset[str]:
+    """What the checkout holds beyond what the commit's Git ignores, each submodule read on its
+    own with the Git directory of the layout: each repository's readings and, for a submodule
+    no repository is checked out at, each entry its directory holds."""
+    entries: set[str] = set()
+    for prefix, git_dir in layout.repositories:
+        entries |= _repository_state(checkout, prefix, git_dir)
+    for path in layout.empty:
+        try:
+            names = os.listdir(checkout / path)
+        except FileNotFoundError:
+            names = []
+        except OSError as error:
+            raise _unverified(
+                checkout, f"the submodule directory {path} cannot be listed: {error}"
+            ) from error
+        entries |= {
+            f"?? {path}/{name} (in a submodule that is not checked out)"
+            for name in names
+        }
+    return frozenset(entries)
+
+
+def _repository_state(checkout: Path, prefix: str, git_dir: str) -> set[str]:
+    """One repository's reading, its paths relative to the checkout: each status entry, against
+    a fresh index of its ``HEAD`` so that Git compares contents, each new ``.gitignore`` whose
+    directory its commit's own rules do not ignore, and the bytes of its ``.git`` file. Its
+    submodules are left to their own readings, never reached through their ``.git`` files."""
+    work_tree = _inside(checkout, prefix)
     try:
         with tempfile.TemporaryDirectory(prefix="concorde-preparation-") as scratch:
             index = Path(scratch) / "index"
-            _run_git(checkout, git_dir, index, "read-tree", "HEAD")
+            _run_git(work_tree, git_dir, index, "read-tree", "HEAD")
             status = _run_git(
-                checkout,
+                work_tree,
                 git_dir,
                 index,
                 "status",
                 "--porcelain=v1",
                 "-z",
                 "--untracked-files=all",
-                "--ignore-submodules=none",
+                "--ignore-submodules=all",
                 "--no-renames",
             )
             entries = {
-                entry.decode("utf-8", "surrogateescape")
+                _relocated(prefix, entry.decode("utf-8", "surrogateescape"))
                 for entry in status.split(b"\0")
                 if entry
             }
-            others = _run_git(checkout, git_dir, index, "ls-files", "-z", "--others")
+            others = _run_git(work_tree, git_dir, index, "ls-files", "-z", "--others")
             folders = sorted(
                 {
                     path.decode("utf-8", "surrogateescape").rpartition("/")[0]
@@ -347,7 +427,7 @@ def _state(checkout: Path, git_dir: str) -> frozenset[str]:
             asked = [folder for folder in folders if folder]
             if asked:
                 answer = _run_git(
-                    checkout,
+                    work_tree,
                     git_dir,
                     index,
                     "check-ignore",
@@ -364,7 +444,7 @@ def _state(checkout: Path, git_dir: str) -> frozenset[str]:
             for folder in folders:
                 if folder not in ignored:
                     entries.add(
-                        f"?? {folder + '/' if folder else ''}.gitignore (hides files)"
+                        f"?? {_joined(prefix, _joined(folder, '.gitignore'))} (hides files)"
                     )
     except _Unverified as error:
         raise _unverified(checkout, str(error)) from error
@@ -372,28 +452,38 @@ def _state(checkout: Path, git_dir: str) -> frozenset[str]:
         raise _unverified(
             checkout, f"a temporary index could not be made: {error}"
         ) from error
-    marker = checkout / ".git"
+    marker = _joined(prefix, ".git")
     try:
-        entries.add(f".git {marker.read_bytes().hex()}")
+        entries.add(f"{GIT_FILE}{marker}\0{(checkout / marker).read_bytes().hex()}")
     except OSError as error:
-        entries.add(f".git unreadable: {error.strerror}")
-    return frozenset(entries)
+        entries.add(f"{GIT_FILE}{marker}\0unreadable: {error.strerror}")
+    return entries
+
+
+# What starts the entry of a repository's ``.git`` file, never a status entry's start.
+GIT_FILE = "git-file "
+
+
+def _relocated(prefix: str, entry: str) -> str:
+    """A porcelain status entry ``XY path`` of the repository at ``prefix``, its path made
+    relative to the checkout."""
+    return entry[:3] + _joined(prefix, entry[3:]) if prefix else entry
 
 
 def _unchanged(
-    checkout: Path, git_dir: str, before: frozenset[str], found: list[dict]
+    checkout: Path, layout: _Layout, before: frozenset[str], found: list[dict]
 ) -> None:
     """``PreparationError`` ``preparation_failed`` when the commands changed what the checkout
     holds beyond what the commit's Git ignores; ``preparation-check`` evidence either way."""
-    after = _state(checkout, git_dir)
+    after = _state(checkout, layout)
     changed = [_shown(entry) for entry in sorted(after - before)]
     if not changed:
         found.append(
             evidence(
                 "preparation-check",
                 "git status",
-                "the checkout holds the commit's tracked files unchanged and no file the "
-                "commit's Git does not ignore",
+                "the checkout and each of its submodules hold the commit's tracked files "
+                "unchanged and no untracked file the commit's Git does not ignore",
             )
         )
         return
@@ -426,8 +516,8 @@ def _unchanged(
 
 
 def _shown(entry: str) -> str:
-    if entry.startswith(".git "):
-        return ".git file of the checkout"
+    if entry.startswith(GIT_FILE):
+        return entry[len(GIT_FILE) :].partition("\0")[0] + " file of the checkout"
     return entry
 
 

@@ -258,14 +258,19 @@ stay read-only for the command, at the system call
 
 ### req.execution.preparation-keeps-commit — A preparation leaves the commit as committed
 
-After the preparation commands of an unbound run, the runner SHALL start no step unless the checkout
-holds every tracked file of the examined commit with its committed content, and no file that the
-commit's Git does not ignore.
+After the preparation commands of an unbound run, the runner SHALL start no step when the commands
+changed or removed a tracked file of the examined commit, or added an untracked file that the
+commit's Git does not ignore, in the checkout or in one of its submodules.
 
-Otherwise the run ends `failed` with `preparation_failed`, caused by `preparation_changed_commit`
-([Preparing the checkout](runner.md#preparing-the-checkout)). A command cannot evade the
-comparison by keeping a file's timestamp, by rewriting the checkout's `.git` file or by adding a
-`.gitignore`.
+The run then ends `failed` with `preparation_failed`, caused by `preparation_changed_commit`
+([Preparing the checkout](runner.md#preparing-the-checkout)). The runner reads each submodule on
+its own. A command cannot evade the comparison in any of these ways, in the checkout or in a
+submodule:
+
+- by keeping a file's timestamp
+- by rewriting a `.git` file
+- by adding a `.gitignore`
+- by writing into a submodule that is not checked out
 
 ### req.execution.checkout-removed — The checkout does not outlive the run
 
