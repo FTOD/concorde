@@ -216,7 +216,12 @@ class DeliverTests(ProjectCase):
         self.assertEqual(("ok", "recovered"), (node["status"], node["outcome"]))
         self.assertIn({"relation": "found_commit", "target": made}, node["references"])
 
-    @verifies("scenario.tasks.deliver-refused")
+    @verifies(
+        "scenario.tasks.deliver-refused",
+        "scenario.tasks.deliver-not-task-worktree",
+        "scenario.tasks.deliver-workspace-busy",
+        "scenario.tasks.deliver-wrong-branch",
+    )
     def test_deliver_is_refused_outside_its_place(self):
         # Where the method part is installed, Method's delivery delivers.
         self.project.open_task("t0")
@@ -261,7 +266,7 @@ class DeliverTests(ProjectCase):
         holder.stdout.close()
         return holder
 
-    @verifies("scenario.tasks.deliver-refused")
+    @verifies("scenario.tasks.deliver-check-switches-branch")
     def test_a_check_that_switches_the_branch_commits_nothing(self):
         worktree = self.opened()
         base = git(worktree, "rev-parse", "HEAD")
@@ -285,7 +290,10 @@ class DeliverTests(ProjectCase):
         node = trace.read(self.attempt())
         self.assertEqual(("failed", "refused"), (node["status"], node["outcome"]))
 
-    @verifies("scenario.tasks.deliver-refused")
+    @verifies(
+        "scenario.tasks.deliver-switched-while-waiting",
+        "scenario.tasks.deliver-retired-while-waiting",
+    )
     def test_a_delivery_admits_the_task_again_once_it_holds_the_lock(self):
         worktree = self.opened()
         base = git(worktree, "rev-parse", "HEAD")

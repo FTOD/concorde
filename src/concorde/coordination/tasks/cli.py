@@ -85,6 +85,15 @@ HANDLING = {
         "Claude Code did not start the task session Tasks asked for, or the machine lacks a "
         "program it needs; Tasks installs nothing",
     ),
+    "session_stop_failed": (
+        "environment",
+        "Claude Code could not confirm that a task session of the task stopped, so closing it "
+        "would remove a worktree a session may still work in",
+    ),
+    "specs_unloadable": (
+        "environment",
+        "the registry mirror that names the Modules a task may name could not be read",
+    ),
     "session_running": (
         "decision",
         "a task session of the task still works in its worktree, and whether to stop it or "

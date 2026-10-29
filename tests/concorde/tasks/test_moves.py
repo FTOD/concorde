@@ -218,12 +218,17 @@ class MoveTests(unittest.TestCase):
         self.assertEqual("concorde-74", record["main"])
         self.assertEqual("concorde-74", record["reports"][0]["main"])
         # A rename keeps the session id: the list names it anew.
-        (self.folder / "sess-a.jsonl").unlink()
+        self.transcript("sess-a", conversation("sess-a"))
         self.listing({"sess-a": "concorde-9f"})
         _, value = self.command("report", "t1", "--text", "again", cwd=worktree)
         self.assertEqual(
             ("concorde-9f", ["sess-a"]), (value["main"], value["followed"])
         )
+        # Without the transcript the session id leads to, nothing is followed.
+        (self.folder / "sess-a.jsonl").unlink()
+        _, value = self.command("report", "t1", "--text", "again", cwd=worktree)
+        self.assertEqual("concorde-74", value["main"])
+        self.assertNotIn("followed", value)
         # Nothing to follow: the record's main, as before.
         for listing in ("exit 3", "not json", "[]"):
             self.agents.write_text(listing)
@@ -236,6 +241,32 @@ class MoveTests(unittest.TestCase):
         self.assertNotIn("followed", value)
         with patch.dict(os.environ, {"PATH": "/nonexistent"}):
             self.assertIsNone(moves.listed())
+
+    @verifies("scenario.tasks.report-follows-move")
+    def test_a_rebind_while_a_report_follows_wins(self):
+        self.project.open_task("t1")
+        self.started("t1", "concorde-74", "sess-a")
+        self.transcript("sess-a", conversation("sess-a") + moved("sess-a", "sess-n"))
+        self.listing({"sess-n": "项目中途停止状态检查"})
+        follow = moves.follower(self.primary)
+
+        def rebound_while_following(record):
+            found = follow(record)
+            # The main agent rebinds the task to another session of its own meanwhile.
+            store.rebind(self.primary, "t1", "concorde-new", "sess-z")
+            return found
+
+        value = store.report(
+            self.primary, "t1", "delivered", [], follow=rebound_while_following
+        )
+        self.assertEqual("concorde-new", value["main"])
+        self.assertNotIn("recorded_main", value)
+        self.assertNotIn("followed", value)
+        record = store.load_task(self.root, "t1")
+        self.assertEqual("concorde-new", record["reports"][0]["main"])
+        log = Path(value["decision_log"]).read_text()
+        self.assertIn("## Report 1 to the main agent (concorde-new), ", log)
+        self.assertNotIn("continues as", log)
 
     @verifies("scenario.tasks.wait-rebound-follows")
     def test_a_rebind_wait_returns_the_session_the_main_session_moved_to(self):

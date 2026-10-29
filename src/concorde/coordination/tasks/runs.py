@@ -91,9 +91,16 @@ def waiting(concorde: Path, name: str) -> list[Path]:
     ]
 
 
-def folders(concorde: Path, workspace: Path, name: str) -> list[Path]:
-    """The folders of every run of the workspace ``name``, those waiting in the lobby included."""
-    return [*reader.workspace_runs(workspace), *waiting(concorde, name)]
+def folders(
+    concorde: Path, workspace: Path, name: str, *, lobby: bool = True
+) -> list[Path]:
+    """The folders of every run of the workspace ``name``, those waiting in the lobby included
+    unless ``lobby`` is False, as for a workspace folder in the history: the lobby knows a
+    workspace only by its name, which a later task may have taken."""
+    return [
+        *reader.workspace_runs(workspace),
+        *(waiting(concorde, name) if lobby else []),
+    ]
 
 
 def _status(concorde: Path, workspace: Path, run_id: str, result: dict | None) -> str:
@@ -108,12 +115,15 @@ def _status(concorde: Path, workspace: Path, run_id: str, result: dict | None) -
     return result["status"] if result and "status" in result else "lost"
 
 
-def workspace_runs(concorde: Path, workspace: Path, name: str) -> list[dict]:
+def workspace_runs(
+    concorde: Path, workspace: Path, name: str, *, lobby: bool = True
+) -> list[dict]:
     """Every run recorded for the workspace ``name``, oldest first, with those waiting in the
-    lobby for its lock: each its identity, kind, name, Modules, status (``running``, ``lost`` or
-    its result's) and times, from its result when it has one, else from its progress file."""
+    lobby for its lock unless ``lobby`` is False: each its identity, kind, name, Modules, status
+    (``running``, ``lost`` or its result's) and times, from its result when it has one, else from
+    its progress file."""
     found = []
-    for folder in folders(concorde, workspace, name):
+    for folder in folders(concorde, workspace, name, lobby=lobby):
         result = _json(folder / layout.RESULT)
         source = result or progress(folder)
         if not source or source.get("workspace") != name:

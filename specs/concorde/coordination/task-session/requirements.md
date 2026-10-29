@@ -79,18 +79,35 @@ Code 2.1.284) tested a `claude --bg` session started with
 the session registered never woke the session. Told so, `register_wait` answers the session with the
 `concorde task wait` command for its background Bash instead of promising an event that never comes.
 
-### req.task-session.mcp-approval — A task session is never asked to approve a project MCP server
+### req.task-session.mcp-replaced — The project's `concorde` entry is disabled
 
 The settings Task sessions writes for a task session SHALL disable the project `.mcp.json` entry
-`concorde`, enable every other `.mcp.json` server the session loads that the primary worktree or
-the task worktree approved, and disable every one that neither approved.
+`concorde`.
+
+The `--mcp-config` server replaces that entry. With both, Claude Code loads only the latter. So
+the session is never asked to approve the entry, as
+[the approved servers](#req.task-session.mcp-approval) explains.
+
+### req.task-session.mcp-approval — A task session is never asked to approve a project MCP server
+
+The settings Task sessions writes for a task session SHALL enable every `.mcp.json` server other
+than `concorde` that the session loads and that the primary worktree or the task worktree approved.
 
 Nobody answers Claude Code's dialog "New MCP server found in this project" in a background session,
-which otherwise waits on it for ever. The `--mcp-config` server replaces the entry `concorde`. A
-server counts as approved as Claude Code judges it from the settings sources that record approvals
-for either worktree ([contracts](contracts.md#project-mcp-approvals)). Claude Code itself honours
-the task worktree's approvals in a session started there. A `.mcp.json` that is missing or unusable
-names no server. Such a file does not keep the session from starting.
+which otherwise waits on it for ever. A server counts as approved as Claude Code judges it from the
+settings sources that record approvals for either worktree
+([contracts](contracts.md#project-mcp-approvals)). Claude Code itself honours the task worktree's
+approvals in a session started there. A `.mcp.json` that is missing or unusable names no server.
+Such a file does not keep the session from starting.
+
+### req.task-session.mcp-unapproved — A server neither worktree approved is disabled
+
+The settings Task sessions writes for a task session SHALL disable every `.mcp.json` server other
+than `concorde` that the session loads and that neither the primary worktree nor the task worktree
+approved.
+
+Disabling it answers the dialog [the approved servers](#req.task-session.mcp-approval) names as its
+"Continue without using this MCP server" would. Approval is judged as for the approved servers.
 
 ### req.task-session.boundary-first — The boundary is written before the session starts
 
@@ -100,19 +117,27 @@ Before it starts a task session, Task sessions SHALL write that session's bounda
 
 ### req.task-session.one-working — One task session works in a task at a time
 
-While Claude Code lists a recorded task session of a task in a state other than `done` or `failed`,
-Task sessions SHALL refuse to start another task session of that task, before writing anything.
+While Claude Code lists a recorded task session of a task in a state other than `done`, `failed` or
+`stopped`, Task sessions SHALL refuse to start another task session of that task, before writing
+anything.
 
 Two sessions writing one task worktree would confuse the
 [write audits](../../glossary.json#concept.write-audit) of its runs and its delivery.
-A session that is `done` waits for its next message. A session that is `done`, `failed` or no longer
-listed does not refuse a start, so a stalled or ended session can be replaced. Every start starts
-and records a session of its own and never reuses an earlier one. A caller that retries a start
-whose result it did not see is refused while the session it started still works.
+A session that is `done` waits for its next message. A session that is `stopped` was stopped with
+`claude stop`. A session that is `blocked` waits for someone to answer it and works on once
+answered, so it refuses a start as a `working` one does. `claude stop` makes it `stopped`. The
+refusal names that state and `claude stop <id>`. A session that is `done`, `failed`, `stopped` or no
+longer listed does not refuse a start, so a stalled or ended session can be replaced. Every start
+starts and records a session of its own and never reuses an earlier one. A caller that retries a
+start whose result it did not see is refused while the session it started still works.
 
-Starts of one task SHALL NOT overlap: a start holds the task's lock from its check for a working
-session until it recorded the session it started. A second start waits for that lock. It then
-finds the first one's session and is refused while that session works.
+### req.task-session.starts-serialized — Starts of one task never overlap
+
+Task sessions SHALL hold the task's lock during a start from its check for a working session until
+it recorded the session it started.
+
+A second start waits for that lock. It then finds the first one's session and is refused while that
+session works, as [one working session](#req.task-session.one-working) requires.
 
 ### req.task-session.recorded — A started session is recorded
 
@@ -144,8 +169,10 @@ Before a task closes without a merge, Task sessions SHALL stop each of its task 
 stopped.
 
 A session Claude Code no longer knows counts as stopped. Stopping first keeps a session from going
-on working in, or starting runs in, the worktree the close removes. A merge stops nothing, since a
-delivered task's session has reported and waits.
+on working in, or starting runs in, the worktree the close removes. The stop comes after the
+refusals Tasks makes [before stopping anything](../tasks/contracts.md#commands), so a close Tasks
+refuses there stops no session. A merge stops nothing, since a delivered task's session has reported
+and waits.
 
 ### req.task-session.transcript-kept — A task session's transcript moves to the history
 

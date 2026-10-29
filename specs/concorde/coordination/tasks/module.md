@@ -560,7 +560,9 @@ newest session. It looks for that session in
 `claude agents --json`, Claude Code's list of the sessions that run. When the list shows it under a
 name other than the record's `main`, the command prints that name as the session to message, the
 record's own name as `recorded_main`, and the ids it followed. The report's heading and entry in the
-decision log name both. The record itself is not changed. Rebinding stays the main agent's step,
+decision log name both. The report is appended to the record as every report is, but the
+record's main agent's session is not changed. When the task is rebound while the command follows,
+the report goes to the session the rebind named instead. Rebinding stays the main agent's step,
 since the record's `main` keeps one writer. A message to the followed name reaches the main agent
 at once, and the main agent then rebinds the task. When nothing can be followed, the command prints
 the record's `main` as before. Nothing can be followed when the record keeps no session id, or a
@@ -626,14 +628,16 @@ A task ends in one of two states, and the record keeps the outcome:
   left unsaid.
 
 Unless `--force` is given, closing without a merge refuses uncommitted changes. Closing does the
-following:
+following, in the order [the contracts](contracts.md#close-order) give:
 
+- It removes the worktree, and with it the workspace binding.
 - It answers every report still unanswered ([Reports](#reports-and-the-main-agents-session)).
 - It appends the outcome, the note, any error chains and those answered reports to the decision log.
 - It commits the log ([below](#decision-log-in-git)).
-- It removes the worktree, and with it the workspace binding.
+- It keeps the task sessions' transcripts in the task's trace.
 - It moves the task's whole folder to the history, `.concorde/history/<task-id>/`, keeping the
   branch.
+- It removes the task sessions from Claude's session list.
 
 No run of the task's workspace can start there any more. A closed or failed task stays so whatever
 happens afterwards. A task closes only once it has really ended. While it moves the folder, the
@@ -1550,6 +1554,10 @@ these purposes:
 - To list them in `task show`.
 - To stop them when a task closes.
 - To wait for one.
+
+The lobby knows a run's workspace only by its name, which a later task of the same name takes. So
+`task show` of a task in the history lists only the runs of its own workspace folder, never a run
+waiting in the lobby.
 
 A run that is neither finished nor alive is shown as `lost` rather than trusted as running. Where
 the part is not installed, no run exists:

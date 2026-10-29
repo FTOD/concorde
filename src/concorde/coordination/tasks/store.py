@@ -330,11 +330,14 @@ def workspace_runs(
     primary: Path, task_id: str, folder: Path | None = None
 ) -> list[dict]:
     """The runs of a task's workspace, read through Execution's formats from its folder's
-    ``workspace/`` and the lobby, with their locks under the primary worktree's ``.concorde``;
-    none where the execution part is not installed."""
-    folder = folder or task_folder(primary, task_id)
+    ``workspace/`` and, for the current task of that name, the lobby, with their locks under the
+    primary worktree's ``.concorde``; none where the execution part is not installed. A folder in
+    the history lists only its own runs: a run waiting in the lobby under the task's name belongs
+    to the current task of that name."""
+    current = task_folder(primary, task_id)
+    folder = folder or current
     return run_store.workspace_runs(
-        concorde(primary), workspace_folder(folder), task_id
+        concorde(primary), workspace_folder(folder), task_id, lobby=folder == current
     )
 
 
@@ -1215,6 +1218,11 @@ def _append_log(
         ) from failure
 
 
+def _main_session_of(record: dict) -> tuple:
+    """The main agent's session a task record names, by its name and its session id."""
+    return record["main"], record.get("main_session")
+
+
 def report(
     primary: Path, task_id: str, text: str, escalated: list[int], follow=None
 ) -> dict:
@@ -1223,12 +1231,15 @@ def report(
 
     ``follow(record)``, when given, answers where the record's main agent's session is now,
     ``{"main", "followed"}``, or None; it runs before the task's lock is taken, since it may ask
-    Claude Code. A followed name is the session to message, and the decision log names both."""
+    Claude Code. A followed name is the session to message, and the decision log names both. The
+    answer holds only for the main agent's session it followed: once a rebind named another, the
+    report goes to the one the rebind named."""
     text = (text or "").strip()
     if not text:
         raise TaskError("invalid_input", "--text must give the report")
     purpose = "a task that ended has no main agent waiting for its report"
-    found = follow(load_unended(primary, task_id, purpose)) if follow else None
+    seen = load_unended(primary, task_id, purpose)
+    found = follow(seen) if follow else None
     stamp = now()
     entry = {}
     with task_locked(primary, task_id):
@@ -1256,8 +1267,11 @@ def report(
             return record
 
         record = update(primary, task_id, change, locked=True)
-        if found is not None and found["main"] == record["main"]:
-            found = None  # rebound to that name meanwhile
+        if found is not None and (
+            found["main"] == record["main"]
+            or _main_session_of(record) != _main_session_of(seen)
+        ):
+            found = None  # rebound meanwhile, to that name or to another session
         carried = (
             f"\n\nIt carries escalation(s) {', '.join(map(str, entry['escalations']))}."
             if entry["escalations"]
@@ -2036,10 +2050,13 @@ def close_task(
     current = refuse_closed(primary, task_id)
     _prune(primary)
     # Refused before anything is stopped, and checked again under the locks; a merge whose
-    # process still runs is waited for there instead.
+    # process still runs is waited for there instead, as is another part's, which removes its
+    # marker when it ends.
     unfinished = unfinished_merge(primary)
-    if unfinished is not None and not merge_lock_held(primary):
-        raise incomplete_merge(primary, unfinished)
+    if not merge_lock_held(primary):
+        if unfinished is not None:
+            raise incomplete_merge(primary, unfinished)
+        refuse_foreign_marker(primary, f"the close of task {task_id}")
     worktree = Path(current["worktree"])
     if (
         outcome != "merged"

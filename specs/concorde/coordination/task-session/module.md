@@ -23,7 +23,8 @@ scale. Its boundary guards against mistakes, not a malicious session.
 Task sessions matter to the developer only through the main agent. The developer talks to main
 sessions. Once its task ends, a task session, a means of the main agent, has served its purpose. So
 Task sessions also ends task sessions with their task. When a task is closed without a merge, Task
-sessions first stops any task session still running. Once a task ends, Task sessions removes each of
+sessions first stops any task session still running, once Tasks has made the refusals it makes
+before stopping anything. Once a task ends, Task sessions removes each of
 its task sessions from Claude's session list after keeping its transcript in the task's trace. The
 trace moves to the history with the task. Otherwise, finished task sessions would pile up beside the
 developer's main sessions in Claude's session list.
@@ -229,10 +230,12 @@ Claude Code's output in the detail:
 One task worktree has one working task session at a time. A second session writing the same
 worktree would confuse the write audits of its runs and its delivery. So before it writes anything,
 a start asks Claude Code for the state of every session the task's trace records. While one is in a
-state other than `done` or `failed`, such as `working`, the start is refused. The refusal names that
-session and `claude stop <id>`. A session that is `done` waits for its next message, so the main
-agent messages it rather than starting another. A session that is `done`, `failed` or no longer
-listed does not refuse a start. The main agent can thus replace a session that stalled or ended
+state other than `done`, `failed` or `stopped`, such as `working`, the start is refused. A session
+that is `blocked` waits for someone to answer it, so it is refused too. The refusal names that
+session and `claude stop <id>`, after which Claude Code lists the session as `stopped`. A session
+that is `done` waits for its next message, so the main agent messages it rather than starting
+another. A session that is `done`, `failed`, `stopped` or no longer listed does not refuse a
+start. The main agent can thus replace a session that stalled or ended
 without another step. Every start starts and records a session of its own. A start never reuses an
 earlier session. A caller that retries a start whose answer it lost is refused while the session it
 started works. The task's trace then shows that session.
@@ -300,7 +303,8 @@ The hook lets these tools change the task worktree and the task's
 [decision log](../../glossary.json#concept.decision-log). It denies every other path, an
 [Issue](../../glossary.json#concept.issue) record among them, with a reason naming the task
 worktree. Since Edit and Write write through a symbolic link, the hook judges the link by the file
-it points to. A link in the task worktree to a file outside it is denied like that file. Once the
+it points to. A link in the task worktree to a file outside it is denied like that file. So is a
+path whose `..` follows a link and so leaves the task worktree. Once the
 task is closed, its folder is in the [history](../../glossary.json#concept.history). At that point,
 the decision log's folder no longer exists. The hook then refuses every write to the decision log
 rather than recreate its folder. Where the issues part is installed, the session writes Issues

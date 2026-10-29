@@ -194,7 +194,7 @@ Besides those shared codes, its refusals use these:
 | Error code | Raised when |
 | --- | --- |
 | `missing_worktree` | `session` names a task whose worktree no longer exists. |
-| `session_running` | `session` names a task one of whose recorded task sessions `claude agents --json --all` lists in a state other than `done` or `failed`, such as `working`; the message names the session, its state and `claude stop <id>`. Reason `decision`. |
+| `session_running` | `session` names a task one of whose recorded task sessions `claude agents --json --all` lists in a state other than `done`, `failed` or `stopped`, such as `working` or `blocked`; the message names the session, its state, `claude stop <id>` and the states `done`, `failed` and `stopped`, which refuse no start. Reason `decision`. |
 | `session_failed` | `session` could not start Claude Code, Claude Code exited without reporting a started background session (its output is in the message), the composed task-session guidance `generated/guidance/task-session.md` is missing from the package, or the task has a recorded task session and `claude agents --json --all` could not be read to tell whether it still works, or Claude Code's managed settings turn the sandbox on, which the session's settings cannot turn off ([Task-session settings](#task-session-settings)). A launch that failed this way may still have started a background job that no node records, and so no later start sees; `claude agents --json --all` lists it by the name `task-<task-id>`. |
 | `session_stop_failed` | `concorde task close` without a merge could not confirm a Claude Code task session of the task stopped: `claude stop <id>` could not run, or exited non-zero without answering `No job matching`; the message names the session, Claude Code's answer, the worktree the close would have removed and `claude stop <id>`, and the task is unchanged. |
 
@@ -241,9 +241,9 @@ background Claude Code task session in the steps below. It holds the task's lock
 task record again. It is refused as below once the first start recorded its session.
 
 1. When the task has recorded task sessions, it asks `claude agents --json --all` once. When that
-   list shows one of them in a state other than `done` or `failed`, it refuses with
-   `session_running` before it writes anything. A session done, failed or no longer listed does not
-   refuse.
+   list shows one of them in a state other than `done`, `failed` or `stopped`, it refuses with
+   `session_running` before it writes anything. A session done, failed, stopped or no longer listed
+   does not refuse.
 2. It writes `.concorde/tasks/<task-id>/runtime/settings.json` and its hook, as
    [Task-session settings](#task-session-settings) says. The settings also hold the
    [project MCP approvals](#project-mcp-approvals):
@@ -299,7 +299,10 @@ session besides:
   The hook is `session_hook.py`, copied beside the settings with the task worktree and
   [decision log](../../glossary.json#concept.decision-log) embedded. The hook judges the path with
   every symbolic link resolved, a final link included, since Edit and Write write through a link to
-  the file it points to. The hook allows a path inside the task worktree. While the decision log's
+  the file it points to. It resolves a link before the `..` that follows it, as the operating system
+  walks the path, so the `..` leaves the directory the link points to. Since a tool may collapse each
+  `..` before it resolves any link, the hook also judges the path read so. It allows the path only
+  when both readings are allowed. The hook allows a path inside the task worktree. While the decision log's
   folder exists, the hook also allows the decision log. The hook denies any other path with a reason
   naming the task worktree. For the decision log of a task whose folder moved to the history, the
   reason names the closed task. Any failure denies.
@@ -359,7 +362,7 @@ hand the task's task sessions, every node `sessions/<id>/`, to
 
 | When | What runs | When it fails |
 | --- | --- | --- |
-| A close without a merge, before anything else of the close | `claude stop <id>` for each session; exit 0, or `No job matching`, counts as stopped | The close is refused with `session_stop_failed` |
+| A close without a merge, after the refusals Tasks makes [before stopping anything](../tasks/contracts.md#commands) and before the close waits for its locks | `claude stop <id>` for each session; exit 0, or `No job matching`, counts as stopped | The close is refused with `session_stop_failed` |
 | Every close, just before the task's folder moves to the history | `claude agents --json --all`, once for the close; the entry whose `id` is the session's `reported_id` gives its `sessionId`, `cwd` and `state`. The transcript `projects/<cwd, each character that is no letter or digit as ->/<session id>.jsonl` of `$CLAUDE_CONFIG_DIR` (default `~/.claude`), else `<session id>.jsonl` of any folder of `projects/`, is copied to the session's node as `transcript.jsonl`, and the folder of the same name without `.jsonl`, when present, as `transcript/`; the node is then finished as the [session trace](#contract.task-session.session-trace) says | A warning naming what Claude Code answered, where the transcript was looked for, or why the copy could not be made or read, with what of a partial copy could not be removed, and why the session's node could not be written when that failed too; the session is not removed. Unless its own write failed, the node still receives the session id and status Claude Code told. A kept transcript with unreadable lines only warns, naming their count and where the transcript is kept; that session is still removed |
 | Every close, once the task is closed | `claude rm <id>` for each session whose transcript was kept; exit 0, or `No job matching`, counts as removed | A warning |
 

@@ -11,9 +11,14 @@ Tasks SHALL keep every task's [task record](../../glossary.json#concept.task-rec
 [decision log](../../glossary.json#concept.decision-log) and trace in these locations and nowhere
 else:
 
-- For every current task, the task's folder `.concorde/tasks/<task-id>/` of the primary worktree.
-- For a closed task, its folder in the [history](../../glossary.json#concept.history),
-  `.concorde/history/<history key>/`.
+- For a task whose folder no close has moved yet, the task's current folder
+  `.concorde/tasks/<task-id>/` of the primary worktree.
+- For a task whose close moved its folder, its folder in the
+  [history](../../glossary.json#concept.history), `.concorde/history/<history key>/`.
+
+A task that has not ended is always in its current folder. A close refused after its record update,
+such as with `decision_log_uncommitted`, leaves a task stored closed or failed in its current
+folder. The close's rerun moves that folder to the history.
 
 ### req.tasks.store-writes — Only the Task store writes records
 
@@ -278,7 +283,8 @@ node. Thus, a close stored after the start's own check still refuses the recordi
 Closing a task as merged SHALL succeed only when all these conditions hold:
 
 - The task branch holds a delivery commit of the task's workspace since its base.
-- The latest delivery commit is the head of the branch and verifies.
+- The latest delivery commit is the head of the branch.
+- That head verifies, as [a verifying delivery commit](#req.tasks.delivery-verified) defines.
 - That head is contained in the primary branch.
 - The worktree has no uncommitted change.
 
@@ -460,13 +466,22 @@ environment, the merge SHALL hold them from its start without waiting until it e
 ### req.tasks.merge-attempt-lock — A merge's end is its attempt lock's release
 
 `concorde task merge` SHALL hold the task's merge attempt lock from before it waits for its other
-locks until it has written its whole answer, and remove it then.
+locks until it has written its whole answer.
 
 The close that ends a merge removes the task's workspace lock before the merge closes the task's
 Issues and writes its answer. Thus, the workspace lock's release never says that the merge ended. A
 merge that dies leaves a file nobody holds, which is free. When another merge holds a task's attempt
 lock, a merge of that task waits for it as for its other locks, within the same `--wait`. The
 waiting merge then refuses with `merge_busy`.
+
+### req.tasks.merge-attempt-lock-removed — A merge removes its attempt lock's file
+
+Once it has written its whole answer, `concorde task merge` SHALL remove the file of the task's merge
+attempt lock.
+
+The removal comes after the answer, so the file's absence never says that the answer is still
+missing. The file of a merge that died stays behind, and nobody holds it, so it is free, as
+[the attempt lock](#req.tasks.merge-attempt-lock) says.
 
 ### req.tasks.merge-output-kept — A merge keeps the server's output with its attempt
 
@@ -614,6 +629,11 @@ carries the marker's account of its merge and its recovery, as the
 [marker's contract](../../kernel/contracts.md#contract.kernel.unfinished-merge) requires of every
 part that commits on the primary branch.
 
+A close without a merge commits its decision log, so it refuses the same way before it stops any
+task session or run of the task, while no live process holds the merge lock. It checks again under
+the merge lock. A merge whose process still runs is waited for instead, since that merge removes its
+marker when it ends.
+
 ### req.tasks.merge-incomplete-refused — Nothing builds on an unchecked merge
 
 While a task is stored as `merging` and no live process holds the merge lock, `concorde task open`,
@@ -687,14 +707,19 @@ naming the part, and a task resolves nothing.
 
 Once its checks passed and while it holds the merge lock, `concorde task merge` SHALL close as
 `resolved`, with the merge commit as evidence, each Issue of the task's `resolves` that is still
-open, and report each it could not close as a warning, never as a refusal of the merge.
-
-A failure of the Issues, whatever it is, never keeps the merge from ending the task's sessions and
-printing its result.
+open.
 
 The fix is on the primary branch only once the merge stands, so an Issue closes with its merge and
 never earlier. A task that ends without merging closes none. Where the issues part is not installed,
 no task resolves an Issue and a merge closes none.
+
+### req.tasks.merge-close-failures-warn — An Issue a merge could not close is a warning
+
+`concorde task merge` SHALL report each Issue of the task's `resolves` that it could not close as a
+warning of its output, never as a refusal of the merge.
+
+A failure of the Issues, whatever it is, never keeps the merge from ending the task's sessions and
+printing its result.
 
 ### req.tasks.merge-own-sources — A merge runs the Concorde it started with
 
@@ -879,22 +904,41 @@ followed to, when that name is not the record's `main`.
 A followed name reaches a main agent whose session moved or was renamed before it rebound the task.
 Otherwise the command prints the record's `main`, as before.
 
+### req.tasks.report-followed-current — A rebind during the following wins
+
+When the record's `main` or `main_session` changed between the record `concorde task report` followed
+and the record it appends the report to, the command SHALL print that record's `main` as the session
+to message, and no followed name.
+
+The command follows before it takes the task's lock, since following may ask Claude Code. A rebind
+in that time is the main agent's own word on where its session is now. The followed name described
+the session the rebind replaced.
+
 ### req.tasks.report-followed-shown — A followed name is shown beside the record's
 
 With a followed name, `concorde task report` SHALL also print the record's `main` and the followed
-session ids, and name both sessions in the decision log, leaving the record unchanged.
+session ids, and name both sessions in the decision log, leaving the record's `main`, `main_session`
+and `mains` unchanged.
 
-A later reader sees to whom the report went and why. The rebind stays the main agent's step, so the
-record's `main` keeps one writer.
+The command still appends the report to the record's `reports`, as
+[recording the report](#req.tasks.report-recorded) requires. A later reader sees to whom the report
+went and why. The rebind stays the main agent's step, so the record's `main` keeps one writer.
 
 ### req.tasks.report-answered — An answer marks a report answered, once
 
 `concorde task answer` SHALL record the main agent's answer on each named report of the task
-record and append it to the decision log, refusing with `already_answered` a report that has an
-answer, which it never replaces.
+record, refusing with `already_answered` a report that has an answer, which it never replaces.
 
 A report without an answer is unanswered. A main agent that lost its messages reads unanswered
 reports first.
+
+### req.tasks.answer-logged — A recorded answer is appended to the decision log
+
+Once it recorded an answer in the task record, `concorde task answer` SHALL append that answer to
+the decision log.
+
+The record write and the append are two writes. When the append fails, the answer stays recorded,
+and the refusal says so ([a refusal changes nothing](#req.tasks.refusal-inert)).
 
 ### req.tasks.end-settles-reports — A task's end answers its unanswered reports
 
@@ -961,11 +1005,17 @@ such a wait from lasting unnoticed: the task session records each timeout and wa
 
 ### req.tasks.main-hook-never-fails — The session-start hook never fails a session's start
 
-`concorde task main-hook` SHALL exit with status 0 whatever happens, printing one line that names
-the failure and the listing to run instead when it cannot list the tasks.
+`concorde task main-hook` SHALL exit with status 0 whatever happens.
 
 A hook that fails would put an error in front of the main agent at every start and say nothing of
-its tasks. One line keeps the start working and still points at the tasks.
+its tasks.
+
+### req.tasks.main-hook-failure-named — A hook that cannot list the tasks says so in one line
+
+When it cannot list the tasks, `concorde task main-hook` SHALL print one line that names the failure
+and the listing to run instead.
+
+One line keeps the start working and still points at the tasks.
 
 ### req.tasks.old-records-read — A record written before its main is read with one
 

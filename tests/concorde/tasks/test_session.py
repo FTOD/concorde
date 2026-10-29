@@ -18,6 +18,7 @@ from unittest.mock import patch
 from concorde.spec.verification import verifies
 from tests.concorde.support.ignored import TRACES
 from concorde.coordination.tasks import cli, session, store
+from concorde.kernel.marker import write_marker
 from concorde.kernel.tracing import node as trace
 from tests.concorde.support.operation_project import OperationProject, commit
 from tests.concorde.tasks.deliveries import deliver
@@ -229,8 +230,17 @@ class TaskSessionTests(unittest.TestCase):
         with self.assertRaises(store.TaskError) as raised:
             session.start(self.root, "t1", "concorde-8e", run=claude)
         self.assertEqual("session_running", raised.exception.code)
-        for text in ("33afbc14", "'working'", "claude stop 33afbc14"):
+        for text in ("33afbc14", "'working'", "claude stop 33afbc14", "'stopped'"):
             self.assertIn(text, str(raised.exception))
+        # A session waiting for someone to answer it still works too.
+        blocked = FakeClaude(
+            stdout="backgrounded · 44bbcd25 · task-t1\n",
+            listed=({"id": "33afbc14", "sessionId": SESSION_ID, "state": "blocked"},),
+        )
+        with self.assertRaises(store.TaskError) as raised:
+            session.start(self.root, "t1", "concorde-8e", run=blocked)
+        self.assertEqual("session_running", raised.exception.code)
+        self.assertIn("'blocked'", str(raised.exception))
         # It asked Claude Code for its sessions and started none.
         self.assertEqual(
             [["claude", "agents", "--json", "--all"]], [c for c, _ in claude.calls]
@@ -327,6 +337,20 @@ class TaskSessionTests(unittest.TestCase):
             sorted(item["id"] for item in store.sessions(self.root, "t1")),
         )
         self.assertEqual("concorde-8e", store.load_task(self.root, "t1")["main"])
+        # A session stopped with `claude stop` refuses no start either.
+        started = session.start(
+            self.root,
+            "t1",
+            "concorde-8e",
+            run=FakeClaude(
+                stdout="backgrounded · 66ddee47 · task-t1\n",
+                listed=(
+                    {"id": "55ccdd36", "sessionId": SESSION_ID, "state": "stopped"},
+                    {"id": "33afbc14", "sessionId": SESSION_ID, "state": "failed"},
+                ),
+            ),
+        )
+        self.assertEqual("66ddee47", started["id"])
 
     def decide(self, hook: Path, hook_input: str) -> dict | None:
         """The decision of the hook ``hook`` on ``hook_input``: None allows."""
@@ -521,6 +545,15 @@ class TaskSessionTests(unittest.TestCase):
         (self.worktree / "in.py").symlink_to(self.worktree / "src/a/calc.py")
         self.assertIsNotNone(self.hook(self.worktree / "out.py"))
         self.assertIsNone(self.hook(self.worktree / "in.py"))
+        # A `..` after a directory link leaves the directory the link points to, as the operating
+        # system walks the path: collapsed first, the path would seem to stay in the worktree.
+        (self.worktree / "deep").symlink_to(self.root / "src/a")
+        through = f"{self.worktree}/deep/../a/calc.py"
+        self.assertEqual(self.root / "src/a/calc.py", Path(through).resolve())
+        self.assertIsNotNone(self.hook(Path(through)))
+        (self.worktree / "logs").symlink_to(self.folder)
+        self.assertIsNone(self.hook(self.worktree / "logs/decisions.md"))
+        self.assertIsNotNone(self.hook(Path(f"{self.worktree}/logs/../t1/task.json")))
         denied = self.hook(self.root / "src/a/calc.py")
         self.assertEqual("deny", denied["hookSpecificOutput"]["permissionDecision"])
         self.assertIn(
@@ -832,6 +865,50 @@ class EndOfTaskTests(unittest.TestCase):
         )
         self.kept("aaaa1111", source)
 
+    @verifies("scenario.tasks.merge-foreign-marker")
+    def test_another_parts_marker_refuses_a_close_before_it_stops_anything(self):
+        self.claude_session("aaaa1111", state="working")
+        head = subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            cwd=self.root,
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout.strip()
+        other = {
+            "schema_version": 1,
+            "part": "elsewhere",
+            "by": "a merge of another part",
+            "pid": 7,
+            "since": "2026-10-08T00:00:00+00:00",
+            "branch": "main",
+            "before": head,
+            "merging": head,
+            "after": None,
+            "finish": ["elsewhere finish"],
+        }
+        write_marker(self.root / ".concorde", other)
+        before = store.load_task(self.root, "t1")
+        for argv in (
+            ("close", "t1", "--completed", "--note", "done"),
+            ("close", "t1", "--failed", "--reason", "wrong", "--no-error"),
+        ):
+            with self.subTest(argv[2]):
+                status, value = self.command(*argv)
+                self.assertEqual(1, status, value)
+                self.assertEqual("merge_incomplete", value["error"]["code"])
+                self.assertIn("elsewhere finish", value["error"]["detail"])
+        # Nothing was stopped: Claude Code was never asked, and the task is as it was.
+        self.assertEqual([], self.calls())
+        self.assertEqual(before, store.load_task(self.root, "t1"))
+        self.assertTrue(self.worktree.is_dir())
+        # A marker that cannot be read refuses as early, as what it is.
+        (self.root / ".concorde/unfinished-merge.json").write_text("{not json")
+        status, value = self.command("close", "t1", "--completed", "--note", "done")
+        self.assertEqual(1, status, value)
+        self.assertEqual("unreadable_merge_marker", value["error"]["code"])
+        self.assertEqual([], self.calls())
+
     @verifies("scenario.task-session.close-stops")
     def test_a_session_claude_code_no_longer_knows_counts_as_stopped(self):
         self.claude_session("aaaa1111", state=None)
@@ -856,7 +933,10 @@ class EndOfTaskTests(unittest.TestCase):
         status, value = self.command("close", "t1", "--completed", "--note", "done")
         self.assertEqual(1, status, value)
         error = value["error"]
-        self.assertEqual("session_stop_failed", error["code"])
+        self.assertEqual(
+            ("session_stop_failed", "environment"),
+            (error["code"], error["unhandled"]["reason"]),
+        )
         for text in ("aaaa1111", "couldn't confirm", "claude stop aaaa1111"):
             self.assertIn(text, error["detail"])
         self.assertEqual(before, store.load_task(self.root, "t1"))
@@ -1083,6 +1163,32 @@ class EndOfTaskTests(unittest.TestCase):
         path.write_text("".join(json.dumps(line) + "\n" for line in records))
         figures = session.transcript_figures(path, [])
         return figures["usage"]["cost_usd"], figures["model_usage"]
+
+    @verifies("scenario.task-session.node-finished")
+    def test_each_assistant_record_without_a_message_id_counts_once(self):
+        def bare(uuid, tokens):
+            record = said("2026-09-30T10:00:05.000Z", None, input_tokens=tokens)
+            del record["message"]["id"]
+            return {**record, "uuid": uuid}
+
+        records = [
+            # Two records of one API message count once.
+            said("2026-09-30T10:00:01.000Z", "msg_1", input_tokens=10),
+            said("2026-09-30T10:00:02.000Z", "msg_1", input_tokens=10),
+            # Records without a message id count each, even when they share a record uuid or
+            # their uuid is another record's message id.
+            bare("u-1", 1),
+            bare("u-1", 2),
+            bare("msg_1", 4),
+        ]
+        path = self.project.home / "bare.jsonl"
+        path.write_text("".join(json.dumps(line) + "\n" for line in records))
+        beside = self.project.home / "agent-1.jsonl"
+        beside.write_text(json.dumps(bare("u-1", 8)) + "\n")
+        figures = session.transcript_figures(path, [beside])
+        self.assertEqual(
+            (25, 5), (figures["usage"]["tokens_in"], figures["usage"]["turns"])
+        )
 
     @verifies("scenario.task-session.cost-unaccounted")
     def test_a_cost_account_an_assistant_record_follows_is_no_cost(self):

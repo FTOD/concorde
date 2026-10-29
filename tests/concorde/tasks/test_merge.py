@@ -1398,7 +1398,11 @@ class MergeTests(unittest.TestCase):
         self.assert_untouched(before)
         self.assertIsNone(store.load_task(self.root, "t1")["merging"])
 
-    @verifies("scenario.tasks.merge-resume-refused")
+    @verifies(
+        "scenario.tasks.merge-resume-refused",
+        "scenario.tasks.merge-resume-not-merging",
+        "scenario.tasks.merge-resume-checks",
+    )
     def test_resume_refuses_a_merge_that_is_not_the_head(self):
         self.project.open_task("t1")
         checked = self.deliver()

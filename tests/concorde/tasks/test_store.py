@@ -1096,6 +1096,17 @@ class TaskStoreTests(unittest.TestCase):
         self.assertEqual("", git(self.root, "branch", "--list", "concorde/t1"))
         self.assertFalse((self.root / ".claude/worktrees/t1").exists())
 
+    def test_an_unreadable_registry_is_an_environment_refusal(self):
+        (self.root / ".concorde/specs.json").write_text("{not json")
+        status, value = self.command(
+            "open", "t1", "--goal", "g", "--modules", "module.a"
+        )
+        self.assertEqual(1, status, value)
+        self.assertEqual(
+            ("specs_unloadable", "environment"),
+            (value["error"]["code"], value["error"]["unhandled"]["reason"]),
+        )
+
     @verifies("scenario.tasks.not-primary")
     def test_linked_worktrees_cannot_open_or_close(self):
         self.project.open_task("t1")
@@ -2126,6 +2137,41 @@ class TaskStoreTests(unittest.TestCase):
         status, value = self.close("retry", "--completed", "--note", "fourth")
         self.assertEqual((0, "retry.4"), (status, value["closed"]["history"]), value)
         self.assert_log_committed("retry.4", self.history("retry.4"), "retry")
+
+    @verifies("scenario.tasks.history-lookup")
+    def test_a_closed_task_shows_no_run_of_a_later_task_of_its_name(self):
+        self.project.open_task("retry")
+        status, value = self.close("retry", "--completed", "--note", "first")
+        self.assertEqual(0, status, value)
+        git(self.root, "branch", "-D", "concorde/retry")
+        self.project.open_task("retry")
+        # A run of the new task waits in the lobby for its workspace lock.
+        run_id = "r-20261029T000000-understand-0a1b2c3d"
+        lobby = self.root / ".concorde/lobby" / run_id
+        lobby.mkdir(parents=True)
+        (lobby / "status.json").write_text(
+            json.dumps(
+                {
+                    "kind": "operation",
+                    "run_id": run_id,
+                    "workspace": "retry",
+                    "name": "understand",
+                    "modules": ["module.a"],
+                    "started_at": "2026-10-29T00:00:00Z",
+                }
+            )
+        )
+        with locks.hold(
+            layout.lock_file(self.root / ".concorde", "run", run_id), "a run"
+        ):
+            _, shown = self.command("show", "retry")
+            self.assertEqual(
+                [(run_id, "running")],
+                [(run["run_id"], run["status"]) for run in shown["runs"]],
+            )
+            _, shown = self.command("show", "retry.1")
+            self.assertEqual("first", shown["record"]["closed"]["note"])
+            self.assertEqual([], shown["runs"])
 
     def read_only_log(self, task_id="t1"):
         log = self.folder(task_id) / "decisions.md"
