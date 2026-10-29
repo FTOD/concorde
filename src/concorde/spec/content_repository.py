@@ -53,6 +53,7 @@ from .repository_base import (
     is_directory_entry,
     is_identity,
     most_specific,
+    overlaps,
     read_file,
     reference_record,
     shared_path,
@@ -136,7 +137,8 @@ REFERENCE = {
         obj({"kind": {"enum": ["bound", "external"]}, "path": LISTING_ENTRY}),
     ]
 }
-# The bound inclusion that selected a file of the Module's own realization into its Spec context.
+# The bound inclusion that selected a file of the realization of the Module, or of a Module it
+# uses, into its Spec context.
 BOUND_REASON = obj(
     {
         "relation": {"const": "includes"},
@@ -1534,8 +1536,9 @@ class DocumentUnitRepository:
         return context
 
     def bound_records(self, module: ModuleRef) -> list[dict]:
-        """The files of ``Bound(M)``, sorted by path, each with the digest of its current bytes and
-        every bound inclusion that selected it. They are read when asked, like every bound file."""
+        """The files of ``Bound(M)``, sorted by path, each with the Module whose realization binds
+        it, the digest of its current bytes and every bound inclusion that selected it. They are
+        read when asked, like every bound file."""
         target = self._resolve(module)
         selected: dict[str, list[dict]] = {}
         for entry in self.bound_inclusions(target):
@@ -1543,10 +1546,21 @@ class DocumentUnitRepository:
                 reason = {"relation": "includes", "kind": "bound", "path": entry}
                 if reason not in selected.setdefault(path, []):
                     selected[path].append(reason)
+        # The Module itself first, so a file it binds keeps it as owner, then its providers.
+        binders = (
+            {
+                binder: set(self.bound_files(binder))
+                for binder in self.bound_binders(target)
+            }
+            if selected
+            else {}
+        )
         return [
             {
                 "path": path,
-                "owner": target.id,
+                "owner": next(
+                    binder for binder, files in binders.items() if path in files
+                ),
                 "digest": digest(read_file(self.root, path)),
                 "reasons": sorted(selected[path], key=lambda reason: reason["path"]),
             }
@@ -1679,9 +1693,37 @@ class DocumentUnitRepository:
             value for kind, value in self._resolve(module).references if kind == "bound"
         )
 
+    def bound_binders(self, module: ModuleRef) -> tuple[str, ...]:
+        """The Modules whose realizations a bound inclusion of the Module may name: the Module
+        itself, then every registered Module it uses directly, by identity. Selection is one level,
+        so a provider's own ``uses`` are never followed."""
+        target = self._resolve(module)
+        return (
+            target.id,
+            *sorted(
+                {
+                    identity
+                    for identity in target.uses
+                    if identity in self.modules and identity != target.id
+                }
+            ),
+        )
+
     def bound_selection(self, module: ModuleRef, entry: str) -> tuple[str, ...]:
-        """``files(M, p)``: the files the Module's realizations bind at or below one path."""
-        return tuple(path for path in self.bound_files(module) if covers(entry, path))
+        """``files(M, p)``: the files that the realizations of the Module, or of a Module it uses,
+        bind at or below one path. Only the entries that overlap the path are expanded."""
+        return tuple(
+            sorted(
+                {
+                    path
+                    for binder in self.bound_binders(module)
+                    for own in self.modules[binder].files
+                    if overlaps(own, entry)
+                    for path in expand_entry(self.root, own)
+                    if covers(entry, path)
+                }
+            )
+        )
 
     def external_inclusions(self, module: ModuleRef) -> tuple[str, ...]:
         """The Module's ``includes`` of kind ``external``, in declaration order."""

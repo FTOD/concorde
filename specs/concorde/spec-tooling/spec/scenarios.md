@@ -563,14 +563,30 @@ to it.
 - AND a byte change of `src/a/one.py` changes A's context identity
 - BUT it leaves C's context identity unchanged
 
-### scenario.spec.bound-inclusion-invalid — A bound inclusion outside the Module's realization
+### scenario.spec.bound-inclusion-used — A Module reads a used Module's realization as Spec, read only
+
+- GIVEN Module A that uses Module B, which binds `src/bmod/`
+- AND A includes, as kind `bound`, `src/bmod/b.py`
+- WHEN A's Spec context is resolved
+- THEN it lists `src/bmod/b.py` with B as its owner, the digest of its bytes and the inclusion that
+  selected it
+- BUT it adds no document and no term
+- AND B's Spec context does not list `src/bmod/b.py`
+- AND a grant for A alone lists `src/bmod/b.py` as `ro` for every task type, including
+  `specify`, `implement` and `code-to-spec`, which write
+- AND a grant for A and B and task type `implement` keeps `src/bmod/` as `rw` through B's
+  implementation scope
+- AND a byte change of `src/bmod/b.py` changes A's context identity
+
+### scenario.spec.bound-inclusion-invalid — A bound inclusion outside the realizations its Module may read
 
 - GIVEN a Module with a bound inclusion of a path that does not exist
-- AND a bound inclusion of a file that only another Module binds
+- AND a bound inclusion of a file that only a Module it does not use binds
+- AND a bound inclusion of a file that only a Module binds which a Module it uses uses in turn
 - AND a bound inclusion of a file that another of its bound inclusions already selects
 - WHEN the validator runs
-- THEN it reports `CHK.includes.bound` for the first two
-- AND it reports a `CHK.includes.redundant` warning for the third
+- THEN it reports `CHK.includes.bound` for the first three
+- AND it reports a `CHK.includes.redundant` warning for the fourth
 
 ### scenario.spec.external-reference-invalid — Missing or overlapping external material
 

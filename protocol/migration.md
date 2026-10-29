@@ -397,3 +397,29 @@ third-party material. It is not. Now:
 
 Every specification valid under 16.4 stays valid. Nothing needs to change. A Module whose
 promises defer to text in its own realization may now include that text.
+
+## Version 16.6
+
+Version 16.6 lets a Module read, as part of its Spec, text that a Module it uses realizes. Some
+Modules follow rules whose text another Module binds. A Module that parses Specs, for example,
+follows the Protocol chapters that Spec tooling binds. Under 16.5, a bound inclusion named only the
+declaring Module's own realization. `uses` selects only documents. External material may not
+overlap a realization. So the consumer could not read the rules its code follows. Now:
+
+- A bound inclusion may also name a path at or below an entry of a realization of a Module the
+  declaring Module uses directly. See [`includes`](relations.md#includes). A Module reached only
+  through further `uses`, or only through `contains`, does not admit it.
+- `files(M, p)` holds the files that the realizations of M, or of a Module M uses, bind at or below
+  p. See [Context](context.md#spec-context-selection). Those files join `Bound(M)` and
+  `ProjectSpecification`, read only, like any file of a bound inclusion.
+- A file that a used Module binds stays in that Module's `ImplementationScope`. It never enters a
+  write set of the declaring Module. A task bound only to the declaring Module therefore never
+  writes it, whatever its type. See [Boundaries](boundaries.md#task-types).
+- The context identity covers the files' exact bytes, as for every file of `Bound(M)`. A change of
+  such a file changes the identity of the declaring Module's context. A context without such an
+  inclusion keeps its identity.
+- `CHK.includes.bound` accepts a path within the realization of a Module the declaring Module uses.
+  It still refuses a path within the realization of any other Module.
+
+Every specification valid under 16.5 stays valid with the same contexts. Nothing needs to change. A
+Module whose code follows text that a Module it uses binds may now include that text.

@@ -28,7 +28,8 @@ selection is also what a human reader of the Module needs open beside it.
 The channels stay separate so that "may read this Module's promises" never implies "may read or
 change its code". Knowing what a word means never implies reading how its owner works. A bound
 inclusion is the one declaration that puts the contents of a bound file into the spec channel. It
-names files of the Module's own realization only, and only that Module's readers receive them.
+names files of the Module's own realization or of the realization of a Module it uses. Only the
+declaring Module's readers receive them.
 Whether a task receives implementation contents, read-only or writable, is part of its task
 boundary. See [Boundaries](boundaries.md).
 
@@ -44,8 +45,8 @@ spec(selection)          for a contains or uses with relies_on: the target's ent
 spec(definer(target))    the document that defines the target node; for a Module target,
                          that Module
 term(target)             the glossary entry of the target concept
-bound(target)            the contents of the files the declaring Module's realizations bind
-                         at or below the target path
+bound(target)            the contents of the files that the realizations of the declaring
+                         Module, or of a Module it uses, bind at or below the target path
 external(target)         the pinned material at the target path
 implementation(target)   the name of the target path
 none                     nothing
@@ -57,7 +58,8 @@ requirement `spec(N)` naming a Module N is satisfied when at least one document 
 ## Spec context selection
 
 Let `D(M)` be the documents Module M owns, and `members(U)` the reading and metadata members of a
-document U. Let `files(M, p)` be the files M's realizations bind at or below the path p.
+document U. Let `files(M, p)` be the files that the realizations of M, or of a Module M uses,
+bind at or below the path p.
 
 ```text
 Spec(M)        = D(M)
@@ -91,6 +93,9 @@ Module therefore never brings M's bound inclusions. A bound file mentions no con
 Protocol's sense, so it adds no term. It satisfies no requirement of
 [Reconciliation](#reconciliation). Its contents are read only, whatever the file's level in the
 Module's write sets.
+
+`files(M, p)` follows only M's own `uses`, one level, like every selection. A file that only a
+Module M uses binds stays in that Module's `ImplementationScope`. It enters none of M's write sets.
 
 A scenario query resolves the scenario's owner and selects that owner's whole context. It never
 trims to the scenario. A scenario query never selects the consumer that happened to read it.
@@ -174,8 +179,9 @@ Exact entries and files below directory prefixes resolve under an explicit deter
 rule. Every entry exists, so implementation context never names missing content.
 
 Document members never belong to implementation context. A bound inclusion leaves implementation
-context unchanged: the file is still named there, and its contents are in the spec channel as
-well. When another Module binds the same file,
+context unchanged. A file of M's own realization is still named there, and its contents are in the
+spec channel as well. A file that only a Module M uses binds is named in that Module's
+implementation context, not in M's. When another Module binds the same file,
 a change to it concerns that Module too. This adds neither that Module's Specs nor its code to this
 reader's context. A Module with no bindings has an empty implementation context. This does not
 prove it has no realization.

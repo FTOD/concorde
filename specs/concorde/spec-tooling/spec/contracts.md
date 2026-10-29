@@ -249,10 +249,13 @@ The reasons are:
 
 Each bound record has `path`, `owner`, `digest` and `reasons`.
 A bound inclusion is an `includes` of kind `bound`.
-Its records are the files that the queried Module's realizations bind at or below its path.
+Its records are the files that the realizations of the queried Module, or of a Module it uses
+directly, bind at or below its path.
 Their details are:
 
-- `owner` is the queried Module.
+- `owner` is a Module whose realization binds the file. It is the queried Module when its
+  realizations bind the file. Otherwise it is the first by identity of the Modules it uses whose
+  realizations bind the file.
 - `digest` is SHA-256 of the file's bytes when the record was computed, in the form of a source
   record's digest.
 - `reasons` lists `{"relation": "includes", "kind": "bound", "path": P}` for every bound inclusion
@@ -294,7 +297,7 @@ chapters from declarations alone:
 
 | Set or index | Returns | Repository query |
 | --- | --- | --- |
-| [Spec context](../../glossary.json#concept.spec-context) | both members of each owned and selected document and the files of each bound inclusion, sorted, with the selecting relations | `spec_context(...).paths`, `spec_context`; `bound_inclusions` lists the declared paths, `bound_selection` the files the Module binds at or below one of them |
+| [Spec context](../../glossary.json#concept.spec-context) | both members of each owned and selected document and the files of each bound inclusion, sorted, with the selecting relations | `spec_context(...).paths`, `spec_context`; `bound_inclusions` lists the declared paths, `bound_binders` the Module and then the registered Modules it uses by identity, `bound_selection` the files their realizations bind at or below one path |
 | [External context](../../glossary.json#concept.external-context) | per external inclusion: the entry, whether it is a directory, whether it exists, the readable files below it and one digest over their paths and bytes | `external_context`; `external_inclusions` lists the declared entries, `external_files` and `external_digest` expand and digest one entry |
 | Implementation context | the names of the files the realizations bind | `implementation_context`; `bound_files` lists the same files |
 | Spec scope | both members of each owned document, and the project glossary, of whose entries only those the Module owns or adds are its to change | `spec_scope` |
@@ -432,9 +435,11 @@ Each entry's `level` follows the table below, where a dash means the set contrib
 The sets contribute these paths:
 
 - Spec context and Spec scope: both members of each document, as exact paths. Spec context also
-  contributes the files of the Module's bound inclusions, as exact paths. Such a file is therefore
-  `ro` where the task type gives the implementation scope no level or `ro`, and stays `rw` where
-  it gives `rw`. Spec scope also contributes the project glossary. A task that writes Specs may therefore change the entries its
+  contributes the files of the Module's bound inclusions, as exact paths. A file of the Module's own
+  realization is therefore `ro` where the task type gives the implementation scope no level or `ro`,
+  and stays `rw` where it gives `rw`. A file that only a used Module binds is in no implementation
+  scope of the Module. It is `ro` unless the grant also binds a Module whose implementation scope
+  makes it `rw`. Spec scope also contributes the project glossary. A task that writes Specs may therefore change the entries its
   bound Modules own. Which entries it changed is checked after the task, not by the grant.
 - Implementation context: the files the realizations bind, expanded below directory entries by the
   [exclusion rule](#implementation-exclusions).

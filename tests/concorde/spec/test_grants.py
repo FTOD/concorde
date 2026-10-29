@@ -621,18 +621,103 @@ class GrantTests(unittest.TestCase):
         self.assertEqual("stale_context", raised.exception.code)
         self.assertIn("src/a/one.py", str(raised.exception))
 
+    @verifies("scenario.spec.bound-inclusion-used")
+    def test_a_bound_inclusion_reads_a_used_modules_files_read_only(self):
+        before = self.project.repository().spec_context("module.a").value
+        self.include_bound("src/bmod/b.py")
+        sync_registry(self.root)
+        self.assertEqual(set(), self.project.rules(), self.project.validate().findings)
+        repository = self.project.repository()
+        context = repository.spec_context("module.a")
+        self.assertEqual(
+            [
+                {
+                    "path": "src/bmod/b.py",
+                    "owner": "module.b",
+                    "digest": digest(b"value = 1\n"),
+                    "reasons": [
+                        {
+                            "relation": "includes",
+                            "kind": "bound",
+                            "path": "src/bmod/b.py",
+                        }
+                    ],
+                }
+            ],
+            context.value["bound"],
+        )
+        # No document and no term: only the used Module's file is added.
+        self.assertEqual(
+            [source["path"] for source in before["sources"]],
+            [source["path"] for source in context.value["sources"]],
+        )
+        self.assertEqual(before["terms"], context.value["terms"])
+        self.assertEqual(
+            b"value = 1\n", repository.context_bytes(context)["src/bmod/b.py"]
+        )
+        self.assertNotIn("src/bmod/b.py", repository.spec_context("module.b").paths)
+        self.assertIn("src/bmod/b.py", repository.project_specification())
+        # The file lies in B's implementation scope, never in A's: a grant for A alone reads it
+        # and never writes it, whatever the task type.
+        self.assertFalse(repository.boundary_sets("module.a").writable("src/bmod/b.py"))
+        for task_type in TASK_TYPES:
+            with self.subTest(task_type=task_type):
+                value = self.grant(["module.a"], task_type)
+                self.assertEqual("ro", self.levels(value)["src/bmod/b.py"])
+                self.assertEqual("ro", Grant(value).level("src/bmod/b.py"))
+                self.assertNotIn(
+                    "src/bmod/",
+                    {e["path"] for e in value["entries"] if e["level"] == "rw"},
+                )
+        # Only a task also bound to B writes it, through B's own implementation scope.
+        both = self.grant(["module.a", "module.b"], "implement")
+        self.assertEqual("rw", self.levels(both)["src/bmod/"])
+        self.assertEqual("rw", Grant(both).level("src/bmod/b.py"))
+        own, provider = (
+            context_identity(self.project.repository(), [module])
+            for module in ("module.a", "module.b")
+        )
+        (self.root / "src/bmod/b.py").write_text("value = 2\n")
+        self.assertNotEqual(
+            own, context_identity(self.project.repository(), ["module.a"])
+        )
+        self.assertEqual(
+            provider, context_identity(self.project.repository(), ["module.b"])
+        )
+        with self.assertRaises(SpecError) as raised:
+            repository.recheck_context(context)
+        self.assertEqual("stale_context", raised.exception.code)
+        self.assertIn("src/bmod/b.py", str(raised.exception))
+
     @verifies("scenario.spec.bound-inclusion-invalid")
-    def test_a_bound_inclusion_lies_within_the_modules_own_realization(self):
+    def test_a_bound_inclusion_lies_within_a_realization_its_module_may_read(self):
+        # B uses E: A reaches E only through B's own uses, which selection never follows.
+        (self.root / "src/e.py").write_text("value = 1\n")
+        self.project.module(
+            "module.e",
+            "specs/e/module.md",
+            document("e", "E", [realization("realization.e.code", ["src/e.py"])]),
+        )
+        self.project.write(
+            "specs/b/module.md",
+            document(
+                "b", "B", [realization("realization.b.code", ["src/bmod/"])], ("e",)
+            ),
+        )
+        sync_registry(self.root)
         self.include_bound(
-            "src/a/missing.py", "src/bmod/b.py", "src/a/", "src/a/one.py"
+            "src/a/missing.py", "src/shared.py", "src/e.py", "src/a/", "src/a/one.py"
         )
         sync_registry(self.root)
         messages = [
             finding.message for finding in self.project.findings("CHK.includes.bound")
         ]
-        self.assertEqual(2, len(messages), messages)
-        self.assertIn("src/a/missing.py", messages[0] + messages[1])
-        self.assertIn("src/bmod/b.py", messages[0] + messages[1])
+        self.assertEqual(3, len(messages), messages)
+        for path in ("src/a/missing.py", "src/shared.py", "src/e.py"):
+            self.assertEqual(1, sum(path in message for message in messages), messages)
+        self.assertNotIn(
+            "src/e.py", self.project.repository().spec_context("module.a").paths
+        )
         redundant = [
             finding.message
             for finding in self.project.findings("CHK.includes.redundant")

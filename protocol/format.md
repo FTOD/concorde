@@ -94,7 +94,7 @@ global file.
   - A project-relative path, for kinds `bound` and `external`.
 
   For a directory, the path ends in `/`. The path of a `bound` inclusion lies at or below an entry
-  of one of the Module's own realizations.
+  of a realization of the Module or of a Module it uses.
 - `participates` entries have `contract`, `version`, `role` (`provided` or `required`), `peer` (a
   Module identity or `external`) and `meaning`.
 - `glossary` is optional. It appears only in the block of a Module without a parent.
