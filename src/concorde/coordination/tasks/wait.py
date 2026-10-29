@@ -9,7 +9,9 @@ it is released, so those three are the states a task wait admits. ``merging`` do
 merge holds the lock from storing it until it closes the task or returns it to delivered, so no
 wait would ever see it. A rebind wait learns of every write of the task's
 record from the kernel (``watch.Changes`` on the task's folder, which also reports the folder
-moving to the history) and reads the record again. A merge wait blocks on the task's merge attempt
+moving to the history) and reads the record again; it also learns of every write of the Claude Code
+transcripts through which it follows the main agent's session (``moves``), since a move or a rename
+writes them. A merge wait blocks on the task's merge attempt
 lock, which ``concorde task merge`` holds until its output is complete and removes then, so it
 returns after the merge's last word even when the close removed the workspace lock long before.
 The project MCP server runs the same waits in a thread for ``register_wait``; this command is
@@ -20,7 +22,9 @@ from __future__ import annotations
 
 import json
 import os
+import select
 import time
+from contextlib import ExitStack
 from pathlib import Path
 
 from ...kernel.tracing import layout, locks, reader
@@ -33,6 +37,9 @@ from .store import TaskError
 # and so the ones a wait sees.
 AWAITABLE = ("delivered", "closed", "failed")
 LOCKS = ("merge", "workspace")
+# How long ``concorde task wait --rebound`` waits without ``--timeout``: a main agent's session
+# that ended without moving never rebinds the task, and a wait for it must not go unnoticed.
+REBOUND_TIMEOUT = 1800.0
 
 
 def lock_path(primary: Path, kind: str, task_id: str | None = None) -> Path:
@@ -131,9 +138,11 @@ def wait_task(
                 changes.wait(_remaining(deadline))
 
 
-def rebound(primary: Path, task_id: str, former: str) -> dict | None:
+def rebound(primary: Path, task_id: str, former: str, follow=None) -> dict | None:
     """The wait's answer when the task's main agent's session is no longer ``former``, else
-    None; ``wait_unreachable`` when the task ended."""
+    None; ``wait_unreachable`` when the task ended. With ``follow``, as ``store.report`` takes
+    it, a record still naming ``former`` is also answered with the name its main agent's session
+    is followed to, when that is not ``former``."""
     record, _ = store.load_any(primary, task_id)
     if record["state"] in store.ENDED:
         raise TaskError(
@@ -143,6 +152,14 @@ def rebound(primary: Path, task_id: str, former: str) -> dict | None:
         )
     if record["main"] != former:
         return {"task": task_id, "main": record["main"], "former": former}
+    found = follow(record) if follow is not None else None
+    if found is not None and found["main"] != former:
+        return {
+            "task": task_id,
+            "main": found["main"],
+            "former": former,
+            "followed": list(found["followed"]),
+        }
     return None
 
 
@@ -190,18 +207,40 @@ def _record_changes(primary: Path, task_id: str) -> Changes:
 
 
 def wait_rebound(
-    primary: Path, task_id: str, former: str, timeout: float | None = None
+    primary: Path,
+    task_id: str,
+    former: str,
+    timeout: float | None = None,
+    follow=None,
+    watched=None,
 ) -> dict:
-    """Block until the task's record names a main agent's session other than ``former``."""
+    """Block until the task's record names a main agent's session other than ``former``, or,
+    with ``follow``, until its main agent's session is followed to another name.
+
+    ``watched(record)`` names the transcripts that following reads, ``(folder, file names)`` or
+    None; the wait wakes for their writes as for the record's, since a move writes the moved
+    session's transcript and a rename the renamed one's. Their watch is made again whenever the
+    names change, before the record is read, so no write between is lost."""
     former = former_session(former)
     deadline = _deadline(timeout)
     started = time.monotonic()
-    found = rebound(primary, task_id, former)
+    found = rebound(primary, task_id, former, follow)
     if found is not None:
         return {**found, "waited_seconds": 0.0}
-    with _record_changes(primary, task_id) as changes:
+    with ExitStack() as stack:
+        changes = stack.enter_context(_record_changes(primary, task_id))
+        transcripts, target = None, None
         while True:
-            found = rebound(primary, task_id, former)
+            if watched is not None:
+                record, _ = store.load_any(primary, task_id)
+                wanted = watched(record)
+                if wanted != target:
+                    if transcripts is not None:
+                        transcripts.close()
+                    transcripts, target = _transcript_changes(wanted), wanted
+                    if transcripts is not None:
+                        stack.callback(transcripts.close)
+            found = rebound(primary, task_id, former, follow)
             if found is not None:
                 return {**found, "waited_seconds": round(time.monotonic() - started, 3)}
             if deadline is not None and time.monotonic() >= deadline:
@@ -209,7 +248,35 @@ def wait_rebound(
                     f"task {task_id} naming a main agent's session other than {former}",
                     timeout,
                 )
-            changes.wait(_remaining(deadline))
+            _wait_any([changes, transcripts], _remaining(deadline))
+
+
+def _transcript_changes(wanted) -> Changes | None:
+    """The changes of the transcripts ``(folder, names)`` names, or None when there are none to
+    watch or the kernel refuses: the wait then still wakes for the record and its bound."""
+    if wanted is None:
+        return None
+    folder, names = wanted
+    if not Path(folder).is_dir():
+        return None  # never create Claude Code's folder
+    try:
+        return Changes(Path(folder), set(names))
+    except WatchError:
+        return None
+
+
+def _wait_any(watches: list, timeout: float | None) -> bool:
+    """Wait until one of ``watches`` (None ones left out) saw a change, as ``Changes.wait`` does
+    for one; False when ``timeout`` seconds passed without one."""
+    watches = [item for item in watches if item is not None]
+    deadline = None if timeout is None else time.monotonic() + timeout
+    while True:
+        if any(item.wait(0) for item in watches):
+            return True
+        remaining = None if deadline is None else deadline - time.monotonic()
+        if remaining is not None and remaining <= 0:
+            return False
+        select.select([item.descriptor for item in watches], [], [], remaining)
 
 
 def locate_run(here: Path, run_id: str) -> tuple[Path, Path]:

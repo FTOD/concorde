@@ -1215,14 +1215,20 @@ def _append_log(
         ) from failure
 
 
-def report(primary: Path, task_id: str, text: str, escalated: list[int]) -> dict:
+def report(
+    primary: Path, task_id: str, text: str, escalated: list[int], follow=None
+) -> dict:
     """Record a task session's report to the main agent in the task record and decision log,
-    before the session messages it; the report and the main agent's session to message."""
+    before the session messages it; the report and the main agent's session to message.
+
+    ``follow(record)``, when given, answers where the record's main agent's session is now,
+    ``{"main", "followed"}``, or None; it runs before the task's lock is taken, since it may ask
+    Claude Code. A followed name is the session to message, and the decision log names both."""
     text = (text or "").strip()
     if not text:
         raise TaskError("invalid_input", "--text must give the report")
     purpose = "a task that ended has no main agent waiting for its report"
-    load_unended(primary, task_id, purpose)
+    found = follow(load_unended(primary, task_id, purpose)) if follow else None
     stamp = now()
     entry = {}
     with task_locked(primary, task_id):
@@ -1250,9 +1256,19 @@ def report(primary: Path, task_id: str, text: str, escalated: list[int]) -> dict
             return record
 
         record = update(primary, task_id, change, locked=True)
+        if found is not None and found["main"] == record["main"]:
+            found = None  # rebound to that name meanwhile
         carried = (
             f"\n\nIt carries escalation(s) {', '.join(map(str, entry['escalations']))}."
             if entry["escalations"]
+            else ""
+        )
+        addressee = found["main"] if found else record["main"]
+        moved = (
+            f"The main agent's session the record names, `{record['main']}` "
+            f"(`{found['followed'][0]}`), continues as `{found['main']}` "
+            f"(`{found['followed'][-1]}`), so the report goes there.\n\n"
+            if found
             else ""
         )
         # Still under the lock, so no close appends its closing before this entry.
@@ -1260,13 +1276,18 @@ def report(primary: Path, task_id: str, text: str, escalated: list[int]) -> dict
             primary,
             task_id,
             f"Report {entry['number']} to the main agent "
-            f"({record['main'] or 'no session named'}), {stamp}",
-            f"{text}{carried}",
+            f"({addressee or 'no session named'}), {stamp}",
+            f"{moved}{text}{carried}",
             f"report {entry['number']}",
         )
     return {
         "report": entry,
-        "main": record["main"],
+        "main": addressee,
+        **(
+            {"recorded_main": record["main"], "followed": list(found["followed"])}
+            if found
+            else {}
+        ),
         "decision_log": decision_log_path(primary, task_id).as_posix(),
     }
 

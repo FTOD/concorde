@@ -399,9 +399,9 @@ This illustrates [the receipt naming every owned file](requirements.md#req.distr
 - GIVEN a project whose `.claude/settings.json` has its own `SessionStart` hook
 - WHEN the installer installs the coordination part
 - THEN `.claude/settings.json` keeps the developer's hook
-- AND it gains, after that hook, a `SessionStart` group with the matcher `startup|resume|compact`
-  whose one command hook runs `"$CLAUDE_PROJECT_DIR"/.concorde/bin/concorde task main-hook` with a
-  time limit of 20 seconds
+- AND it gains, after that hook, a `SessionStart` group with the matcher
+  `startup|resume|compact|fork` whose one command hook runs
+  `"$CLAUDE_PROJECT_DIR"/.concorde/bin/concorde task main-hook` with a time limit of 20 seconds
 - AND no `permissions` object is added for it
 - AND the receipt records that hook under `hooks`
 - AND installing again adds no second copy

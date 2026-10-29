@@ -414,8 +414,8 @@ separated by commas. It is also optionally filtered by `--main`: the main agent'
 names. Given both filters, the command lists the tasks that satisfy both.
 
 `concorde task main-hook` is the main agent's Claude Code `SessionStart` hook, which
-[Coordination](../module.md) has the installer add for the matchers `startup`, `resume` and
-`compact`. A Claude Code session's name may change at a restart or a resume, and nothing else
+[Coordination](../module.md) has the installer add for the matchers `startup`, `resume`, `compact`
+and `fork`. A Claude Code session's name may change at a restart or a resume, and nothing else
 makes the main agent look at its name then. So the hook prints, as plain text for the session's
 context, every task not ended with the main agent's session its record names and the numbers of
 its unanswered reports. It marks `(this session)` each task whose record keeps the session id that
@@ -430,6 +430,22 @@ every session whose settings carry it, task sessions and workers in a task workt
 prints nothing outside the primary worktree. It also prints nothing when no task is unended. A
 hook must never fail the start of a session. On any failure it prints one line that says what
 failed and which listing to run instead, and it always exits with status 0.
+
+Claude Code's `/background` command moves an interactive session to the background. The move
+starts a new session with a new session id, and the new session's `SessionStart` has the source
+`fork`. An unnamed session also changes its name then, to its automatic title. The hook runs for
+that source too, and it recognises the move. Claude Code ends the moved session and appends to its
+transcript one record `{"type": "continued-in", "continuedInSessionId": "<new id>"}`, before the new
+session starts. A copy of a session that goes on, which also starts with `fork`, leaves no such
+record. So the hook also marks as this session each task whose record keeps a session id that
+continues, through one or more such records, into the starting session as the newest of them. Its
+line then names the session it moved from: `(this session, moved from <id>)`. A task whose session
+id continues nowhere is marked as before. The hook reads only the transcripts in the folder of the
+hook input's `transcript_path`. Claude Code documents neither the record nor its place. So the hook
+reads a missing transcript, or a record of another form, as no move. It then marks the task as it
+did before. The text starts with the time and the starting session's id. Claude Code drops a
+`SessionStart` output that repeats an earlier one word for word. With the time and the id, no
+output of the hook repeats an earlier one.
 
 `concorde task show <task-id>` prints what the task level needs to know about one task in one value:
 
@@ -514,8 +530,10 @@ concorde task rebind severity --main concorde-8e
 The record keeps every name it had, so a later reader sees whom each report was sent to. Beside the
 name, it keeps the session's Claude Code session id, `main_session`, from the
 `CLAUDE_CODE_SESSION_ID` of the command that named it. A resume and a compaction keep that id while
-the name may change, and a new session gets a new one. So the id tells a starting main agent which
-tasks are its own, which the name alone cannot while several main agents may work on one project.
+the name may change, and a new session gets a new one. A move to the background gets a new one too,
+and Claude Code's `continued-in` record ties it to the former. So the id tells a starting main agent
+which tasks are its own, which the name alone cannot while several main agents may work on one
+project.
 `concorde task list --main concorde-7d --state open,active,delivered,merging` lists the tasks not
 ended whose record still names the former session. The main agent rebinds those tasks, since an
 ended task has no task session left to report.
@@ -531,9 +549,33 @@ escalations it carries and the main agent's session the record names at that mom
 
 Tasks appends the report to the decision log. Tasks prints the report with that session, the one the
 task session then messages. A message that reaches nobody loses nothing: `concorde task show` lists
-every report. The task session waits for a rebind with
-`concorde task wait severity --rebound concorde-7d`. Once the main agent rebinds the task, that
-command returns the new name. The main agent answers with a message too. It records its answer:
+every report.
+
+**Following the main agent's session.** The main agent's session may move to the background or be
+renamed while the record still names its former name. Both events keep a trace of the session id
+the record keeps. So before it records a report, `concorde task report` follows that id. It follows
+the `continued-in` records that the hook reads
+([Listing and showing tasks](#listing-and-showing-tasks)) from the record's `main_session` to the
+newest session. It looks for that session in
+`claude agents --json`, Claude Code's list of the sessions that run. When the list shows it under a
+name other than the record's `main`, the command prints that name as the session to message, the
+record's own name as `recorded_main`, and the ids it followed. The report's heading and entry in the
+decision log name both. The record itself is not changed. Rebinding stays the main agent's step,
+since the record's `main` keeps one writer. A message to the followed name reaches the main agent
+at once, and the main agent then rebinds the task. When nothing can be followed, the command prints
+the record's `main` as before. Nothing can be followed when the record keeps no session id, or a
+transcript, a record or the list is missing or of another form, or when the newest session is not
+listed.
+
+A message that reaches nobody all the same leaves the task session waiting with
+`concorde task wait severity --rebound concorde-7d`. The command returns the new name once the
+main agent rebinds the task. It also returns a name once the record's main session can be followed
+to a session listed under a name other than `concorde-7d`. It wakes for every write of the task
+record and of the transcripts it follows, and never polls. Without `--timeout`, it waits at most
+1800 seconds. A main agent's session that ended without moving gives that wait nothing to return.
+The bound keeps such a wait from going on unnoticed: the task session records each timeout in the
+decision log before it waits again. The main agent answers with a message too. It records its
+answer:
 
 ```text
 concorde task answer severity --report 1 --text "Merging it now."
@@ -1038,7 +1080,10 @@ concorde task wait severity --merge
 The options return at these points:
 
 - `--until` returns once the task's derived state is one of the named states.
-- `--rebound` returns once the task's record names a main agent's session other than the one given.
+- `--rebound` returns once the task's record names a main agent's session other than the one given,
+  or once the record's main session can be followed to a session listed under another name, as
+  [Reports](#reports-and-the-main-agents-session) says. It waits at most 1800 seconds unless
+  `--timeout` says otherwise.
 - `--run` returns once the run's runner holds no [run lock](../../glossary.json#concept.run-lock),
   with how the run ended.
 - `--lock` returns once nobody holds the merge lock or the task's workspace lock, with who held it.

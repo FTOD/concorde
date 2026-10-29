@@ -160,7 +160,7 @@ is called with and answers:
       "defaults": {},
       "gitignore": [".concorde/tasks/", ".concorde/history/", ".concorde/workspace.json", ".claude/worktrees/"],
       "permissions": [],
-      "hooks": [{"event": "SessionStart", "matcher": "startup|resume|compact", "command": "task main-hook", "timeout": 20}],
+      "hooks": [{"event": "SessionStart", "matcher": "startup|resume|compact|fork", "command": "task main-hook", "timeout": 20}],
       "programs": [],
       "python_dependencies": [],
       "prepare": null,
@@ -1015,7 +1015,7 @@ and only then, the printed result adds `binding_error`. The receipt file never h
     "defaults": [".concorde/issues/.gitignore"],
     "amended": [".gitignore", "CLAUDE.md", ".mcp.json", ".claude/settings.json"],
     "permissions": ["Workflow(concorde-brownfield)", "mcp__concorde__workflow_step", "Bash(.concorde/bin/concorde workflow report:*)"],
-    "hooks": [{"event": "SessionStart", "matcher": "startup|resume|compact", "command": "\"$CLAUDE_PROJECT_DIR\"/.concorde/bin/concorde task main-hook"}]
+    "hooks": [{"event": "SessionStart", "matcher": "startup|resume|compact|fork", "command": "\"$CLAUDE_PROJECT_DIR\"/.concorde/bin/concorde task main-hook"}]
   }
 }
 ```

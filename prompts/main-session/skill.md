@@ -263,25 +263,33 @@ how the task ended. So merging a delivered task is also the answer to its delive
 
 ### When your session name changed
 
-A Claude Code session's name does not survive a restart or a resume. After either, the ListAgents
-tool may report another name for your session than the one you gave your tasks with `--main`. A task
-session that messages the old name reaches nobody.
+A Claude Code session's name does not survive a restart, a resume or a move to the background.
+After any of them, the ListAgents tool may report another name for your session than the one you
+gave your tasks with `--main`. A task session that messages the old name may reach nobody.
 
-Concorde's session-start hook reminds you. When your session starts, resumes or is compacted in the
-primary worktree, the hook adds to your context the tasks not ended. It gives each task's `main`
-and its unanswered reports. It marks a task `(this session)` when the task record keeps your
-session's Claude Code session id. A resume and a compaction keep that id, though not always your
-name. A new session, `/clear` and a fork get a new id. When the hook lists tasks, call ListAgents
-before anything else and compare the name it reports for your session with each task's `main`:
+Claude Code's `/background` command moves a session to the background. The moved session gets a new
+session id. Unless the session had a name of its own, it also takes its automatic title as its
+name.
+
+Concorde's session-start hook reminds you. When your session starts, resumes, is compacted or is
+moved to the background in the primary worktree, the hook adds to your context the tasks not ended.
+After a move, you read it with the developer's next prompt. It gives each task's `main` and its
+unanswered reports. It marks a task `(this session)` when the task record keeps your session's
+Claude Code session id. It marks a task `(this session, moved from <id>)` when the record keeps the
+id of the session that moved to the background as yours. Count both marks as `(this session)`
+below. A resume and a compaction keep your id, though not always your name. A new session,
+`/clear` and a copy of a session that goes on get a new id. When the hook lists tasks, call
+ListAgents before anything else and compare the name it reports for your session with each task's
+`main`:
 
 - A task whose `main` is your current name needs nothing.
 - A task whose `main` is another session that ListAgents lists belongs to that main agent. Leave
   it.
 - A task marked `(this session)` whose `main` is not your current name names your former name.
-  Nobody receives its reports. Follow the steps below for it.
+  Its reports may reach nobody. Follow the steps below for it.
 - A task not marked `(this session)` whose `main` is neither your current name nor a listed session
   belongs to an absent main agent. Several main agents may work on one project, so it may be
-  another main agent's. It may also be yours from before a new session, `/clear` or a fork. Never
+  another main agent's. It may also be yours from before a new session, `/clear` or a copy. Never
   rebind such a task on your own. Ask the developer once, in one question that lists every such
   task with its `main`, whether you take them over. Rebind only the tasks the developer names, with
   the steps below.

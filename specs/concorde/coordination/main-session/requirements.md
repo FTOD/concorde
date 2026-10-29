@@ -952,13 +952,25 @@ The task-session guidance SHALL tell a task session to message each report to th
 session that `concorde task report` printed for it.
 
 At each report, the name comes from the task record rather than the first prompt because a Claude
-Code session's name does not survive a restart or resume.
+Code session's name does not survive a restart or resume. The command prints the name Tasks follows
+the record's session id to when the main agent's session moved or was renamed before it rebound the
+task.
 
 ### req.main-session.task-session-report-resent — A lost report is sent again after the rebind
 
 The task-session guidance SHALL tell a task session whose message reaches no session of the printed
 name to wait in background Bash with `concorde task wait <task> --rebound <that name>` and send the
 same report to the name it returns.
+
+### req.main-session.task-session-wait-bounded — A rebind wait that times out is recorded and started again
+
+The task-session guidance SHALL tell a task session whose rebind wait ends with `wait_timeout` to
+append to the decision log an entry naming the report still undelivered and the main agent's session
+it waited for, and then to start the same wait again.
+
+The wait lasts at most 1800 seconds. A main agent's session that ended without moving never rebinds
+the task. A background session's notification did not reach the developer when checked on
+2026-10-29. So the decision log is where the main agent and the developer see that a report waits.
 
 ### req.main-session.answers-recorded — The main agent records its answers
 
@@ -989,11 +1001,14 @@ ListAgents before anything else and compare the name it reports for its session 
 each task listed, treating the `main` of a task the hook marks as this session as its own name,
 current or former.
 
-A restart, a resume or a compaction gives the main agent no sign that its name changed. The hook's
-list is that sign. A task that names another listed session belongs to another main agent, which
-the main agent leaves alone. The hook marks a task as this session when its record keeps the
-starting session's Claude Code session id
-([Tasks](../tasks/requirements.md#req.tasks.main-session-id)). A resume and a compaction keep that id.
+A restart, a resume, a compaction or a move to the background gives the main agent no sign that its
+name changed. The hook's list is that sign. A task that names another listed session belongs to
+another main agent, which the main agent leaves alone. The hook marks a task as this session when
+its record keeps the starting session's Claude Code session id
+([Tasks](../tasks/requirements.md#req.tasks.main-session-id)), or an id that Claude Code's records
+show continuing into it after a move
+([Tasks](../tasks/requirements.md#req.tasks.main-session-followed)). A resume and a compaction keep
+that id.
 Several main sessions may work on one project, so a `main` that ListAgents does not list may be
 another main agent's that is absent.
 
@@ -1004,8 +1019,9 @@ neither its current name nor a session ListAgents lists and that the hook does n
 session, but to ask the developer once, in one question listing every such task with its `main`,
 and to rebind only the tasks the developer names.
 
-Such a task may be the main agent's own from before a new session, `/clear` or a fork, which get a
-new session id, or a record that keeps no session id. It may also be another main agent's whose
+Such a task may be the main agent's own from before a new session, `/clear` or a copy that left its
+session going. Each of these gets a new session id. It may also have a record that keeps no
+session id. It may also be another main agent's whose
 session ended. Only the developer can tell these apart. One question lists them all, so the
 developer answers once.
 

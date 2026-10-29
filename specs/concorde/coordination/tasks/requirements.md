@@ -831,9 +831,33 @@ Claude Code session id when the command that named it knew one, and the session 
 named for the task before.
 
 A Claude Code session keeps its session id across a resume and a compaction, while its name may
-change. A new session, `/clear` and a fork get a new id. So the session id, not the name, tells a
-starting main agent which tasks it named itself. Several main agents may work on one project, so an
-absent name alone does not.
+change. A new session, `/clear` and a fork get a new id. A move to the background is such a fork,
+and Claude Code ties its new id to the former one with a `continued-in` record. So the session id,
+not the name, tells a starting main agent which tasks it named itself. Several main agents may work
+on one project, so an absent name alone does not.
+
+### req.tasks.main-session-followed — The main agent's session is followed by its session id
+
+Tasks SHALL follow a task record's `main_session` through every `continued-in` record of Claude
+Code's transcripts to the newest session, and take that session's current name from
+`claude agents --json`.
+
+Claude Code's `/background` command gives the main agent's session a new id and, unless it was
+named, a new name. A `/rename` keeps the id and changes the name. Either way the name the record
+keeps reaches nobody, while the id still leads to the session.
+
+### req.tasks.main-session-unfollowed — Without Claude Code's records, nothing is followed
+
+Tasks SHALL follow nothing, and so act as it would without following, when it lacks any of these:
+
+- The record's session id.
+- A transcript the session id leads to.
+- A record of the known form in it.
+- Claude Code's list of sessions.
+- The newest session in that list.
+
+Claude Code documents neither the `continued-in` record nor the list's form for this use. So Tasks
+only adds what it can follow, and does as before when it cannot.
 
 ### req.tasks.report-recorded — A report is recorded before it is sent
 
@@ -842,11 +866,26 @@ and decision log:
 
 - The task session's report.
 - The escalations the report carries.
-- The main agent's session the record names at that moment, which the command prints as the one to
-  message.
+- The main agent's session the record names at that moment.
 
 The message is then only the wake-up: a message that reaches nobody loses nothing, since
 `concorde task show` lists every report.
+
+### req.tasks.report-followed — A report names the session the main agent's session was followed to
+
+`concorde task report` SHALL print as the session to message the name the record's main session is
+followed to, when that name is not the record's `main`.
+
+A followed name reaches a main agent whose session moved or was renamed before it rebound the task.
+Otherwise the command prints the record's `main`, as before.
+
+### req.tasks.report-followed-shown — A followed name is shown beside the record's
+
+With a followed name, `concorde task report` SHALL also print the record's `main` and the followed
+session ids, and name both sessions in the decision log, leaving the record unchanged.
+
+A later reader sees to whom the report went and why. The rebind stays the main agent's step, so the
+record's `main` keeps one writer.
 
 ### req.tasks.report-answered — An answer marks a report answered, once
 
@@ -879,13 +918,46 @@ that still name its former name.
 
 In the primary worktree, `concorde task main-hook` SHALL print every task not ended, read from the
 current tasks' records alone, with the main agent's session its record names, whether the starting
-session's id is the one its record keeps, and the numbers of its unanswered reports, and print
-nothing outside the primary worktree or when no task is unended.
+session's id is the one its record keeps or one that continues into it, and the numbers of its
+unanswered reports, and print nothing outside the primary worktree or when no task is unended.
 
-A main agent learns of its tasks from this list after a restart, a resume or a compaction. It
-compares the names with the one ListAgents reports. The history holds only ended tasks, and
-deriving a state needs Git, so the hook reads neither and stays fast. Task sessions and workers may
-load the same settings in a task worktree. The hook is the main agent's alone.
+A main agent learns of its tasks from this list after a restart, a resume, a compaction or a move
+to the background. It compares the names with the one ListAgents reports. A move gives the session
+a new id, which only the former id's `continued-in` record ties to the tasks. The history holds only
+ended tasks, and deriving a state needs Git, so the hook reads neither and stays fast. Task sessions
+and workers may load the same settings in a task worktree. The hook is the main agent's alone.
+
+### req.tasks.main-hook-unique — The session-start hook never repeats an earlier output
+
+`concorde task main-hook` SHALL begin every text it prints with the time and the starting session's
+id.
+
+Claude Code drops a `SessionStart` output that repeats an earlier one word for word. A main agent
+would then miss the list it most needs, after a second resume with the same tasks.
+
+### req.tasks.rebound-wait-follows — A rebind wait also returns a followed session
+
+`concorde task wait <task> --rebound <session>` SHALL also return once the record's main session can
+be followed to a listed session whose name is not `<session>`, answering that name.
+
+A task session waits so when its message reached nobody. A main agent that moved or was renamed may
+not rebind the task before the developer's next prompt.
+
+### req.tasks.rebound-wait-wakes — A rebind wait wakes for the record and the followed transcripts
+
+`concorde task wait <task> --rebound <session>` SHALL wake for every write of the task record and of
+the transcripts it follows.
+
+A move writes the moved session's transcript, and a rename writes the renamed session's. So the wait
+learns of both without polling.
+
+### req.tasks.rebound-wait-bounded — A rebind wait is bounded
+
+`concorde task wait <task> --rebound <session>` SHALL wait at most 1800 seconds when `--timeout` is
+not given.
+
+A main agent's session that ended without moving gives the wait nothing to return. The bound keeps
+such a wait from lasting unnoticed: the task session records each timeout and waits again.
 
 ### req.tasks.main-hook-never-fails — The session-start hook never fails a session's start
 
