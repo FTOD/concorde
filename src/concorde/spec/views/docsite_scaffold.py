@@ -16,7 +16,7 @@ from ..errors import system_cause
 from ..model import Finding, ToolResult
 from ..repository import SpecError, SpecRepository
 from ..typed_data import TypedDataError, checked_path, safe_path
-from .creation import create_files
+from .creation import CreationError, create_files
 from .docsite_template import (
     TEMPLATE_ROOT,
     WORKFLOW_TEMPLATE,
@@ -650,15 +650,22 @@ def apply_docsite(
         # Every destination was found absent. Each file is created only where nothing exists
         # yet, so a file another process creates meanwhile is never replaced.
         created = create_files(root, resolved)
-    except (OSError, SpecError, TypedDataError) as error:
+    except CreationError as error:
         finding = Finding(
             "CONCORDE-DOCSITE-006",
             "error",
-            SITE_IDENTITY_PATH,
-            f"Staged promotion failed: {error}",
-            "Resolve the filesystem failure and retry the accepted proposal.",
+            error.destination,
+            f"Creating the proposed files failed: {error}",
+            error.remediation,
         )
-        return ToolResult("docsite", ".", "failed", findings=(finding,))
+        return ToolResult(
+            "docsite",
+            ".",
+            "failed",
+            findings=(finding,),
+            result={"destination": error.destination, "replaced": error.replaced},
+            error=error,
+        )
     return ToolResult(
         "docsite",
         ".",

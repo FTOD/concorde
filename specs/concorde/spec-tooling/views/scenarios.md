@@ -433,7 +433,8 @@ folder may publish under `/specs`, `/search` or a custom docs route.
 - AND when applying starts, its destinations are absent
 - WHEN another process creates one of the destinations during application of the proposal, even
   just before that destination is created
-- THEN the result is `failed`
+- THEN the result is `failed`, naming that destination and every created file another process
+  replaced
 - AND every file this application had already created is removed
 - BUT files it did not create keep their bytes
 - AND a created file that another process replaced keeps that process's bytes
@@ -455,3 +456,10 @@ folder may publish under `/specs`, `/search` or a custom docs route.
 
 A partially applied proposal, whose existing destinations already have the proposed bytes and whose
 other destinations are absent, is a conflict too.
+
+### scenario.views.scaffold-outcomes — Each scaffold outcome returns its promised envelope
+
+- GIVEN a project in the state that one row of the [scaffold outcomes](contracts.md#scaffold-outcomes) describes
+- WHEN `concorde docsite --propose` or `concorde docsite --apply --proposal PATH` runs
+- THEN it returns that row's `status`, `result` fields, findings and error
+- AND it exits with the code that the `status` maps to

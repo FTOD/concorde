@@ -18,6 +18,25 @@ _NO_HARD_LINKS = frozenset(
 )
 
 
+class CreationError(SpecError):
+    """A failed application, after it removed the files it created that were still its own:
+    ``destination`` is the file that appeared or could not be created, ``replaced`` the created
+    files another process had replaced, which keep that process's bytes."""
+
+    def __init__(
+        self,
+        message: str,
+        code: str,
+        *,
+        destination: str,
+        replaced: list[str],
+        **more,
+    ):
+        super().__init__(message, code, path=destination, **more)
+        self.destination = destination
+        self.replaced = replaced
+
+
 def _create(path: Path, data: bytes) -> tuple[int, int]:
     """Create ``path`` with ``data`` if it is absent, returning the identity of the file created."""
     descriptor, temporary = tempfile.mkstemp(
@@ -67,8 +86,8 @@ def _remove_own(path: Path, identity: tuple[int, int]) -> bool:
 
 def create_files(root: Path, files: dict[str, bytes]) -> list[str]:
     """Create every file, in path order, each only where nothing exists; on any failure remove
-    the files this call created that are still its own, and raise. A file another process
-    created or put in place of one of ours is never replaced or removed."""
+    the files this call created that are still its own, and raise ``CreationError``. A file
+    another process created or put in place of one of ours is never replaced or removed."""
     created: list[tuple[str, Path, tuple[int, int]]] = []
     current = None
     try:
@@ -88,12 +107,16 @@ def create_files(root: Path, files: dict[str, bytes]) -> list[str]:
                     kept.append(relative)
             except OSError as problem:
                 unremoved.append(system_cause(problem, path=relative))
-        if not isinstance(error, OSError) or current is None:
+        if not isinstance(error, (OSError, SpecError)) or current is None:
             raise
         appeared = isinstance(error, FileExistsError)
+        # The path check refuses a directory on the way that became a link meanwhile.
+        moved = isinstance(error, SpecError)
         message = (
             f"{current} appeared while the proposal was being applied"
             if appeared
+            else f"the path of {current} changed while the proposal was being applied"
+            if moved
             else f"creating {current} failed"
         )
         if unremoved:
@@ -111,22 +134,26 @@ def create_files(root: Path, files: dict[str, bytes]) -> list[str]:
                 + " had been replaced by another process "
                 "and keep that process's bytes"
             )
-        causes = [system_cause(error, path=current), *unremoved]
+        first = error if moved else system_cause(error, path=current)
+        causes = [first, *unremoved]
+        replaced = sorted(kept)
         if unremoved:
-            raise SpecError(
+            raise CreationError(
                 message,
                 "system_error",
-                path=current,
+                destination=current,
+                replaced=replaced,
                 reason="applying a scaffold proposal removes the files it created when it "
                 "fails, and the operating system refused a removal",
                 remediation="remove the named files by hand, fix the cause of the first "
                 "failure, and apply again",
                 causes=causes,
             ) from error
-        raise SpecError(
+        raise CreationError(
             message,
-            "stale_proposal" if appeared else "system_error",
-            path=current,
+            "stale_proposal" if appeared or moved else "system_error",
+            destination=current,
+            replaced=replaced,
             reason="applying a scaffold proposal only creates files, and creates either "
             "all of them or none",
             causes=causes,

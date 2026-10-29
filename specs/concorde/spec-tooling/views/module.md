@@ -185,8 +185,12 @@ follow these cases:
 - When every file already has the proposed bytes, the result is `unchanged`.
 - Otherwise, when any destination exists, the result is `conflict`.
 - When the proposal no longer matches the installed template, the result is `invalid`.
+- When every destination is absent and every file is created, the result is `success`.
+- When a destination appears meanwhile or a creation fails, the result is `failed`. It names that
+  destination, after the scaffold removed the files it created.
 
 Another package version or an altered file list can cause the template mismatch.
+The [outcomes](contracts.md#scaffold-outcomes) give each result's fields.
 With `--github-pages`, the proposal also holds `.github/workflows/deploy-docsite.yml`.
 On every push to `main`, that workflow runs `npm run build` and deploys `docsite/build/` to GitHub
 Pages. The exact commands and fields are in the [contracts](contracts.md).
