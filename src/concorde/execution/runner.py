@@ -768,16 +768,22 @@ def _close(checkout: Checkout) -> list[dict]:
 
 def _publish(path: Path, text: str) -> None:
     """Replace ``path`` with ``text`` atomically: a reader finds the old file, none, or the whole
-    new one, never part of it."""
+    new one, never part of it. Each write has a temporary file of its own beside ``path``, flushed
+    to disk before the rename, so overlapping writers never share one."""
     handle, temporary = tempfile.mkstemp(
         dir=path.parent, prefix=f".{path.stem}-", suffix=".tmp"
     )
     try:
         with os.fdopen(handle, "w", encoding="utf-8") as stream:
             stream.write(text)
+            stream.flush()
+            os.fsync(stream.fileno())
         os.replace(temporary, path)
-    finally:
-        Path(temporary).unlink(missing_ok=True)
+    except BaseException:
+        # Only this write's own file is removed; a refused removal never hides why it failed.
+        with contextlib.suppress(OSError):
+            os.unlink(temporary)
+        raise
 
 
 def _unrecorded(
@@ -987,10 +993,8 @@ def _progress(context: RunContext, *, required: bool = False, **fields) -> None:
     state.setdefault("status", None)
     state.setdefault("summary", None)
     state.setdefault("waiting_for", None)
-    temporary = path.with_suffix(".json.tmp")
     try:
-        temporary.write_text(json.dumps(state, indent=2, sort_keys=True) + "\n")
-        temporary.replace(path)
+        _publish(path, json.dumps(state, indent=2, sort_keys=True) + "\n")
     except OSError:
         if required:
             raise

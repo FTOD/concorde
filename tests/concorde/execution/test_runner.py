@@ -14,8 +14,10 @@ import shutil
 import signal
 import subprocess
 import sys
+import tempfile
 import threading
 import time
+import types
 import unittest
 from pathlib import Path
 from unittest.mock import patch
@@ -1599,7 +1601,13 @@ class RunnerTests(unittest.TestCase):
 
     @verifies("scenario.execution.result-unsaved")
     def test_a_result_that_cannot_be_saved_is_printed_and_the_run_is_lost(self):
+        publish = runner._publish
+
         def full(path, text):
+            # Only the result is refused: the run progress file is published the same way, and
+            # its first write must succeed for the run to start.
+            if path.name != "result.json":
+                return publish(path, text)
             raise OSError(28, "No space left on device", str(path))
 
         with patch.object(runner, "_publish", full):
@@ -2986,6 +2994,82 @@ class BindingTests(unittest.TestCase):
             )
         self.assertEqual("binding_invalid", caught.exception.code)
         self.assertEqual(before, (worktree / binding_file.BINDING).read_text())
+
+
+class RunProgressWriteTests(unittest.TestCase):
+    """Every write of a run progress file publishes one whole file through a temporary file of
+    its own."""
+
+    def setUp(self):
+        self.folder = Path(tempfile.mkdtemp(prefix="concorde-run-progress-"))
+        self.addCleanup(shutil.rmtree, self.folder, ignore_errors=True)
+
+    def context(self) -> types.SimpleNamespace:
+        """The fields of a run context the run progress file is written from."""
+        return types.SimpleNamespace(
+            kind="command",
+            run_id="r-1",
+            name="task-validation",
+            workspace_name="t1",
+            worktree=self.folder,
+            commit=None,
+            modules=["module.a"],
+            run_dir=self.folder,
+        )
+
+    def published(self) -> dict:
+        return json.loads((self.folder / "status.json").read_text())
+
+    def test_overlapping_progress_writes_each_publish_a_whole_file(self):
+        context = self.context()
+        replace = os.replace
+        published = []
+
+        def interleaved(source, target):
+            # The second write runs whole between the first one's write and its rename.
+            if not published:
+                published.append(source)
+                runner._progress(context, step="second")
+                self.assertEqual("second", self.published()["step"])
+            replace(source, target)
+
+        with patch.object(runner.os, "replace", interleaved):
+            runner._progress(context, required=True, step="first")
+        self.assertEqual("first", self.published()["step"])
+        self.assertEqual(["status.json"], [path.name for path in self.folder.iterdir()])
+
+    def test_a_write_is_flushed_to_disk_before_its_rename(self):
+        context = self.context()
+        fsync, replace, events = os.fsync, os.replace, []
+
+        def synced(descriptor):
+            events.append("fsync")
+            fsync(descriptor)
+
+        def renamed(source, target):
+            events.append(("replace", json.loads(Path(source).read_text())["step"]))
+            replace(source, target)
+
+        with (
+            patch.object(runner.os, "fsync", synced),
+            patch.object(runner.os, "replace", renamed),
+        ):
+            runner._progress(context, step="first")
+        self.assertEqual(["fsync", ("replace", "first")], events)
+
+    def test_a_refused_write_leaves_no_temporary_file(self):
+        context = self.context()
+        runner._progress(context, step="first")
+        before = (self.folder / "status.json").read_text()
+        failure = PermissionError(13, "Permission denied")
+        with patch.object(runner.os, "replace", side_effect=failure):
+            # A later write's refusal never changes the run; the first, required, is raised.
+            runner._progress(context, step="second")
+            with self.assertRaises(PermissionError) as refused:
+                runner._progress(context, required=True, step="second")
+        self.assertIs(failure, refused.exception)
+        self.assertEqual(before, (self.folder / "status.json").read_text())
+        self.assertEqual(["status.json"], [path.name for path in self.folder.iterdir()])
 
 
 class PidAliveTests(unittest.TestCase):
