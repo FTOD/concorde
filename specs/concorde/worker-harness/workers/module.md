@@ -98,7 +98,9 @@ node of the Operation run that launched the worker. The host keeps what analysis
 there.
 
 The **[runtime directory](../../glossary.json#concept.runtime-directory)** holds what the worker
-needs only while it runs. This is a short private directory under `/tmp`. It holds these items:
+needs only while it runs. This is a short private directory under `/tmp`. Where `/tmp` is not
+writable, as inside a check boundary, it is under the system temporary directory instead. It holds
+these items:
 
 - The generated configuration of the worker.
 - The copies of the credentials.
@@ -650,7 +652,9 @@ The refusal names these details:
 - the worker
 - the program
 - what chose the program
-- how to choose the other program for the worker
+- the command it looked for, as the variable names it or as its name on `PATH`
+- the entry `operations.<operation>.workers.<worker id>.backend` that chooses the other program
+  for the worker
 
 The worker never falls back to the other program. This refusal comes from resolving the worker's
 backend, which the caller does before it calls the host. No worker run and no run record therefore
@@ -696,9 +700,9 @@ Like pi's and Claude Code's own configuration, one model map serves these places
 
 The map says how to reach a model, never which model a worker uses. Like the map, credentials and
 pi's provider definitions come from the developer's installation
-([the pi run mechanics](pi.md#run-directory)). They never go into Git. When a worker's model has no
-id for its program in the map, that worker runs no more than one without a model. Workers never
-takes the project model name for the local id.
+([the pi run mechanics](pi.md#run-directory)). They never go into Git. When the map gives a
+worker's model no id for its backend, Workers refuses the worker with `model_unmapped` before
+launch. Workers never takes the project model name for the local id.
 
 The worker configuration holds the required `enabled_models`, the models any worker may run on.
 Each model is keyed by its project model name. Each model optionally carries the model's own
@@ -905,9 +909,9 @@ would take each. A worker whose entries set no model is left to its own resoluti
 entries set no model, that resolution refuses the worker with `model_unresolved`. Asked for no
 Operation, the reader makes the same check at once for every worker id of every Operation the
 [Operation catalog](../../glossary.json#concept.operation-catalog) lists, with one `model_unmapped`
-for all of them. An Operation that declares no worker ids, such as `general`, adds no worker to
-that check. Every refusal
-before a run, with its code and reason, is listed in
+for all of them. Every Operation the catalog lists declares its worker ids, `general` its `worker`
+and `reviewer` among them. So each Operation adds to that check every worker whose entries set a
+model. Every refusal before a run, with its code and reason, is listed in
 [the run mechanics](launch.md#refusals-before-a-run).
 
 Because the file is tracked, a [task](../../glossary.json#concept.task) carries the configuration of

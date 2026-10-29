@@ -243,6 +243,12 @@ The host SHALL NOT read the user's pi `settings.json`.
 
 The host SHALL copy from the user's pi configuration directory only `auth.json` and `models.json`.
 
+### req.workers.pi-usage-as-reported — A pi round's usage holds only what pi reported
+
+The host SHALL record in a pi round's usage the sum of each token count and of the cost that the
+round's assistant messages reported, and null for each of them that no message of the round
+reported.
+
 ### req.workers.pi-limits — pi runs stop at their limits
 
 For a pi round whose completed turns exceed the turns `CONCORDE_ROUND_LIMITS` gives it, or whose

@@ -696,6 +696,8 @@ the run. [The run mechanics](launch.md) give these exact details:
 - AND its turns are the turns the round's envelope reports
 - BUT when the version is older or the stream names none, the round's usage holds the reported cost
   whole
+- AND when the reported cost is below the cost the session's previous round reported, the round's
+  usage holds the reported cost whole too
 - AND the next round gets the budget left after that whole cost
 
 ### scenario.workers.limits-cumulative — Rounds that each stay within the budget stop once the run spent it
@@ -788,6 +790,14 @@ the run. [The run mechanics](launch.md) give these exact details:
 - AND when a line of `rg`'s output cannot be read, the answer says so
 - AND once the extension has read the limit-th match and that match's own context lines, it stops
   `rg` without reading further output and says that the limit was reached
+
+### scenario.workers.pi-partial-usage — A pi round records no metric pi did not report
+
+- GIVEN a pi round whose assistant messages report the input and output tokens but no cost
+- AND a pi round whose assistant messages report only a cost
+- WHEN the host reads each round's events
+- THEN each round's usage holds the sum of each metric its messages reported
+- AND each metric no message reported is null, never zero
 
 ### scenario.workers.pi-runtime-missing — A pi run without its runtime is refused
 

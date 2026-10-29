@@ -1,8 +1,9 @@
 """Worker run directories and runtime directories.
 
 A worker run's run directory is its trace node ``workers/<run-id>/`` inside the trace node of the
-run that launched it; its runtime directory is a short private directory under ``/tmp`` holding
-what the worker needs only while it runs, removed when the run ends.
+run that launched it; its runtime directory is a short private directory under ``/tmp``, or under
+the system temporary directory where ``/tmp`` is not writable, holding what the worker needs only
+while it runs, removed when the run ends.
 """
 
 from __future__ import annotations

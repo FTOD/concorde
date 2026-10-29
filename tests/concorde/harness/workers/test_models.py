@@ -172,11 +172,26 @@ class WorkerModelTests(unittest.TestCase):
         for part in (
             "the worker worker of implement runs on pi",
             "Concorde's default worker backend",
-            "CONCORDE_PI",
+            # The command it looked for, as the override names it.
+            f"CONCORDE_PI names {str(self.base / 'nowhere')!r}, which is no executable",
             "never falls back",
-            "edit its backend",
+            # How to choose Claude Code for this worker.
+            '`operations.implement.workers.worker.backend` to "claude"',
         ):
             self.assertIn(part, str(raised.exception))
+        unset = {k: v for k, v in self.environ.items() if k != "CONCORDE_PI"}
+        with self.assertRaises(models.ModelConfigError) as raised:
+            models.worker_choice(
+                config,
+                DECLARED,
+                "implement",
+                "worker",
+                dict(unset, PATH=str(self.base)),
+            )
+        self.assertIn(
+            "CONCORDE_PI is not set and PATH holds no executable 'pi'",
+            str(raised.exception),
+        )
         self.assertEqual(
             "claude",
             models.worker_choice(config, DECLARED, "spec_panel", "reviewer2", missing)[

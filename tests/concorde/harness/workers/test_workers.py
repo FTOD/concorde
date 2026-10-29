@@ -275,6 +275,19 @@ class WorkerProject:
         ]
 
 
+def contract_schema(identity: str) -> dict:
+    """The schema of one canonical contract of Workers' contracts.md."""
+    text = (
+        REPOSITORY_ROOT / "specs/concorde/worker-harness/workers/contracts.md"
+    ).read_text()
+    [contract] = [
+        json.loads(fence.split("```", 1)[0])
+        for fence in text.split("```concorde-contract\n")[1:]
+        if f'"{identity}"' in fence.split("```", 1)[0]
+    ]
+    return contract["schema"]
+
+
 class SettingsTests(unittest.TestCase):
     def setUp(self):
         self.project = WorkerProject(self, linked=True)
@@ -2115,7 +2128,13 @@ class WorkerRunTests(unittest.TestCase):
         self.assertEqual("environment", error["unhandled"]["reason"])
         self.assertIn("could not run", error["detail"])
         [round_] = record["rounds"]
-        self.assertIsNone(round_["audit"])
+        # The returned record leaves the audit out, as its contract and read_record have it.
+        self.assertNotIn("audit", round_)
+        validate(record, contract_schema("contract.workers.worker-run-record"))
+        stored = worker_runs.read_record(self.project.base, record["run_id"])
+        self.assertEqual(
+            {k: v for k, v in record.items() if k not in RUNTIME_ONLY}, stored
+        )
         self.assertEqual([], validated)
         self.assertEqual("ok", record["worker_result"]["status"])
         self.assertEqual([], record["deleted"])
@@ -2582,6 +2601,30 @@ class RunLimitTests(unittest.TestCase):
         self.assertEqual(0.55, record["rounds"][1]["claude"]["total_cost_usd"])
         self.assertEqual(
             "2.1.296", record["rounds"][1]["claude"]["claude_code_version"]
+        )
+
+    @verifies("scenario.workers.limits-resumed-cost")
+    def test_a_resumed_cost_below_the_previous_total_counts_whole(self):
+        # The version restores totals, but a total below the previous round's restored nothing.
+        record = self.project.run(
+            [
+                self.round("bad", 1, 0.3, version="2.1.296"),
+                self.round(
+                    "bad",
+                    1,
+                    0.2,
+                    version="2.1.296",
+                    envelope={"session_id": "fake-session-1"},
+                ),
+                self.round("ok", 1, 0.1, version="2.1.296"),
+            ],
+            max_budget_usd=1.0,
+        )
+        self.assertEqual("ok", record["status"], record["error"])
+        self.assertEqual(0.2, record["rounds"][1]["usage"]["cost_usd"])
+        self.assertEqual(
+            ["1.00", "0.70", "0.50"],
+            [given(call)[1] for call in self.project.rounds(record)],
         )
 
     @verifies("scenario.workers.limits-resumed-cost")

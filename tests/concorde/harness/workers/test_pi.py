@@ -81,6 +81,63 @@ class PiProject(WorkerProject):
         return super().request(plan, **values)
 
 
+def assistant(usage: dict) -> str:
+    """One pi ``message_end`` event of an assistant message with ``usage``."""
+    return json.dumps(
+        {"type": "message_end", "message": {"role": "assistant", "usage": usage}}
+    )
+
+
+class PiUsageTests(unittest.TestCase):
+    """What a pi round's usage records of what pi reported."""
+
+    def usage(self, *lines: str) -> dict:
+        stream = pi_backend.PiStream()
+        for line in lines:
+            stream.feed(line)
+        return stream.conclude({"exit": 0, "stdout": b"", "stderr": b""}).usage
+
+    @verifies("scenario.workers.pi-partial-usage")
+    def test_a_metric_pi_did_not_report_stays_null(self):
+        tokens_only = self.usage(
+            assistant({"input": 10, "output": 4}),
+            assistant({"input": 5, "output": 1}),
+        )
+        self.assertEqual(
+            (15, 5, None, None, None),
+            tuple(
+                tokens_only[key]
+                for key in (
+                    "tokens_in",
+                    "tokens_out",
+                    "tokens_cache_read",
+                    "tokens_cache_write",
+                    "cost_usd",
+                )
+            ),
+        )
+        cost_only = self.usage(
+            assistant({"cost": {"total": 0.25}}), assistant({"cost": {"total": 0.5}})
+        )
+        self.assertEqual(0.75, cost_only["cost_usd"])
+        for key in (
+            "tokens_in",
+            "tokens_out",
+            "tokens_cache_read",
+            "tokens_cache_write",
+        ):
+            self.assertIsNone(cost_only[key], key)
+        partial = self.usage(
+            assistant({"input": 3, "cacheRead": 7}), assistant({"output": 2})
+        )
+        self.assertEqual(
+            {"tokens_in": 3, "tokens_out": 2, "tokens_cache_read": 7},
+            {k: partial[k] for k in ("tokens_in", "tokens_out", "tokens_cache_read")},
+        )
+        self.assertIsNone(partial["tokens_cache_write"])
+        self.assertIsNone(partial["cost_usd"])
+
+
 class PiRunTests(unittest.TestCase):
     def setUp(self):
         self.project = PiProject(self)

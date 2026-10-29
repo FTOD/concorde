@@ -44,7 +44,8 @@ LIMITS = {
     "retries": 5,
     "retry_delay_seconds": 15,
 }
-# The paths Bash may read besides the grant when the configuration names none.
+# The runtime paths, which every tool of a worker may read besides the grant and none may write,
+# when the configuration names none.
 DEFAULT_RUNTIME = (".venv", "node_modules")
 DEFAULT_BACKEND = "pi"
 CLIENTS = ("claude", "pi")
@@ -240,7 +241,8 @@ def limits(config: dict) -> dict:
 
 
 def runtime(config: dict) -> tuple[str, ...]:
-    """The paths Bash may read besides the grant: the configuration's, else the default."""
+    """The runtime paths every tool may read besides the grant: the configuration's, else the
+    default, each relative to the worktree the worker works in or absolute."""
     return tuple(config.get("runtime", DEFAULT_RUNTIME))
 
 
@@ -373,11 +375,18 @@ def choice(
     return chosen
 
 
+def _variable(backend: str) -> str:
+    """The variable that names a backend's command instead of its name on ``PATH``."""
+    return "CONCORDE_CLAUDE" if backend == "claude" else "CONCORDE_PI"
+
+
+def _command(backend: str, environ) -> str:
+    """The command a backend's worker runs: the one its variable names, else its name."""
+    return environ.get(_variable(backend)) or backend
+
+
 def _program(backend: str, environ) -> str | None:
-    name = (
-        environ.get("CONCORDE_CLAUDE" if backend == "claude" else "CONCORDE_PI")
-        or backend
-    )
+    name = _command(backend, environ)
     if os.path.isabs(name):
         try:
             return name if os.path.isfile(name) and os.access(name, os.X_OK) else None
@@ -399,12 +408,21 @@ def worker_choice(
     chosen = choice(config, operation, worker)
     backend = chosen["backend"]
     if _program(backend, environ) is None:
-        variable = "CONCORDE_CLAUDE" if backend == "claude" else "CONCORDE_PI"
+        variable, command = _variable(backend), _command(backend, environ)
+        looked = (
+            f"{variable} names {command!r}, which is no executable"
+            + ("" if os.path.isabs(command) else " on PATH")
+            if environ.get(variable)
+            else f"{variable} is not set and PATH holds no executable {command!r}"
+        )
+        other = "claude" if backend == "pi" else "pi"
         raise ModelConfigError(
             "backend_missing",
             f"the {worker} worker of {operation} runs on {backend} ({chosen['backend_source']}), "
-            f"but the {backend} command is not installed: PATH and {variable} name no executable. "
-            f"A worker never falls back; install its program or edit its backend in {CONFIG}.",
+            f"but the {backend} command is not installed: {looked}. A worker never falls back; "
+            f"install its program, or choose {other} for this worker by setting "
+            f'`operations.{operation}.workers.{worker}.backend` to "{other}" in {CONFIG}, '
+            f"whose model then needs an id on {other} in the model map.",
         )
     if chosen["model"] is None:
         names = ", ".join(where for _, where in _levels_of(config, operation, worker))

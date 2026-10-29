@@ -105,7 +105,8 @@ class SettingsError(ValueError):
 class RunPaths:
     """The directories of one worker run: its runtime directory and its run directory.
 
-    ``root`` is the runtime directory, a short private directory under ``/tmp`` that holds what
+    ``root`` is the runtime directory, a short private directory under ``/tmp`` (or the system
+    temporary directory where ``/tmp`` is not writable) that holds what
     the worker needs only while it runs and is removed when it ends: ``control/``, ``config/`` and
     the worker's own ``home/``, ``tmp/`` and ``work/``. Its path stays short because Claude Code's
     Bash sandbox creates Unix sockets below ``TMPDIR``, whose paths must stay under the kernel's
