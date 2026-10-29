@@ -560,7 +560,9 @@ newest session. It looks for that session in
 `claude agents --json`, Claude Code's list of the sessions that run. When the list shows it under a
 name other than the record's `main`, the command prints that name as the session to message, the
 record's own name as `recorded_main`, and the ids it followed. The report's heading and entry in the
-decision log name both. The record itself is not changed. Rebinding stays the main agent's step,
+decision log name both. The report is appended to the record as every report is, but the
+record's main agent's session is not changed. When the task is rebound while the command follows,
+the report goes to the session the rebind named instead. Rebinding stays the main agent's step,
 since the record's `main` keeps one writer. A message to the followed name reaches the main agent
 at once, and the main agent then rebinds the task. When nothing can be followed, the command prints
 the record's `main` as before. Nothing can be followed when the record keeps no session id, or a

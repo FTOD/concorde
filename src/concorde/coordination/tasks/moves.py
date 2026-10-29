@@ -150,9 +150,12 @@ def follow(record: dict, find, run=None) -> dict | None:
     """Where the task record's main agent's session is now: ``{"main", "followed"}``, the name
     Claude Code lists the newest session it continues in under and the session ids from the
     record's ``main_session`` to that one, when that name is not the record's ``main``; None when
-    the record keeps no session id, the newest session is not listed, or the name is the same."""
+    the record keeps no session id or no transcript of it, the newest session is not listed, or
+    the name is the same."""
     session_id = record.get("main_session")
     if not isinstance(session_id, str) or not sessions.SESSION_ID.match(session_id):
+        return None
+    if find(session_id) is None:
         return None
     followed = chain(session_id, find)
     names = listed(run)

@@ -1050,11 +1050,17 @@ This illustrates [the rebind wait's bound](requirements.md#req.tasks.rebound-wai
 - AND the record still names `concorde-74`, and the report's entry keeps `main` `concorde-74`
 - AND when `claude agents --json` lists `sess-a` itself under `concorde-9f`, as after a `/rename`,
   the command prints `main` `concorde-9f`
-- BUT when `claude` is missing, fails or lists neither session, the command prints `main`
+- BUT when the transcript of `sess-a` is missing, the command prints `main` `concorde-74` and no
+  `recorded_main`
+- AND when `claude` is missing, fails or lists neither session, the command prints `main`
   `concorde-74` and no `recorded_main`
+- AND when the main agent rebinds the task to `concorde-new` while the command follows, the command
+  prints `main` `concorde-new` and no `recorded_main`, and the report's entry and heading name
+  `concorde-new`
 
 This illustrates [following the session](requirements.md#req.tasks.main-session-followed),
 [the followed name](requirements.md#req.tasks.report-followed),
+[a rebind during the following](requirements.md#req.tasks.report-followed-current),
 [showing it](requirements.md#req.tasks.report-followed-shown) and
 [following nothing without the records](requirements.md#req.tasks.main-session-unfollowed).
 

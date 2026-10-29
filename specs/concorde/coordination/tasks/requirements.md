@@ -884,13 +884,25 @@ followed to, when that name is not the record's `main`.
 A followed name reaches a main agent whose session moved or was renamed before it rebound the task.
 Otherwise the command prints the record's `main`, as before.
 
+### req.tasks.report-followed-current — A rebind during the following wins
+
+When the record's `main` or `main_session` changed between the record `concorde task report` followed
+and the record it appends the report to, the command SHALL print that record's `main` as the session
+to message, and no followed name.
+
+The command follows before it takes the task's lock, since following may ask Claude Code. A rebind
+in that time is the main agent's own word on where its session is now. The followed name described
+the session the rebind replaced.
+
 ### req.tasks.report-followed-shown — A followed name is shown beside the record's
 
 With a followed name, `concorde task report` SHALL also print the record's `main` and the followed
-session ids, and name both sessions in the decision log, leaving the record unchanged.
+session ids, and name both sessions in the decision log, leaving the record's `main`, `main_session`
+and `mains` unchanged.
 
-A later reader sees to whom the report went and why. The rebind stays the main agent's step, so the
-record's `main` keeps one writer.
+The command still appends the report to the record's `reports`, as
+[recording the report](#req.tasks.report-recorded) requires. A later reader sees to whom the report
+went and why. The rebind stays the main agent's step, so the record's `main` keeps one writer.
 
 ### req.tasks.report-answered — An answer marks a report answered, once
 
