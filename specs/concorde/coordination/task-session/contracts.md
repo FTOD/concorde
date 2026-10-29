@@ -299,7 +299,10 @@ session besides:
   The hook is `session_hook.py`, copied beside the settings with the task worktree and
   [decision log](../../glossary.json#concept.decision-log) embedded. The hook judges the path with
   every symbolic link resolved, a final link included, since Edit and Write write through a link to
-  the file it points to. The hook allows a path inside the task worktree. While the decision log's
+  the file it points to. It resolves a link before the `..` that follows it, as the operating system
+  walks the path, so the `..` leaves the directory the link points to. Since a tool may collapse each
+  `..` before it resolves any link, the hook also judges the path read so. It allows the path only
+  when both readings are allowed. The hook allows a path inside the task worktree. While the decision log's
   folder exists, the hook also allows the decision log. The hook denies any other path with a reason
   naming the task worktree. For the decision log of a task whose folder moved to the history, the
   reason names the closed task. Any failure denies.

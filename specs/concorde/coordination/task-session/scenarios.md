@@ -131,6 +131,8 @@ Commands and the session's [trace node](../../glossary.json#concept.trace-node) 
   primary worktree
 - AND the hook allows an Edit of a symbolic link in the task worktree that points inside the task
   worktree
+- AND the hook denies an Edit of a path whose `..` follows a link in the task worktree to a
+  directory of the primary worktree, which the operating system walks out of the task worktree
 - AND the hook denies a hook input that is not JSON or names no file
 - BUT the settings restrict nothing else
 - AND the settings turn the sandbox off, so the session's commands reach every path, process, socket

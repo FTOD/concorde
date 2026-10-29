@@ -300,7 +300,8 @@ The hook lets these tools change the task worktree and the task's
 [decision log](../../glossary.json#concept.decision-log). It denies every other path, an
 [Issue](../../glossary.json#concept.issue) record among them, with a reason naming the task
 worktree. Since Edit and Write write through a symbolic link, the hook judges the link by the file
-it points to. A link in the task worktree to a file outside it is denied like that file. Once the
+it points to. A link in the task worktree to a file outside it is denied like that file. So is a
+path whose `..` follows a link and so leaves the task worktree. Once the
 task is closed, its folder is in the [history](../../glossary.json#concept.history). At that point,
 the decision log's folder no longer exists. The hook then refuses every write to the decision log
 rather than recreate its folder. Where the issues part is installed, the session writes Issues

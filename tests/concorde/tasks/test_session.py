@@ -521,6 +521,15 @@ class TaskSessionTests(unittest.TestCase):
         (self.worktree / "in.py").symlink_to(self.worktree / "src/a/calc.py")
         self.assertIsNotNone(self.hook(self.worktree / "out.py"))
         self.assertIsNone(self.hook(self.worktree / "in.py"))
+        # A `..` after a directory link leaves the directory the link points to, as the operating
+        # system walks the path: collapsed first, the path would seem to stay in the worktree.
+        (self.worktree / "deep").symlink_to(self.root / "src/a")
+        through = f"{self.worktree}/deep/../a/calc.py"
+        self.assertEqual(self.root / "src/a/calc.py", Path(through).resolve())
+        self.assertIsNotNone(self.hook(Path(through)))
+        (self.worktree / "logs").symlink_to(self.folder)
+        self.assertIsNone(self.hook(self.worktree / "logs/decisions.md"))
+        self.assertIsNotNone(self.hook(Path(f"{self.worktree}/logs/../t1/task.json")))
         denied = self.hook(self.root / "src/a/calc.py")
         self.assertEqual("deny", denied["hookSpecificOutput"]["permissionDecision"])
         self.assertIn(
