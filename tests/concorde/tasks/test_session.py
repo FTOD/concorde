@@ -933,7 +933,10 @@ class EndOfTaskTests(unittest.TestCase):
         status, value = self.command("close", "t1", "--completed", "--note", "done")
         self.assertEqual(1, status, value)
         error = value["error"]
-        self.assertEqual("session_stop_failed", error["code"])
+        self.assertEqual(
+            ("session_stop_failed", "environment"),
+            (error["code"], error["unhandled"]["reason"]),
+        )
         for text in ("aaaa1111", "couldn't confirm", "claude stop aaaa1111"):
             self.assertIn(text, error["detail"])
         self.assertEqual(before, store.load_task(self.root, "t1"))

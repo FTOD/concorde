@@ -1096,6 +1096,17 @@ class TaskStoreTests(unittest.TestCase):
         self.assertEqual("", git(self.root, "branch", "--list", "concorde/t1"))
         self.assertFalse((self.root / ".claude/worktrees/t1").exists())
 
+    def test_an_unreadable_registry_is_an_environment_refusal(self):
+        (self.root / ".concorde/specs.json").write_text("{not json")
+        status, value = self.command(
+            "open", "t1", "--goal", "g", "--modules", "module.a"
+        )
+        self.assertEqual(1, status, value)
+        self.assertEqual(
+            ("specs_unloadable", "environment"),
+            (value["error"]["code"], value["error"]["unhandled"]["reason"]),
+        )
+
     @verifies("scenario.tasks.not-primary")
     def test_linked_worktrees_cannot_open_or_close(self):
         self.project.open_task("t1")

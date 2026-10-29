@@ -417,8 +417,9 @@ A commit on the task branch past its base, or an uncommitted change in its workt
 - BUT `open --resolves` or `resolve` naming an Issue that does not exist or is not open is refused
   with `invalid_issue`
 
-This illustrates [resolving open Issues](requirements.md#req.tasks.resolves-open-issues) and
-[closing them with the merge](requirements.md#req.tasks.merge-closes-resolved).
+This illustrates [resolving open Issues](requirements.md#req.tasks.resolves-open-issues),
+[closing them with the merge](requirements.md#req.tasks.merge-closes-resolved) and
+[warning of those it could not close](requirements.md#req.tasks.merge-close-failures-warn).
 
 ### scenario.tasks.merge-issues-unavailable — A merge whose Issues fail still closes and answers
 
@@ -431,7 +432,8 @@ This illustrates [resolving open Issues](requirements.md#req.tasks.resolves-open
 - AND its warnings name the Issue with the error chain `issues_unavailable`
 - AND the Issue stays open for the main agent to close
 
-This illustrates [closing resolved Issues with the merge](requirements.md#req.tasks.merge-closes-resolved).
+This illustrates [closing resolved Issues with the merge](requirements.md#req.tasks.merge-closes-resolved)
+and [warning of those it could not close](requirements.md#req.tasks.merge-close-failures-warn).
 
 ### scenario.tasks.merge-own-sources — A module first imported after the merge is the one the merge started with
 
@@ -695,15 +697,27 @@ This illustrates [a merge running the Concorde it started with](requirements.md#
 
 ### scenario.tasks.merge-resume-refused — Refuse a resume that cannot check the merge
 
-- GIVEN a task that is not merging, or one left `merging` whose merge commit is not the primary
-  branch's head
-- WHEN the main agent runs `concorde task merge <task-id> --resume`, with or without `--check`
-- THEN for a task that is not merging, the command fails with `not_merging`
-- AND for a head at the commit before the merge, the command fails with `not_resumable`
+- GIVEN a task left `merging` whose primary branch's head is the commit before the merge
+- WHEN the main agent runs `concorde task merge <task-id> --resume`
+- THEN the command fails with `not_resumable`
+- AND the primary branch and the task record are unchanged
 - AND for a head that is neither the commit before the merge nor the merge commit, the command fails
   with `merge_diverged`
-- AND that refusal names the head, the commit before the merge and the merge commit
-- AND for `--check` with `--resume`, the command fails with `invalid_input`
+- AND that refusal names the head, the commit before the merge and the merge commit, and changes
+  neither the branch nor the record
+
+### scenario.tasks.merge-resume-not-merging — Only a merging task is resumed
+
+- GIVEN a delivered task that is not merging
+- WHEN the main agent runs `concorde task merge <task-id> --resume`
+- THEN the command fails with `not_merging`
+- AND the primary branch and the task record are unchanged
+
+### scenario.tasks.merge-resume-checks — A resume takes no new checks
+
+- GIVEN a task left `merging`
+- WHEN the main agent runs `concorde task merge <task-id> --resume --check <command>`
+- THEN the command fails with `invalid_input`
 - AND the primary branch and the task record are unchanged
 
 ### scenario.tasks.merge-abort — Abort undoes the interrupted merge
@@ -797,25 +811,63 @@ This illustrates [a delivery following its checks](requirements.md#req.tasks.del
 
 This illustrates [the Kernel's convention](requirements.md#req.tasks.deliver-convention).
 
-### scenario.tasks.deliver-refused — Deliver only in the task's worktree, without Method
+### scenario.tasks.deliver-refused — Deliver only without Method
 
 - GIVEN a project whose own `concorde` offers `delivery`
 - WHEN a task session runs `concorde task deliver` in its task worktree
 - THEN it fails with `delivery_by_method`, naming `concorde delivery`
-- AND in a project without the method part, when run in the primary worktree, the command fails with
-  `not_task_worktree`, committing nothing
-- AND in a project without the method part, while a run holds the task's workspace lock, the command
-  fails with `workspace_busy` after `--wait` expires, committing nothing
-- AND in a project without the method part, when the worktree is on another branch, the command
-  fails with `wrong_branch` naming the branch, committing nothing
-- AND when the worktree switches to another branch while a delivery waits for the workspace lock,
-  the delivery fails with `wrong_branch` once it holds the lock
-- AND when a check that passes switches the worktree to another branch at the same commit, the
-  delivery fails with `wrong_branch` after that check, committing nothing on either branch
-- AND when a close retires the task's workspace while a delivery waits for the workspace lock, the
-  delivery fails with `task_closed`, taking no lock file again
 
 This illustrates [Tasks delivering only where Method does not](requirements.md#req.tasks.deliver-without-method).
+
+### scenario.tasks.deliver-not-task-worktree — Deliver only in the task's worktree
+
+- GIVEN a project without the method part and an open task
+- WHEN `concorde task deliver <task>` runs in the primary worktree
+- THEN the command fails with `not_task_worktree`
+- AND it commits nothing
+
+### scenario.tasks.deliver-workspace-busy — A delivery waits for the workspace lock only so long
+
+- GIVEN a project without the method part and an open task
+- AND a run that holds the task's workspace lock
+- WHEN the task session runs `concorde task deliver <task> --wait 0.2` in its task worktree
+- THEN the command fails with `workspace_busy` once `--wait` expires
+- AND it commits nothing
+
+### scenario.tasks.deliver-wrong-branch — Deliver only on the task branch
+
+- GIVEN a project without the method part and an open task
+- AND the task worktree switched to the branch `elsewhere`
+- WHEN the task session runs `concorde task deliver <task>` there
+- THEN the command fails with `wrong_branch`, naming `elsewhere`
+- AND it commits nothing
+
+### scenario.tasks.deliver-switched-while-waiting — A branch switch during the wait refuses the delivery
+
+- GIVEN a project without the method part and an open task
+- AND a run that holds the task's workspace lock and switches the task worktree to another branch
+  before it releases the lock
+- WHEN the task session runs `concorde task deliver <task> --wait 30` in its task worktree
+- THEN the delivery fails with `wrong_branch` once it holds the lock
+- AND it commits nothing
+
+### scenario.tasks.deliver-check-switches-branch — A check that switches the branch refuses the delivery
+
+- GIVEN a project without the method part and an open task
+- WHEN the task session runs `concorde task deliver <task>` with a first check that passes and
+  switches the worktree to the branch `elsewhere` at the same commit, and a second check
+- THEN the delivery fails with `wrong_branch` after the first check, naming `elsewhere`
+- AND the second check does not run
+- AND it commits nothing on either branch
+
+### scenario.tasks.deliver-retired-while-waiting — A close during the wait refuses the delivery
+
+- GIVEN a project without the method part and an open task
+- AND a process that holds the task's workspace lock and then removes the lock file, as the close
+  that retires the workspace does
+- WHEN the task session runs `concorde task deliver <task> --wait 30` in its task worktree
+- THEN the delivery fails with `task_closed`
+- AND it takes no lock file again and commits nothing
 
 ### scenario.tasks.coordination-alone — A project with the kernel and coordination alone
 
@@ -1023,7 +1075,8 @@ This illustrates [the hook's list](requirements.md#req.tasks.main-hook-lists),
 - THEN it prints one line saying it could not list the tasks not ended, with the reason
 - AND it exits with status 0
 
-This illustrates [never failing a start](requirements.md#req.tasks.main-hook-never-fails).
+This illustrates [never failing a start](requirements.md#req.tasks.main-hook-never-fails) and
+[naming the failure](requirements.md#req.tasks.main-hook-failure-named).
 
 ### scenario.tasks.wait-rebound — A task session waits for the main agent to rebind the task
 

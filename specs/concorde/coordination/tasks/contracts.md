@@ -1001,10 +1001,13 @@ repository, so a task session escalates and reports from its task worktree:
 - `wait`
 
 Through Git's common directory, these commands find the primary worktree and, with it, the task
-folders. Every command prints one JSON value on standard output. On success, every command exits
-with status 0.
+folders. Every command but `main-hook` prints one JSON value on standard output. On success, every
+command exits with status 0. `main-hook` prints plain text, possibly none, and always exits with
+status 0, as its row in the table below says
+([never failing a start](requirements.md#req.tasks.main-hook-never-fails)). The refusal rules below
+do not apply to it.
 
-A refusal prints `{"error": <link>}`. The link is a
+Every other command's refusal prints `{"error": <link>}`. The link is a
 [`component` link](../../kernel/tracing/contracts.md#contract.tracing.error) of the actor
 `Tasks (concorde task <command>)`. Its code is one of the error codes below. For `session` and the
 record updates, its code may instead be one of the
@@ -1038,7 +1041,8 @@ its holder. The reason is `environment` for these codes:
 - `wait_failed`
 - `part_unknown`
 - `issues_unavailable`
-- The session codes `session_failed` and `missing_worktree`.
+- `specs_unloadable`
+- The session codes `session_failed`, `session_stop_failed` and `missing_worktree`.
 
 The reason is `decision` for these codes:
 
@@ -1315,13 +1319,21 @@ The refusal names the merge commit. The refusal says that, once the cause is fix
 `concorde task merge <task-id> --resume` finishes the task. A `rollback_failed` also leaves the task
 `merging`, and says that `--abort` restores the primary branch.
 
-`close` runs its steps in this order:
+<a id="close-order"></a>
+Once it holds its locks, `close` runs its steps in this order. A close without a merge has made its
+refusals and stopped the task's sessions and runs before, as its rows say.
 
-- `git worktree remove`.
-- The record update.
-- The append of the closing to the decision log.
-- The end of the trace node, which thus records the log's final digest.
-- The move of the task's folder to the history.
+1. `git worktree remove`.
+2. The record update, which answers each report still unanswered.
+3. The append of the closing to the decision log.
+4. The end of the trace node, which thus records the log's final digest.
+5. The commit of the decision log on the primary branch.
+6. The keeping of the task sessions' transcripts in their nodes, as
+   [Task sessions](../task-session/contracts.md#at-the-end-of-a-task) states.
+7. For the close that ends a merge, the end of the merge attempt's node.
+8. The move of the task's folder to the history.
+9. After the move, and for a merge after it closed the task's Issues, the removal of the task
+   sessions from Claude's session list.
 
 When the close is forced or the worktree has submodules, removal uses `--force`, since Git removes a
 worktree holding submodule checkouts only then. After a step, a refusal leaves what the steps before

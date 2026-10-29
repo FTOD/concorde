@@ -628,14 +628,16 @@ A task ends in one of two states, and the record keeps the outcome:
   left unsaid.
 
 Unless `--force` is given, closing without a merge refuses uncommitted changes. Closing does the
-following:
+following, in the order [the contracts](contracts.md#close-order) give:
 
+- It removes the worktree, and with it the workspace binding.
 - It answers every report still unanswered ([Reports](#reports-and-the-main-agents-session)).
 - It appends the outcome, the note, any error chains and those answered reports to the decision log.
 - It commits the log ([below](#decision-log-in-git)).
-- It removes the worktree, and with it the workspace binding.
+- It keeps the task sessions' transcripts in the task's trace.
 - It moves the task's whole folder to the history, `.concorde/history/<task-id>/`, keeping the
   branch.
+- It removes the task sessions from Claude's session list.
 
 No run of the task's workspace can start there any more. A closed or failed task stays so whatever
 happens afterwards. A task closes only once it has really ended. While it moves the folder, the
