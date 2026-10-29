@@ -30,6 +30,7 @@ the runner keeps as the cause of its own: the run ends ``failed`` before any ste
 
 from __future__ import annotations
 
+import contextlib
 import os
 import subprocess
 import tempfile
@@ -171,7 +172,15 @@ def prepare(
                 + (error.stderr or b"")
                 + str(error).encode()
             )
-            found.append(evidence("preparation", shown, f"not started: {error}"))
+            seconds = time.monotonic() - started
+            found.append(
+                evidence(
+                    "preparation",
+                    shown,
+                    f"command {number} of {PREPARATION} did not start, since its boundary "
+                    f"could not be set up ({error}), after {seconds:.1f} s; log {log}",
+                )
+            )
             refusal = CheckError(
                 f"the preparation command {shown} could not run in its boundary: {error}",
                 "check_sandbox_unavailable",
@@ -195,8 +204,20 @@ def prepare(
                 ),
             ) from error
         except BaseException as error:
+            # A cancellation, an interrupt or an unexpected error goes on unchanged, once the
+            # command's output and how it ended are kept.
+            seconds = time.monotonic() - started
             stdout, stderr = getattr(error, "check_output", (b"", b""))
-            log.write_bytes(stdout + b"\n" + stderr)
+            found.append(
+                evidence(
+                    "preparation",
+                    shown,
+                    f"command {number} of {PREPARATION} was ended by "
+                    f"{type(error).__name__} after {seconds:.1f} s; log {log}",
+                )
+            )
+            with contextlib.suppress(OSError):
+                log.write_bytes(stdout + b"\n" + stderr)
             raise
         log.write_bytes(outcome.stdout + b"\n" + outcome.stderr)
         seconds = time.monotonic() - started

@@ -771,7 +771,9 @@ follows these steps:
   `preparation/<n>.log` of the run's node, `<n>` counting the commands from 1. The run's
   `trace.json` names it as the artifact `preparation-<n>`.
 3. The runner records `preparation` host evidence. Its `ref` is the command line. Its detail says
-  how the command ended, after how long, and where its log is.
+  how the command ended, after how long, and where its log is. The runner records it however the
+  command ended, also when its boundary could not be set up or when a cancellation, an interrupt
+  or an unexpected error ended it.
 4. When the command exited 0, the runner goes on with the next command. Otherwise, no later
   command runs and no step runs. The run ends `failed` with `preparation_failed`.
 

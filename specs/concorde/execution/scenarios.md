@@ -163,6 +163,24 @@ and commands.
 - AND once the result is written, the checkout is gone
 - BUT a command that writes only what the commit's Git ignores leaves the run `ok`
 
+### scenario.execution.unbound-preparation-evidence — A preparation command that did not finish is in the evidence
+
+- GIVEN a primary worktree whose committed `.concorde/preparation.json` declares one command
+- AND a cancellation ends the unbound run while that command runs
+- WHEN the run's result is written
+- THEN the result is `failed` with `cancelled`
+- AND its `preparation` host evidence names the command line, how the command ended, after how
+  long, and its log `preparation/1.log`, which exists
+
+### scenario.execution.unbound-preparation-unbounded — A preparation command whose boundary cannot be set up is in the evidence
+
+- GIVEN a primary worktree whose committed `.concorde/preparation.json` declares one command
+- AND a host where the command's boundary cannot be set up
+- WHEN an unbound run is started there
+- THEN the result is `failed` with `preparation_failed`
+- AND its `preparation` host evidence names the command line, that the command did not start,
+  after how long, and its log `preparation/1.log`, which holds what the boundary reported
+
 ### scenario.execution.unbound-preparation-submodule — A preparation that changes a submodule runs no step
 
 - GIVEN a primary worktree whose commit records the submodule `references/lib`, which the primary
@@ -390,6 +408,14 @@ and commands.
 - AND once the runner ends without writing a result, the run is lost, whatever process now has the
   recorded identifier
 
+### scenario.execution.run-lock-result — A published result does not end a run that holds its lock
+
+- GIVEN a run whose runner holds its run lock
+- AND the runner has published the run's `result.json`
+- WHEN an observer asks the run's state
+- THEN the run is `running`
+- AND once the run lock is released, the run is `finished`
+
 ### scenario.execution.host-error — A step raises an error
 
 - GIVEN a step that raises an unexpected error
@@ -400,6 +426,14 @@ and commands.
 - AND that link has the exception's output
 - AND that link gives where the exception was raised
 - AND that link has the traceback's path
+
+### scenario.execution.ok-with-error — A step that stops `ok` with an error gives an invalid result
+
+- GIVEN a step that stops the run with the status `ok` and a well-formed error link of the run's own
+- WHEN the runner composes the result
+- THEN the result is `failed` with the runner's `invalid_result`
+- AND its `invalid-output` host evidence names `/error`
+- AND the step's error is the cause of the runner's link
 
 ### scenario.execution.admission-error — A definition's admission raises an error
 

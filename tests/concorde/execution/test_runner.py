@@ -2132,6 +2132,44 @@ class RunnerTests(unittest.TestCase):
             ["boom"], [cause["code"] for cause in envelope["error"]["causes"]]
         )
 
+    @verifies("scenario.execution.ok-with-error")
+    def test_an_ok_stop_with_an_error_is_an_invalid_result(self):
+        def contradictory(ctx):
+            return Stop(
+                "ok",
+                "Done.",
+                error=errors_link(
+                    "command",
+                    ctx.actor,
+                    "boom",
+                    "it broke after all",
+                    reason="input",
+                    explanation="only its sender can",
+                ),
+            )
+
+        with patch.dict(
+            commands.COMMANDS.definitions,
+            {
+                "task-validation": command(
+                    "task-validation", (contradictory,), writes=False
+                )
+            },
+        ):
+            status, envelope = self.project.run("task-validation", "--task", "t1")
+        self.assertEqual((1, "invalid_result"), (status, envelope["error"]["code"]))
+        validate(envelope, RESULT_SCHEMA)
+        [invalid] = [
+            item
+            for item in envelope["host_evidence"]
+            if item["kind"] == "invalid-output"
+        ]
+        self.assertEqual("/error", invalid["ref"])
+        # The error the step gave is kept as the cause of the run's own link.
+        self.assertEqual(
+            ["boom"], [cause["code"] for cause in envelope["error"]["causes"]]
+        )
+
     def test_an_invalid_result_is_replaced_by_one_that_keeps_the_contract(self):
         def malformed(ctx):
             ctx.worker = ["not", "an", "object"]
@@ -2560,6 +2598,50 @@ class UnboundCheckoutTests(unittest.TestCase):
                 self.assertEqual([], node["content"]["data"]["steps"])
                 self.assertEqual([self.root], worktrees(self.root))
                 validate(envelope, RESULT_SCHEMA)
+
+    @verifies(
+        "scenario.execution.unbound-preparation-evidence",
+        "scenario.execution.unbound-preparation-unbounded",
+    )
+    def test_preparation_evidence_names_every_ending(self):
+        from concorde.execution import preparation
+        from concorde.execution.checks.check_executor import CheckSandboxError
+
+        self.declare_preparation("print('never runs')")
+
+        def cancelled(*_arguments, **_options):
+            error = runner.Cancelled("SIGTERM")
+            error.check_output = (b"half built", b"")
+            raise error
+
+        def refused(*_arguments, **_options):
+            raise CheckSandboxError("no user namespace", stderr=b"bwrap: denied")
+
+        for name, launch, code in (
+            ("cancelled", cancelled, "cancelled"),
+            ("sandbox", refused, "preparation_failed"),
+        ):
+            with self.subTest(name):
+                with patch.object(preparation, "execute_check", launch):
+                    _, envelope = self.probe()
+                self.assertEqual(
+                    ("failed", code),
+                    (envelope["status"], envelope["error"]["code"]),
+                    envelope,
+                )
+                [prepared] = [
+                    item
+                    for item in envelope["host_evidence"]
+                    if item["kind"] == "preparation"
+                ]
+                log = self.run_folder(envelope) / "preparation/1.log"
+                self.assertEqual(
+                    sys.executable + " -c print('never runs')", prepared["ref"]
+                )
+                self.assertRegex(prepared["detail"], r"after \d+\.\d s; log ")
+                self.assertTrue(prepared["detail"].endswith(f"log {log}"))
+                self.assertTrue(log.is_file())
+                self.assertEqual([], envelope["worker_runs"])
 
     @verifies("scenario.execution.unbound-preparation-submodule")
     def test_a_preparation_that_changes_a_submodule_runs_no_step(self):
@@ -3132,6 +3214,25 @@ class RunProgressWriteTests(unittest.TestCase):
         self.assertIs(failure, refused.exception)
         self.assertEqual(before, (self.folder / "status.json").read_text())
         self.assertEqual(["status.json"], [path.name for path in self.folder.iterdir()])
+
+
+class RunStateTests(unittest.TestCase):
+    """Whether a run still runs is told by its run lock alone."""
+
+    @verifies("scenario.execution.run-lock-result")
+    def test_a_run_with_a_result_runs_while_its_lock_is_held(self):
+        store = runs.Store(Path(tempfile.mkdtemp()) / ".concorde")
+        run_id = runs.new_run_id("understand")
+        folder = store.run_folder(run_id)
+        folder.mkdir(parents=True)
+        with runs.run_lock(store, run_id, f"understand run {run_id}"):
+            self.assertEqual("running", runs.run_state(store, run_id))
+            # The runner publishes the result before its last writes and the lock's release.
+            (folder / "result.json").write_text(json.dumps({"status": "ok"}))
+            self.assertEqual("running", runs.run_state(store, run_id))
+        self.assertEqual("finished", runs.run_state(store, run_id))
+        (folder / "result.json").unlink()
+        self.assertEqual("lost", runs.run_state(store, run_id))
 
 
 class PidAliveTests(unittest.TestCase):
