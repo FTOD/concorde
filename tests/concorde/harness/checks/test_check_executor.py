@@ -18,6 +18,7 @@ import uuid
 from pathlib import Path
 from unittest.mock import patch
 
+from concorde.execution.checks import check_executor
 from concorde.execution.checks.check_executor import (
     CheckCancelled,
     CheckSandboxError,
@@ -39,10 +40,10 @@ class CheckExecutorTests(unittest.TestCase):
         self.file.write_text("original")
         (self.root / ".concorde/runs").mkdir(parents=True)
 
-    def run_check(self, code, *args, timeout=10):
+    def run_check(self, code, *args, timeout=10, flags=()):
         return execute_check(
             self.root,
-            [sys.executable, "-c", code, *map(str, args)],
+            [sys.executable, *flags, "-c", code, *map(str, args)],
             timeout=timeout,
             environment=child_environment(),
         )
@@ -207,6 +208,10 @@ print('child denied')
                 alias,
                 os.getpid(),
                 os.readlink("/proc/self/ns/pid"),
+                # Without site, Python never looks up the user's home in the passwd database.
+                # A configured check has no HOME, and on an SSSD host that lookup leaves its
+                # own descriptor to /var/lib/sss/mc/passwd open, which is no host descriptor.
+                flags=("-S",),
             )
         self.assertEqual(0, result.returncode, result)
         self.assertEqual("original", self.file.read_text())
@@ -337,6 +342,43 @@ print(json.dumps(str(scratch)))
         self.assertEqual((0, token + "\n"), (result.returncode, result.stdout.decode()))
         self.assertNotIn(token, json.dumps(launches))
 
+    @verifies("scenario.checks.environment")
+    def test_the_command_sees_only_the_environment_the_runner_gives_it(self):
+        # No variable of the host or of bubblewrap's own start may reach the command, on
+        # bubblewrap 0.4.0 (which has no --clearenv) as on every later release. The command
+        # reads its environment as it was executed, before Python's locale coercion adds to it.
+        with patch.dict(os.environ, {"CHECK_HOST_ONLY_VALUE": "host"}):
+            result = execute_check(
+                self.root,
+                [
+                    sys.executable,
+                    "-c",
+                    "import sys; sys.stdout.buffer.write(open('/proc/self/environ','rb').read())",
+                ],
+                timeout=10,
+                environment={"CHECK_GIVEN_VALUE": "given", "PWD": "/caller"},
+            )
+        self.assertEqual(0, result.returncode, result)
+        seen = dict(
+            entry.split("=", 1) for entry in result.stdout.decode().split("\0") if entry
+        )
+        scratch = Path(seen.get("CONCORDE_CHECK_TMPDIR", "/missing"))
+        self.assertEqual(
+            {
+                "CHECK_GIVEN_VALUE": "given",
+                "PYTHONDONTWRITEBYTECODE": "1",
+                "TMPDIR": str(scratch / "tmp"),
+                "TMP": str(scratch / "tmp"),
+                "TEMP": str(scratch / "tmp"),
+                "XDG_CACHE_HOME": str(scratch / "cache"),
+                "npm_config_cache": str(scratch / "cache" / "npm"),
+                "CONCORDE_CHECK_TMPDIR": str(scratch),
+                "CONCORDE_CHECK_REPORT_DIR": str(scratch / "reports"),
+                "PWD": str(self.root.resolve()),
+            },
+            seen,
+        )
+
     @verifies("scenario.checks.unavailable")
     def test_real_bubblewrap_setup_failure_never_runs_command(self):
         # A vanished project after admission causes a genuine bwrap --chdir setup failure.
@@ -403,6 +445,63 @@ else:
             with self.assertRaises(CheckSandboxError):
                 self.run_check("open('unlisted.txt','w').write('unsafe')")
         self.assertEqual("original", self.file.read_text())
+
+    @verifies("scenario.checks.unavailable")
+    def test_a_failure_before_the_gate_opens_ends_the_waiting_sandbox(self):
+        # bubblewrap arms parent-death termination in its namespace process only past the gate.
+        # A failure between creating the sandbox and holding its process descriptor must end that
+        # process too. Left waiting, it would hold both pipes and the host would never return.
+        token = "concorde-gate-" + uuid.uuid4().hex
+        code = """
+import errno,sys
+from pathlib import Path
+from unittest.mock import patch
+from concorde.execution.checks import check_executor
+def refuse(name,*args):
+    raise OSError(errno.ENOSYS,'pidfd refused by the test')
+with patch.object(check_executor,'_pidfd_call',refuse):
+    try:
+        check_executor.execute_check(Path(sys.argv[1]),
+            [sys.executable,'-c','import sys; print(sys.argv[1])',sys.argv[2]],
+            timeout=5,environment={})
+    except check_executor.CheckSandboxError as error:
+        assert sys.argv[2].encode() not in error.stdout, error.stdout
+        print('refused')
+    else:
+        raise AssertionError('the command ran without a process descriptor')
+"""
+        result = subprocess.run(
+            [sys.executable, "-c", code, str(self.root), token],
+            check=False,
+            env=child_environment(
+                TMPDIR=str(self.parent), PYTHONPATH=str(RUNTIME_ROOT)
+            ),
+            capture_output=True,
+            timeout=10,
+        )
+        self.assertEqual(0, result.returncode, result)
+        self.assertIn(b"refused", result.stdout)
+        self.assertFalse(running(token))
+
+    @verifies("scenario.checks.descendants-end")
+    def test_descendants_end_through_the_pidfd_system_calls_alone(self):
+        # A C library without the named pidfd wrappers (before glibc 2.36, as on RHEL 8) still
+        # gives the host its process descriptor, through the kernel's system call numbers.
+        machine = os.uname().machine
+        if machine not in check_executor._UNIFIED_SYSCALL_MACHINES:
+            self.skipTest(f"no pidfd system call numbers are known for {machine}")
+        token = "concorde-syscall-" + uuid.uuid4().hex
+        child = (
+            "import os,time\nos.setsid()\nif os.fork(): os._exit(0)\ntime.sleep(60)\n"
+        )
+        with patch.object(check_executor, "_pidfd_call", check_executor._pidfd_syscall):
+            result = self.run_check(
+                "import subprocess,sys\n"
+                f"subprocess.Popen([sys.executable,'-c',{child!r},{token!r}]).wait()\n"
+                "print('parent-ready')\n"
+            )
+        self.assertEqual((0, b"parent-ready\n"), (result.returncode, result.stdout))
+        self.assertFalse(running(token))
 
     @verifies("scenario.checks.descendants-end", "scenario.checks.timeout")
     def test_timeout_and_normal_exit_kill_detached_descendants(self):

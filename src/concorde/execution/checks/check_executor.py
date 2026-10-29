@@ -18,6 +18,7 @@ import json
 import ctypes
 import math
 import os
+import platform
 import select
 import signal
 import stat
@@ -79,6 +80,40 @@ class CheckBackend(Protocol):
     ) -> CheckResult: ...
 
 
+# Both pidfd system calls came after Linux unified its system call numbers, so these
+# architectures share them; alpha, MIPS and ia64 number them otherwise.
+_PIDFD_SYSCALLS = {"pidfd_send_signal": 424, "pidfd_open": 434}
+_UNIFIED_SYSCALL_MACHINES = frozenset(
+    {
+        "x86_64",
+        "i386",
+        "i686",
+        "aarch64",
+        "armv7l",
+        "ppc64",
+        "ppc64le",
+        "s390x",
+        "riscv64",
+        "loongarch64",
+    }
+)
+
+
+def _pidfd_argument_types(name: str) -> list:
+    return (
+        [ctypes.c_int, ctypes.c_uint]
+        if name == "pidfd_open"
+        else [ctypes.c_int, ctypes.c_int, ctypes.c_void_p, ctypes.c_uint]
+    )
+
+
+def _checked(result: int) -> int:
+    if result < 0:
+        error = ctypes.get_errno()
+        raise OSError(error, os.strerror(error))
+    return result
+
+
 def _pidfd_call(name: str, *args: int) -> int:
     # Some portable CPython builds omit the Python wrappers despite kernel/libc support.
     # Use libc's named interface there; never fall back to signalling a reusable numeric PID.
@@ -87,23 +122,23 @@ def _pidfd_call(name: str, *args: int) -> int:
     if name == "pidfd_send_signal" and hasattr(signal, name):
         signal.pidfd_send_signal(args[0], args[1], None, args[3])
         return 0
-    try:
-        function = getattr(ctypes.CDLL(None, use_errno=True), name)
-    except AttributeError as error:
-        raise CheckSandboxError(
-            "Linux libc pidfd support is required for check cleanup"
-        ) from error
+    function = getattr(ctypes.CDLL(None, use_errno=True), name, None)
+    if function is None:
+        return _pidfd_syscall(name, *args)
     function.restype = ctypes.c_int
-    function.argtypes = (
-        [ctypes.c_int, ctypes.c_uint]
-        if name == "pidfd_open"
-        else [ctypes.c_int, ctypes.c_int, ctypes.c_void_p, ctypes.c_uint]
-    )
-    result = function(*args)
-    if result < 0:
-        error = ctypes.get_errno()
-        raise OSError(error, os.strerror(error))
-    return result
+    function.argtypes = _pidfd_argument_types(name)
+    return _checked(function(*args))
+
+
+def _pidfd_syscall(name: str, *args: int) -> int:
+    # A C library older than glibc 2.36 has no named wrapper, as on RHEL 8, although the kernel
+    # has the call: reach it by its system call number.
+    if platform.machine() not in _UNIFIED_SYSCALL_MACHINES:
+        raise CheckSandboxError("Linux pidfd support is required for check cleanup")
+    function = ctypes.CDLL(None, use_errno=True).syscall
+    function.restype = ctypes.c_long
+    function.argtypes = [ctypes.c_long, *_pidfd_argument_types(name)]
+    return _checked(function(_PIDFD_SYSCALLS[name], *args))
 
 
 def _bubblewrap() -> str:
@@ -265,7 +300,6 @@ class BubblewrapBackend:
                 str(gate_read.fileno()),
                 "--json-status-fd",
                 str(status.fileno()),
-                "--clearenv",
             ]
             for key, value in environment.items():
                 command.extend(("--setenv", key, value))
@@ -293,7 +327,10 @@ class BubblewrapBackend:
                         arguments.fileno(),
                     ),
                     start_new_session=True,
-                    env={"PATH": "/usr/bin:/bin", "LANG": "C.UTF-8"},
+                    # bubblewrap starts with no environment at all, so the check receives only
+                    # the --setenv values (and bubblewrap's PWD). This replaces --clearenv, which
+                    # bubblewrap 0.4.0 lacks, and behaves the same on every later release.
+                    env={},
                 )
                 reader = ThreadPoolExecutor(max_workers=2)
                 output = (
@@ -345,6 +382,16 @@ class BubblewrapBackend:
                         # Still stop the monitor below: its trusted init also uses parent-death
                         # termination. A cleanup error must never bypass the remaining cleanup.
                         failure = error
+                elif process is not None:
+                    # Without a pidfd the gate never opened. bubblewrap arms parent-death
+                    # termination and calls setsid in its namespace process only past the gate,
+                    # so one still waiting there is in the monitor's process group. Killing the
+                    # monitor alone would leave it holding both pipes, and running the command
+                    # once the gate closes. The unreaped monitor keeps the group's number unused.
+                    try:
+                        os.killpg(process.pid, signal.SIGKILL)
+                    except ProcessLookupError:
+                        pass
                 if process is not None:
                     if process.poll() is None:
                         process.kill()

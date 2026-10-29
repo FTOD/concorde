@@ -76,7 +76,9 @@ def lacking(docsite: Path, lock: dict, platform: dict[str, str]) -> list[str]:
     """The packages of the lockfile that the install under ``docsite`` lacks or holds at another
     version: every package for this platform that is not optional, and every optional one made
     for this platform. An optional package for every platform is needed only by a package left
-    out, so npm may leave it out too."""
+    out, so npm may leave it out too. A package that only optional peer dependencies reach (both
+    ``peer`` and ``optional``) is installed by npm 10 and left out by npm 11: it may be missing,
+    but one that is present holds its locked version."""
     missing = []
     for path, entry in lock.get("packages", {}).items():
         if not path or not all(
@@ -89,6 +91,10 @@ def lacking(docsite: Path, lock: dict, platform: dict[str, str]) -> list[str]:
             version = json.loads((docsite / path / "package.json").read_text())[
                 "version"
             ]
+        except FileNotFoundError:
+            if not (entry.get("peer") and entry.get("optional")):
+                missing.append(path)
+            continue
         except (OSError, ValueError, KeyError, TypeError):
             missing.append(path)
             continue

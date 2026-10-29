@@ -57,9 +57,9 @@ You need:
   agent and its task sessions;
 - for workers that run on pi, [pi](https://github.com/earendil-works/pi) with a configured model,
   Node.js with npm, `rg` (ripgrep), `fd` and `socat`;
-- Linux with a root-owned [bubblewrap](https://github.com/containers/bubblewrap) (`bwrap`), which
-  backs the command sandbox of workers and runs your checks read-only; Concorde refuses a
-  check it cannot sandbox rather than fall back to an unconfined process;
+- Linux with a root-owned [bubblewrap](https://github.com/containers/bubblewrap) (`bwrap`) 0.4.0
+  or later, which backs the command sandbox of workers and runs your checks read-only; Concorde
+  refuses a check it cannot sandbox rather than fall back to an unconfined process;
 - Node.js 20 or later only if you want to publish your Specs as a documentation site.
 
 ## Install Concorde into a project

@@ -435,6 +435,8 @@ under `protocol/`. A change of a prompt adds no new style problem to it.
 - WHEN `scripts/development/check-docsite-types.py` runs
 - THEN it does not use that install, and it installs the dependencies in the copy again, at most three times in all, until the install holds every such package
 - AND when no attempt holds every such package, it names the missing packages, does not run the compiler and exits with status 1
+- BUT a package that the lockfile marks both `peer` and `optional` may be missing, since only optional peer dependencies reach it: npm 10 installs it and npm 11 leaves it out
+- AND such a package that is present must still hold its locked version
 
 ## Part dependency check
 

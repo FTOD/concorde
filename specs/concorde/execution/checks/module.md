@@ -124,7 +124,7 @@ the scratch. A source-rewriting tool, e.g. a fix-mode formatter, isn't a check. 
 one variant, which no configured check uses: the project writable too. Execution's runner runs an
 [unbound checkout](../../glossary.json#concept.unbound-checkout)'s preparation commands this way,
 so that they build the checkout and nothing else
-([A writable project](boundary.md#a-writable-project)). Only Linux with a root-owned bubblewrap and the needed namespaces is supported. When the boundary cannot be
+([A writable project](boundary.md#a-writable-project)). Only Linux with a root-owned bubblewrap, release 0.4.0 or later, and the needed namespaces is supported. When the boundary cannot be
 established, the command does not start, and the run is refused with a sandbox error. There is no subprocess fallback. [The boundary](boundary.md)
 describes the environment and mounts.
 
