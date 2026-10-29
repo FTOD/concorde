@@ -4,7 +4,7 @@
 {
   "schema_version": 4,
   "id": "I-4a9cc2fa959c5abeb519de1782fc4ca7",
-  "status": "open",
+  "status": "closed",
   "reports": [
     {
       "id": "sha256:c0f7e86ab5202ccc54d65101b7029699e6a7faff1cc162b357bb69a42d374ac5",
@@ -39,6 +39,17 @@
       }
     }
   ],
-  "dispositions": []
+  "dispositions": [
+    {
+      "reason": "resolved",
+      "note": "project_review r-20261029T060905-project_review-fa4731e2 (commit 8a5ed4245) found it resolved: req.specification.no-code now permits read-only implementation files selected by bound inclusions and links req.spec.bound-inclusion.",
+      "evidence": [
+        ".concorde/unbound/r-20261029T060905-project_review-fa4731e2/result.json"
+      ],
+      "duplicate_of": null,
+      "actor": "main-agent",
+      "created_at": "2026-10-29T08:32:38.501338+00:00"
+    }
+  ]
 }
 ```
