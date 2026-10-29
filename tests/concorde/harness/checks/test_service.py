@@ -114,6 +114,7 @@ class CheckServiceTests(unittest.TestCase):
             ),
         )
         self.assertEqual(self.logs / "check.a/output.log", Path(result["log"]))
+        self.assertEqual([], result["trace_failures"])
         # Each check run is a check node: its trace and its output.
         node = json.loads((self.logs / "check.a/trace.json").read_text())
         self.assertEqual(
@@ -133,7 +134,10 @@ class CheckServiceTests(unittest.TestCase):
         self.assertEqual(("failed", 1), (failed["status"], failed["exit_code"]))
         self.assertEqual([], self.run_checks(["module.b"]))
 
-    @verifies("scenario.checks.service-trace-write")
+    @verifies(
+        "scenario.checks.service-trace-write",
+        "scenario.checks.service-trace-write-failed",
+    )
     def test_a_refused_trace_write_is_in_the_check_result(self):
         from concorde.kernel.tracing import node as trace_node
 
@@ -649,7 +653,7 @@ assert result['status'] == 'passed', result
             (node["status"], node["outcome"], node["content"]["data"]["status"]),
         )
 
-    @verifies("scenario.checks.service-trace-write")
+    @verifies("scenario.checks.service-trace-write-interrupted")
     def test_an_exceptional_exit_keeps_the_refused_trace_writes(self):
         from concorde.execution.checks import checks
         from concorde.kernel.tracing import node as trace_node

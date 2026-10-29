@@ -294,14 +294,32 @@ This includes processes with these behaviours:
 
 ### scenario.checks.command-output — Output and exit status return to the host
 
-- GIVEN a command that writes to standard output
-- AND writes to standard error
-- AND exits with a given code
+- GIVEN a command that writes `out` to standard output
+- AND writes `err` to standard error
+- AND exits with the code 17
 - WHEN its run finishes
-- THEN the runner returns both byte streams and that exit code
-- AND signal endings are reported as 128 plus the signal
-- AND large output on both pipes is drained without blocking the command
-- AND the caller's environment reaches the command without appearing in the sandbox's command line
+- THEN the runner returns both byte streams and the exit code 17
+
+### scenario.checks.command-signal — A signal ending is reported as 128 plus the signal
+
+- GIVEN a command that writes `bye` to standard output and then ends itself with `SIGTERM`
+- WHEN its run finishes
+- THEN the runner returns `bye` and the exit code 143, which is 128 plus `SIGTERM`
+- AND the run did not time out
+
+### scenario.checks.command-large-output — Large output on both pipes is drained
+
+- GIVEN a command that writes 200,000 bytes to standard output and then 200,000 bytes to standard error, more than a pipe holds
+- WHEN it runs
+- THEN it is not blocked on either pipe and exits 0
+- AND the runner returns all 200,000 bytes of each stream
+
+### scenario.checks.command-environment — The caller's environment reaches the command unseen
+
+- GIVEN a caller's environment holding a variable with a private value
+- WHEN the runner runs a command that prints that variable
+- THEN the command prints the value
+- AND the value appears in no command line the runner launches
 
 ### scenario.checks.environment — The command sees only the environment the runner gives it
 

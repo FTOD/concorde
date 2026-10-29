@@ -37,6 +37,7 @@ execution refuses the file or entry with `invalid_check`, naming the file and th
 - The file is not valid JSON. This includes a repeated field and these constants: `NaN` and
   `Infinity`.
 - The file holds another field or an entry with a field the table does not name.
+- The file is a symbolic link, or no regular file.
 - The file's name is not a Module identity, written as `module.` followed by one or more parts
   separated by dots. Each part holds lower-case letters, digits and hyphens. The first part begins
   with a letter. An example is `module.http`.
@@ -80,12 +81,13 @@ The stopped run names the following:
 
 A **selective** check is one whose `argv` holds `{tests}`. For the whole set of selected Modules,
 such a check runs at most once per call, whichever Module it belongs to. When there are no tests,
-the selective check is skipped. Otherwise, it runs with the tests its caller names. These are the
-tests whose [verification declarations](../../glossary.json#concept.verification-declaration) name
-a scenario of any of the selected Modules. Tests and scenarios are many-to-many. A Module's change
-runs the tests verifying its scenarios, wherever their files are bound. Thus, the Module that owns
-a test file only decides who may change it. A Python test is passed as `path::Class::name`. A
-TypeScript test is passed by its file. The log of a selective check begins with the tests it
+the selective check is skipped. Otherwise, it runs with the tests its caller names in `tests`. The
+service reads no Spec and no test to find them. In Concorde, the caller names the tests whose
+[verification declarations](../../glossary.json#concept.verification-declaration) name a scenario
+of any of the selected Modules. Tests and scenarios are many-to-many. A Module's change runs the
+tests verifying its scenarios, wherever their files are bound. Thus, the Module that owns a test
+file only decides who may change it. A Python test is passed as `path::name`, or as
+`path::Class::name` for a test method of a class. A TypeScript test is passed by its file. The log of a selective check begins with the tests it
 selected. Because the same check runs other tests for another selection, its measured digest also
 covers the selected Modules and the selected tests.
 
@@ -561,7 +563,7 @@ start.
 - AND a `module.b.json` that is a symbolic link and a `module.c.json` that is not valid JSON
 - WHEN Check execution reads the configured checks of `module.a` alone
 - THEN it holds the check of `module.a`
-- BUT a read of every checks file is refused, naming the symbolic link
+- BUT a read of every checks file is refused with `invalid_check`, naming the symbolic link
 
 ### scenario.checks.check-input-missing — A configured check names a missing input
 
@@ -584,17 +586,34 @@ start.
 - WHEN the service runs for the Modules a changed path of A's realization or A's [Spec](../../glossary.json#concept.spec) concerns, as its caller selects them
 - THEN it runs A's check read-only and returns one result with its status, exit code, source digest and log path
 - AND the check's trace node, with its `output.log`, is written into the caller's trace directory
+- AND the result's `trace_failures` is empty, since every write of the node succeeded
 
 ### scenario.checks.service-trace-write — A refused trace write is in the check's result
 
-- GIVEN a configured check whose trace node's `trace.json` the operating system refuses to write
+- GIVEN a configured check whose command passes
+- AND the operating system refuses every write of the check node's `trace.json`
 - WHEN the service runs it
-- THEN the check runs, its log is written and its result has the status its command gave
-- AND the result's `trace_failures` names each refused write with the node's file, the moment and the error
-- AND a check whose every write succeeded has empty `trace_failures`
-- BUT when the call then fails, such as with `stale_evidence`, Check execution's link names each refused write of the checks it ran as `trace-write` evidence
-- AND a cancellation, an operating-system error or an unexpected error that ends the call after a first check completed goes on as the same object
-- AND that error's `trace_failures` and Check execution's link for it name the refused writes of both checks
+- THEN the call returns the check's result, with the status `passed`, and its log is written
+- AND the result's `trace_failures` names the refused writes at the node's start and end, each with the node's file, the moment and the error
+
+### scenario.checks.service-trace-write-failed — A call that fails names the refused trace writes in its error
+
+- GIVEN a configured check of Module A whose caller passes `measured` naming A's implementation file
+- AND the operating system refuses every write of the check node's `trace.json`
+- AND the implementation file changes while the check runs
+- WHEN the service runs it
+- THEN the call fails with `stale_evidence` and returns no result
+- AND Check execution's link for the error names the two refused writes as `trace-write` evidence
+
+### scenario.checks.service-trace-write-interrupted — An error after a first check carries the refused writes of both checks
+
+- GIVEN two configured checks `check.a` and `check.a2` of one Module
+- AND the operating system refuses every write of their nodes' `trace.json`
+- AND `check.a` completes, and then an error ends the call while `check.a2` runs, whether a cancellation, an operating-system error or an unexpected error
+- WHEN the service runs both checks in one call
+- THEN that error goes on to the caller as the same object
+- AND its `trace_failures` names four refused writes: the start and end of `check.a`, and the start and interrupted end of `check.a2`
+- AND Check execution's link for it names the same four writes as `trace-write` evidence
 
 ### scenario.checks.service-interrupted — An interrupted check ends its node
 
@@ -662,15 +681,17 @@ start.
 
 ### scenario.checks.selective — A selective check runs the tests that verify the checked Modules
 
-- GIVEN a test in `src/a/` that declares it verifies a scenario of Module A, and a check whose argv holds `{tests}`
-- WHEN the checks of Module A run
+- GIVEN a check whose argv holds `{tests}`
+- AND a caller that passes as `tests` the one test that declares it verifies a scenario of Module A, `src/a/test_answer.py::test_answer`
+- WHEN the checks of Module A run with those `tests`
 - THEN the selective check runs once with `src/a/test_answer.py::test_answer` in place of `{tests}`, its log naming the selected tests
 - AND the selective check's measured digest for Module A differs from its measured digest for Modules A and B, and from its digest once the selected test file changes
 
 ### scenario.checks.selective-none — A selective check with nothing to select is skipped
 
-- GIVEN a check whose argv holds `{tests}`, and no test that verifies a scenario of Module B
-- WHEN the checks of Module B run
+- GIVEN a check whose argv holds `{tests}`
+- AND a caller that passes an empty `tests`, since no test verifies a scenario of Module B
+- WHEN the checks of Module B run with that `tests`
 - THEN the selective check is skipped and returns no result
 
 ### scenario.checks.readiness-only — A readiness check runs only when readiness is decided
@@ -689,16 +710,17 @@ start.
 
 ### scenario.checks.service-stale — Input that changes during the run is stale
 
-- GIVEN a check whose Module's implementation file changes, or is deleted, while the check runs
+- GIVEN a check of Module A whose caller passes `measured` naming A's implementation file `src/a/calc.py`
+- AND that file changes, or is deleted, while the check runs
 - WHEN the service measures the check revision again
 - THEN the call fails with `stale_evidence` and returns no result
 - AND Check execution's link for it has the level `component`, the actor `Check execution`, the code `stale_evidence` and the reason `environment`
 
 ### scenario.checks.service-between-checks — A change between two checks is no stale evidence
 
-- GIVEN two configured checks of one Module
-- AND the Module's implementation file changes after the first check ended and before the second
-  check started
+- GIVEN two configured checks of Module A
+- AND a caller that passes `measured` naming A's implementation file `src/a/calc.py`
+- AND that file changes after the first check ended and before the second check started
 - WHEN the service runs both checks in one call
 - THEN both checks have a result
 - AND each result's `source_digest` is the digest the service measured before that check's own run
