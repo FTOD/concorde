@@ -906,7 +906,7 @@ what is wrong and how to repair it:
 | `config_invalid` | the file and its first problem, or the retired file and how to move it | `input` |
 | `model_not_enabled` | the entry, the model, the enabled models and how to repair the entry | `input` |
 | `model_unresolved` | the worker, every entry its model may come from and how to set one | `input` |
-| `backend_missing` | the worker, its program, the source of its backend and how to choose the other program | `environment` |
+| `backend_missing` | the worker, its program, the source of its backend, the command it looked for and the `operations.<operation>.workers.<worker id>.backend` entry that chooses the other program | `environment` |
 | `model_map_missing` | the map's path and what it holds | `environment` |
 | `model_map_invalid` | the map's path, or the relative path `CONCORDE_MODEL_MAP` gives, and what is wrong | `environment` |
 | `model_unmapped` | the map, each worker with its backend and model and where each came from, and the exact entry to add | `environment` |
@@ -1058,9 +1058,11 @@ The host SHALL hand the Harness the request's runtime paths exactly as given, ad
 ### req.workers.runtime-overlap-refused — A runtime path never meets protected material
 
 Before it generates any settings or extension, the host SHALL refuse with `runtime_path_overlap` a
-run whose runtime path holds the task worktree, the primary worktree, the user's home or the
-runtime directory, lies in a Git administrative path, or meets a `names` or `rw` entry of the
-grant.
+run with a runtime path that, as given or with its symbolic links resolved, meets any of these:
+
+- It is or holds the task worktree, the primary worktree, the user's home or the runtime directory.
+- It is or lies below a Git administrative path that [Placement](#placement) lists.
+- Inside the task worktree, it is, holds or lies below a `names` or `rw` entry of the grant.
 
 ### req.workers.configured-model — A worker's model comes from its worker configuration alone
 
@@ -1177,9 +1179,11 @@ A run that ends because nothing is left for its next round SHALL end `failed` wi
 
 ### req.workers.round-own-cost — A round's usage holds its own cost
 
-The host SHALL record as a round's cost the cost its agent program reported, less, for a resumed
-round on a Claude Code version that restores session totals, the cost that the session's previous
-round reported.
+The host SHALL record as a round's cost the cost its agent program reported, less the cost that the
+session's previous round reported when both of these hold:
+
+- The round is a resumed round on a Claude Code version that restores session totals.
+- The reported cost is at least the cost that the session's previous round reported.
 
 ### req.workers.timeout-per-round — The timeout bounds each round
 
@@ -1229,11 +1233,15 @@ The host SHALL NOT retry any of these rounds:
 - a round whose audit found a violation or could not run
 - a round whose worker returned a valid result
 
-### req.workers.retry-recorded — Every retry is recorded
+### req.workers.retry-recorded — Every retry is recorded in its round
 
 The host SHALL record in each round's node the transient model-service error that ended the round,
-whether it retried it and the delay it waited, and in the `attempts` of a failed run's error every
-retry.
+whether it retried it and the delay it waited.
+
+### req.workers.retry-attempts — A failed run's error lists its retries
+
+When a run that started retry rounds ends `failed`, the host SHALL list every retry round in the
+`attempts` of the run's error.
 
 ### req.workers.claims-apart — Worker claims stay claims
 

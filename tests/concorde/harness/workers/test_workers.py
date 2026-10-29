@@ -247,6 +247,7 @@ class WorkerProject:
             if check_modules is not None
             else None,
             "home": self.home,
+            "backend": "claude",
             "claude": str(self.fake),
             "credentials": None,
             "timeout": 30,
@@ -274,6 +275,19 @@ class WorkerProject:
         ]
 
 
+def contract_schema(identity: str) -> dict:
+    """The schema of one canonical contract of Workers' contracts.md."""
+    text = (
+        REPOSITORY_ROOT / "specs/concorde/worker-harness/workers/contracts.md"
+    ).read_text()
+    [contract] = [
+        json.loads(fence.split("```", 1)[0])
+        for fence in text.split("```concorde-contract\n")[1:]
+        if f'"{identity}"' in fence.split("```", 1)[0]
+    ]
+    return contract["schema"]
+
+
 class SettingsTests(unittest.TestCase):
     def setUp(self):
         self.project = WorkerProject(self, linked=True)
@@ -292,6 +306,41 @@ class SettingsTests(unittest.TestCase):
         return deny_rules(
             self.project.root, self.project.grant, self.run, home=self.project.home
         )
+
+    def test_the_library_writes_nothing_and_repeats_its_answer(self):
+        """The calling contract of harness/library.md: a generation writes nothing, equal inputs
+        over an unchanged file tree give an equal configuration, and the deny rules follow the
+        file tree at the moment of the call."""
+
+        def generate() -> tuple:
+            return (
+                worker_settings(
+                    self.project.root,
+                    self.project.grant,
+                    self.run,
+                    python=sys.executable,
+                    home=self.project.home,
+                ),
+                write_hook_source(self.project.root, self.project.grant),
+            )
+
+        def tree() -> dict:
+            return {
+                path: path.stat().st_mtime_ns
+                for base in (self.project.base, self.run.root)
+                for path in sorted(base.rglob("*"))
+                if not path.is_relative_to(self.project.root / ".git")
+            }
+
+        before = tree()
+        first = generate()
+        self.assertEqual(before, tree())
+        self.assertEqual(first, generate())
+        # A directory that appears later, holding nothing granted, gets a rule of its own.
+        (self.project.root / "later").mkdir()
+        later = f"Read(/{(self.project.root / 'later').as_posix()}/**)"
+        self.assertNotIn(later, first[0]["permissions"]["deny"])
+        self.assertIn(later, generate()[0]["permissions"]["deny"])
 
     @verifies("scenario.workers.read-denied")
     def test_withheld_and_names_files_are_denied_for_read(self):
@@ -461,8 +510,22 @@ class SettingsTests(unittest.TestCase):
             capture_output=True,
             text=True,
         )
-        decision = json.loads(denied.stdout)["hookSpecificOutput"]
-        self.assertEqual("deny", decision["permissionDecision"])
+        # The exact output of claude-code.md#write-hook: one line, the prefix, then the row.
+        self.assertEqual(0, denied.returncode)
+        self.assertEqual(
+            {
+                "hookSpecificOutput": {
+                    "hookEventName": "PreToolUse",
+                    "permissionDecision": "deny",
+                    "permissionDecisionReason": "Concorde grant: notes.txt is not in this "
+                    "task's grant; a new file outside the bound directories is created and "
+                    "bound to a Module by the task level before a worker fills it, and a "
+                    "file another Module binds needs that Module bound to the task",
+                }
+            },
+            json.loads(denied.stdout),
+        )
+        self.assertEqual(1, len(denied.stdout.splitlines()))
         allowed = subprocess.run(
             [sys.executable, str(hook)],
             input=json.dumps({"tool_input": {"file_path": f"{root}/src/a/calc.py"}}),
@@ -701,8 +764,13 @@ class SettingsTests(unittest.TestCase):
                     )
                 self.assertEqual("grant_malformed", raised.exception.code)
                 self.assertIn(expected, str(raised.exception))
-        with self.assertRaises(SettingsError):
-            write_hook_source(self.project.root, {"context_identity": "x"})
+        # A grant without entries is no malformed grant but a missing one, as the grant input
+        # contract has it.
+        for incomplete in ({"context_identity": "x"}, ["entries"]):
+            with self.subTest(incomplete=incomplete):
+                with self.assertRaises(SettingsError) as raised:
+                    write_hook_source(self.project.root, incomplete)
+                self.assertEqual("grant_unavailable", raised.exception.code)
 
     @verifies("scenario.workers.bash-confined")
     def test_the_bash_sandbox_is_configured_closed(self):
@@ -2060,7 +2128,13 @@ class WorkerRunTests(unittest.TestCase):
         self.assertEqual("environment", error["unhandled"]["reason"])
         self.assertIn("could not run", error["detail"])
         [round_] = record["rounds"]
-        self.assertIsNone(round_["audit"])
+        # The returned record leaves the audit out, as its contract and read_record have it.
+        self.assertNotIn("audit", round_)
+        validate(record, contract_schema("contract.workers.worker-run-record"))
+        stored = worker_runs.read_record(self.project.base, record["run_id"])
+        self.assertEqual(
+            {k: v for k, v in record.items() if k not in RUNTIME_ONLY}, stored
+        )
         self.assertEqual([], validated)
         self.assertEqual("ok", record["worker_result"]["status"])
         self.assertEqual([], record["deleted"])
@@ -2527,6 +2601,30 @@ class RunLimitTests(unittest.TestCase):
         self.assertEqual(0.55, record["rounds"][1]["claude"]["total_cost_usd"])
         self.assertEqual(
             "2.1.296", record["rounds"][1]["claude"]["claude_code_version"]
+        )
+
+    @verifies("scenario.workers.limits-resumed-cost")
+    def test_a_resumed_cost_below_the_previous_total_counts_whole(self):
+        # The version restores totals, but a total below the previous round's restored nothing.
+        record = self.project.run(
+            [
+                self.round("bad", 1, 0.3, version="2.1.296"),
+                self.round(
+                    "bad",
+                    1,
+                    0.2,
+                    version="2.1.296",
+                    envelope={"session_id": "fake-session-1"},
+                ),
+                self.round("ok", 1, 0.1, version="2.1.296"),
+            ],
+            max_budget_usd=1.0,
+        )
+        self.assertEqual("ok", record["status"], record["error"])
+        self.assertEqual(0.2, record["rounds"][1]["usage"]["cost_usd"])
+        self.assertEqual(
+            ["1.00", "0.70", "0.50"],
+            [given(call)[1] for call in self.project.rounds(record)],
         )
 
     @verifies("scenario.workers.limits-resumed-cost")

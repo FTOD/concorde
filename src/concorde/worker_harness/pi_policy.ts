@@ -366,24 +366,30 @@ export class LineSplitter {
 /**
  * The grep tool's reading of ripgrep's `--json` lines. A line cut at the splitter's cap, such as a
  * match on a minified line, is shown as a line too long to show, and a line that cannot be read is
- * counted, so that an incomplete reading never answers that nothing matched.
+ * counted, so that an incomplete reading never answers that nothing matched. Once it holds the
+ * limit-th match and that match's own context lines, it asks for nothing more, as pi's own grep
+ * stops at that match.
  */
 export class RipgrepReader {
   root: string;
   limit: number;
   cap: number;
+  context: number;
   lines: string[] = [];
   matches = 0;
   limited = false;
   unread = 0;
+  // The context lines still to read after the limit-th match.
+  after = 0;
 
-  constructor(root: string, limit: number, cap: number) {
+  constructor(root: string, limit: number, cap: number, context = 0) {
     this.root = root;
     this.limit = limit;
     this.cap = cap;
+    this.context = context;
   }
 
-  /** Read one line; false once the match limit is reached. */
+  /** Read one line; false once the match limit and the last match's context are read. */
   read(raw: string, cut: boolean): boolean {
     if (!raw.trim()) return true;
     let event: {
@@ -411,15 +417,15 @@ export class RipgrepReader {
       try {
         event = JSON.parse(raw);
       } catch {
+        if (this.limited) return false;
         this.unread++;
         return true;
       }
     }
-    if (event.type !== "match" && event.type !== "context") return true;
-    if (event.type === "match" && this.matches >= this.limit) {
-      this.limited = true;
+    // Past the limit-th match, only its own context lines are read.
+    if (this.limited && (event.type !== "context" || this.after <= 0))
       return false;
-    }
+    if (event.type !== "match" && event.type !== "context") return true;
     const file = event.data?.path?.text ?? "";
     const shown = file
       ? relativePath(this.root, file) || file
@@ -431,9 +437,15 @@ export class RipgrepReader {
     if (event.type === "match") {
       this.matches++;
       this.lines.push(`${shown}:${number}: ${text}`);
-    } else {
-      this.lines.push(`${shown}-${number}- ${text}`);
+      if (this.matches >= this.limit) {
+        this.limited = true;
+        this.after = this.context;
+        return this.after > 0;
+      }
+      return true;
     }
+    this.lines.push(`${shown}-${number}- ${text}`);
+    if (this.limited) return --this.after > 0;
     return true;
   }
 

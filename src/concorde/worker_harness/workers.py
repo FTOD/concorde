@@ -315,7 +315,8 @@ class WorkerRequest:
     home: Path | None = None
     claude: str | None = None
     credentials: Path | None = None
-    backend: str = "claude"
+    # The worker backend; pi, Concorde's default, when the caller chooses none (launch.md#inputs).
+    backend: str = "pi"
     # What chose the backend (a configuration entry or the main session's variable), recorded only.
     backend_source: str | None = None
     # The reasoning level: Claude Code's --effort, pi's --thinking.
@@ -1116,7 +1117,10 @@ def _run(
                 verdict = audit(worktree, before, lambda path: view.level(path) == "rw")
             except (OSError, subprocess.CalledProcessError) as error:
                 verdict, unaudited = None, exception_detail(error)
-            round_record["audit"] = verdict.record() if verdict is not None else None
+            # A round whose audit could not run has no audit: the returned record leaves the key
+            # out, as it does for every step that did not happen, while its node keeps null.
+            if verdict is not None:
+                round_record["audit"] = verdict.record()
             # A write outside the grant is reported whatever else went wrong in the round.
             outside = (
                 ""

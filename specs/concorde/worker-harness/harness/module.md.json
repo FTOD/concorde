@@ -10,7 +10,8 @@
     "owns": [
       "specs/concorde/worker-harness/harness/module.md",
       "specs/concorde/worker-harness/harness/claude-code.md",
-      "specs/concorde/worker-harness/harness/pi.md"
+      "specs/concorde/worker-harness/harness/pi.md",
+      "specs/concorde/worker-harness/harness/library.md"
     ],
     "contains": [],
     "uses": [
@@ -32,6 +33,7 @@
           "req.workers.pi-same-grant",
           "req.workers.pi-file-tools",
           "req.workers.pi-sandbox",
+          "req.workers.pi-command-group-stopped",
           "req.workers.pi-only-extension",
           "req.workers.pi-limits",
           "req.workers.pi-round-limits",

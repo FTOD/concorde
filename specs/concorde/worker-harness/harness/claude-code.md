@@ -76,7 +76,7 @@ The rules are generated from the grant and the file tree:
 | a directory covered by a `ro` directory entry with no entry below it of another level | one `Edit` rule on `<dir>/**` |
 | a `.git` entry of the task worktree met by the walk, at any depth | `Read` and `Edit` on the path and below |
 | each Git administrative path Workers hands over: the common Git directory, the worktree's Git directory, every `.git` entry of the worktree and the Git directories they point to | `Read` and `Edit` on the path and below |
-| inside the user's home and inside the primary worktree, every entry that leads neither to the task worktree, to the runtime directory's `work/` or `home/`, nor to a runtime path | `Read` and `Edit` on the entry and below; a home that holds none of them is denied as a whole |
+| inside the user's home and inside the primary worktree, every entry that leads neither to the task worktree, to the runtime directory's `work/`, `home/` or `tmp/`, nor to a runtime path | `Read` and `Edit` on the entry and below; a home that holds none of them is denied as a whole |
 | `<runtime>/control/` and `<runtime>/config/` | `Read` and `Edit` on the path and below |
 
 Whether the primary worktree is inside the user's home or outside it, such as under `/tmp`, the
@@ -119,21 +119,35 @@ the top. The first row that matches decides. A denial reached through a final li
 judged followed by `(the target of the symbolic link <path>)`. Such a denial outside the task
 worktree says the path is a symbolic link to that target.
 
-The hook sees only the grant, not which Module declares an ungranted path. Its reason for an
-ungranted path covers both an undeclared file and a file of a Module the task is not bound to.
+The hook sees only the grant, not which [Module](../../glossary.json#concept.module) declares an
+ungranted path. Its reason for an ungranted path covers both an undeclared file and a file of a
+Module the task is not bound to.
 
 | Target | Decision | Reason given to the worker |
 | --- | --- | --- |
-| outside the task worktree | deny | the path is outside the task worktree |
-| a `.git` entry of the task worktree at any depth, or below one | deny | Git metadata is not available to workers |
+| outside the task worktree | deny | `<path> is outside the task worktree`, or through a final link `<path> is a symbolic link to <target>, outside the task worktree` |
+| a `.git` entry of the task worktree at any depth, or below one | deny | `Git metadata is not available to workers` |
 | in the `rw` list | none (the hook exits 0 without output) | — |
-| a `ro` path | deny | the path is read-only for this task |
-| a `names` path | deny | only the path's name is visible to this task |
-| another path in the task worktree | deny | the path is not in this task's grant; a new file outside the bound directories is created and bound to a [Module](../../glossary.json#concept.module) by the task level before a worker fills it, and a file another Module binds needs that Module bound to the task |
-| unreadable input or any internal error | deny | the hook could not decide |
+| a `ro` path | deny | `<judged> is read-only for this task` |
+| a `names` path | deny | `only the name of <judged> is visible to this task` |
+| another path in the task worktree | deny | `<judged> is not in this task's grant; a new file outside the bound directories is created and bound to a Module by the task level before a worker fills it, and a file another Module binds needs that Module bound to the task` |
+| unreadable input or any internal error | deny | `the hook could not decide: <error>` |
 
-A denial is the PreToolUse output with `permissionDecision: "deny"` and the reason as
-`permissionDecisionReason`.
+The reasons name paths this way:
+
+- `<path>` is the path the tool call names.
+- `<target>` is the file that path leads to, every link resolved.
+- `<judged>` is the judged file relative to the task worktree. Reached through a final link, it is
+  followed by ` (the target of the symbolic link <path>)`.
+- `<error>` says what kept the hook from deciding.
+
+A denial is one line of JSON on standard output, and the hook exits 0. Its `permissionDecision` is
+`"deny"`. Its `permissionDecisionReason` is the prefix `Concorde grant: ` followed by the row's
+reason. A Write of the ungranted `<worktree>/notes.txt` is denied with this output:
+
+```json
+{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "deny", "permissionDecisionReason": "Concorde grant: notes.txt is not in this task's grant; a new file outside the bound directories is created and bound to a Module by the task level before a worker fills it, and a file another Module binds needs that Module bound to the task"}}
+```
 
 ## Tool sets
 

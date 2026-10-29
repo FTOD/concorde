@@ -930,7 +930,8 @@
       "owns": [
         "specs/concorde/worker-harness/harness/module.md",
         "specs/concorde/worker-harness/harness/claude-code.md",
-        "specs/concorde/worker-harness/harness/pi.md"
+        "specs/concorde/worker-harness/harness/pi.md",
+        "specs/concorde/worker-harness/harness/library.md"
       ],
       "contains": [],
       "uses": [
@@ -952,6 +953,7 @@
             "req.workers.pi-same-grant",
             "req.workers.pi-file-tools",
             "req.workers.pi-sandbox",
+            "req.workers.pi-command-group-stopped",
             "req.workers.pi-only-extension",
             "req.workers.pi-limits",
             "req.workers.pi-round-limits",
@@ -2742,6 +2744,11 @@
           "kind": "document",
           "target": "document.harness.claude-code",
           "reason": "the worker settings, deny rules, write hook and tool sets the Claude Code backend places in the runtime directory and launches with"
+        },
+        {
+          "kind": "document",
+          "target": "document.harness.library",
+          "reason": "the Harness's entry points with their inputs, return values, effects, failures and repeat behaviour, and the policy Workers embeds in the permission extension, through which both backends generate a worker's configuration"
         },
         {
           "kind": "document",

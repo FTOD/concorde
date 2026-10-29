@@ -604,7 +604,7 @@
       "id": "concept.runtime-directory",
       "title": "Runtime directory",
       "owner": "module.workers",
-      "definition": "The private directory under `/tmp` that holds what one worker run needs only while it runs, and that the host removes when the run ends.",
+      "definition": "The private directory under `/tmp`, or under the system temporary directory where `/tmp` is not writable, that holds what one worker run needs only while it runs, and that the host removes when the run ends.",
       "explanation": "specs/concorde/worker-harness/workers/module.md#concept.runtime-directory",
       "relates": [
         {

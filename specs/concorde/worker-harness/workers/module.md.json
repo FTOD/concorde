@@ -53,6 +53,11 @@
       },
       {
         "kind": "document",
+        "target": "document.harness.library",
+        "reason": "the Harness's entry points with their inputs, return values, effects, failures and repeat behaviour, and the policy Workers embeds in the permission extension, through which both backends generate a worker's configuration"
+      },
+      {
+        "kind": "document",
         "target": "document.harness.pi",
         "reason": "the permission extension's read and write tables, sandbox, limits and tool sets, whose decisions and denial reasons the pi backend's requirements and scenarios rely on"
       },

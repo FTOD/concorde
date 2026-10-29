@@ -59,6 +59,18 @@ TOOL_SETS = {
     "code-to-spec": "Read,Glob,Grep,Edit,Write",
     "implement": "Read,Glob,Grep,Edit,Write,Bash",
 }
+# pi's tool sets: the extension's own tools, each set ending with the result tool.
+PI_RESULT_TOOL = "concorde_result"
+_PI_COMMON = "read,grep,find,ls"
+PI_TOOL_SETS = {
+    "understand": f"{_PI_COMMON},{PI_RESULT_TOOL}",
+    "review-spec": f"{_PI_COMMON},{PI_RESULT_TOOL}",
+    "review-code": f"{_PI_COMMON},{PI_RESULT_TOOL}",
+    "test": f"{_PI_COMMON},{PI_RESULT_TOOL}",
+    "specify": f"{_PI_COMMON},edit,write,{PI_RESULT_TOOL}",
+    "code-to-spec": f"{_PI_COMMON},edit,write,{PI_RESULT_TOOL}",
+    "implement": f"{_PI_COMMON},edit,write,bash,{PI_RESULT_TOOL}",
+}
 RANK = {"names": 1, "ro": 2, "rw": 3}
 # The tool set of a grant with no writable path, whatever its task type.
 READ_ONLY_TASK_TYPE = "understand"
@@ -93,7 +105,8 @@ class SettingsError(ValueError):
 class RunPaths:
     """The directories of one worker run: its runtime directory and its run directory.
 
-    ``root`` is the runtime directory, a short private directory under ``/tmp`` that holds what
+    ``root`` is the runtime directory, a short private directory under ``/tmp`` (or the system
+    temporary directory where ``/tmp`` is not writable) that holds what
     the worker needs only while it runs and is removed when it ends: ``control/``, ``config/`` and
     the worker's own ``home/``, ``tmp/`` and ``work/``. Its path stays short because Claude Code's
     Bash sandbox creates Unix sockets below ``TMPDIR``, whose paths must stay under the kernel's
@@ -267,10 +280,12 @@ class GrantView:
 
 
 def grant_view(grant) -> GrantView:
-    """The view of a frozen grant, or a ``SettingsError`` naming what makes it malformed."""
+    """The view of a frozen grant, or a ``SettingsError``: ``grant_unavailable`` for a grant
+    without entries, as the grant input contract has it, ``grant_malformed`` naming what makes
+    its entries malformed."""
     if not isinstance(grant, dict) or "entries" not in grant:
         raise SettingsError(
-            "grant_malformed",
+            "grant_unavailable",
             "the grant is not an object with an entries list"
             if not isinstance(grant, dict)
             else "the grant has no entries list",
@@ -547,14 +562,18 @@ def worker_settings(
     }
 
 
+# The library interface Workers calls (specs/concorde/worker-harness/harness/library.md).
 __all__ = [
+    "PI_TOOL_SETS",
     "RunPaths",
     "SettingsError",
+    "TASK_TYPES",
     "TOOL_SETS",
     "deny_rules",
     "denied",
     "grant_view",
     "sandbox_filesystem",
+    "tool_set",
     "worker_settings",
     "write_hook_source",
 ]

@@ -27,7 +27,14 @@ from .claude_backend import (
     RoundOutcome,
     proxy_environment,
 )
-from .settings import SettingsError, grant_view, sandbox_filesystem, tool_set
+from .settings import (
+    PI_RESULT_TOOL,
+    PI_TOOL_SETS,
+    SettingsError,
+    grant_view,
+    sandbox_filesystem,
+    tool_set,
+)
 from .transient import transient
 
 ACTOR = "pi process (pi -p)"
@@ -38,20 +45,12 @@ POLICY_MARKER = "const POLICY: Policy = {} as Policy;"
 RUNTIME_MARKER = '"@concorde/sandbox-runtime"'
 RUNTIME_PACKAGE = "node_modules/@anthropic-ai/sandbox-runtime"
 RUNTIME_VERSION = "0.0.77"
-RESULT_TOOL = "concorde_result"
+RESULT_TOOL = PI_RESULT_TOOL
 LIMIT_ENTRY = "concorde-limit"
 # The variable that tells the permission extension what its round may still use of the run's limits.
 LIMITS_VARIABLE = "CONCORDE_ROUND_LIMITS"
-COMMON_TOOLS = "read,grep,find,ls"
-TOOL_SETS = {
-    "understand": f"{COMMON_TOOLS},{RESULT_TOOL}",
-    "review-spec": f"{COMMON_TOOLS},{RESULT_TOOL}",
-    "review-code": f"{COMMON_TOOLS},{RESULT_TOOL}",
-    "test": f"{COMMON_TOOLS},{RESULT_TOOL}",
-    "specify": f"{COMMON_TOOLS},edit,write,{RESULT_TOOL}",
-    "code-to-spec": f"{COMMON_TOOLS},edit,write,{RESULT_TOOL}",
-    "implement": f"{COMMON_TOOLS},edit,write,bash,{RESULT_TOOL}",
-}
+# The Harness chooses each task type's tool set (harness/pi.md#tool-sets).
+TOOL_SETS = PI_TOOL_SETS
 
 
 def _tail(data: bytes, size: int = 4000) -> str:
@@ -202,9 +201,12 @@ class PiStream:
         self.error_message: str | None = None
         self.final_text = ""
         self.turns = 0
-        self.cost = 0.0
-        self.tokens = {"input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0}
-        self.reported = False
+        # Each metric stays None until pi reports it: a metric pi never reported is unknown,
+        # never a measured zero.
+        self.cost: float | None = None
+        self.tokens: dict[str, int | None] = dict.fromkeys(
+            ("input", "output", "cacheRead", "cacheWrite")
+        )
 
     def feed(self, line: str) -> list[tuple[str, dict]]:
         try:
@@ -235,9 +237,8 @@ class PiStream:
                     if isinstance(used, dict)
                     else None
                 )
-                if isinstance(cost, (int, float)):
-                    self.cost += cost
-                    self.reported = True
+                if isinstance(cost, (int, float)) and not isinstance(cost, bool):
+                    self.cost = (self.cost or 0.0) + cost
                 for key in self.tokens:
                     value = used.get(key) if isinstance(used, dict) else None
                     if (
@@ -245,8 +246,7 @@ class PiStream:
                         and not isinstance(value, bool)
                         and value >= 0
                     ):
-                        self.tokens[key] += value
-                        self.reported = True
+                        self.tokens[key] = (self.tokens[key] or 0) + value
                 texts = [
                     block.get("text", "")
                     for block in message.get("content") or []
@@ -261,33 +261,31 @@ class PiStream:
         return []
 
     def conclude(self, outcome: dict) -> RoundOutcome:
+        cost = round(self.cost, 6) if self.cost is not None else None
         concluded = RoundOutcome(
             session=self.session,
             result=self.result,
             final_text=self.final_text,
             usage={
-                "tokens_in": self.tokens["input"] if self.reported else None,
-                "tokens_out": self.tokens["output"] if self.reported else None,
-                "tokens_cache_read": self.tokens["cacheRead"]
-                if self.reported
-                else None,
-                "tokens_cache_write": self.tokens["cacheWrite"]
-                if self.reported
-                else None,
-                "cost_usd": round(self.cost, 6) if self.reported else None,
+                "tokens_in": self.tokens["input"],
+                "tokens_out": self.tokens["output"],
+                "tokens_cache_read": self.tokens["cacheRead"],
+                "tokens_cache_write": self.tokens["cacheWrite"],
+                "cost_usd": cost,
                 "turns": self.turns,
             },
             info={
                 "pi": {
                     "stop_reason": self.stop_reason,
                     "turns": self.turns,
-                    "cost": round(self.cost, 6),
+                    "cost": cost,
                 }
             },
         )
         summary = (
             f"exit code {outcome.get('exit')}, {self.turns} turn(s), reported cost "
-            f"{round(self.cost, 6)}, last stop reason {self.stop_reason or '(none)'}"
+            f"{'none' if cost is None else cost}, last stop reason "
+            f"{self.stop_reason or '(none)'}"
         )
         if self.error_message:
             summary += f", error message: {self.error_message[-2000:]}"

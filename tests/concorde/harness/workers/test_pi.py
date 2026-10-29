@@ -6,12 +6,17 @@ decisions of ``pi_policy.ts`` are checked here under Node when Node is available
 
 from __future__ import annotations
 
+import contextlib
+import dataclasses
 import json
 import os
+import shlex
 import shutil
+import signal
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
@@ -20,7 +25,7 @@ from unittest.mock import patch
 from concorde.worker_harness import pi_backend
 from concorde.worker_harness import runs as worker_runs
 from concorde.worker_harness.settings import RunPaths, sandbox_filesystem
-from concorde.worker_harness.workers import result_schema
+from concorde.worker_harness.workers import WorkerRequest, result_schema, run_worker
 from concorde.spec.verification import verifies
 from tests.concorde.harness.workers.test_workers import LOOPBACK_PROXY, WorkerProject
 
@@ -74,6 +79,63 @@ class PiProject(WorkerProject):
         }
         values.update(options)
         return super().request(plan, **values)
+
+
+def assistant(usage: dict) -> str:
+    """One pi ``message_end`` event of an assistant message with ``usage``."""
+    return json.dumps(
+        {"type": "message_end", "message": {"role": "assistant", "usage": usage}}
+    )
+
+
+class PiUsageTests(unittest.TestCase):
+    """What a pi round's usage records of what pi reported."""
+
+    def usage(self, *lines: str) -> dict:
+        stream = pi_backend.PiStream()
+        for line in lines:
+            stream.feed(line)
+        return stream.conclude({"exit": 0, "stdout": b"", "stderr": b""}).usage
+
+    @verifies("scenario.workers.pi-partial-usage")
+    def test_a_metric_pi_did_not_report_stays_null(self):
+        tokens_only = self.usage(
+            assistant({"input": 10, "output": 4}),
+            assistant({"input": 5, "output": 1}),
+        )
+        self.assertEqual(
+            (15, 5, None, None, None),
+            tuple(
+                tokens_only[key]
+                for key in (
+                    "tokens_in",
+                    "tokens_out",
+                    "tokens_cache_read",
+                    "tokens_cache_write",
+                    "cost_usd",
+                )
+            ),
+        )
+        cost_only = self.usage(
+            assistant({"cost": {"total": 0.25}}), assistant({"cost": {"total": 0.5}})
+        )
+        self.assertEqual(0.75, cost_only["cost_usd"])
+        for key in (
+            "tokens_in",
+            "tokens_out",
+            "tokens_cache_read",
+            "tokens_cache_write",
+        ):
+            self.assertIsNone(cost_only[key], key)
+        partial = self.usage(
+            assistant({"input": 3, "cacheRead": 7}), assistant({"output": 2})
+        )
+        self.assertEqual(
+            {"tokens_in": 3, "tokens_out": 2, "tokens_cache_read": 7},
+            {k: partial[k] for k in ("tokens_in", "tokens_out", "tokens_cache_read")},
+        )
+        self.assertIsNone(partial["tokens_cache_write"])
+        self.assertIsNone(partial["cost_usd"])
 
 
 class PiRunTests(unittest.TestCase):
@@ -156,6 +218,33 @@ class PiRunTests(unittest.TestCase):
             (status["phase"], status["status"], status["backend"]),
         )
         self.assertEqual("concorde_result", status["last_action"]["tool"])
+
+    @verifies("scenario.workers.request-backend-default")
+    def test_a_request_naming_no_backend_runs_its_worker_on_pi(self):
+        named = self.project.request(
+            [
+                {
+                    "writes": {
+                        str(
+                            self.root / "src/a/calc.py"
+                        ): "def add(a, b):\n    return a + b\n"
+                    }
+                }
+            ]
+        )
+        # The same request, every field but the backend given.
+        request = WorkerRequest(
+            **{
+                field.name: getattr(named, field.name)
+                for field in dataclasses.fields(WorkerRequest)
+                if field.name != "backend"
+            }
+        )
+        self.assertEqual("pi", request.backend)
+        record = run_worker(request)
+        self.assertEqual("ok", record["status"], record["error"])
+        self.assertEqual("pi", record["backend"])
+        self.assertEqual(pi_backend.TOOL_SETS["implement"], record["tools"])
 
     @verifies("scenario.workers.session-proxy")
     def test_a_pi_worker_behind_a_loopback_proxy_uses_it(self):
@@ -536,12 +625,13 @@ GREP_PROBE = """
 import { LineSplitter, RipgrepReader } from %(source)s;
 const out = {};
 for (const [name, case_] of Object.entries(%(cases)s)) {
-  const reader = new RipgrepReader("/w", case_.limit, case_.cap);
+  const reader = new RipgrepReader("/w", case_.limit, case_.cap, case_.context ?? 0);
   const splitter = new LineSplitter(case_.cap, (line, cut) => reader.read(line, cut));
-  let stopped = false;
-  for (const chunk of case_.chunks) if (!splitter.push(chunk)) { stopped = true; break; }
+  let stopped = false, stoppedAt = null;
+  for (const [index, chunk] of case_.chunks.entries())
+    if (!splitter.push(chunk)) { stopped = true; stoppedAt = index; break; }
   if (!stopped) splitter.end();
-  out[name] = { answer: reader.answer((text) => text), stopped };
+  out[name] = { answer: reader.answer((text) => text), stopped, stoppedAt };
 }
 console.log(JSON.stringify(out));
 """
@@ -630,6 +720,37 @@ class PiGrepTests(unittest.TestCase):
         self.assertTrue(out["limited"]["stopped"])
         self.assertIn("1 matches limit reached", out["limited"]["answer"])
         self.assertEqual("No matches found", out["none"]["answer"])
+
+    @verifies("scenario.workers.pi-grep-incomplete-output")
+    def test_grep_stops_at_the_limit_th_match(self):
+        first = rg_event("match", "/w/a.py", 1, "NEEDLE = 1")
+        second = rg_event("match", "/w/a.py", 9, "NEEDLE = 2")
+        after = rg_event("context", "/w/a.py", 10, "after = 2")
+        later = rg_event("context", "/w/a.py", 11, "later = 3")
+        end = '{"type":"end","data":{}}'
+        out = self.answers(
+            {
+                # Exactly the limit's matches, then a long remainder without one.
+                "exact": {
+                    "limit": 2,
+                    "cap": 1000,
+                    "chunks": [first + "\n", second + "\n", end + "\n", end + "\n"],
+                },
+                # With context, the last match's own context lines are read, then no more.
+                "context": {
+                    "limit": 2,
+                    "cap": 1000,
+                    "context": 1,
+                    "chunks": [first + "\n", second + "\n", after + "\n", later + "\n"],
+                },
+            }
+        )
+        self.assertEqual(1, out["exact"]["stoppedAt"])
+        self.assertIn("a.py:9: NEEDLE = 2", out["exact"]["answer"])
+        self.assertIn("2 matches limit reached", out["exact"]["answer"])
+        self.assertEqual(2, out["context"]["stoppedAt"])
+        self.assertIn("a.py-10- after = 2", out["context"]["answer"])
+        self.assertNotIn("later", out["context"]["answer"])
 
 
 @unittest.skipUnless(shutil.which("node"), "Node is needed to run pi_policy.ts")
@@ -934,6 +1055,36 @@ console.log(JSON.stringify(out));
 """
 
 
+BASH_PROBE = """
+import extension from "./permission.ts";
+const tools = {};
+extension({ registerTool: (tool) => { tools[tool.name] = tool; }, on: () => {}, appendEntry: () => {} });
+const sessionManager = { getSessionId: () => "s", getSessionFile: () => undefined };
+const ctx = { cwd: %(work)s, abort() {}, sessionManager };
+const result = await tools.bash.execute("b", { command: %(command)s }, undefined, undefined, ctx);
+console.log(JSON.stringify({ text: result.content[0].text }));
+"""
+
+
+def process_gone(pid: int, seconds: float = 10.0) -> bool:
+    """Whether ``pid`` ends within ``seconds``; a zombie counts as ended, since it runs nothing."""
+    deadline = time.monotonic() + seconds
+    while True:
+        try:
+            os.kill(pid, 0)
+        except ProcessLookupError:
+            return True
+        try:
+            state = Path(f"/proc/{pid}/stat").read_text().rsplit(")", 1)[1].split()[0]
+        except (OSError, IndexError):
+            state = ""
+        if state == "Z":
+            return True
+        if time.monotonic() > deadline:
+            return False
+        time.sleep(0.05)
+
+
 @unittest.skipUnless(
     shutil.which("node") and PI_PACKAGE is not None,
     "Node and an installed pi are needed to load the permission extension",
@@ -962,7 +1113,17 @@ class PiExtensionTests(unittest.TestCase):
         (extension / "node_modules/typebox").symlink_to(dependencies / "typebox")
         stub = self.base / "sandbox-runtime"
         (stub / "dist").mkdir(parents=True)
-        (stub / "dist/index.js").write_text("export const SandboxManager = {};\n")
+        # A sandbox that runs each command as it is, so the extension's own handling of a command
+        # is what a test observes.
+        (stub / "dist/index.js").write_text(
+            "export const SandboxManager = {\n"
+            "  initialize: async () => {},\n"
+            "  wrapWithSandbox: async (command) => command,\n"
+            "  reset: async () => {},\n"
+            "};\n"
+        )
+        self.groups = self.base / "control/groups"
+        self.groups.mkdir(parents=True)
         shutil.copy2(POLICY_SOURCE, extension / "pi_policy.ts")
         policy = {
             "worktree": self.worktree.as_posix(),
@@ -982,6 +1143,7 @@ class PiExtensionTests(unittest.TestCase):
                 "denyWrite": [],
             },
             "programs": {"rg": "rg", "fd": "fd"},
+            "groups": self.groups.as_posix(),
             "limits": {"maxTurns": 10, "maxBudgetUsd": 0.5},
             "resultSchema": result_schema(None),
         }
@@ -1023,6 +1185,35 @@ class PiExtensionTests(unittest.TestCase):
         )
         self.assertEqual(0, completed.returncode, completed.stderr)
         return json.loads(completed.stdout.strip().splitlines()[-1])
+
+    @verifies("scenario.workers.pi-command-group-stopped")
+    def test_a_background_process_of_a_command_ends_with_the_command(self):
+        pid_file = self.base / "background.pid"
+        # The background process holds none of the command's pipes, so the command ends at once.
+        command = f"sleep 60 >/dev/null 2>&1 </dev/null & echo $! > {shlex.quote(pid_file.as_posix())}"
+        probe = self.extension / "bash.mts"
+        probe.write_text(
+            BASH_PROBE
+            % {
+                "work": json.dumps((self.base / "work").as_posix()),
+                "command": json.dumps(command),
+            }
+        )
+        completed = subprocess.run(
+            ["node", "--experimental-strip-types", "--no-warnings", str(probe)],
+            cwd=self.extension,
+            capture_output=True,
+            text=True,
+            timeout=120,
+        )
+        self.assertEqual(0, completed.returncode, completed.stderr)
+        pid = int(pid_file.read_text())
+        gone = process_gone(pid)
+        if not gone:
+            with contextlib.suppress(ProcessLookupError):
+                os.kill(pid, signal.SIGKILL)
+        self.assertTrue(gone, "the background process outlived its command")
+        self.assertEqual([], list(self.groups.iterdir()))
 
     @verifies("scenario.workers.pi-file-tools-denied")
     def test_a_read_is_checked_on_the_file_pi_opens(self):
