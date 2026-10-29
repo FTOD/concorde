@@ -978,7 +978,7 @@ This illustrates [the parts Coordination does without](../module.md#optional-int
   an open task `t2` naming `concorde-8e` and a closed task `t3`
 - WHEN Claude Code runs `concorde task main-hook` in the primary worktree with the `source` `resume`
   and the `session_id` `sess-a`
-- THEN it says the session resumed
+- THEN it begins with the time and `sess-a`, and says the session resumed
 - AND it lists `t1` with main `concorde-7d`, marked as this session, and unanswered report 1, then
   `t2` with main `concorde-8e`, not marked
 - AND it does not list `t3`
@@ -991,7 +991,29 @@ This illustrates [the parts Coordination does without](../module.md#optional-int
 - BUT run in a task worktree it prints nothing
 - AND with no task it prints nothing either, and exits with status 0
 
-This illustrates [the hook's list](requirements.md#req.tasks.main-hook-lists).
+This illustrates [the hook's list](requirements.md#req.tasks.main-hook-lists) and
+[its unique start](requirements.md#req.tasks.main-hook-unique).
+
+### scenario.tasks.main-hook-move — The session-start hook recognises a move to the background
+
+- GIVEN an open task `t1` whose record keeps the main session id `sess-a`, and an open task `t2`
+  whose record keeps `sess-b`
+- AND in Claude Code's project folder, the transcript of `sess-a` ends with a `continued-in` record
+  naming `sess-m`, and the transcript of `sess-m` ends with one naming `sess-n`
+- WHEN Claude Code runs `concorde task main-hook` in the primary worktree with the `source` `fork`,
+  the `session_id` `sess-n` and a `transcript_path` in that folder
+- THEN it says the session started as a fork, such as a move to the background
+- AND it marks `t1` `(this session, moved from sess-a)`
+- AND it does not mark `t2`
+- AND with the `session_id` `sess-m`, it does not mark `t1`, since that session moved on to `sess-n`
+- BUT when a `user` record follows the `continued-in` record in the transcript of `sess-a`, it
+  marks no task, since that session went on itself
+- AND when the transcripts are missing or their last records are not JSON, it marks no task and
+  still lists both
+
+This illustrates [the hook's list](requirements.md#req.tasks.main-hook-lists),
+[following the session](requirements.md#req.tasks.main-session-followed) and
+[following nothing without the records](requirements.md#req.tasks.main-session-unfollowed).
 
 ### scenario.tasks.main-hook-failure — The session-start hook fails in one line
 
@@ -1010,6 +1032,45 @@ This illustrates [never failing a start](requirements.md#req.tasks.main-hook-nev
 - THEN the command returns once the record is written, printing `main` `concorde-8e`
 - AND the same wait run again returns at once
 - AND a wait on a task that is closed meanwhile ends with `wait_unreachable`
+- AND a wait without `--timeout` ends with `wait_timeout` after 1800 seconds
+
+This illustrates [the rebind wait's bound](requirements.md#req.tasks.rebound-wait-bounded).
+
+### scenario.tasks.report-follows-move — A report goes to the session the main agent's session moved to
+
+- GIVEN a task whose record names `concorde-74` with the session id `sess-a`
+- AND the transcript of `sess-a` ends with a `continued-in` record naming `sess-n`
+- AND `claude agents --json` lists `sess-n` as `项目中途停止状态检查`
+- WHEN the task session runs `concorde task report <task> --text "<its report>"`
+- THEN the command prints `main` `项目中途停止状态检查`, `recorded_main` `concorde-74` and
+  `followed` with `sess-a` and `sess-n`
+- AND the report's decision-log heading names `项目中途停止状态检查`, and its body says the report
+  goes there because `concorde-74`'s session continues as it
+- AND the record still names `concorde-74`, and the report's entry keeps `main` `concorde-74`
+- AND when `claude agents --json` lists `sess-a` itself under `concorde-9f`, as after a `/rename`,
+  the command prints `main` `concorde-9f`
+- BUT when `claude` is missing, fails or lists neither session, the command prints `main`
+  `concorde-74` and no `recorded_main`
+
+This illustrates [following the session](requirements.md#req.tasks.main-session-followed),
+[the followed name](requirements.md#req.tasks.report-followed),
+[showing it](requirements.md#req.tasks.report-followed-shown) and
+[following nothing without the records](requirements.md#req.tasks.main-session-unfollowed).
+
+### scenario.tasks.wait-rebound-follows — A rebind wait returns the session the main agent's session moved to
+
+- GIVEN a task whose record names `concorde-74` with the session id `sess-a`, a session Claude Code
+  does not list
+- WHEN the task session runs `concorde task wait <task> --rebound concorde-74`
+- AND the transcript of `sess-a` then gains a `continued-in` record naming `sess-n`, which
+  `claude agents --json` lists as `项目中途停止状态检查`
+- THEN the command returns, printing `main` `项目中途停止状态检查` and `followed` with `sess-a` and
+  `sess-n`
+- AND the record still names `concorde-74`
+- AND a wait started when `sess-n` is already listed answers at once
+
+This illustrates [the rebind wait](requirements.md#req.tasks.rebound-wait-follows) and
+[its wake](requirements.md#req.tasks.rebound-wait-wakes).
 
 ### scenario.tasks.report-merge-incomplete — Reports and rebinds go on while a merge is unfinished
 

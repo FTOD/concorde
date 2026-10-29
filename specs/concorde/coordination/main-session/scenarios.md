@@ -116,10 +116,14 @@ guides.
   escalations it carries
 - AND the task session is told then to send the report with SendMessage to the `main` that command
   prints
+- AND the task session is told that this `main` may be the session the record's main session moved
+  to or was renamed to
 - AND when SendMessage reaches no session of that name, the task session is told to run
   `concorde task wait <task> --rebound <that name>` in background Bash
 - AND in that case, the task session is told to send the same report to the name the wait command
   returns
+- AND when the wait ends with `wait_timeout`, the task session is told to append to the decision
+  log that the report is still undelivered to that name, and to start the wait again
 - AND the task session is told that an answer names the reports it answers
 - AND the task session is told that an answer to a report it already acted on, matched by that
   number, changes nothing
@@ -127,18 +131,22 @@ guides.
 This illustrates
 [recording a report first](requirements.md#req.main-session.task-session-report-recorded) and
 [its addressee](requirements.md#req.main-session.task-session-report-addressee). It also illustrates
-[sending it again](requirements.md#req.main-session.task-session-report-resent) and
+[sending it again](requirements.md#req.main-session.task-session-report-resent),
+[recording a wait's timeout](requirements.md#req.main-session.task-session-wait-bounded) and
 [an answer acted on once](requirements.md#req.main-session.task-session-answer-once).
 
 ### scenario.main-session.session-start-compare — The main agent compares its name when the hook lists tasks
 
 - GIVEN the rendered main-session guidance
-- WHEN the session-start hook lists tasks not ended after a start, a resume or a compaction
+- WHEN the session-start hook lists tasks not ended after a start, a resume, a compaction or a move
+  to the background
 - THEN the main agent is told to call ListAgents before anything else
 - AND to compare the name it reports for the session with each task's `main`
 - AND to leave a task whose `main` is another session ListAgents lists
 - AND to take the `main` of a task the hook marks as this session as its own name and, when it is
   not the current name, follow "When your session name changed"
+- AND to count a task marked `(this session, moved from <id>)` as marked as this session, since its
+  session moved to the background as this one
 - AND never to rebind on its own a task the hook does not mark whose `main` is neither its current
   name nor a listed session
 - AND to ask the developer once, in one question listing every such task with its `main`, and to
@@ -151,7 +159,7 @@ This illustrates [comparing the name](requirements.md#req.main-session.session-s
 
 - GIVEN the rendered main-session guidance
 - WHEN ListAgents reports for the main agent's session a name other than the one it gave its tasks,
-  as after a resume
+  as after a resume or a move to the background
 - THEN the main agent is told to take as its own the tasks not ended that the hook marks as this
   session
 - AND when the hook could not list the tasks, to take those that

@@ -62,6 +62,15 @@ TOOLS = {
     "issue_close",
     "issue_reopen",
 }
+# Claude Code answering as it does when no session runs.
+NO_SESSIONS_CLAUDE = """\
+import sys
+if sys.argv[1] == "agents":
+    print("[]")
+    sys.exit(0)
+print(f"No job matching '{sys.argv[-1]}'. Run 'claude agents' to list running sessions.")
+sys.exit(1)
+"""
 # How long a test waits for a channel event before it fails.
 EVENT_WAIT = 60
 # A post-merge check that passes; the fixture's Specs are not meant to validate.
@@ -205,6 +214,18 @@ class ProjectMcpTests(unittest.TestCase):
         git(self.root, "config", "user.name", "t")
         git(self.root, "config", "user.email", "t@t")
         commit(self.root, "ignore task records")
+        # A `claude` that lists no session and an empty Claude Code folder: a report follows the
+        # main agent's session through them, and no test asks the developer's own `claude`.
+        scratch = self.project.home / "claude-fake"
+        (scratch / "bin").mkdir(parents=True)
+        (scratch / "config").mkdir()
+        program = scratch / "bin/claude"
+        program.write_text(f"#!{sys.executable}\n{NO_SESSIONS_CLAUDE}")
+        program.chmod(0o755)
+        self.fake_claude = {
+            "PATH": f"{scratch / 'bin'}{os.pathsep}{os.environ['PATH']}",
+            "CLAUDE_CONFIG_DIR": str(scratch / "config"),
+        }
 
     def client(self, channel: bool = True, cwd: Path | None = None, **environment):
         return Client(
@@ -212,7 +233,7 @@ class ProjectMcpTests(unittest.TestCase):
             cwd or self.root,
             CONCORDE_CHANNEL="1" if channel else "0",
             CLAUDE_CODE_SESSION_ID="session-main",
-            **environment,
+            **{**self.fake_claude, **environment},
         )
 
     def refusal(self, value, error, code):

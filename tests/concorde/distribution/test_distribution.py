@@ -2007,7 +2007,7 @@ class InstallTests(unittest.TestCase):
             dependencies=False,
         )
         ours = {
-            "matcher": "startup|resume|compact",
+            "matcher": "startup|resume|compact|fork",
             "hooks": [{"type": "command", "command": command, "timeout": 20}],
         }
         value = json.loads(settings.read_text())
@@ -2019,7 +2019,7 @@ class InstallTests(unittest.TestCase):
             [
                 {
                     "event": "SessionStart",
-                    "matcher": "startup|resume|compact",
+                    "matcher": "startup|resume|compact|fork",
                     "command": command,
                 }
             ],

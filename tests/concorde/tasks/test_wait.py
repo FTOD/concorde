@@ -155,13 +155,13 @@ class WaitTests(unittest.TestCase):
         real = wait.rebound
         calls = []
 
-        def closing_first(primary, task_id, former):
+        def closing_first(primary, task_id, former, follow=None):
             calls.append(task_id)
             if len(calls) == 1:
-                found = real(primary, task_id, former)
+                found = real(primary, task_id, former, follow)
                 store.close_task(self.root, "t1", "completed", note="done", errors=[])
                 return found
-            return real(primary, task_id, former)
+            return real(primary, task_id, former, follow)
 
         with patch.object(wait, "rebound", closing_first):
             status, value = self.command(

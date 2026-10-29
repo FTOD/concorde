@@ -30,7 +30,7 @@ from ...kernel.tracing import layout, locks, reader
 from ...kernel.tracing import node as trace
 from ...kernel.tracing.command import ACTOR as TRACING
 from . import cli as task_cli
-from . import merge, store, wait
+from . import merge, moves, store, wait
 from .parts import _environment, concorde_command
 from .store import TaskError
 
@@ -459,6 +459,7 @@ def task_report(call: Call, arguments: dict):
         arguments["task"],
         arguments["text"],
         arguments.get("escalations", []),
+        follow=moves.follower(call.primary),
     )
 
 

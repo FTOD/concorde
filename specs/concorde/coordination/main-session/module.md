@@ -432,25 +432,35 @@ The installed guidance gives the main agent this working method:
   On a close's `decision_log_uncommitted`, fix what Git refused in the primary worktree and run the
   same close again.
 - **Keep reports reachable.** A Claude Code session's name does not survive a restart or a resume of
-  the session, so the name a task session starts with may no longer reach the main agent. The
-  task-session guidance therefore has a task session record every report with `concorde task report`
-  before it sends the report. The task session sends the report to the main agent's session the
-  command prints from the task record at that moment. When SendMessage reaches no session of that
-  name, the task session waits in background Bash with `concorde task wait <task> --rebound <name>`.
-  The task session sends the same report again to the name that command returns
-  ([requirements](requirements.md#req.main-session.task-session-report-recorded)). The main agent
+  the session, so the name a task session starts with may no longer reach the main agent. Claude
+  Code's `/background` command, which moves an interactive session to the background, gives it a
+  new session id and, unless it was named, its automatic title as its name. The task-session
+  guidance therefore has a task session record every report with `concorde task report` before it
+  sends the report. The task session sends the report to the main agent's session the command
+  prints. That session is the one the task record names, or the session Tasks follows it to by its
+  session id when the main agent's session moved or was renamed
+  ([Tasks](../tasks/module.md#reports-and-the-main-agents-session)). When SendMessage reaches no
+  session of that name, the task session waits in background Bash with
+  `concorde task wait <task> --rebound <name>`. The task session sends the same report again to the
+  name that command returns
+  ([requirements](requirements.md#req.main-session.task-session-report-recorded)). The wait lasts at
+  most 1800 seconds. At each timeout the task session records in the decision log that the report
+  is still undelivered, and then waits again
+  ([requirements](requirements.md#req.main-session.task-session-wait-bounded)). The main agent
   records its answer with `concorde task answer` before it sends the answer. Nothing in a renamed
   session tells the main agent of the new name. So Tasks' session-start hook
   ([Tasks](../tasks/module.md#listing-and-showing-tasks)) runs when the main agent's session
-  starts, resumes or is compacted in the primary worktree. It adds the tasks not ended to the main
-  agent's context, with the `main` each names and their unanswered reports. The hook marks as this
-  session each task whose record keeps the starting session's Claude Code session id. A resume and
-  a compaction keep that id while the name may change. The guidance tells the main agent then to
-  call ListAgents before anything else and compare its name with each task's `main`
+  starts, resumes, is compacted or is moved to the background in the primary worktree. It adds the
+  tasks not ended to the main agent's context, with the `main` each names and their unanswered
+  reports. The hook marks as this session each task whose record keeps the starting session's
+  Claude Code session id, or an id that Claude Code's records show continuing into it after a move.
+  A resume and a compaction keep that id while the name may change. The moved session reads the
+  hook's text with the developer's next prompt. The guidance tells the main agent then to call
+  ListAgents before anything else and compare its name with each task's `main`
   ([requirements](requirements.md#req.main-session.session-start-compare)). A task that names
   another session ListAgents lists belongs to that main agent. When the hook marks as this session
   a task whose `main` is not the name ListAgents reports, the main agent reconciles before anything
-  else. This can happen after a resume. The main agent reconciles as follows
+  else. This can happen after a resume or a move. The main agent reconciles as follows
   ([requirements](requirements.md#req.main-session.reconcile-after-restart)):
 
   - Takes as its own the tasks not ended that the hook marks as this session. When the hook could
@@ -461,7 +471,8 @@ The installed guidance gives the main agent this working method:
 
   Several main agents may work on one project. So a task whose `main` ListAgents does not list, and
   that the hook does not mark, may be another main agent's. It may also be the main agent's own
-  from before a new session, `/clear` or a fork, which get a new session id. The main agent never
+  from before a new session, `/clear` or a copy that left its session going, which get a new
+  session id. The main agent never
   rebinds such a task on its own. It asks the developer once, listing every such task with its
   `main`, and rebinds only the tasks the developer names
   ([requirements](requirements.md#req.main-session.absent-owner-asked)).

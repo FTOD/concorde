@@ -764,8 +764,9 @@ passes, it goes through these steps in order:
    The group holds one command hook that runs the project's `concorde` with the registered
    arguments, `"$CLAUDE_PROJECT_DIR"/.concorde/bin/concorde <arguments>`, with the registered time
    limit. Coordination registers one such hook for `SessionStart`, with the matcher
-   `startup|resume|compact`. The hook runs `concorde task main-hook`, which tells a main agent its
-   tasks not ended after a start, a resume or a compaction of its session
+   `startup|resume|compact|fork`. The hook runs `concorde task main-hook`, which tells a main agent
+   its tasks not ended after a start, a resume, a compaction or a move to the background of its
+   session
    ([Main session](../coordination/main-session/module.md)). The installer adds a hook that is
    missing and refreshes one whose time limit changed. The installer records each hook in the
    receipt by its event, matcher and command line. On a later install, the installer removes the

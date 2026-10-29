@@ -33,7 +33,7 @@ from ...kernel import binding, errors
 from ...kernel.tracing import locks, reader
 from ...kernel.refusal import KernelError
 from ...kernel.schema import validate
-from . import deliver, merge, parts, runs, session, store, wait
+from . import deliver, merge, moves, parts, runs, session, store, wait
 
 # Why Tasks cannot handle each refusal itself; every other code is an input the caller corrects.
 HANDLING = {
@@ -605,8 +605,14 @@ def wait_for(here: Path, arguments) -> dict:
                 "invalid_input",
                 "--rebound waits for the main agent's session of a task",
             )
+        find = moves.of_project(primary)
         return wait.wait_rebound(
-            primary, arguments.task_id, arguments.rebound, arguments.timeout
+            primary,
+            arguments.task_id,
+            arguments.rebound,
+            wait.REBOUND_TIMEOUT if arguments.timeout is None else arguments.timeout,
+            follow=lambda record: moves.follow(record, find),
+            watched=lambda record: moves.watched(record, find),
         )
     if arguments.lock is not None:
         if arguments.lock == "merge" and arguments.task_id is not None:
@@ -625,11 +631,13 @@ def wait_for(here: Path, arguments) -> dict:
     return wait.wait_task(primary, arguments.task_id, until, arguments.timeout)
 
 
-# The SessionStart sources the hook names; Claude Code passes one of them as ``source``.
+# The SessionStart sources the hook names; Claude Code passes one of them as ``source``. A move
+# to the background with ``/background`` starts its new session with ``fork``.
 HOOK_SOURCES = {
     "startup": "started",
     "resume": "resumed",
     "compact": "was compacted",
+    "fork": "started as a fork, such as a move to the background",
 }
 
 
@@ -662,9 +670,20 @@ def main_hook_text(here: Path, data: dict) -> str:
     session = (
         data.get("session_id") if isinstance(data.get("session_id"), str) else None
     )
+    # A move to the background gives the session a new id; the moved session's transcript, in
+    # the folder of this session's own, says which session continues it.
+    transcript = data.get("transcript_path")
+    find = (
+        moves.in_folder(Path(transcript).parent)
+        if isinstance(transcript, str) and transcript
+        else None
+    )
+    # The time and the session id make every text new: Claude Code drops a SessionStart output
+    # that repeats an earlier one word for word.
     lines = [
-        f"Concorde: this session {how}. These tasks have not ended. Each names the main agent's "
-        "session its task session reports to, marked (this session) when this session named it:",
+        f"Concorde ({store.now()}, session {session or 'unknown'}): this session {how}. These "
+        "tasks have not ended. Each names the main agent's session its task session reports to, "
+        "marked (this session) when this session named it:",
         "",
     ]
     for record in tasks:
@@ -673,10 +692,16 @@ def main_hook_text(here: Path, data: dict) -> str:
             for item in record["reports"]
             if item.get("answer") is None
         ]
-        own = session is not None and record.get("main_session") == session
+        named = record.get("main_session")
+        own = session is not None and named == session
+        mark = " (this session)" if own else ""
+        if not own and session is not None and find is not None and named:
+            followed = moves.chain(named, find)
+            if len(followed) > 1 and followed[-1] == session:
+                mark = f" (this session, moved from {named})"
         lines.append(
             f"- `{record['id']}`: main `{record['main'] or '(none)'}`"
-            + (" (this session)" if own else "")
+            + mark
             + (f"; unanswered reports {', '.join(waiting)}" if waiting else "")
             + "."
         )
@@ -686,9 +711,9 @@ def main_hook_text(here: Path, data: dict) -> str:
         "session with the main each task names.",
         "A task whose main is another session that ListAgents lists belongs to that main agent. "
         "Leave it.",
-        "A task marked (this session) whose main is not your current name names your former "
-        'name. Follow "When your session name changed" of the concorde skill for it before '
-        "anything else.",
+        "A task marked (this session), or (this session, moved from <id>) after a move to the "
+        "background, whose main is not your current name names your former name. Follow "
+        '"When your session name changed" of the concorde skill for it before anything else.',
         "A task not marked (this session) whose main is neither your current name nor a session "
         "ListAgents lists belongs to an absent main agent, which may be another one. Never "
         "rebind it on your own: ask the developer once, listing every such task with its main, "
@@ -794,11 +819,13 @@ def _answer(here: Path, command: str, arguments, held: ExitStack) -> tuple[int, 
         elif arguments.command == "escalate":
             value = escalate(here, arguments)
         elif arguments.command == "report":
+            primary = store.primary_of(here)
             value = store.report(
-                store.primary_of(here),
+                primary,
                 arguments.task_id,
                 arguments.text,
                 arguments.escalation,
+                follow=moves.follower(primary),
             )
         elif arguments.command == "answer":
             value = store.answer(

@@ -207,8 +207,10 @@ Every message to the main agent is such a report, and each goes in two steps:
 1. **Record it first**, in the task record and decision log:
    `concorde task report <task> --text "<the report>" [--escalation <n>…]`, naming each escalation
    it carries, or the project MCP server's `task_report`, which does the same. Do not also append it
-   to the decision log yourself: the command does. It prints `main`, the main agent's session the
-   task record names now.
+   to the decision log yourself: the command does. It prints `main`, the main agent's session to
+   message. That is the session the task record names now. When the main agent's session moved to
+   the background or was renamed, it is the session Concorde followed it to. The output then also
+   gives the record's own name as `recorded_main`.
 2. **Then send it** with the SendMessage tool, the same text, to that `main`. Take the name from
    this output every time, never from your first prompt. The main agent's session may have been
    restarted under another name and have rebound the task since.
@@ -216,9 +218,15 @@ Every message to the main agent is such a report, and each goes in two steps:
 When SendMessage fails because no session of that name is reachable, the main agent's session was
 restarted or resumed under another name. The report is recorded already, so nothing is lost. Run
 `concorde task wait <task> --rebound <that name>` in background Bash. Once the main agent has
-rebound the task, the command returns and prints its new `main`. Then send the same report to that
-name, without recording it again. When the background command ends without that answer, start it
-again.
+rebound the task, the command returns and prints its new `main`. It also returns once Concorde can
+follow the main agent's session to another name. Then send the same report to that name, without
+recording it again.
+
+The wait lasts at most 1800 seconds. When it ends with `wait_timeout`, nobody has received the
+report yet. Append an entry to the decision log that names the report, the session you waited for
+and the time. Then start the same wait again. The log is where the main agent and the developer see
+a report that reaches nobody. When the background command ends in any other way without a name,
+start it again.
 
 Then stop until the main agent answers. Its answer names the reports it answers by their number.
 After a restart, the main agent sends again an answer to a report you may already have acted on,

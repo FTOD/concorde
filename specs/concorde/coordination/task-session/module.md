@@ -505,11 +505,15 @@ place. The session handles every decision it needs as follows:
 - It records each decision as an escalation.
 - It reports the decisions together, in one report and one SendMessage.
 
-`concorde task report` records that report with the escalations it carries. The main agent answers
-the decisions together. When that message reaches no session because the main agent's session was
-restarted under another name, the report stays recorded. In that case, the session waits in
-background Bash with `concorde task wait <task> --rebound <name>` until the main agent has rebound
-the task. Then the session sends the report again to the new name. The following documents give the
+`concorde task report` records that report with the escalations it carries. It prints the session
+to message. When the main agent's session moved to the background or was renamed, that is the
+session Tasks follows it to by its session id. The main agent answers the decisions together. When
+that message reaches no session because the main agent's session was restarted under another name,
+the report stays recorded. In that case, the session waits in background Bash with
+`concorde task wait <task> --rebound <name>` until the main agent has rebound the task, or until
+Tasks can follow its session to another name. Then the session sends the report again to the new
+name. The wait lasts at most 1800 seconds. The session records each timeout in the decision log
+and waits again, so a report nobody receives shows there. The following documents give the
 details:
 
 - Exact commands and error codes are in the [contracts](contracts.md).

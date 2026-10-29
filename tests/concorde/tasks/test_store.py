@@ -943,7 +943,11 @@ class TaskStoreTests(unittest.TestCase):
             {"source": "resume", "cwd": str(self.root), "session_id": "sess-a"}
         )
         self.assertEqual(0, status)
-        self.assertIn("this session resumed", text)
+        self.assertRegex(
+            text.splitlines()[0],
+            r"^Concorde \(\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ, session sess-a\): this "
+            r"session resumed\.",
+        )
         # The session that named t1 resumes with its session id: t1 is its own.
         self.assertIn(
             "- `t1`: main `concorde-7d` (this session); unanswered reports 1.", text

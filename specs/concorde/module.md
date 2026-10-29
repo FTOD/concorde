@@ -1171,8 +1171,9 @@ above draws them:
     [project MCP server](glossary.json#concept.project-mcp-server) run by the worktree's own
     `scripts/concorde.py`.
   - The `.claude/settings.json` that gives this checkout's main agent Tasks' session-start hook, as
-    an installed project's settings do. At a start, a resume or a compaction, the hook runs
-    `concorde task main-hook` with the worktree's own `scripts/concorde.py`.
+    an installed project's settings do. At a start, a resume, a compaction or a move to the
+    background, the hook runs `concorde task main-hook` with the worktree's own
+    `scripts/concorde.py`.
   - The CI workflow that validates this checkout.
 - <a id="realization.concorde.user-documents"></a>**User documents** under `docs/` are written for
   the people who use Concorde, starting with the guide to using it.

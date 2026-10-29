@@ -163,7 +163,7 @@
     "hooks": [
       {
         "event": "SessionStart",
-        "matcher": "startup|resume|compact",
+        "matcher": "startup|resume|compact|fork",
         "command": "task main-hook",
         "timeout": 20
       }
