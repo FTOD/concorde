@@ -915,7 +915,9 @@ class RunnerTests(unittest.TestCase):
             any(item["kind"] == "check" for item in envelope["host_evidence"])
         )
 
-    @verifies("scenario.execution.command-run")
+    @verifies(
+        "scenario.execution.command-run", "scenario.execution.command-not-operation"
+    )
     def test_a_recorded_command_launches_no_worker(self):
         status, envelope = self.project.run("task-validation", "--task", "t1")
         self.assertEqual((0, "ok"), (status, envelope["status"]), envelope)
@@ -951,7 +953,9 @@ class RunnerTests(unittest.TestCase):
             execute("operation", "delivery", [], cwd=self.worktree)
         self.assertEqual(before, sorted(folder.iterdir()))
 
-    @verifies("scenario.execution.workspace-busy")
+    @verifies(
+        "scenario.execution.workspace-busy", "scenario.execution.workspace-next-run"
+    )
     def test_a_busy_workspace_refuses_a_second_run(self):
         with runs.workspace_lock(self.store(), "t1", "implement run r-other"):
             # The workspace lock is a file of the primary worktree's locks/.
@@ -1131,7 +1135,9 @@ class RunnerTests(unittest.TestCase):
         # The runner still writes under .concorde after its result: the cleanup waits for it.
         self.wait_ended(announced["run_id"])
 
-    @verifies("scenario.execution.workspace-retired")
+    @verifies(
+        "scenario.execution.workspace-retired", "scenario.execution.workspace-rebound"
+    )
     def test_a_run_waiting_for_a_retired_workspace_is_refused(self):
         lock = self.records / "locks/workspaces/t1.lock"
         path = binding_file.path_of(self.worktree)
@@ -1251,7 +1257,9 @@ class RunnerTests(unittest.TestCase):
         self.assertEqual("refused", envelope["error"]["code"])
         self.assertEqual("failed", self.run_status(envelope, None))
 
-    @verifies("scenario.execution.modules-as-names")
+    @verifies(
+        "scenario.execution.modules-as-names", "scenario.execution.modules-from-binding"
+    )
     def test_a_definition_without_admission_takes_the_modules_as_names(self):
         labels = command("labels", (deterministic_step,), writes=False)
         binding_file.write(
@@ -1309,7 +1317,11 @@ class RunnerTests(unittest.TestCase):
         [system] = spec["causes"]
         self.assertIn("specs/registry.json", system["detail"])
 
-    @verifies("scenario.execution.removed-module", "scenario.execution.modules-removed")
+    @verifies(
+        "scenario.execution.removed-module",
+        "scenario.execution.modules-removed",
+        "scenario.execution.modules-removed-named",
+    )
     def test_a_module_the_workspace_removed_is_left_out(self):
         def bind(modules):
             binding_file.write(self.worktree, {**self.binding(), "modules": modules})
@@ -1645,7 +1657,7 @@ class RunnerTests(unittest.TestCase):
         self.assertIn("result_unsaved", err.getvalue())
         self.assertIn("No space left on device", err.getvalue())
 
-    @verifies("scenario.execution.result-unsaved")
+    @verifies("scenario.execution.final-trace-invalid")
     def test_a_final_trace_that_cannot_be_written_leaves_the_run_lost(self):
         def refused(*args, **kwargs):
             raise TraceError("node_invalid", "the final trace.json was refused")
@@ -1857,7 +1869,7 @@ class RunnerTests(unittest.TestCase):
             time.sleep(0.05)
         self.assertFalse(alive, "the worker's child outlived its run")
 
-    @verifies("scenario.execution.inputs")
+    @verifies("scenario.execution.inputs", "scenario.execution.inputs-refused")
     def test_earlier_results_are_admitted_as_task_material(self):
         _, first = self.project.run("task-validation", "--task", "t1")
         status, envelope = self.project.run(
@@ -2009,7 +2021,7 @@ class RunnerTests(unittest.TestCase):
         self.assertEqual((1, "host_error"), (status, envelope["error"]["code"]))
         self.assertIn("neither continue nor stop", envelope["error"]["detail"])
 
-    @verifies("scenario.execution.cancelled")
+    @verifies("scenario.execution.cancelled-late")
     def test_a_signal_while_the_run_finishes_does_not_cut_it_short(self):
         from concorde.execution import runner
 
@@ -2132,6 +2144,44 @@ class RunnerTests(unittest.TestCase):
             ["boom"], [cause["code"] for cause in envelope["error"]["causes"]]
         )
 
+    @verifies("scenario.execution.ok-with-error")
+    def test_an_ok_stop_with_an_error_is_an_invalid_result(self):
+        def contradictory(ctx):
+            return Stop(
+                "ok",
+                "Done.",
+                error=errors_link(
+                    "command",
+                    ctx.actor,
+                    "boom",
+                    "it broke after all",
+                    reason="input",
+                    explanation="only its sender can",
+                ),
+            )
+
+        with patch.dict(
+            commands.COMMANDS.definitions,
+            {
+                "task-validation": command(
+                    "task-validation", (contradictory,), writes=False
+                )
+            },
+        ):
+            status, envelope = self.project.run("task-validation", "--task", "t1")
+        self.assertEqual((1, "invalid_result"), (status, envelope["error"]["code"]))
+        validate(envelope, RESULT_SCHEMA)
+        [invalid] = [
+            item
+            for item in envelope["host_evidence"]
+            if item["kind"] == "invalid-output"
+        ]
+        self.assertEqual("/error", invalid["ref"])
+        # The error the step gave is kept as the cause of the run's own link.
+        self.assertEqual(
+            ["boom"], [cause["code"] for cause in envelope["error"]["causes"]]
+        )
+
     def test_an_invalid_result_is_replaced_by_one_that_keeps_the_contract(self):
         def malformed(ctx):
             ctx.worker = ["not", "an", "object"]
@@ -2210,7 +2260,12 @@ class RunnerTests(unittest.TestCase):
             envelope["error"]["detail"],
         )
 
-    @verifies("scenario.execution.run-unrecorded", "scenario.execution.detach-failed")
+    @verifies(
+        "scenario.execution.run-unrecorded",
+        "scenario.execution.detach-failed",
+        "scenario.execution.detach-unstartable",
+        "scenario.execution.run-unrecorded-detached",
+    )
     def test_a_detached_run_that_cannot_be_recorded_or_started_leaves_nothing(self):
         lobby = self.records / "lobby"
         lobby.mkdir(exist_ok=True)
@@ -2519,7 +2574,10 @@ class UnboundCheckoutTests(unittest.TestCase):
         self.assertEqual([self.root], worktrees(self.root))
         validate(envelope, RESULT_SCHEMA)
 
-    @verifies("scenario.execution.unbound-preparation-changed")
+    @verifies(
+        "scenario.execution.unbound-preparation-changed",
+        "scenario.execution.unbound-preparation-unignored",
+    )
     def test_a_preparation_that_changes_the_commit_runs_no_step(self):
         # Each command exits 0, yet leaves the checkout other than the commit: a reviewed file
         # with its size and timestamp kept, the worker configuration, a file the commit's Git
@@ -2561,7 +2619,116 @@ class UnboundCheckoutTests(unittest.TestCase):
                 self.assertEqual([self.root], worktrees(self.root))
                 validate(envelope, RESULT_SCHEMA)
 
-    @verifies("scenario.execution.unbound-preparation-failed")
+    @verifies(
+        "scenario.execution.unbound-preparation-evidence",
+        "scenario.execution.unbound-preparation-unbounded",
+    )
+    def test_preparation_evidence_names_every_ending(self):
+        from concorde.execution import preparation
+        from concorde.execution.checks.check_executor import CheckSandboxError
+
+        self.declare_preparation("print('never runs')")
+
+        def cancelled(*_arguments, **_options):
+            error = runner.Cancelled("SIGTERM")
+            error.check_output = (b"half built", b"")
+            raise error
+
+        def refused(*_arguments, **_options):
+            raise CheckSandboxError("no user namespace", stderr=b"bwrap: denied")
+
+        for name, launch, code in (
+            ("cancelled", cancelled, "cancelled"),
+            ("sandbox", refused, "preparation_failed"),
+        ):
+            with self.subTest(name):
+                with patch.object(preparation, "execute_check", launch):
+                    _, envelope = self.probe()
+                self.assertEqual(
+                    ("failed", code),
+                    (envelope["status"], envelope["error"]["code"]),
+                    envelope,
+                )
+                [prepared] = [
+                    item
+                    for item in envelope["host_evidence"]
+                    if item["kind"] == "preparation"
+                ]
+                log = self.run_folder(envelope) / "preparation/1.log"
+                self.assertEqual(
+                    sys.executable + " -c print('never runs')", prepared["ref"]
+                )
+                self.assertRegex(prepared["detail"], r"after \d+\.\d s; log ")
+                self.assertTrue(prepared["detail"].endswith(f"log {log}"))
+                self.assertTrue(log.is_file())
+                self.assertEqual([], envelope["worker_runs"])
+
+    @verifies(
+        "scenario.execution.unbound-preparation-submodule",
+        "scenario.execution.unbound-preparation-sparse",
+    )
+    def test_a_preparation_that_changes_a_submodule_runs_no_step(self):
+        source = self.sparse_library("guide.md", "media/picture.png", "docs/skip.md")
+        # The origin checks the submodule out sparsely: its absent files are no change.
+        git(source, "sparse-checkout", "set", "--no-cone", "/guide.md", "/media/")
+        self.declare_preparation(
+            "from pathlib import Path\nPath('build').mkdir()\n"
+            "Path('build/out.txt').write_text('prepared')"
+        )
+        status, envelope = self.probe()
+        self.assertEqual((0, "ok"), (status, envelope["status"]), envelope)
+        [compared] = [
+            item
+            for item in envelope["host_evidence"]
+            if item["kind"] == "preparation-check"
+        ]
+        self.assertIn("unchanged", compared["detail"])
+        # Each command exits 0, yet leaves the submodule other than the commit records it.
+        changes = {
+            "hidden": "from pathlib import Path\n"
+            "Path('references/lib/.gitignore').write_text('*\\n')\n"
+            "Path('references/lib/x.py').write_text('')",
+            "nested hidden": "from pathlib import Path\n"
+            "Path('references/lib/media/.gitignore').write_text('*\\n')\n"
+            "Path('references/lib/media/x.py').write_text('')",
+            "reviewed": "import os\nfrom pathlib import Path\n"
+            "path = Path('references/lib/guide.md'); kept = os.stat(path)\n"
+            "path.write_text('guidf.md\\n')\n"
+            "os.utime(path, ns=(kept.st_atime_ns, kept.st_mtime_ns))",
+            "redirected": "from pathlib import Path\n"
+            "Path('references/lib/.git').write_text('gitdir: /nowhere\\n')",
+        }
+        changed = {
+            "hidden": "references/lib/.gitignore (hides files)",
+            "nested hidden": "references/lib/media/.gitignore (hides files)",
+            "reviewed": "M references/lib/guide.md",
+            "redirected": "references/lib/.git file of the checkout",
+        }
+        for name, code in changes.items():
+            with self.subTest(change=name):
+                self.declare_preparation(code)
+                status, envelope = self.probe()
+                self.assertEqual((1, "failed"), (status, envelope["status"]), envelope)
+                self.assertEqual(
+                    ["preparation_failed", "preparation_changed_commit"],
+                    codes(envelope["error"]),
+                )
+                [cause] = envelope["error"]["causes"]
+                self.assertIn(changed[name], cause["detail"])
+                self.assertEqual([], envelope["worker_runs"])
+                self.assertEqual([self.root], worktrees(self.root))
+        # A file written into a submodule the origin has not checked out is a change too.
+        git(self.root, "submodule", "deinit", "-q", "--force", "references/lib")
+        self.declare_preparation(
+            "from pathlib import Path\nPath('references/lib/x.py').write_text('')"
+        )
+        status, envelope = self.probe()
+        self.assertEqual((1, "failed"), (status, envelope["status"]), envelope)
+        [cause] = envelope["error"]["causes"]
+        self.assertEqual("preparation_changed_commit", cause["code"])
+        self.assertIn("references/lib/x.py", cause["detail"])
+
+    @verifies("scenario.execution.unbound-preparation-invalid")
     def test_an_invalid_preparation_file_runs_no_step(self):
         (self.root / ".concorde/preparation.json").write_text(
             json.dumps({"commands": [{"argv": [], "timeout_seconds": 30}]})
@@ -2577,7 +2744,7 @@ class UnboundCheckoutTests(unittest.TestCase):
         self.assertEqual([], envelope["worker_runs"])
         self.assertEqual([self.root], worktrees(self.root))
 
-    @verifies("scenario.execution.unbound-prepared")
+    @verifies("scenario.execution.bound-run-unprepared")
     def test_a_bound_run_is_not_prepared(self):
         self.declare_preparation("import sys\nsys.exit('a bound run was prepared')")
         self.project.open_task("t1")
@@ -2617,7 +2784,10 @@ class UnboundCheckoutTests(unittest.TestCase):
             ),
         )
 
-    @verifies("scenario.execution.unbound-checkout")
+    @verifies(
+        "scenario.execution.unbound-checkout",
+        "scenario.execution.unbound-submodule-absent",
+    )
     def test_a_checked_out_submodule_is_checked_out_in_the_checkout_too(self):
         library = self.project.base / "lib"
         library.mkdir()
@@ -2752,7 +2922,7 @@ class UnboundCheckoutTests(unittest.TestCase):
         self.assertEqual((0, "ok"), (status, envelope["status"]), envelope)
         self.assertEqual(["my notes.md", "top.md"], envelope["output"]["reference"])
 
-    @verifies("scenario.execution.unbound-checkout")
+    @verifies("scenario.execution.unbound-submodule-absent")
     def test_a_submodule_git_cannot_populate_stays_empty(self):
         from concorde.execution import checkout as module
 
@@ -2780,7 +2950,10 @@ class UnboundCheckoutTests(unittest.TestCase):
         self.assertEqual(1, len(worktrees(self.root / "references/lib")))
         self.assertEqual([self.root], worktrees(self.root))
 
-    @verifies("scenario.execution.unbound-checkout")
+    @verifies(
+        "scenario.execution.unbound-checkout",
+        "scenario.execution.unbound-runtime-not-linked",
+    )
     def test_runtime_paths_are_linked_below_missing_directories_or_explained(self):
         from concorde.execution.checkout import open_checkout
 
@@ -2829,7 +3002,10 @@ class UnboundCheckoutTests(unittest.TestCase):
         self.assertEqual([], envelope["worker_runs"])
         self.assertEqual([self.root], worktrees(self.root))
 
-    @verifies("scenario.execution.unbound-setup-failed")
+    @verifies(
+        "scenario.execution.unbound-setup-failed",
+        "scenario.execution.unbound-checkout-left",
+    )
     def test_a_checkout_whose_setup_fails_is_named_and_removed(self):
         from concorde.execution import checkout as module
 
@@ -2906,7 +3082,7 @@ class UnboundCheckoutTests(unittest.TestCase):
         self.assertEqual([self.root], worktrees(self.root))
         self.assertEqual([], list((self.root / ".claude/worktrees").glob(f"{PREFIX}*")))
 
-    @verifies("scenario.execution.unbound-checkout-removed")
+    @verifies("scenario.execution.unbound-checkout-left")
     def test_a_checkout_the_fallback_cannot_remove_is_named_with_what_is_left(self):
         from concorde.execution import checkout as module
 
@@ -3070,6 +3246,25 @@ class RunProgressWriteTests(unittest.TestCase):
         self.assertIs(failure, refused.exception)
         self.assertEqual(before, (self.folder / "status.json").read_text())
         self.assertEqual(["status.json"], [path.name for path in self.folder.iterdir()])
+
+
+class RunStateTests(unittest.TestCase):
+    """Whether a run still runs is told by its run lock alone."""
+
+    @verifies("scenario.execution.run-lock-result")
+    def test_a_run_with_a_result_runs_while_its_lock_is_held(self):
+        store = runs.Store(Path(tempfile.mkdtemp()) / ".concorde")
+        run_id = runs.new_run_id("understand")
+        folder = store.run_folder(run_id)
+        folder.mkdir(parents=True)
+        with runs.run_lock(store, run_id, f"understand run {run_id}"):
+            self.assertEqual("running", runs.run_state(store, run_id))
+            # The runner publishes the result before its last writes and the lock's release.
+            (folder / "result.json").write_text(json.dumps({"status": "ok"}))
+            self.assertEqual("running", runs.run_state(store, run_id))
+        self.assertEqual("finished", runs.run_state(store, run_id))
+        (folder / "result.json").unlink()
+        self.assertEqual("lost", runs.run_state(store, run_id))
 
 
 class PidAliveTests(unittest.TestCase):

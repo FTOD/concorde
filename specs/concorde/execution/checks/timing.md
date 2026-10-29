@@ -28,6 +28,13 @@ A span is a JSON object. All of these fields are present:
 | `status` | `ok`, `error`, `cancelled` or `incomplete` |
 | `metadata` | only the counts `prompt_bytes`, `context_bytes`, `items`, `returncode`, `probe_index`, and the labels `stage`, `target_id`, `change_id`, `context_id`; any other key is dropped |
 
+A span's work ends by cancellation when it ends with one of these:
+
+- an interrupt (`KeyboardInterrupt`)
+- an exit (`SystemExit`)
+- a cancelled asynchronous task (`asyncio.CancelledError`)
+- an error whose `outcome` is `cancelled`
+
 A count must meet all of these conditions:
 
 - be a finite number

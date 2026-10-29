@@ -114,6 +114,7 @@ class CheckServiceTests(unittest.TestCase):
             ),
         )
         self.assertEqual(self.logs / "check.a/output.log", Path(result["log"]))
+        self.assertEqual([], result["trace_failures"])
         # Each check run is a check node: its trace and its output.
         node = json.loads((self.logs / "check.a/trace.json").read_text())
         self.assertEqual(
@@ -133,7 +134,10 @@ class CheckServiceTests(unittest.TestCase):
         self.assertEqual(("failed", 1), (failed["status"], failed["exit_code"]))
         self.assertEqual([], self.run_checks(["module.b"]))
 
-    @verifies("scenario.checks.service-trace-write")
+    @verifies(
+        "scenario.checks.service-trace-write",
+        "scenario.checks.service-trace-write-failed",
+    )
     def test_a_refused_trace_write_is_in_the_check_result(self):
         from concorde.kernel.tracing import node as trace_node
 
@@ -595,6 +599,7 @@ assert result['status'] == 'passed', result
                     ("failed", "stale_evidence"), (node["status"], node["outcome"])
                 )
 
+    @verifies("scenario.checks.service-interrupted")
     def test_an_interrupted_check_ends_its_node_with_the_drained_output(self):
         from concorde.execution.checks import checks
         from concorde.execution.checks.check_executor import CheckCancelled
@@ -630,7 +635,25 @@ assert result['status'] == 'passed', result
                     ),
                 )
 
-    @verifies("scenario.checks.service-trace-write")
+    @verifies("scenario.checks.service-interrupted-unlogged")
+    def test_an_interrupted_check_ends_its_node_when_its_log_cannot_be_saved(self):
+        from concorde.execution.checks import checks
+
+        def interrupted(*_arguments, **_options):
+            # The log cannot be saved: its place is taken by a directory.
+            (self.logs / "check.a/output.log").mkdir()
+            raise KeyboardInterrupt
+
+        with patch.object(checks, "execute_check", interrupted):
+            with self.assertRaises(KeyboardInterrupt):
+                self.run_checks(["module.a"])
+        node = json.loads((self.logs / "check.a/trace.json").read_text())
+        self.assertEqual(
+            ("failed", "interrupted", "interrupted"),
+            (node["status"], node["outcome"], node["content"]["data"]["status"]),
+        )
+
+    @verifies("scenario.checks.service-trace-write-interrupted")
     def test_an_exceptional_exit_keeps_the_refused_trace_writes(self):
         from concorde.execution.checks import checks
         from concorde.kernel.tracing import node as trace_node
@@ -932,6 +955,11 @@ class ChecksFileTests(unittest.TestCase):
             ("module.c.json", {"checks": [], "extra": 1}, "module.c.json"),
             ("module.c.json", "{not json", "module.c.json"),
             ("checks.txt", {"checks": []}, "checks.txt"),
+            # A file name is a Module identity, never another identity.
+            ("foo.json", {"checks": []}, "foo.json"),
+            ("check.a.json", {"checks": []}, "check.a.json"),
+            ("module.json", {"checks": []}, "module.json"),
+            ("module..a.json", {"checks": []}, "module..a.json"),
             (
                 "module.c.json",
                 {"checks": [{"id": "check.c", "inputs": ["../outside"]}]},
@@ -1008,6 +1036,54 @@ class ChecksFileTests(unittest.TestCase):
         (self.root / "src/gone.py").write_text("")
         self.assertEqual(["check.a"], [c["id"] for c in validate_checks(self.root)])
 
+    @verifies("scenario.checks.input-unreadable")
+    def test_an_input_directory_that_cannot_be_read_whole_is_refused(self):
+        if os.geteuid() == 0:
+            self.skipTest("root reads every directory whatever its mode")
+        data = self.root / "data"
+        (data / "inner/deep").mkdir(parents=True)
+        (data / "top.py").write_text("")
+        (data / "inner/deep/leaf.py").write_text("")
+        marker = self.root.parent / f"{self.root.name}-ran"
+        self.write(
+            "module.a.json",
+            {
+                "checks": [
+                    {
+                        "id": "check.a",
+                        "argv": ["{python}", "-c", f"open({str(marker)!r}, 'w')"],
+                        "timeout_seconds": 60,
+                        "inputs": ["data"],
+                    }
+                ]
+            },
+        )
+        logs = self.root.parent / f"{self.root.name}-logs"
+        for locked in ("data/inner", "data/inner/deep"):
+            with self.subTest(locked):
+                (self.root / locked).chmod(0)
+                try:
+                    with self.assertRaises(CheckError) as judged:
+                        validate_checks(self.root)
+                    with self.assertRaises(CheckError) as ran:
+                        run_checks(
+                            self.root,
+                            modules=["module.a"],
+                            trace_directory=logs,
+                            python=sys.executable,
+                        )
+                finally:
+                    (self.root / locked).chmod(0o755)
+                for raised in (judged, ran):
+                    self.assertEqual("check_input_missing", raised.exception.code)
+                    for named in ("check.a", "module.a", locked):
+                        self.assertIn(named, str(raised.exception))
+                    self.assertEqual(locked, raised.exception.path)
+                self.assertFalse(marker.exists())
+                self.assertFalse(logs.exists())
+        # Readable again, the input is measured whole.
+        self.assertEqual(["check.a"], [c["id"] for c in validate_checks(self.root)])
+
     def test_validating_the_checks_judges_their_command_fields(self):
         for name, fields in (
             ("empty argv", {"argv": [], "timeout_seconds": 1}),
@@ -1055,6 +1131,18 @@ class ChecksFileTests(unittest.TestCase):
         for name, options, code in (
             ("measured no mapping", {"measured": ["code.py"]}, "invalid_check"),
             ("paths a string", {"measured": {"module.a": "code.py"}}, "invalid_check"),
+            (
+                "paths a mapping",
+                {"measured": {"module.a": {"code.py": "x"}}},
+                "invalid_check",
+            ),
+            ("paths a set", {"measured": {"module.a": {"code.py"}}}, "invalid_check"),
+            (
+                "paths an iterator",
+                {"measured": {"module.a": iter(["code.py"])}},
+                "invalid_check",
+            ),
+            ("path no string", {"measured": {"module.a": [1]}}, "invalid_check"),
             ("path outside", {"measured": {"module.a": ["../x"]}}, "invalid_check"),
             ("path absolute", {"measured": {"module.a": ["/x"]}}, "invalid_check"),
             ("tests a string", {"tests": "code.py::t"}, "invalid_check"),
@@ -1116,8 +1204,8 @@ class ChecksFileTests(unittest.TestCase):
             self.root,
             modules=["module.a"],
             trace_directory=logs,
-            # A one-shot iterator is measured alike before and after the check.
-            measured={"module.a": iter(["code.py"])},
+            # A tuple is a list of files as well.
+            measured={"module.a": ("code.py",)},
             python=sys.executable,
         )
         self.assertEqual("passed", result["status"])

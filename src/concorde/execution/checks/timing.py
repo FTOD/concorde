@@ -6,6 +6,7 @@ No argument, environment value, prompt, source body, output or exception message
 
 from __future__ import annotations
 
+import asyncio
 import contextvars
 import copy
 import functools
@@ -169,7 +170,9 @@ class Span:
             "ok"
             if kind is None
             else "cancelled"
-            if isinstance(error, (KeyboardInterrupt, SystemExit))
+            if isinstance(
+                error, (KeyboardInterrupt, SystemExit, asyncio.CancelledError)
+            )
             or getattr(error, "outcome", None) == "cancelled"
             else "error"
         )

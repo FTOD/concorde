@@ -40,7 +40,9 @@ A definition whose steps launch workers computes their grants itself, as Method'
 No part of Execution SHALL launch a [worker](../glossary.json#concept.worker) itself.
 
 A run's definition's steps do whatever the run needs of a worker, through the parts they depend
-on. The runner only tells the run context which worker runs those steps started.
+on. Each step that launches a worker tells the run context the worker run's identity as soon as
+the worker harness announces its start ([Runner](runner.md#runner)). The runner launches no
+worker and learns of one only that way.
 
 ### req.execution.binding-trusted — Only a sound binding binds
 
@@ -113,9 +115,12 @@ complete result, never part of one.
 
 Unless the run could not be recorded
 ([req.execution.unrecorded-runs-nothing](#req.execution.unrecorded-runs-nothing)), a command
-started without `--detach` SHALL print on standard output exactly the run result it composed.
+started without `--detach` whose command line was accepted, and which therefore started a run,
+SHALL print on standard output exactly the run result it composed.
 
-That is the result the command wrote. When the command could not save the result, it is the result
+A malformed command line starts no run and prints no result
+([req.execution.one-result](#req.execution.one-result)). Otherwise, the printed result is the
+result the command wrote. When the command could not save the result, it is the result
 the command composed ([req.execution.unsaved-printed](#req.execution.unsaved-printed)).
 
 ### req.execution.claims-apart — Worker claims stay the worker's
@@ -164,8 +169,15 @@ error is not the run's own link of the level `operation` or `command` its defini
 
 ### req.execution.workspace-lock — One run per workspace
 
-The runner SHALL hold the [workspace lock](../glossary.json#concept.workspace-lock) of a bound run
-from before its admission until after its result is written.
+Once it took the [workspace lock](../glossary.json#concept.workspace-lock) of a bound run, which it
+does before the run's admission, the runner SHALL hold that lock until after the run's result is
+published or, when publishing the result failed, until it finishes as a run whose result was not
+published.
+
+A run refused because another process holds the lock never took it
+([req.execution.workspace-busy](#req.execution.workspace-busy)). When publishing the result
+failed, the runner releases the lock without writing anything more
+([When records cannot be written](runner.md#when-records-cannot-be-written)).
 
 ### req.execution.workspace-busy — A busy workspace refuses a run
 
@@ -258,14 +270,19 @@ stay read-only for the command, at the system call
 
 ### req.execution.preparation-keeps-commit — A preparation leaves the commit as committed
 
-After the preparation commands of an unbound run, the runner SHALL start no step unless the checkout
-holds every tracked file of the examined commit with its committed content, and no file that the
-commit's Git does not ignore.
+After the preparation commands of an unbound run, the runner SHALL start no step when the commands
+changed or removed a tracked file of the examined commit, or added an untracked file that the
+commit's Git does not ignore, in the checkout or in one of its submodules.
 
-Otherwise the run ends `failed` with `preparation_failed`, caused by `preparation_changed_commit`
-([Preparing the checkout](runner.md#preparing-the-checkout)). A command cannot evade the
-comparison by keeping a file's timestamp, by rewriting the checkout's `.git` file or by adding a
-`.gitignore`.
+The run then ends `failed` with `preparation_failed`, caused by `preparation_changed_commit`
+([Preparing the checkout](runner.md#preparing-the-checkout)). The runner reads each submodule on
+its own. A command cannot evade the comparison in any of these ways, in the checkout or in a
+submodule:
+
+- by keeping a file's timestamp
+- by rewriting a `.git` file
+- by adding a `.gitignore`
+- by writing into a submodule that is not checked out
 
 ### req.execution.checkout-removed — The checkout does not outlive the run
 
@@ -294,8 +311,9 @@ checkout held.
 The runner SHALL record every run as a [trace node](../glossary.json#concept.trace-node) in the
 location that applies:
 
-- once the run entered its workspace, in the binding's workspace folder
-- when the run never entered its workspace, in the lobby of the binding's `.concorde`
+- for a run with a trusted binding that entered its workspace, in the binding's workspace folder
+- for a run with a trusted binding that never entered its workspace, in the lobby of the binding's
+  `.concorde`
 - for an unbound run or a run whose binding the runner refused, in `.concorde/unbound/` of the
   worktree the run started in
 
@@ -349,13 +367,18 @@ published result, so that the result as published and printed names it.
 
 ### req.execution.files-in-node — Every file of a run lies in its node
 
-The runner SHALL keep every file of a run in the run's node folder, including:
+The runner SHALL keep every file of a run in the run's node folder, except the run's lock files,
+including:
 
 - its result
 - its run progress file
 - the nodes of its checks
 - the nodes of its worker runs
 - for a [detached run](../glossary.json#concept.detached-run), its runner's output
+
+The run's [run lock](../glossary.json#concept.run-lock) and
+[workspace lock](../glossary.json#concept.workspace-lock) lie under `locks/` instead, never inside a
+trace ([req.execution.locks-apart](#req.execution.locks-apart)).
 
 ### req.execution.lobby — Nothing enters a workspace folder before its lock
 
@@ -444,14 +467,15 @@ and including the first step that stops the run.
 
 The runner SHALL hold a run's [run lock](../glossary.json#concept.run-lock) from before it writes
 the run's first [run progress file](../glossary.json#concept.run-progress-file) until after it
-attempted all of the following writes:
+attempted the writes of its finish that apply, which are all of the following unless publishing
+the result failed, and then the publication alone:
 
 - the run's result
 - its finished run progress file
 - its final `trace.json`
 
 A write that failed releases the lock as one that succeeded does. When publishing the result
-failed, the runner attempts no later write
+failed, the runner attempts no later write and releases the lock
 ([When records cannot be written](runner.md#when-records-cannot-be-written)).
 
 However the runner ends, the operating system releases the lock. So a run is running exactly

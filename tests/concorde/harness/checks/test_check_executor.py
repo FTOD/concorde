@@ -276,6 +276,20 @@ print(json.dumps(str(scratch)))
             (17, b"out\n", b"err\n", False),
             (result.returncode, result.stdout, result.stderr, result.timed_out),
         )
+
+    @verifies("scenario.checks.command-signal")
+    def test_a_signal_ending_is_128_plus_the_signal(self):
+        result = self.run_check(
+            "import os, signal; print('bye', flush=True); "
+            "os.kill(os.getpid(), signal.SIGTERM)"
+        )
+        self.assertEqual(
+            (128 + signal.SIGTERM, b"bye\n", False),
+            (result.returncode, result.stdout, result.timed_out),
+        )
+
+    @verifies("scenario.checks.command-large-output")
+    def test_large_output_on_both_pipes_is_drained(self):
         # Large simultaneous streams exercise pipe draining while the monitor is awaited.
         result = self.run_check(
             "import os; os.write(1,b'x'*200000); os.write(2,b'y'*200000)"
@@ -316,7 +330,7 @@ print(json.dumps(str(scratch)))
             result = self.run_check("print('ran')")
         self.assertEqual((0, b"ran\n"), (result.returncode, result.stdout))
 
-    @verifies("scenario.checks.command-output")
+    @verifies("scenario.checks.command-environment")
     def test_environment_reaches_real_check_without_entering_monitor_command_line(self):
         token = "private-environment-" + uuid.uuid4().hex
         process = subprocess.Popen

@@ -843,15 +843,16 @@
             "concept.part-registration",
             "contract.distribution.part-registration"
           ]
-        }
-      ],
-      "includes": [
+        },
         {
-          "kind": "document",
-          "target": "document.workers.launch",
-          "reason": "where a worker may run, which places an unbound run's checkout in the primary worktree's .claude/worktrees/ beside the task worktrees, and the Bash sandbox of a Claude Code worker, in which a detached runner dies with its PID namespace"
+          "target": "module.workers",
+          "meaning": "#uses-workers",
+          "relies_on": [
+            "req.workers.placement"
+          ]
         }
       ],
+      "includes": [],
       "participates": []
     },
     {

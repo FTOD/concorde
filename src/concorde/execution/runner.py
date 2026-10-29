@@ -1072,7 +1072,9 @@ def _envelope(chosen: Provider, context: RunContext, stop: Stop | None, started:
         if named
         else f"{chosen.name} finished."
     )
-    error = None if status == "ok" else (stop.error if stop else None)
+    # The stopping step's error whatever the status: an ok status with an error contradicts the
+    # contract, which the check below finds instead of the error being dropped.
+    error = stop.error if stop is not None else None
     if status != "ok" and error is None:
         error = context.fail(
             status,

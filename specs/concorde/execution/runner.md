@@ -330,14 +330,18 @@ A step returns `Continue` or `Stop`. The runner adds the evidence of either to t
 evidence. A `Continue` with an `output` replaces the run's output, and the next step runs. A `Stop`
 ends the steps. Its `status` is `ok`, `blocked` or `failed`. Its `summary` is the result's summary.
 Unless the status is `ok`, its `error` is the run's own error link. A `Stop` that is not `ok`
-without an `error` becomes the runner's `missing_error` link. When the last step returns
+without an `error` becomes the runner's `missing_error` link. A `Stop` that is `ok` with an `error`
+breaks the run result contract, so the runner replaces its result by one with its `invalid_result`
+link, which keeps that error as its cause ([Composing the result](#composing-the-result)). When the last step returns
 `Continue`, the run ends `ok` with the summary the runner composes.
 
 An admission refuses by raising `Refused`, with the fields its signature lists. `component` builds
 the `component` link of a deterministic component a step called, such as Git or Check execution,
 for the `causes` of a refusal or an error.
 
-Every function of the definition receives the run's `RunContext`. Its steps may read these fields:
+The definition's admission and each of its steps receive the run's `RunContext`. `add_arguments`
+receives the command's argument parser instead, and `runtime_paths` the unbound checkout's root.
+The steps may read these fields:
 
 | Field | Meaning |
 | --- | --- |
@@ -358,6 +362,7 @@ The steps may change these fields:
 | `evidence` | host evidence the step adds directly, beside the evidence of its outcome |
 | `output` | the run's output, as a `Continue` also sets it |
 | `worker` | the claims of the worker run whose result the run reports, as the [run result](contracts.md#contract.execution.run-result) holds them |
+| `last_record` | the run record of the latest worker launch, which a launching step sets for the steps after it; the result never holds it |
 | `state` | values the definition's own steps share during one run; the runner reads none of them |
 | `references` | `(relation, target)` pairs the runner adds to the run's trace node |
 
@@ -503,7 +508,10 @@ Steps of one run share the run context. The context holds these things:
 - the admitted inputs
 - the output so far
 - a state the definition owns
-- the run record of the latest worker launch
+- in `worker`, the [worker result](../glossary.json#concept.worker-result) of the worker run whose
+  result the run reports, which holds the worker's claims
+- in `last_record`, the run record of the latest worker launch, as the worker harness wrote it,
+  which holds what the host observed and which the result never holds
 
 The runner never skips, repeats or reorders steps. Any repetition, such as
 [resume rounds](../glossary.json#concept.resume-round), happens inside one step.
@@ -559,7 +567,9 @@ with its message. Such messages include these details:
 - the registered Modules for an unknown one
 
 While the lock is still held, the runner writes the result. A run admitted to the workspace after
-this one therefore always finds its result written. The converse does not hold. Until the runner
+this one therefore finds its result written, unless publishing it failed
+([When records cannot be written](#when-records-cannot-be-written)) or the runner was killed
+before it. The converse does not hold. Until the runner
 ends, whoever reads the result may still find the lock held. A caller that wants to start the
 next run therefore waits for the lock to be free, not for the result.
 
@@ -771,22 +781,29 @@ follows these steps:
   `preparation/<n>.log` of the run's node, `<n>` counting the commands from 1. The run's
   `trace.json` names it as the artifact `preparation-<n>`.
 3. The runner records `preparation` host evidence. Its `ref` is the command line. Its detail says
-  how the command ended, after how long, and where its log is.
+  how the command ended, after how long, and where its log is. The runner records it however the
+  command ended, also when its boundary could not be set up or when a cancellation, an interrupt
+  or an unexpected error ended it.
 4. When the command exited 0, the runner goes on with the next command. Otherwise, no later
   command runs and no step runs. The run ends `failed` with `preparation_failed`.
 
-Before the first command, the runner reads the checkout's Git directory and its Git status. After
-the last command exited 0, it reads the status again and compares the two readings. Each reading
-does these things:
+Before the first command, the runner finds the checkout's repositories: the checkout itself and
+each submodule checked out in it, a submodule's submodules included. It reads the Git directory
+of each, and their Git status. After the last command exited 0, it reads the status again and
+compares the two readings. Each reading does these things:
 
-- It reads the status against a fresh index of `HEAD`, never the checkout's own index. Git
-  therefore compares the content of every tracked file, not its timestamps.
-- It names Git's directory explicitly, as read before the first command. A command that rewrote
-  the checkout's `.git` file therefore cannot redirect it. The bytes of that file are part of the
-  reading.
-- It includes the files of the submodules and every file Git does not ignore.
-- It counts each new `.gitignore` whose directory the commit's own rules do not ignore. A command
-  can therefore not hide a file by ignoring it.
+- It reads each repository on its own, never one through another. The checkout's reading leaves
+  out its submodules, which have readings of their own.
+- It reads a repository's status against a fresh index of the repository's `HEAD`, never its own
+  index. Git therefore compares the content of every tracked file, not its timestamps.
+- It names each repository's Git directory explicitly, as read before the first command. A
+  command that rewrote a `.git` file therefore cannot redirect it. The bytes of each `.git` file
+  are part of the reading.
+- It includes every untracked file Git does not ignore.
+- It counts each new `.gitignore` whose directory the rules of the repository's commit do not ignore.
+  A command can therefore not hide a file by ignoring it, in the checkout or in a submodule.
+- It includes every entry of a submodule that is not checked out, whose directory stays empty, as
+  in a fresh clone.
 
 When the readings differ, no step runs. The run ends `failed` with `preparation_failed`, and the
 cause's code is `preparation_changed_commit`. Its detail names what changed, the first 20 entries
@@ -884,13 +901,19 @@ It holds the lock until after all these records are written:
 - the finished progress file
 - the final `trace.json`
 
+When publishing the result failed, the runner writes neither the finished progress file nor the
+final `trace.json`, and it releases the lock at once
+([When records cannot be written](#when-records-cannot-be-written)).
+
 The runner holds the lock through a descriptor the processes it starts do not inherit. A worker
 or check that outlives the runner therefore never keeps its run alive. As it exits, the runner
 removes the file, still holding it. When a runner is killed with `SIGKILL`, its file stays but is
 not held. An observer tells a running run from a dead one by the file's existence and by trying
 the lock for an instant. The observer tries it shared and without waiting (`runner_alive`).
 Whichever PID namespace holds it, the operating system's lock table `/proc/locks` shows the same
-for the file's inode. A run without `result.json` whose lock nobody holds is `lost`.
+for the file's inode. A run whose lock is held is `running`, even once its `result.json` is
+published, since the runner still writes its last records and holds the workspace lock. A run
+whose lock nobody holds is `finished` with `result.json` and `lost` without it.
 
 The runner writes `status.json` atomically in the run's folder. Until the run enters its
 workspace, that folder is in the lobby. The runner writes the file at these times:

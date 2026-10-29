@@ -354,16 +354,15 @@ def runner_alive(store: Store, run_id: str) -> bool:
 def run_state(store: Store, run_id: str | None) -> str:
     """``finished``, ``running`` or ``lost`` for a run; ``refused`` without one.
 
-    The result is written before the run lock is released, so a run with a result has ended;
-    one without a result whose lock nobody holds ended without writing it.
+    A run runs while its run lock is held, even once its result is published: the runner still
+    writes its last records and holds its workspace lock. The result is published before the
+    lock is released, so a run whose lock nobody holds has ended, and one without a result
+    ended without writing it.
     """
     if not run_id:
         return "refused"
-    if load_result(store, run_id) is not None:
-        return "finished"
     if runner_alive(store, run_id):
         return "running"
-    # The run may have written its result between the two reads.
     return "finished" if load_result(store, run_id) is not None else "lost"
 
 
