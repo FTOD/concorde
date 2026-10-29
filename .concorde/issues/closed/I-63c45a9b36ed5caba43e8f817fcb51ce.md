@@ -4,7 +4,7 @@
 {
   "schema_version": 4,
   "id": "I-63c45a9b36ed5caba43e8f817fcb51ce",
-  "status": "open",
+  "status": "closed",
   "reports": [
     {
       "id": "sha256:bbd1416e2f2b9a24c5205b987c55bcfef5b61cba5bda350297f952fcd03527fc",
@@ -43,6 +43,18 @@
       }
     }
   ],
-  "dispositions": []
+  "dispositions": [
+    {
+      "reason": "resolved",
+      "note": "Fixed by task shared-json-tmp, merged into the primary branch at bfdf0059e6ec26410e04393e06d7387e4517c470.",
+      "evidence": [
+        "merge commit bfdf0059e6ec26410e04393e06d7387e4517c470",
+        "task shared-json-tmp"
+      ],
+      "duplicate_of": null,
+      "actor": "main-agent",
+      "created_at": "2026-10-29T03:54:35.154937+00:00"
+    }
+  ]
 }
 ```
