@@ -71,8 +71,35 @@ class ScaffoldCreationTests(unittest.TestCase):
                 creation.create_files(self.root, FILES)
         self.assertEqual("system_error", raised.exception.code)
         self.assertIn("first.json had been replaced", str(raised.exception))
+        self.assertEqual("nested/second.json", raised.exception.destination)
+        self.assertEqual(["first.json"], raised.exception.replaced)
         self.assertEqual(b"theirs", (self.root / "first.json").read_bytes())
         self.assertFalse((self.root / "nested/second.json").exists())
+
+    @verifies("scenario.views.scaffold-concurrent-create")
+    def test_a_directory_that_becomes_a_link_fails_naming_its_destination(self):
+        checked = creation.checked_path
+        elsewhere = self.root / "elsewhere"
+        elsewhere.mkdir()
+
+        def relink(root, relative, *arguments):
+            directory = root / "nested"
+            made = directory.is_dir() and not directory.is_symlink()
+            if relative == "nested/second.json" and made:
+                # Another process swaps the directory just made for a link elsewhere.
+                directory.rmdir()
+                directory.symlink_to(elsewhere)
+            return checked(root, relative, *arguments)
+
+        with patch.object(creation, "checked_path", side_effect=relink):
+            with self.assertRaises(creation.CreationError) as raised:
+                creation.create_files(self.root, FILES)
+        self.assertEqual("stale_proposal", raised.exception.code)
+        self.assertEqual("nested/second.json", raised.exception.destination)
+        self.assertEqual([], raised.exception.replaced)
+        self.assertEqual("invalid_field", raised.exception.causes[0].code)
+        self.assertFalse((self.root / "first.json").exists())
+        self.assertEqual([], list(elsewhere.iterdir()))
 
     @verifies("scenario.views.scaffold-apply")
     def test_a_failed_creation_removes_every_created_file(self):

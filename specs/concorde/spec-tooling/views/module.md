@@ -185,8 +185,12 @@ follow these cases:
 - When every file already has the proposed bytes, the result is `unchanged`.
 - Otherwise, when any destination exists, the result is `conflict`.
 - When the proposal no longer matches the installed template, the result is `invalid`.
+- When every destination is absent and every file is created, the result is `success`.
+- When a destination appears meanwhile or a creation fails, the result is `failed`. It names that
+  destination, after the scaffold removed the files it created.
 
 Another package version or an altered file list can cause the template mismatch.
+The [outcomes](contracts.md#scaffold-outcomes) give each result's fields.
 With `--github-pages`, the proposal also holds `.github/workflows/deploy-docsite.yml`.
 On every push to `main`, that workflow runs `npm run build` and deploys `docsite/build/` to GitHub
 Pages. The exact commands and fields are in the [contracts](contracts.md).
@@ -326,9 +330,22 @@ distribution -> views
 
 The publisher relies on the registry for which Modules and documents exist and which contains
 which. It relies on the meaning of `selected-by` for the provenance it shows. The publisher parses
-the registry and metadata itself in TypeScript. When it can't publish an input, the publisher
-refuses it, failing the build and keeping the old site. It leaves full structural conformance to
-the Spec validator. The scaffold relies on Spec core for:
+the registry and metadata itself in TypeScript. It parses by two chapters of the Protocol, which
+Spec core's realization binds. Views includes both read only, so a change of either concerns Views:
+
+- The Required format (`protocol/format.md`): the documents, the `module` block, metadata,
+  identities and anchors, reading structure, the glossary and term links.
+- The Views chapter (`protocol/views.md`): the D2 subset of checked diagrams, the nodes and edges
+  their shapes name, and the publication obligations.
+
+The Protocol that governs a publisher is the one of the Concorde it comes from. In Concorde's own
+checkout, these are the chapters Views includes. A scaffolded site keeps the publisher of the
+Concorde that scaffolded it until a reviewed update brings a newer template.
+
+When it can't publish an input, the publisher refuses it, failing the build and keeping the old
+site. It leaves full structural conformance to the Spec validator.
+
+The scaffold relies on Spec core for:
 
 - The root Module's title.
 - The common result shape and error record.

@@ -2642,12 +2642,22 @@
           "kind": "document",
           "target": "document.spec.errors",
           "reason": "Spec core's error record, which the scaffold returns as its envelope's error"
+        },
+        {
+          "kind": "bound",
+          "target": "protocol/format.md",
+          "reason": "the Protocol's Required format chapter: the documents, module block, metadata, identities, anchors, reading structure, glossary and term links that the publisher parses"
+        },
+        {
+          "kind": "bound",
+          "target": "protocol/views.md",
+          "reason": "the Protocol's Views chapter: the D2 subset of checked diagrams, the nodes and edges their shapes name and the publication obligations that the publisher renders by"
         }
       ],
       "participates": [
         {
           "contract": "contract.views.scaffold-proposal",
-          "version": 2,
+          "version": 3,
           "role": "provided",
           "peer": "external",
           "meaning": "specs/concorde/spec-tooling/views/contracts.md#scaffold-proposal-participation"

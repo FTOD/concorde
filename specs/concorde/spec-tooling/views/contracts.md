@@ -24,7 +24,7 @@ project-relative JSON file holding one of these forms:
 ```concorde-contract
 {
   "id": "contract.views.scaffold-proposal",
-  "version": 2,
+  "version": 3,
   "schema": {
     "type": "object",
     "required": [
@@ -213,15 +213,107 @@ Then:
   When a destination appears meanwhile, or a creation fails, Apply removes the files it created.
   It removes each only while its device and inode are still those of the file it created.
   The result is `success` with the created paths, or `failed` after that removal.
-  The `failed` result names the destination that appeared or failed, and any created file another
-  process had replaced.
+  The `failed` result names the destination that appeared or failed, and every created file
+  another process had replaced.
 
 Apply never replaces or deletes a file. Therefore, Apply cannot update an existing site or touch a
 [Spec](../../glossary.json#concept.spec).
 
+<a id="scaffold-outcomes"></a>
+
+**Outcomes.** Each outcome of the two commands is one row below. The exit code follows the
+`status`, as Spec core's [command-line envelope](../spec/contracts.md#validation-result) maps it.
+A malformed command line is that envelope's `invalid_input` failure.
+
+| Command | Outcome | `status` | `result` | `findings` | `error` |
+| --- | --- | --- | --- | --- | --- |
+| both | the project's Spec configuration cannot be read | `invalid` | `{}` | one `CONCORDE-DOCSITE-001` error | `null` |
+| both | `concorde.json` omits `docsite` as a package root, or the template is missing or unsafe | `invalid` | `{}` | one `CONCORDE-DOCSITE-002` error | the template's error record |
+| propose | an option is malformed | `invalid` | `{}` | one `CONCORDE-DOCSITE-003` error naming every malformed option | `null` |
+| propose | some destination lacks the proposed bytes | `proposal` | `{proposal, prerequisites}` | the propose findings below | `null` |
+| propose | every destination already has the proposed bytes | `unchanged` | `{proposal, prerequisites}` | the propose findings below | `null` |
+| apply | `--proposal` is missing | `invalid` | `{}` | one `CONCORDE-DOCSITE-008` error | `null` |
+| apply | the proposal file is unsafe, unreadable or malformed, or differs from the current inventory | `invalid` | `{}` | one `CONCORDE-DOCSITE-004` error | the error record named above |
+| apply | every destination already has the proposed bytes | `unchanged` | `{identity, template_digest, github_pages}` | none | `null` |
+| apply | some destination exists | `conflict` | `{conflicts}` | one `CONCORDE-DOCSITE-005` error per existing destination, with it as `source` | `null` |
+| apply | every file was created | `success` | `{created, identity, template_digest, github_pages}` | none | `null` |
+| apply | a destination appeared, or a creation failed | `failed` | `{destination, replaced}` | one `CONCORDE-DOCSITE-006` error with `destination` as `source` | the failure's error record |
+
+The `result` fields hold these values:
+
+- `proposal` is this contract's value. `prerequisites` is the array described above.
+- `identity`, `template_digest` and `github_pages` are those of the applied proposal.
+- `created` lists the created paths in path order.
+- `conflicts` lists the path of every existing destination, sorted.
+- `destination` is the path that appeared or could not be created.
+- `replaced` lists, sorted, every created file another process had replaced. Such a file keeps
+  that process's bytes. The list is empty when no file was replaced.
+
+The propose findings are a `CONCORDE-DOCSITE-007` warning for each prerequisite that is missing or
+outdated. When no GitHub repository supplied the identity defaults, they also include a
+`CONCORDE-DOCSITE-009` info. Both `unchanged` outcomes list every proposed path in `artifacts`.
+`success` lists the created paths there. Every other outcome lists none.
+
+The error record of a `failed` apply has the code `stale_proposal` when a destination appeared,
+or a directory on its path changed, meanwhile. It has the code `system_error` when a creation
+failed for another reason. A removal that the operating system refused also makes it
+`system_error`. Each such removal is a cause naming its file, which still holds the proposal's
+bytes. For example, another process may create `docsite/package.json` during apply. In the result
+below, `<project>` stands for the project's absolute path and `<random>` for a temporary name:
+
+```json
+{
+  "artifacts": [],
+  "error": {
+    "causes": [
+      {
+        "causes": [],
+        "code": "system_error",
+        "location": {
+          "field": null,
+          "line": null,
+          "path": "docsite/package.json",
+          "subject": null
+        },
+        "message": "FileExistsError: [Errno 17] File exists: '<project>/docsite/.concorde-create-<random>' -> '<project>/docsite/package.json'",
+        "reason": "the operating system or the Python runtime refused an operation Spec tooling needed",
+        "remediation": "fix the file, permission or environment named in the message"
+      }
+    ],
+    "code": "stale_proposal",
+    "location": {
+      "field": null,
+      "line": null,
+      "path": "docsite/package.json",
+      "subject": null
+    },
+    "message": "docsite/package.json appeared while the proposal was being applied; every file this application had created was removed",
+    "reason": "applying a scaffold proposal only creates files, and creates either all of them or none",
+    "remediation": "propose again from the current files"
+  },
+  "findings": [
+    {
+      "message": "Creating the proposed files failed: docsite/package.json appeared while the proposal was being applied; every file this application had created was removed",
+      "remediation": "propose again from the current files",
+      "rule_id": "CONCORDE-DOCSITE-006",
+      "source": "docsite/package.json",
+      "strictness": "error"
+    }
+  ],
+  "result": {
+    "destination": "docsite/package.json",
+    "replaced": []
+  },
+  "schema_version": 4,
+  "status": "failed",
+  "target": ".",
+  "tool": "docsite"
+}
+```
+
 <a id="scaffold-proposal-participation"></a>
 
-**Participation.** Views provides this contract, version 2, to external callers: the developer or
+**Participation.** Views provides this contract, version 3, to external callers: the developer or
 [main agent](../../glossary.json#concept.main-agent) calling the command.
 Views:
 

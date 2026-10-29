@@ -106,7 +106,8 @@ An edge between two Modules looks different from an edge that relates nodes.
 When a checked D2 block leaves the semantic subset, Publication SHALL refuse it, naming its
 document and line.
 
-The semantic subset is the Protocol's. A reading that sets a style, shape, class or layout is
+The semantic subset is the one that the *Checked diagrams* section of the Protocol's Views chapter
+(`protocol/views.md`) defines. A reading that sets a style, shape, class or layout is
 refused, because the look is the publisher's.
 
 ### req.views.d2-program — Diagrams are rendered by the d2 program
