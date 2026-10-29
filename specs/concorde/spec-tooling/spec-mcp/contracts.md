@@ -17,9 +17,11 @@ no resources or prompts.
 This section and [Tools](#tools) define every message the server accepts and sends. An
 implementation therefore needs no text of the MCP or JSON-RPC standards. Every message is one JSON
 object on one line, terminated by a newline, with `"jsonrpc": "2.0"`. A request carries an `id`
-and a `method`, and optional `params`. A notification carries a `method` and no `id`. A response
-carries the request's `id` and either a `result` or an `error` of the form
-`{"code": <integer>, "message": <string>}`, with optional `data`. The server ignores blank lines.
+and a `method`, and optional `params`. A notification carries a `method` and no `id`. Whether the
+`id` member is present decides which one a message is: a message whose `id` is `null` is a
+request. A response carries the request's `id`, `null` included, and either a `result` or an
+`error` of the form `{"code": <integer>, "message": <string>}`, with optional `data`. The server
+ignores blank lines.
 
 | Message | From | `params` | Answer |
 | --- | --- | --- | --- |
@@ -89,7 +91,8 @@ After the client's first `initialized` notification, the server resolves its roo
 
 The server waits for the reply to `roots/list` without a time limit. Requests that arrive
 meanwhile are answered, in their order, once the reply has arrived. When the input ends before the
-reply, the session ends. The root is the real path of the chosen directory. The root does not
+reply, the session ends at once, and the requests that arrived meanwhile are never answered. The
+root is the real path of the chosen directory. The root does not
 change for the life of the process. A later `initialized` notification resolves nothing.
 
 A malformed message never ends the session. The server answers a message it cannot take as a

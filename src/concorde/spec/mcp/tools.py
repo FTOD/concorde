@@ -161,7 +161,12 @@ def boundary(root: Path, arguments: dict) -> dict:
     from ..grants import grant
 
     modules = _strings(arguments, "modules")
-    task_type = _string(arguments, "task_type")
+    # The task type is checked against the advertised enum before any Specs are loaded.
+    task_type = arguments.get("task_type")
+    task_types = TOOLS["boundary"]["inputSchema"]["properties"]["task_type"]["enum"]
+    if task_type not in task_types:
+        message = f"task_type must be one of {', '.join(task_types)}, not {task_type!r}"
+        raise ToolError("invalid_input", message[:300], "task_type")
     value = grant(_repository(root), modules, task_type).value
     return {"context_identity": value["context_identity"], "entries": value["entries"]}
 

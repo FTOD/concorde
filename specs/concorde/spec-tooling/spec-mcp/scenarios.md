@@ -42,6 +42,8 @@ Concrete situations of the [Spec MCP server](module.md). Exact tools and results
 - AND a client that sends a tool call before it answers with one `file://` root
 - WHEN the client then answers `roots/list`
 - THEN the tool call is answered from that root
+- BUT when the client's input ends before it answers `roots/list`, the session ends without
+  answering the tool call
 
 ### scenario.spec-mcp.initialize-revision — The MCP revision is negotiated
 
@@ -49,6 +51,14 @@ Concrete situations of the [Spec MCP server](module.md). Exact tools and results
 - WHEN it requests revision `2025-03-26`
 - THEN the result names `2025-03-26` and declares the tools capability
 - BUT when it requests a revision the server does not support, the result names `2025-06-18`
+
+### scenario.spec-mcp.null-id — A request whose id is null is answered
+
+- GIVEN a server rooted at a worktree
+- WHEN the client sends a `ping` request whose `id` is `null`
+- AND it sends a `tools/call` request whose `id` is `null`
+- THEN the server answers each with a response whose `id` is `null`
+- AND it answers the `tools/call` with a tool result
 
 ## Answers
 
@@ -144,7 +154,9 @@ Concrete situations of the [Spec MCP server](module.md). Exact tools and results
 - AND it sends a `tools/call` whose tool name is not a string
 - AND it sends a `tools/call` whose present `arguments` are not an object
 - AND it sends a `tools/call` whose optional `target` is `null`
+- AND it sends a `boundary` call whose `task_type` is not one of the eight task types
 - THEN each call fails with a tool error `invalid_input` naming the argument
+- AND the `boundary` call fails so even when the root's Specs cannot be loaded, since it loads none
 - AND the next well-formed call on the same connection is answered
 
 ### scenario.spec-mcp.malformed-message — A malformed message is answered and the session goes on

@@ -119,13 +119,20 @@ A project using Concorde registers the **Spec MCP server** for Claude Code in it
 For example, before opening a task the [main agent](../../glossary.json#concept.main-agent) calls
 `boundary(["module.checkout"], "implement")` to see what an implementation worker could change.
 Before opening the task, the main agent also calls `impact(["src/checkout/cart.py"])`.
-This shows which other Modules share that file and must be bound too.
+This shows every Module the change concerns: the Modules that bind `cart.py` and every Module that
+uses one of them.
+A Module that only uses a binder is concerned because it relies on the binder's promises.
+It does not share the file, and the task need not bind it.
+Only a second Module that binds `cart.py` shares the file.
+The `module` tool tells which: a Module binds the file when one of its realization entries covers
+it.
 When no other Module binds `cart.py`, `boundary` answers with the grant's context identity and its
 entries, such as `src/checkout/` at `rw` and the documents the checkout Module's Spec context
 selects at `ro`. Any path the grant does not list is denied.
 
-When `impact` names a second Module for `cart.py`, `boundary` for the checkout Module alone is
-refused with `shared_file` instead. The main agent then binds that Module to the task as well.
+When a second Module also binds `cart.py`, `boundary` for the checkout Module alone is refused with
+`shared_file` instead. The refusal names that Module, and the main agent binds it to the task as
+well. A Module that `impact` names only as a user never causes this refusal.
 Exact results are in the [contracts](contracts.md).
 
 A call fails with a code, never a partial answer.
