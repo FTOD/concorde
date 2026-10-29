@@ -1168,6 +1168,8 @@ This illustrates [the rebind wait](requirements.md#req.tasks.rebound-wait-follow
 - THEN the current task is shown
 - AND `concorde task show retry.2` shows the task closed as `retry.2`
 - AND `concorde task show retry.1` shows the first task, closed as `retry`
+- AND while a run of the current task waits in the lobby for its workspace lock,
+  `concorde task show retry` lists that run and `concorde task show retry.1` does not
 - AND `concorde task show retry.4` fails with `unknown_task`
 - AND once the current task closed as `retry.3`, `concorde task show retry` shows that task
 

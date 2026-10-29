@@ -330,11 +330,14 @@ def workspace_runs(
     primary: Path, task_id: str, folder: Path | None = None
 ) -> list[dict]:
     """The runs of a task's workspace, read through Execution's formats from its folder's
-    ``workspace/`` and the lobby, with their locks under the primary worktree's ``.concorde``;
-    none where the execution part is not installed."""
-    folder = folder or task_folder(primary, task_id)
+    ``workspace/`` and, for the current task of that name, the lobby, with their locks under the
+    primary worktree's ``.concorde``; none where the execution part is not installed. A folder in
+    the history lists only its own runs: a run waiting in the lobby under the task's name belongs
+    to the current task of that name."""
+    current = task_folder(primary, task_id)
+    folder = folder or current
     return run_store.workspace_runs(
-        concorde(primary), workspace_folder(folder), task_id
+        concorde(primary), workspace_folder(folder), task_id, lobby=folder == current
     )
 
 

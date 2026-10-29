@@ -1553,6 +1553,10 @@ these purposes:
 - To stop them when a task closes.
 - To wait for one.
 
+The lobby knows a run's workspace only by its name, which a later task of the same name takes. So
+`task show` of a task in the history lists only the runs of its own workspace folder, never a run
+waiting in the lobby.
+
 A run that is neither finished nor alive is shown as `lost` rather than trusted as running. Where
 the part is not installed, no run exists:
 
