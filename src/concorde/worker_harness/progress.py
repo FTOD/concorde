@@ -7,8 +7,10 @@ an observation aid only; the run record is the run's evidence.
 
 from __future__ import annotations
 
+import contextlib
 import json
 import os
+import tempfile
 import threading
 import time
 from pathlib import Path
@@ -71,15 +73,31 @@ class Progress:
     def _write(self) -> None:
         self.state["updated_at"] = now()
         self._last_action_write = time.monotonic()
-        temporary = self.path.with_suffix(".json.tmp")
         try:
-            temporary.write_text(
-                json.dumps(self.state, indent=2, sort_keys=True) + "\n"
-            )
-            temporary.replace(self.path)
+            _publish(self.path, json.dumps(self.state, indent=2, sort_keys=True) + "\n")
         except OSError:
             # Progress is an observation aid; a failed write never changes the run.
             pass
+
+
+def _publish(path: Path, text: str) -> None:
+    """Replace ``path`` with ``text`` atomically: a reader finds the old file, none, or the whole
+    new one, never part of it. Each write has a temporary file of its own beside ``path``, flushed
+    to disk before the rename, so overlapping writers never share one."""
+    handle, temporary = tempfile.mkstemp(
+        dir=path.parent, prefix=f".{path.stem}-", suffix=".tmp"
+    )
+    try:
+        with os.fdopen(handle, "w", encoding="utf-8") as stream:
+            stream.write(text)
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(temporary, path)
+    except BaseException:
+        # Only this write's own file is removed; a refused removal never hides why it failed.
+        with contextlib.suppress(OSError):
+            os.unlink(temporary)
+        raise
 
 
 __all__ = ["PHASES", "Progress", "describe"]

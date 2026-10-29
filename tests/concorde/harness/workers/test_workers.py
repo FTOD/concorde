@@ -17,6 +17,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from concorde.kernel.errors import ERROR_SCHEMA
+from concorde.worker_harness import progress as progress_module
 from concorde.worker_harness import runs as worker_runs
 from concorde.worker_harness import write_hook
 from concorde.worker_harness.claude_backend import (
@@ -2206,6 +2207,70 @@ class WorkerRunTests(unittest.TestCase):
             contract["schema"]["properties"]["transient"],
             workers_module.WORKER_ROUND_TRACE_SCHEMA["properties"]["transient"],
         )
+
+
+class ProgressFileTests(unittest.TestCase):
+    """Every write of a worker run's progress file publishes one whole file through a temporary
+    file of its own."""
+
+    def setUp(self):
+        self.root = Path(tempfile.mkdtemp(prefix="concorde-progress-"))
+        self.addCleanup(shutil.rmtree, self.root, ignore_errors=True)
+
+    def published(self) -> dict:
+        return json.loads((self.root / "status.json").read_text())
+
+    def test_overlapping_progress_writes_each_publish_a_whole_file(self):
+        first = progress_module.Progress(self.root, run_id="first")
+        second = progress_module.Progress(self.root, run_id="second")
+        replace = os.replace
+        published = []
+
+        def interleaved(source, target):
+            # The second write runs whole between the first one's write and its rename.
+            if not published:
+                published.append(source)
+                second.phase("audit")
+                state = self.published()
+                self.assertEqual(("second", "audit"), (state["run_id"], state["phase"]))
+            replace(source, target)
+
+        with patch.object(progress_module.os, "replace", interleaved):
+            first.phase("worker", round=1)
+        state = self.published()
+        self.assertEqual(
+            ("first", "worker", 1), (state["run_id"], state["phase"], state["round"])
+        )
+        self.assertEqual(["status.json"], [path.name for path in self.root.iterdir()])
+
+    def test_a_write_is_flushed_to_disk_before_its_rename(self):
+        progress = progress_module.Progress(self.root, run_id="run")
+        fsync, replace, events = os.fsync, os.replace, []
+
+        def synced(descriptor):
+            events.append("fsync")
+            fsync(descriptor)
+
+        def renamed(source, target):
+            events.append(("replace", json.loads(Path(source).read_text())["phase"]))
+            replace(source, target)
+
+        with (
+            patch.object(progress_module.os, "fsync", synced),
+            patch.object(progress_module.os, "replace", renamed),
+        ):
+            progress.phase("worker", round=1)
+        self.assertEqual(["fsync", ("replace", "worker")], events)
+
+    def test_a_refused_write_changes_neither_the_run_nor_the_file(self):
+        progress = progress_module.Progress(self.root, run_id="run")
+        before = (self.root / "status.json").read_text()
+        failure = PermissionError(13, "Permission denied")
+        with patch.object(progress_module.os, "replace", side_effect=failure):
+            progress.phase("worker", round=1)
+        # The refused write left the earlier file whole and no temporary file beside it.
+        self.assertEqual(before, (self.root / "status.json").read_text())
+        self.assertEqual(["status.json"], [path.name for path in self.root.iterdir()])
 
 
 TOOL_GROUP_AGENT = """
