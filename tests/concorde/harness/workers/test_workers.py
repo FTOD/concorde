@@ -247,6 +247,7 @@ class WorkerProject:
             if check_modules is not None
             else None,
             "home": self.home,
+            "backend": "claude",
             "claude": str(self.fake),
             "credentials": None,
             "timeout": 30,

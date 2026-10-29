@@ -886,6 +886,13 @@ the run. [The run mechanics](launch.md) give these exact details:
   [worker backend](../../glossary.json#concept.worker-backend), not from the program of the
   [main agent](../../glossary.json#concept.main-agent)
 
+### scenario.workers.request-backend-default — A request that names no backend runs its worker on pi
+
+- GIVEN a worker request complete but for its backend, which its caller leaves out
+- WHEN the host runs it
+- THEN the worker runs on `pi`
+- AND the run record names `pi` as its backend
+
 ### scenario.workers.backend-missing — A worker whose backend is not installed is refused
 
 - GIVEN a command started from a Claude Code session

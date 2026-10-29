@@ -315,7 +315,8 @@ class WorkerRequest:
     home: Path | None = None
     claude: str | None = None
     credentials: Path | None = None
-    backend: str = "claude"
+    # The worker backend; pi, Concorde's default, when the caller chooses none (launch.md#inputs).
+    backend: str = "pi"
     # What chose the backend (a configuration entry or the main session's variable), recorded only.
     backend_source: str | None = None
     # The reasoning level: Claude Code's --effort, pi's --thinking.

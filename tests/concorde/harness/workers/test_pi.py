@@ -7,6 +7,7 @@ decisions of ``pi_policy.ts`` are checked here under Node when Node is available
 from __future__ import annotations
 
 import contextlib
+import dataclasses
 import json
 import os
 import shlex
@@ -24,7 +25,7 @@ from unittest.mock import patch
 from concorde.worker_harness import pi_backend
 from concorde.worker_harness import runs as worker_runs
 from concorde.worker_harness.settings import RunPaths, sandbox_filesystem
-from concorde.worker_harness.workers import result_schema
+from concorde.worker_harness.workers import WorkerRequest, result_schema, run_worker
 from concorde.spec.verification import verifies
 from tests.concorde.harness.workers.test_workers import LOOPBACK_PROXY, WorkerProject
 
@@ -160,6 +161,33 @@ class PiRunTests(unittest.TestCase):
             (status["phase"], status["status"], status["backend"]),
         )
         self.assertEqual("concorde_result", status["last_action"]["tool"])
+
+    @verifies("scenario.workers.request-backend-default")
+    def test_a_request_naming_no_backend_runs_its_worker_on_pi(self):
+        named = self.project.request(
+            [
+                {
+                    "writes": {
+                        str(
+                            self.root / "src/a/calc.py"
+                        ): "def add(a, b):\n    return a + b\n"
+                    }
+                }
+            ]
+        )
+        # The same request, every field but the backend given.
+        request = WorkerRequest(
+            **{
+                field.name: getattr(named, field.name)
+                for field in dataclasses.fields(WorkerRequest)
+                if field.name != "backend"
+            }
+        )
+        self.assertEqual("pi", request.backend)
+        record = run_worker(request)
+        self.assertEqual("ok", record["status"], record["error"])
+        self.assertEqual("pi", record["backend"])
+        self.assertEqual(pi_backend.TOOL_SETS["implement"], record["tools"])
 
     @verifies("scenario.workers.session-proxy")
     def test_a_pi_worker_behind_a_loopback_proxy_uses_it(self):
