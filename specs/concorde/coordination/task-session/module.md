@@ -230,10 +230,12 @@ Claude Code's output in the detail:
 One task worktree has one working task session at a time. A second session writing the same
 worktree would confuse the write audits of its runs and its delivery. So before it writes anything,
 a start asks Claude Code for the state of every session the task's trace records. While one is in a
-state other than `done` or `failed`, such as `working`, the start is refused. The refusal names that
-session and `claude stop <id>`. A session that is `done` waits for its next message, so the main
-agent messages it rather than starting another. A session that is `done`, `failed` or no longer
-listed does not refuse a start. The main agent can thus replace a session that stalled or ended
+state other than `done`, `failed` or `stopped`, such as `working`, the start is refused. A session
+that is `blocked` waits for someone to answer it, so it is refused too. The refusal names that
+session and `claude stop <id>`, after which Claude Code lists the session as `stopped`. A session
+that is `done` waits for its next message, so the main agent messages it rather than starting
+another. A session that is `done`, `failed`, `stopped` or no longer listed does not refuse a
+start. The main agent can thus replace a session that stalled or ended
 without another step. Every start starts and records a session of its own. A start never reuses an
 earlier session. A caller that retries a start whose answer it lost is refused while the session it
 started works. The task's trace then shows that session.

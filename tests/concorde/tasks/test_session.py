@@ -230,8 +230,17 @@ class TaskSessionTests(unittest.TestCase):
         with self.assertRaises(store.TaskError) as raised:
             session.start(self.root, "t1", "concorde-8e", run=claude)
         self.assertEqual("session_running", raised.exception.code)
-        for text in ("33afbc14", "'working'", "claude stop 33afbc14"):
+        for text in ("33afbc14", "'working'", "claude stop 33afbc14", "'stopped'"):
             self.assertIn(text, str(raised.exception))
+        # A session waiting for someone to answer it still works too.
+        blocked = FakeClaude(
+            stdout="backgrounded · 44bbcd25 · task-t1\n",
+            listed=({"id": "33afbc14", "sessionId": SESSION_ID, "state": "blocked"},),
+        )
+        with self.assertRaises(store.TaskError) as raised:
+            session.start(self.root, "t1", "concorde-8e", run=blocked)
+        self.assertEqual("session_running", raised.exception.code)
+        self.assertIn("'blocked'", str(raised.exception))
         # It asked Claude Code for its sessions and started none.
         self.assertEqual(
             [["claude", "agents", "--json", "--all"]], [c for c, _ in claude.calls]
@@ -328,6 +337,20 @@ class TaskSessionTests(unittest.TestCase):
             sorted(item["id"] for item in store.sessions(self.root, "t1")),
         )
         self.assertEqual("concorde-8e", store.load_task(self.root, "t1")["main"])
+        # A session stopped with `claude stop` refuses no start either.
+        started = session.start(
+            self.root,
+            "t1",
+            "concorde-8e",
+            run=FakeClaude(
+                stdout="backgrounded · 66ddee47 · task-t1\n",
+                listed=(
+                    {"id": "55ccdd36", "sessionId": SESSION_ID, "state": "stopped"},
+                    {"id": "33afbc14", "sessionId": SESSION_ID, "state": "failed"},
+                ),
+            ),
+        )
+        self.assertEqual("66ddee47", started["id"])
 
     def decide(self, hook: Path, hook_input: str) -> dict | None:
         """The decision of the hook ``hook`` on ``hook_input``: None allows."""
@@ -1137,6 +1160,32 @@ class EndOfTaskTests(unittest.TestCase):
         path.write_text("".join(json.dumps(line) + "\n" for line in records))
         figures = session.transcript_figures(path, [])
         return figures["usage"]["cost_usd"], figures["model_usage"]
+
+    @verifies("scenario.task-session.node-finished")
+    def test_each_assistant_record_without_a_message_id_counts_once(self):
+        def bare(uuid, tokens):
+            record = said("2026-09-30T10:00:05.000Z", None, input_tokens=tokens)
+            del record["message"]["id"]
+            return {**record, "uuid": uuid}
+
+        records = [
+            # Two records of one API message count once.
+            said("2026-09-30T10:00:01.000Z", "msg_1", input_tokens=10),
+            said("2026-09-30T10:00:02.000Z", "msg_1", input_tokens=10),
+            # Records without a message id count each, even when they share a record uuid or
+            # their uuid is another record's message id.
+            bare("u-1", 1),
+            bare("u-1", 2),
+            bare("msg_1", 4),
+        ]
+        path = self.project.home / "bare.jsonl"
+        path.write_text("".join(json.dumps(line) + "\n" for line in records))
+        beside = self.project.home / "agent-1.jsonl"
+        beside.write_text(json.dumps(bare("u-1", 8)) + "\n")
+        figures = session.transcript_figures(path, [beside])
+        self.assertEqual(
+            (25, 5), (figures["usage"]["tokens_in"], figures["usage"]["turns"])
+        )
 
     @verifies("scenario.task-session.cost-unaccounted")
     def test_a_cost_account_an_assistant_record_follows_is_no_cost(self):

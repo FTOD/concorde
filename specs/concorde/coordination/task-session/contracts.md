@@ -194,7 +194,7 @@ Besides those shared codes, its refusals use these:
 | Error code | Raised when |
 | --- | --- |
 | `missing_worktree` | `session` names a task whose worktree no longer exists. |
-| `session_running` | `session` names a task one of whose recorded task sessions `claude agents --json --all` lists in a state other than `done` or `failed`, such as `working`; the message names the session, its state and `claude stop <id>`. Reason `decision`. |
+| `session_running` | `session` names a task one of whose recorded task sessions `claude agents --json --all` lists in a state other than `done`, `failed` or `stopped`, such as `working` or `blocked`; the message names the session, its state, `claude stop <id>` and the states `done`, `failed` and `stopped`, which refuse no start. Reason `decision`. |
 | `session_failed` | `session` could not start Claude Code, Claude Code exited without reporting a started background session (its output is in the message), the composed task-session guidance `generated/guidance/task-session.md` is missing from the package, or the task has a recorded task session and `claude agents --json --all` could not be read to tell whether it still works, or Claude Code's managed settings turn the sandbox on, which the session's settings cannot turn off ([Task-session settings](#task-session-settings)). A launch that failed this way may still have started a background job that no node records, and so no later start sees; `claude agents --json --all` lists it by the name `task-<task-id>`. |
 | `session_stop_failed` | `concorde task close` without a merge could not confirm a Claude Code task session of the task stopped: `claude stop <id>` could not run, or exited non-zero without answering `No job matching`; the message names the session, Claude Code's answer, the worktree the close would have removed and `claude stop <id>`, and the task is unchanged. |
 
@@ -241,9 +241,9 @@ background Claude Code task session in the steps below. It holds the task's lock
 task record again. It is refused as below once the first start recorded its session.
 
 1. When the task has recorded task sessions, it asks `claude agents --json --all` once. When that
-   list shows one of them in a state other than `done` or `failed`, it refuses with
-   `session_running` before it writes anything. A session done, failed or no longer listed does not
-   refuse.
+   list shows one of them in a state other than `done`, `failed` or `stopped`, it refuses with
+   `session_running` before it writes anything. A session done, failed, stopped or no longer listed
+   does not refuse.
 2. It writes `.concorde/tasks/<task-id>/runtime/settings.json` and its hook, as
    [Task-session settings](#task-session-settings) says. The settings also hold the
    [project MCP approvals](#project-mcp-approvals):

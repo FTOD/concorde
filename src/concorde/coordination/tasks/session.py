@@ -36,8 +36,8 @@ which the close removes, and guards against mistakes, not a malicious session:
   MCP server" would;
 - one task worktree has one working session at a time: a start is refused with
   ``session_running`` while Claude Code lists a recorded session of the task in a state other
-  than ``done`` or ``failed``, since two sessions writing one worktree would confuse its runs'
-  write audits and its delivery;
+  than ``done``, ``failed`` or ``stopped``, since two sessions writing one worktree would confuse
+  its runs' write audits and its delivery;
 - nobody answers permission prompts in a background session, so it runs in Claude Code's
   ``auto`` mode, where a classifier approves or refuses each action instead of asking; the hook
   stays the boundary of the file tools, and ``auto`` needs no one-time consent the way
@@ -424,10 +424,11 @@ def _start(
 
 def refuse_working(primary: Path, task_id: str, run=None) -> None:
     """Refuse a start while Claude Code lists a recorded session of the task in a state other
-    than ``done`` or ``failed``, such as ``working``: two sessions writing one task worktree would
-    confuse its runs' write audits and its delivery. A session done, failed or no longer listed
-    does not refuse, so a stalled or ended session can be replaced. ``session_failed`` when
-    Claude Code's list cannot be read, since the start cannot then tell."""
+    than ``done``, ``failed`` or ``stopped``, such as ``working`` or ``blocked``: two sessions
+    writing one task worktree would confuse its runs' write audits and its delivery. A session
+    done, failed, stopped or no longer listed does not refuse, so a stalled or ended session can be
+    replaced. ``session_failed`` when Claude Code's list cannot be read, since the start cannot
+    then tell."""
     recorded = store.sessions(primary, task_id)
     if not recorded:
         return
@@ -444,14 +445,17 @@ def refuse_working(primary: Path, task_id: str, run=None) -> None:
         if short not in listed:
             continue
         state = listed[short].get("state")
-        if state in STATES:
+        if state in REPLACEABLE:
             continue
         raise store.TaskError(
             "session_running",
             f"the task session {short} ({found['name']}) of task {task_id} still works: "
             f"`{shlex.join(['claude', *AGENTS])}` lists it as {state!r}; a second session "
             f"would write the same worktree. Message that session, or stop it with "
-            f"`claude stop {short}` and start the task session again",
+            f"`claude stop {short}`, after which Claude Code lists it as 'stopped', and start "
+            f"the task session again; a session listed as "
+            f"{', '.join(repr(item) for item in REPLACEABLE)}, or no longer listed, refuses no "
+            f"start",
         )
 
 
@@ -503,6 +507,10 @@ AGENTS = ("agents", "--json", "--all")
 # Claude Code judges a session by whether its process lives, so the state is taken at the close,
 # when the task has ended and every state it reads is final.
 STATES = {"done": "ok", "failed": "failed"}
+# The states in which a listed task session lets another session of its task start: it waits for
+# its next message, failed or was stopped with ``claude stop``. Any other state, such as
+# ``working``, or ``blocked`` for a session waiting for someone to answer it, still works.
+REPLACEABLE = ("done", "failed", "stopped")
 # A session id is a file name under ``projects/``: letters, digits and dashes only.
 SESSION_ID = re.compile(r"^[0-9A-Za-z][0-9A-Za-z-]*$")
 # An assistant record Claude Code writes itself, which no model produced.
@@ -681,7 +689,9 @@ def transcript_figures(transcript: Path, subagents: list[Path]) -> dict:
     first and last records; the number of lines of them all that are no record. ``usage``,
     ``ended_at``, ``models``, ``model_usage`` and ``unreadable_lines``; ``OSError`` when one of
     them cannot be read."""
-    messages: dict[str, tuple[str, dict]] = {}
+    # An API message is keyed by its id, a record without one by its own place: the two kinds of
+    # key never meet, and each such record counts as a message of its own.
+    messages: dict[tuple, tuple[str, dict]] = {}
     times: list[datetime] = []
     cost_state, stale = None, False
     unreadable = 0
@@ -708,8 +718,12 @@ def transcript_figures(transcript: Path, subagents: list[Path]) -> dict:
             model = message.get("model")
             if model == SYNTHETIC:
                 continue
-            key = message.get("id") or f"{path.name}:{record.get('uuid') or number}"
-            messages[str(key)] = (str(model or "unknown"), message["usage"])
+            key = (
+                ("message", str(message["id"]))
+                if message.get("id")
+                else ("record", str(path), number)
+            )
+            messages[key] = (str(model or "unknown"), message["usage"])
     models: dict[str, dict] = {}
     for model, used in messages.values():
         sums = models.setdefault(

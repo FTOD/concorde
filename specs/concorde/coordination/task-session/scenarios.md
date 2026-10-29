@@ -43,10 +43,11 @@ Commands and the session's [trace node](../../glossary.json#concept.trace-node) 
 - GIVEN an open task `severity` whose trace records the task session `33afbc14`
 - AND `claude agents --json --all` lists `33afbc14` in the state `working`
 - WHEN the main agent runs `concorde task session severity --main concorde-7d`
-- THEN the command fails with `session_running`, naming `33afbc14`, `working` and
-  `claude stop 33afbc14`
+- THEN the command fails with `session_running`, naming `33afbc14`, `working`,
+  `claude stop 33afbc14` and the state `stopped`
 - AND no Claude Code session is started
 - AND the task's boundary files, record and trace are unchanged
+- AND when Claude Code lists `33afbc14` as `blocked`, the command fails the same way
 - AND when two starts of `severity` run at once while it records no session, one starts and
   records its session, and the other fails with `session_running`, starting no session
 
@@ -58,6 +59,8 @@ Commands and the session's [trace node](../../glossary.json#concept.trace-node) 
 - WHEN the main agent runs `concorde task session severity --main concorde-8e`
 - THEN a new Claude Code session is started and recorded as a third node of the task's trace
 - AND the task record names `concorde-8e` as its `main`
+- AND when Claude Code then lists the third session as `stopped` and `33afbc14` as `failed`, a
+  further start starts and records a fourth session
 
 ### scenario.task-session.project-mcp — A task session gets the project MCP server without a channel
 
@@ -176,6 +179,8 @@ Commands and the session's [trace node](../../glossary.json#concept.trace-node) 
 - THEN the session's node in the history holds the full session id
 - AND the node holds the status `ok` with the outcome `done`
 - AND the node holds as usage the tokens of the three messages, each counted once
+- AND an assistant record whose message has no id counts as a message of its own, even when it
+  shares its record `uuid` with another
 - AND the node holds as usage 3 turns
 - AND the node holds as usage the duration from the transcript's earliest record time to its latest
 - AND the node holds as usage a cost of 0.42 USD
