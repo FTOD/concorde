@@ -144,6 +144,13 @@ def main(argv, cwd: Path | None = None) -> int:
                 f"--lost {', '.join(map(repr, malformed))} is no step key: a step key "
                 f"matches {KEY['pattern']}"
             )
+    else:
+        # The step request is checked before the workspace is resolved: a malformed request is
+        # the caller's command line wherever it runs, never a workspace that cannot be used.
+        try:
+            request = check_request(step_request(arguments))
+        except (UsageError, ValueError, OSError, KernelError) as error:
+            return usage(f"the step request is not usable: {error}")
     try:
         space = workspace(here)
     except WorkflowError as error:
@@ -169,10 +176,6 @@ def main(argv, cwd: Path | None = None) -> int:
             return 1
         sys.stdout.write(json.dumps(result, indent=2, ensure_ascii=False) + "\n")
         return 0 if result["status"] == "ok" else 1
-    try:
-        request = check_request(step_request(arguments))
-    except (UsageError, ValueError, OSError, KernelError) as error:
-        return usage(f"the step request is not usable: {error}")
     try:
         status, value = run_step(space, request, arguments.wait)
     except StepError as refusal:

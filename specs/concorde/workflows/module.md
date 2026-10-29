@@ -220,6 +220,8 @@ A call that starts a run adds at most the 90 seconds of its launch allowance
 ([req.workflows.bounded-wait](requirements.md#req.workflows.bounded-wait)).
 The step agent returns the step outcome the tool answered.
 As long as the run is still running, the step function itself asks again.
+One more step agent relays the report at the end: it runs `concorde workflow report` once and
+returns what the command printed.
 [Steps in Claude Code](#steps-in-claude-code) gives the step function's guards against a run
 that never ends and against a relay that brings no answer.
 A step agent only relays.
@@ -993,8 +995,7 @@ the workflow lock throughout these actions, as [A retired workspace](#retired-wo
 - Moving the workspace folder.
 - Removing the lock file.
 
-The task level retires a workspace when it closes a task. Tasks states that obligation of its close
-in [req.tasks.close-when-ended](../coordination/tasks/requirements.md#req.tasks.close-when-ended).
+The task level retires a workspace when it closes a task, as [Tasks](#uses-tasks) below says.
 When the runner rejects a command line,
 such as an unknown argument, the step is refused. Its cause is the runner's message. When a detached
 runner did not start, the step is refused with the `detach_failed` link as the cause.
@@ -1041,6 +1042,28 @@ When a run's output declares nothing there, the run simply has none of the follo
 Answers reach a run through `--answers`. A run that declares decision points takes answers through
 this option.
 What an answer means is the run's.
+
+<a id="uses-tasks"></a>
+
+**Tasks** retires a workspace when it closes a task. Workflows relies on that close holding the
+workflow lock while it retires the workspace, as [A retired workspace](#retired-workspace)
+describes. Tasks promises this of every close in
+[req.tasks.close-when-ended](../coordination/tasks/requirements.md#req.tasks.close-when-ended) and
+[req.tasks.workflow-lock-last](../coordination/tasks/requirements.md#req.tasks.workflow-lock-last).
+This is reliance on a convention of Tasks' close, not a dependency of the workflow part.
+Workflows imports nothing of Tasks and needs nothing of the coordination part installed.
+Where that part is not installed, no task close retires a workspace.
+
+<a id="uses-method"></a>
+
+**Method** owns the [brownfield workflow](../glossary.json#concept.brownfield-workflow)'s
+procedure: its steps, their order, the inputs each admits and where it goes past a step.
+The brownfield scenarios of Workflows follow that procedure
+([scenarios](scenarios.md#scenario.workflows.no-ask-complete)).
+Workflows relies on it only there, to state its own promises on a real procedure.
+This is reliance on a procedure Method defines, not a dependency of the workflow part.
+Workflows imports nothing of Method and needs nothing of the method part installed.
+Where that part is not installed, no part registers the brownfield workflow.
 
 <a id="uses-distribution"></a>
 

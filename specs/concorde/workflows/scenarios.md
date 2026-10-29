@@ -34,6 +34,8 @@ shapes are in the [contracts](contracts.md). The scenarios of the
 - WHEN `concorde workflow step` or `concorde workflow report` is run there
 - THEN it prints a `component` link `binding_required` naming the worktree and exits with status 1
 - AND nothing is started or recorded
+- BUT a command line there that breaks the step request contract, such as `--json '{}'` or a step
+  without its Operation or command, is answered with `invalid_request` and exit status 2
 
 ### scenario.workflows.step-waits — A long run is awaited by repeated calls
 
