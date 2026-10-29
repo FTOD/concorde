@@ -206,8 +206,8 @@ is `ERROR`. A listed identity that pytest never reports is `not run`.
   no regression.
 - SWE-bench's datasets cut some parametrized identities at their first space, inside their
   brackets. A listed identity with more `[` than `]` and no exact match stands for every reported
-  identity it begins. It takes their status when they agree on passing or not by its list's rule.
-  Otherwise it is `not run`
+  identity it begins. When they agree on passing or not by its list's rule, it takes the status
+  of the first of them pytest reported. Otherwise it is `not run`
   ([scenario](scenarios.md#scenario.swe-bench-cases.grade-cut-pass-to-pass)). SWE-bench's harness
   compares them by FAIL_TO_PASS's rule for both lists. For PASS_TO_PASS, a passed and a skipped
   test then disagree. A skipped and a failed test then agree, and its verdict depends on the order

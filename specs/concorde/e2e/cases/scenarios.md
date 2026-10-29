@@ -105,5 +105,12 @@ test resolves nothing.
 - GIVEN a grading whose worktree Git cannot remove
 - WHEN grading ends
 - THEN it fails with `cleanup_failed`, naming the worktree and listing its registration and its scratch directory as left
-- AND when the case's tests ran, the log the developer named holds their whole output in place of an earlier grading's
 - AND when grading had failed before, `cleanup_failed` names that earlier error
+
+### scenario.swe-bench-cases.grade-log-kept — A grading that fails after its tests ran keeps their output
+
+- GIVEN a log that holds an earlier grading's output of a case
+- AND a grading of that case whose tests run to the end and whose worktree Git then cannot remove
+- WHEN grading ends
+- THEN it fails with `cleanup_failed`
+- AND the log holds the whole output of this grading's tests in place of the earlier output

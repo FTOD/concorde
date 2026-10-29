@@ -239,6 +239,9 @@ class CaseTests(unittest.TestCase):
         self.assertEqual(
             "PASSED", cases.status_of("t.py::t[x", statuses, cases.MAINTAINED)
         )
+        # Identities that agree give the cut identity the first one's status.
+        statuses = {"t.py::t[x 1]": "ERROR", "t.py::t[x 2]": "FAILED"}
+        self.assertEqual("ERROR", cases.status_of("t.py::t[x", statuses, cases.PASSING))
 
     @verifies("scenario.swe-bench-cases.grade-listed-twice")
     def test_a_test_listed_twice_counts_twice(self):
@@ -445,7 +448,10 @@ class CaseTests(unittest.TestCase):
             self.assertEqual([], list(scratch.iterdir()))
             self.assertEqual(1, git(project, "worktree", "list").count("\n"))
 
-    @verifies("scenario.swe-bench-cases.grade-cleanup-failed")
+    @verifies(
+        "scenario.swe-bench-cases.grade-cleanup-failed",
+        "scenario.swe-bench-cases.grade-log-kept",
+    )
     def test_a_grading_worktree_that_cannot_be_removed_fails_grading(self):
         from unittest.mock import patch
 
