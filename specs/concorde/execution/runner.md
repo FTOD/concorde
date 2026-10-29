@@ -330,14 +330,18 @@ A step returns `Continue` or `Stop`. The runner adds the evidence of either to t
 evidence. A `Continue` with an `output` replaces the run's output, and the next step runs. A `Stop`
 ends the steps. Its `status` is `ok`, `blocked` or `failed`. Its `summary` is the result's summary.
 Unless the status is `ok`, its `error` is the run's own error link. A `Stop` that is not `ok`
-without an `error` becomes the runner's `missing_error` link. When the last step returns
+without an `error` becomes the runner's `missing_error` link. A `Stop` that is `ok` with an `error`
+breaks the run result contract, so the runner replaces its result by one with its `invalid_result`
+link, which keeps that error as its cause ([Composing the result](#composing-the-result)). When the last step returns
 `Continue`, the run ends `ok` with the summary the runner composes.
 
 An admission refuses by raising `Refused`, with the fields its signature lists. `component` builds
 the `component` link of a deterministic component a step called, such as Git or Check execution,
 for the `causes` of a refusal or an error.
 
-Every function of the definition receives the run's `RunContext`. Its steps may read these fields:
+The definition's admission and each of its steps receive the run's `RunContext`. `add_arguments`
+receives the command's argument parser instead, and `runtime_paths` the unbound checkout's root.
+The steps may read these fields:
 
 | Field | Meaning |
 | --- | --- |
@@ -358,6 +362,7 @@ The steps may change these fields:
 | `evidence` | host evidence the step adds directly, beside the evidence of its outcome |
 | `output` | the run's output, as a `Continue` also sets it |
 | `worker` | the claims of the worker run whose result the run reports, as the [run result](contracts.md#contract.execution.run-result) holds them |
+| `last_record` | the run record of the latest worker launch, which a launching step sets for the steps after it; the result never holds it |
 | `state` | values the definition's own steps share during one run; the runner reads none of them |
 | `references` | `(relation, target)` pairs the runner adds to the run's trace node |
 
@@ -503,7 +508,10 @@ Steps of one run share the run context. The context holds these things:
 - the admitted inputs
 - the output so far
 - a state the definition owns
-- the run record of the latest worker launch
+- in `worker`, the [worker result](../glossary.json#concept.worker-result) of the worker run whose
+  result the run reports, which holds the worker's claims
+- in `last_record`, the run record of the latest worker launch, as the worker harness wrote it,
+  which holds what the host observed and which the result never holds
 
 The runner never skips, repeats or reorders steps. Any repetition, such as
 [resume rounds](../glossary.json#concept.resume-round), happens inside one step.
@@ -559,7 +567,9 @@ with its message. Such messages include these details:
 - the registered Modules for an unknown one
 
 While the lock is still held, the runner writes the result. A run admitted to the workspace after
-this one therefore always finds its result written. The converse does not hold. Until the runner
+this one therefore finds its result written, unless publishing it failed
+([When records cannot be written](#when-records-cannot-be-written)) or the runner was killed
+before it. The converse does not hold. Until the runner
 ends, whoever reads the result may still find the lock held. A caller that wants to start the
 next run therefore waits for the lock to be free, not for the result.
 
@@ -891,13 +901,19 @@ It holds the lock until after all these records are written:
 - the finished progress file
 - the final `trace.json`
 
+When publishing the result failed, the runner writes neither the finished progress file nor the
+final `trace.json`, and it releases the lock at once
+([When records cannot be written](#when-records-cannot-be-written)).
+
 The runner holds the lock through a descriptor the processes it starts do not inherit. A worker
 or check that outlives the runner therefore never keeps its run alive. As it exits, the runner
 removes the file, still holding it. When a runner is killed with `SIGKILL`, its file stays but is
 not held. An observer tells a running run from a dead one by the file's existence and by trying
 the lock for an instant. The observer tries it shared and without waiting (`runner_alive`).
 Whichever PID namespace holds it, the operating system's lock table `/proc/locks` shows the same
-for the file's inode. A run without `result.json` whose lock nobody holds is `lost`.
+for the file's inode. A run whose lock is held is `running`, even once its `result.json` is
+published, since the runner still writes its last records and holds the workspace lock. A run
+whose lock nobody holds is `finished` with `result.json` and `lost` without it.
 
 The runner writes `status.json` atomically in the run's folder. Until the run enters its
 workspace, that folder is in the lobby. The runner writes the file at these times:

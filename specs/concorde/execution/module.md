@@ -148,8 +148,8 @@ The **run store** is where those folders lie. Runs have these locations:
 - An unbound run lies in `.concorde/unbound/<run-id>/` of the worktree it started in, never in its
   checkout.
 
-Until a bound run holds its workspace's lock, it lies in the lobby. The lobby is
-`.concorde/lobby/<run-id>/` of the `.concorde` its binding names. When the run is refused before it
+Until a bound run holds its workspace's lock, it lies in the lobby. The lobby is `lobby/<run-id>/`
+of the `.concorde` its binding names. When the run is refused before it
 holds the lock, it stays there. A run that has not entered a workspace therefore writes nothing
 into that workspace's folder. Git ignores all of them. Execution registers the unbound runs and
 the lobby with Tracing as [trace roots](../kernel/tracing/contracts.md#trace-roots). Unless the
@@ -243,7 +243,8 @@ The Execution runner runs one run per process. It performs these steps:
 - When the result is `ok`, it checks the result against the definition's output contract.
 - While it still holds the lock, it writes the result.
 
-A run that takes the lock after it therefore finds that result written. The runner then writes
+A run that takes the lock after it therefore finds that result written, unless publishing it failed
+([When records cannot be written](runner.md#when-records-cannot-be-written)). The runner then writes
 its run's trace node again, with the run's end. Seeing the result alone does not tell that the
 workspace is free: the runner may still hold the lock. Each of these cases still ends in a written
 result with the runner's link on top:
@@ -331,10 +332,11 @@ For example, a run of Method's `implement` in a task worktree reads a binding wi
 - Module `module.http`
 - base `4be1…`
 
-The run takes the lock of `retry` and runs the definition's steps. The steps do these things:
+The run takes the lock of `retry`. The definition's admission then admits `module.http` against the
+worktree's Specs, outside every step. The runner then runs the definition's steps, which do these
+things:
 
-- admit `module.http` against the worktree's Specs
-- compute the implement grant for it
+- compute the implement grant for `module.http`
 - launch one worker through the [worker harness](../worker-harness/module.md)
 - audit and check its change
 
@@ -360,8 +362,9 @@ unchanged does the run enter the workspace. A task closed meanwhile removed the 
 holding the lock, its lock file. The run is therefore refused with `workspace_retired` in the lobby.
 It does not write into the folder the close moved to the history. The lock is a file lock held by
 the runner's process. However the run ends, the operating system releases the lock. Before it
-releases the lock, the runner writes a run's result. Unless the runner was killed before it could
-write one and the run is lost, a run admitted after it finds that result written. A result on disk,
+releases the lock, the runner writes a run's result. A run admitted after it finds that result
+written, unless the run is lost: its runner was killed before it could write one, or publishing it
+failed. A result on disk,
 though, does not mean the lock is free yet.
 
 ### Running unbound
@@ -781,6 +784,16 @@ Execution relies on Distribution performing these actions:
 - asking its idle check before an install or an update
 
 Execution imports nothing of Distribution.
+
+<a id="uses-workers"></a>
+
+**Workers** decide where a worker may run. Execution relies on their placement rule
+([req.workers.placement](../worker-harness/workers/launch.md#req.workers.placement)): a worker runs
+only in a worktree directly inside `.claude/worktrees/` of its repository's primary worktree.
+Execution therefore places an unbound run's checkout there
+([Unbound checkout](runner.md#unbound-checkout)), so that the steps of an unbound run may launch
+workers in it. This reliance is a convention Execution follows, not a call. Execution imports
+nothing of Workers, and the execution part does not depend on the worker harness part.
 
 The runner, its run store and its children depend on no Module of the upper half and on no part but
 the kernel. They meet Distribution's host promises as every part does. Nothing in Execution reads

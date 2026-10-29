@@ -94,8 +94,23 @@ and commands.
 - AND the primary worktree keeps its uncommitted change
 - AND the primary worktree keeps its `.venv`
 - AND the primary worktree keeps the merge
-- BUT a submodule Git cannot populate is left empty with `submodule-absent` evidence
-- AND a runtime path Git does not ignore is not linked, with `environment-not-linked` evidence
+
+### scenario.execution.unbound-submodule-absent — A submodule Git cannot populate is left empty
+
+- GIVEN a primary worktree at commit `C` that records a submodule
+- AND Git cannot populate the submodule's checkout, or the primary worktree has not checked it out
+- WHEN an unbound run is started there
+- THEN the submodule's directory in the checkout is empty
+- AND the result has `submodule-absent` evidence naming the submodule and why
+- AND the result's status is the one its steps give
+
+### scenario.execution.unbound-runtime-not-linked — A runtime path Git does not ignore is not linked
+
+- GIVEN a primary worktree at commit `C` whose definition's runtime-path resolver names a path that
+  exists in the primary worktree and that Git does not ignore
+- WHEN an unbound run of that definition is started there
+- THEN the checkout holds the path as `C` records it, and no link to the primary worktree's path
+- AND the result has `environment-not-linked` evidence naming the path
 
 ### scenario.execution.unbound-checkout-removed — The checkout is removed when a step raises
 
@@ -107,9 +122,14 @@ and commands.
 - AND once the result is written, the checkout is gone
 - AND the repository lists exactly the worktrees it listed before the run, the task worktree among
   them
-- BUT a checkout that neither Git nor the direct removal could delete is named by
-  `checkout-not-removed` evidence saying what is left and how to remove it
-- AND the result's status is unchanged
+
+### scenario.execution.unbound-checkout-left — A checkout that cannot be deleted is named
+
+- GIVEN a primary worktree at commit `C`
+- AND a host where neither Git nor the direct removal can delete an unbound run's checkout
+- WHEN an unbound run started there ends, whether its steps ended or its checkout's setup failed
+- THEN the result has `checkout-not-removed` evidence saying what is left and how to remove it
+- AND the result's status is the one it had without that evidence
 
 ### scenario.execution.unbound-setup-failed — A checkout whose setup fails is still named and removed
 
@@ -119,8 +139,6 @@ and commands.
 - THEN the result is `failed` with `host_error`
 - AND the result names `C` as `commit` and has `checkout` evidence
 - AND once the result is written, the checkout is gone
-- BUT a checkout that neither Git nor the direct removal could delete is named by
-  `checkout-not-removed` evidence
 
 ### scenario.execution.unbound-checkout-interrupted — A signal during the checkout's creation leaves no checkout
 
@@ -145,7 +163,14 @@ and commands.
 - AND the result is `ok`, with `preparation` evidence of each command
 - AND the run's node keeps each command's log as `preparation/<n>.log`
 - AND once the result is written, the checkout is gone
-- BUT a bound run of a worktree with the same file runs no preparation command
+
+### scenario.execution.bound-run-unprepared — A bound run is never prepared
+
+- GIVEN a task worktree whose committed `.concorde/preparation.json` declares a command that would
+  fail the run
+- WHEN a run is started in that bound workspace
+- THEN no preparation command runs
+- AND the result has no `preparation` evidence
 
 ### scenario.execution.unbound-preparation-changed — A preparation that changes the commit runs no step
 
@@ -153,15 +178,24 @@ and commands.
   exits 0
 - AND the command changes a tracked file of the checkout and keeps its size and timestamp, or
   rewrites `.concorde/workers.json`
-- AND in another run, the command instead creates a file the commit's Git does not ignore, or a
-  file and a `.gitignore` that ignores it
 - WHEN an unbound run is started there
 - THEN the result is `failed` with `preparation_failed`
 - AND its cause is the `preparation_changed_commit` link of `Execution (unbound preparation)`
-- AND that link names what changed
+- AND that link names the changed file
 - AND no step runs and no worker is launched
 - AND once the result is written, the checkout is gone
-- BUT a command that writes only what the commit's Git ignores leaves the run `ok`
+
+### scenario.execution.unbound-preparation-unignored — A preparation that adds a file the commit's Git would list runs no step
+
+- GIVEN a primary worktree whose committed `.concorde/preparation.json` declares a command that
+  exits 0
+- AND the command creates a file the commit's Git does not ignore, or a file and a new
+  `.gitignore` that ignores it
+- WHEN an unbound run is started there
+- THEN the result is `failed` with `preparation_failed`
+- AND its cause is the `preparation_changed_commit` link of `Execution (unbound preparation)`
+- AND that link names the new file, or the new `.gitignore` as one that hides files
+- AND no step runs and no worker is launched
 
 ### scenario.execution.unbound-preparation-evidence — A preparation command that did not finish is in the evidence
 
@@ -193,8 +227,16 @@ and commands.
 - AND its cause is the `preparation_changed_commit` link of `Execution (unbound preparation)`
 - AND that link names `references/lib/.gitignore (hides files)`
 - AND no step runs and no worker is launched
-- BUT a command that writes only what the commit's Git ignores leaves the run `ok`, although the
-  sparse submodule lacks some of its tracked files
+
+### scenario.execution.unbound-preparation-sparse — A sparse submodule's absent files are no change
+
+- GIVEN a primary worktree whose commit records the submodule `references/lib`, which the primary
+  worktree checks out sparsely, so some of its tracked files are absent
+- AND its committed `.concorde/preparation.json` declares a command that writes only what the
+  commit's Git ignores and exits 0
+- WHEN an unbound run is started there
+- THEN the result is `ok`
+- AND its `preparation-check` evidence says the checkout and its submodules are unchanged
 
 ### scenario.execution.unbound-preparation-failed — A failed preparation runs no step
 
@@ -207,8 +249,15 @@ and commands.
 - AND the third command does not run
 - AND no step runs and no worker is launched
 - AND once the result is written, the checkout is gone
-- BUT a file that breaks the preparation file contract fails the run with `preparation_invalid`
-  before any command runs, its cause naming the place in the file
+
+### scenario.execution.unbound-preparation-invalid — An invalid preparation file runs no command
+
+- GIVEN a primary worktree whose committed `.concorde/preparation.json` declares a command with an
+  empty `argv`
+- WHEN an unbound run is started there
+- THEN the result is `failed` with `preparation_invalid`
+- AND its cause is the `invalid_preparation` link, naming the place in the file
+- AND no command runs, no step runs and no worker is launched
 
 ### scenario.execution.unbound-no-commit — A worktree without a commit refuses an unbound run
 
@@ -240,7 +289,13 @@ and commands.
   Operation run
 - AND a later [workflow step](../glossary.json#concept.workflow-step) or the task level can therefore
   find it
-- BUT `concorde run task-validation` is a command-line error naming `concorde task-validation`
+
+### scenario.execution.command-not-operation — An execution command is not run as an Operation
+
+- GIVEN a bound workspace
+- WHEN the task level runs `concorde run task-validation` there
+- THEN it is a command-line error naming `concorde task-validation`
+- AND no run is created
 
 ## One run at a time
 
@@ -253,9 +308,14 @@ and commands.
   the lock
 - AND its error gives `decision` as the reason, with the options to wait for the running run or
   cancel it
-- AND once the first run ends, a new run is admitted
-- AND the new run finds the first run's result already written, since a run writes its result
-  before it releases the lock
+
+### scenario.execution.workspace-next-run — The next run finds the result of the run before it
+
+- GIVEN a bound workspace whose `task-validation` run published its result and ended
+- WHEN a second run is started in the same workspace
+- THEN the second run is admitted
+- AND it finds the first run's result already written, since a run publishes its result before it
+  releases the lock
 
 ### scenario.execution.workspace-wait — A run started with --wait queues behind the running one
 
@@ -308,8 +368,16 @@ and commands.
 - AND it runs no step
 - AND the history the close moved holds nothing of that run
 - AND nothing of the run is written there afterwards
-- AND when it takes the lock, a run whose binding is gone or names another workspace is refused
-  with `workspace_retired` the same way, naming what changed
+
+### scenario.execution.workspace-rebound — A run whose binding changed while it waited is refused
+
+- GIVEN a bound workspace whose lock another process holds
+- AND a run started there with `--wait 600` waits for that lock in the lobby
+- WHEN the worktree's binding is removed, or replaced by one that differs from the binding the run
+  read, before the lock is released
+- THEN once the run takes the lock, it is refused with `workspace_retired`, naming what changed
+- AND its result and node are in `lobby/<run-id>/`
+- AND it runs no step
 
 ### scenario.execution.removed-module — A Module the workspace removed is left out
 
@@ -324,11 +392,17 @@ and commands.
 
 - GIVEN a definition that admits no Modules itself, such as one of a part that reads no
   [Spec](../glossary.json#concept.spec)
-- WHEN it runs in a bound workspace naming `module.nowhere` with `--modules`, and again without
-  `--modules`
+- WHEN it runs in a bound workspace naming `module.nowhere` with `--modules`
 - THEN the runner reads no Spec
-- AND the first run works on `module.nowhere`
-- AND the second works on every Module the binding names, registered or not
+- AND the run works on `module.nowhere`
+
+### scenario.execution.modules-from-binding — A definition that reads no Spec takes the binding's Modules
+
+- GIVEN a definition that admits no Modules itself
+- AND a bound workspace whose binding names Modules, registered or not
+- WHEN it runs there without `--modules`
+- THEN the runner reads no Spec
+- AND the run works on every Module the binding names
 
 ### scenario.execution.unknown-module-refused — A definition's admission refuses an unknown Module
 
@@ -359,7 +433,14 @@ and commands.
 - AND the workspace removed or renamed all the Modules that the binding names
 - WHEN a run of a definition that reads the Specs is started without `--modules`
 - THEN it is refused with `modules_removed`, naming them and `--modules`
-- AND the same run naming the current Modules with `--modules` proceeds
+
+### scenario.execution.modules-removed-named — A run naming the current Modules proceeds
+
+- GIVEN a binding
+- AND the workspace removed or renamed all the Modules that the binding names
+- WHEN a run of a definition that reads the Specs is started with `--modules` naming a Module the
+  Specs register
+- THEN the run proceeds on that Module
 
 ## Command lines, detaching and failures
 
@@ -491,8 +572,14 @@ and commands.
 - AND no node of the run remains
 - AND no result of the run remains
 - AND no run lock file of the run remains
-- AND a runner process the command cannot start is reported the same way, with nothing of the run
-  left
+
+### scenario.execution.detach-unstartable — A runner that cannot be started leaves nothing
+
+- GIVEN a bound workspace
+- AND a host where the runner process of a run started with `--detach` cannot be started
+- WHEN a run is started with `--detach`
+- THEN the command exits with status 1, printing a `detach_failed` link that says no step ran
+- AND nothing of the run is left
 
 ### scenario.execution.run-unrecorded — A run whose first records cannot be created runs no step
 
@@ -507,8 +594,13 @@ and commands.
   refusal as its cause
 - AND no run lock is left
 - AND the workspace lock is free
-- AND a run started there with `--detach` whose run store refuses its folder starts no runner and
-  ends the same way
+
+### scenario.execution.run-unrecorded-detached — A detached run that cannot be recorded starts no runner
+
+- GIVEN a bound workspace whose run store refuses the run's folder
+- WHEN a run is started there with `--detach`
+- THEN no runner starts and no step runs
+- AND the command exits with status 1, with its `run_unrecorded` link on standard error
 
 ### scenario.execution.result-unsaved — A result that cannot be saved is printed and the run is lost
 
@@ -523,8 +615,14 @@ and commands.
 - AND the run's trace node still says `running`
 - AND both locks are free
 - AND every observer finds the run lost
-- AND when only the final `trace.json` breaks the node contract, the result is published
-- AND in that case, the trace node, still `running` with nobody holding its run lock, reads as lost
+
+### scenario.execution.final-trace-invalid — A final trace that breaks the node contract leaves the run lost
+
+- GIVEN a bound workspace whose run's final `trace.json` breaks the node contract
+- WHEN a run is started there and its steps end `ok`
+- THEN the result is published and printed
+- AND the command exits with status 1, with its `result_unsaved` link on standard error
+- AND the trace node, still `running` with nobody holding its run lock, reads as lost
 
 ### scenario.execution.trace-write-reported — A refused trace write is in the result, never fatal
 
@@ -557,8 +655,13 @@ and commands.
 - AND the result's `worker_runs` and its `cancelled` link name the worker run
 - AND that worker run's record ends `interrupted`
 - AND that worker run's progress file is `finished`
-- BUT a signal that arrives while the result is composed or written changes nothing
-- AND in that case, the run finishes as composed and its result is written
+
+### scenario.execution.cancelled-late — A signal while the run finishes changes nothing
+
+- GIVEN a run whose steps ended `ok`
+- WHEN the runner receives `SIGTERM` while it composes or writes the result
+- THEN the run finishes as composed, with status `ok`
+- AND its result is written and printed
 
 ### scenario.execution.inputs — An earlier result is admitted as material of the run
 
@@ -566,4 +669,9 @@ and commands.
 - WHEN `implement` is run with `--input` naming that run
 - THEN the plan is admitted, with the name of the run that produced it, as material for the worker's
   brief
-- BUT a run of another workspace, or one that did not end `ok`, is refused with `input_not_admissible`
+
+### scenario.execution.inputs-refused — An earlier result that is not admissible refuses the run
+
+- GIVEN a run of another workspace, or a run of the same workspace that did not end `ok`
+- WHEN `implement` is run with `--input` naming that run
+- THEN the run is refused with `input_not_admissible` before any step
