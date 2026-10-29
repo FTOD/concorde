@@ -59,18 +59,22 @@ reads only the file of the check's own Module. Thus, a malformed checks file of 
 never stops their checks. Only when both files are read is an `id` used twice then found.
 
 An input names a regular file or a directory. Below a directory, the service measures every regular
-file outside `__pycache__` directories. When any of these conditions holds, an input stops the run
-before any command:
+file outside `__pycache__` directories. It lists every directory below the input, and never
+descends into a symbolic link. When any of these conditions holds, an input stops the run before
+any command:
 
 - The input is missing.
 - The input is itself a symbolic link.
 - The input is neither a regular file nor a directory.
+- The input is a directory that cannot be listed whole: the input or a directory below it cannot be
+  listed, such as one without read permission. The result would otherwise leave that directory's
+  files out of its digest.
 
 The stopped run names the following:
 
 - the check
 - its Module
-- the path
+- the path, which is the directory that cannot be listed in the last case
 
 A **selective** check is one whose `argv` holds `{tests}`. For the whole set of selected Modules,
 such a check runs at most once per call, whichever Module it belongs to. When there are no tests,
@@ -381,8 +385,10 @@ The record uses these codes:
   - no positive timeout
   - an `env` that is not an object of variable names to strings
   - a `when` other than `always` or `readiness`
-- `check_input_missing`: a declared input, measured file or selected test file that is missing,
-  not a regular file (a directory, for an input) or a symbolic link
+- `check_input_missing`: one of these:
+  - a declared input, measured file or selected test file that is missing, not a regular file (a
+    directory, for an input) or a symbolic link
+  - an input directory, or a directory below one, that cannot be listed
 - `project_python_missing`: a check uses `{python}` but the configuration names no project
   interpreter, or none that is an executable file where it was looked for
 - `check_sandbox_unavailable`: the read-only boundary cannot be established
@@ -479,6 +485,14 @@ The check's own `env` and the scratch settings of [the boundary](boundary.md) ar
 When the implementation files, check inputs or selected tests it measured differ after the run
 from before it, a configured check run SHALL fail with `stale_evidence`.
 
+### req.checks.input-measured-whole — A result covers every file below its input directories
+
+The service SHALL refuse a check with `check_input_missing`, before any command runs, when one of
+its input directories or a directory below one cannot be listed.
+
+A measurement that skipped such a directory would bind the result to a digest that a change of the
+directory's files leaves the same.
+
 ### req.checks.selection-measured — A selective result names its selection
 
 The measured digest of a selective check SHALL cover the selected Modules and the digest of every
@@ -551,6 +565,14 @@ start.
 - WHEN its caller has the checks files judged with `validate_checks` before any check runs
 - THEN it is refused with `check_input_missing`, naming the check and the path
 - AND no check runs
+
+### scenario.checks.input-unreadable — An input directory that cannot be listed stops the run
+
+- GIVEN a configured check of `module.a` whose input is the directory `data`
+- AND `data/inner`, or `data/inner/deep` below it, has no read permission
+- WHEN its caller has the checks files judged with `validate_checks`, or runs the check
+- THEN it is refused with `check_input_missing`, naming the check, `module.a` and the directory that cannot be listed
+- AND no command runs
 
 ### scenario.checks.service-run — The checks of changed Modules run and are logged
 

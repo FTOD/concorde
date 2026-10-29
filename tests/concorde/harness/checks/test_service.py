@@ -1008,6 +1008,54 @@ class ChecksFileTests(unittest.TestCase):
         (self.root / "src/gone.py").write_text("")
         self.assertEqual(["check.a"], [c["id"] for c in validate_checks(self.root)])
 
+    @verifies("scenario.checks.input-unreadable")
+    def test_an_input_directory_that_cannot_be_read_whole_is_refused(self):
+        if os.geteuid() == 0:
+            self.skipTest("root reads every directory whatever its mode")
+        data = self.root / "data"
+        (data / "inner/deep").mkdir(parents=True)
+        (data / "top.py").write_text("")
+        (data / "inner/deep/leaf.py").write_text("")
+        marker = self.root.parent / f"{self.root.name}-ran"
+        self.write(
+            "module.a.json",
+            {
+                "checks": [
+                    {
+                        "id": "check.a",
+                        "argv": ["{python}", "-c", f"open({str(marker)!r}, 'w')"],
+                        "timeout_seconds": 60,
+                        "inputs": ["data"],
+                    }
+                ]
+            },
+        )
+        logs = self.root.parent / f"{self.root.name}-logs"
+        for locked in ("data/inner", "data/inner/deep"):
+            with self.subTest(locked):
+                (self.root / locked).chmod(0)
+                try:
+                    with self.assertRaises(CheckError) as judged:
+                        validate_checks(self.root)
+                    with self.assertRaises(CheckError) as ran:
+                        run_checks(
+                            self.root,
+                            modules=["module.a"],
+                            trace_directory=logs,
+                            python=sys.executable,
+                        )
+                finally:
+                    (self.root / locked).chmod(0o755)
+                for raised in (judged, ran):
+                    self.assertEqual("check_input_missing", raised.exception.code)
+                    for named in ("check.a", "module.a", locked):
+                        self.assertIn(named, str(raised.exception))
+                    self.assertEqual(locked, raised.exception.path)
+                self.assertFalse(marker.exists())
+                self.assertFalse(logs.exists())
+        # Readable again, the input is measured whole.
+        self.assertEqual(["check.a"], [c["id"] for c in validate_checks(self.root)])
+
     def test_validating_the_checks_judges_their_command_fields(self):
         for name, fields in (
             ("empty argv", {"argv": [], "timeout_seconds": 1}),

@@ -277,20 +277,57 @@ def _present_inputs(root: Path, check: dict) -> list[tuple[str, Path]]:
     return found
 
 
-def _inputs(root: Path, check: dict) -> list[tuple[str, str]]:
-    digests = []
+def _input_files(root: Path, check: dict) -> list[tuple[str, Path]]:
+    """Every regular file the check's declared inputs measure, as ``(relative, path)``: a file
+    input itself and, below a directory input, every regular file outside ``__pycache__``
+    directories, never through a symbolic link. ``check_input_missing`` for an input that is
+    missing and for a directory input that cannot be listed whole, whose unlisted files would
+    otherwise be left out of the digest without a word."""
+    files = []
     for relative, path in _present_inputs(root, check):
-        if path.is_dir():
-            for item in sorted(path.rglob("*")):
-                if "__pycache__" in item.parts or item.is_symlink():
-                    continue
-                if item.is_file():
-                    digests.append(
-                        (item.relative_to(root).as_posix(), _file_digest(item))
-                    )
-        else:
-            digests.append((relative, _file_digest(path)))
-    return digests
+        if not path.is_dir():
+            files.append((relative, path))
+            continue
+
+        def refused(error: OSError, folder=None, relative=relative) -> None:
+            listed = Path(folder if folder is not None else error.filename or path)
+            where = os.path.relpath(listed, root)
+            raise CheckError(
+                f"the directory {where} of input {relative} of check {check['id']} "
+                f"({check['module']}) cannot be listed: {error.strerror or error}",
+                "check_input_missing",
+                path=where,
+                subject=check["id"],
+                reason="a check result is bound to the digest of every regular file below its "
+                "input directories, so a directory that cannot be listed would leave its files "
+                "out of the digest",
+                remediation="make the directory readable, or stop naming it among the check's "
+                "inputs",
+            ) from error
+
+        found = []
+        for folder, directories, names in os.walk(path, onerror=refused):
+            # os.walk descends into no symbolic link; a __pycache__ is never measured.
+            directories[:] = [name for name in directories if name != "__pycache__"]
+            for name in names:
+                item = Path(folder, name)
+                try:
+                    if item.is_symlink() or not item.is_file():
+                        continue
+                except OSError as error:
+                    refused(error, folder)
+                found.append(item)
+        for item in sorted(found):
+            within = item.relative_to(root)
+            if "__pycache__" not in within.parts:
+                files.append((within.as_posix(), item))
+    return files
+
+
+def _inputs(root: Path, check: dict) -> list[tuple[str, str]]:
+    return [
+        (relative, _file_digest(path)) for relative, path in _input_files(root, check)
+    ]
 
 
 def checks_files(worktree: Path, modules=None) -> list[tuple[str, str]]:
@@ -746,7 +783,7 @@ def run_checks(
                 "check_node_exists",
                 subject=check["id"],
             )
-        _present_inputs(worktree, check)
+        _input_files(worktree, check)
         for path in measured.get(check["module"], ()):
             _measured_file(worktree, path, f"measured file of {check['module']}")
         if selective(check):
