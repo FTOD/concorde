@@ -23,7 +23,8 @@ scale. Its boundary guards against mistakes, not a malicious session.
 Task sessions matter to the developer only through the main agent. The developer talks to main
 sessions. Once its task ends, a task session, a means of the main agent, has served its purpose. So
 Task sessions also ends task sessions with their task. When a task is closed without a merge, Task
-sessions first stops any task session still running. Once a task ends, Task sessions removes each of
+sessions first stops any task session still running, once Tasks has made the refusals it makes
+before stopping anything. Once a task ends, Task sessions removes each of
 its task sessions from Claude's session list after keeping its transcript in the task's trace. The
 trace moves to the history with the task. Otherwise, finished task sessions would pile up beside the
 developer's main sessions in Claude's session list.

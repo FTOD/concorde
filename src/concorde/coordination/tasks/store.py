@@ -2036,10 +2036,13 @@ def close_task(
     current = refuse_closed(primary, task_id)
     _prune(primary)
     # Refused before anything is stopped, and checked again under the locks; a merge whose
-    # process still runs is waited for there instead.
+    # process still runs is waited for there instead, as is another part's, which removes its
+    # marker when it ends.
     unfinished = unfinished_merge(primary)
-    if unfinished is not None and not merge_lock_held(primary):
-        raise incomplete_merge(primary, unfinished)
+    if not merge_lock_held(primary):
+        if unfinished is not None:
+            raise incomplete_merge(primary, unfinished)
+        refuse_foreign_marker(primary, f"the close of task {task_id}")
     worktree = Path(current["worktree"])
     if (
         outcome != "merged"

@@ -18,6 +18,7 @@ from unittest.mock import patch
 from concorde.spec.verification import verifies
 from tests.concorde.support.ignored import TRACES
 from concorde.coordination.tasks import cli, session, store
+from concorde.kernel.marker import write_marker
 from concorde.kernel.tracing import node as trace
 from tests.concorde.support.operation_project import OperationProject, commit
 from tests.concorde.tasks.deliveries import deliver
@@ -840,6 +841,50 @@ class EndOfTaskTests(unittest.TestCase):
             [(item["argv"], item["worktree"]) for item in self.calls()],
         )
         self.kept("aaaa1111", source)
+
+    @verifies("scenario.tasks.merge-foreign-marker")
+    def test_another_parts_marker_refuses_a_close_before_it_stops_anything(self):
+        self.claude_session("aaaa1111", state="working")
+        head = subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            cwd=self.root,
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout.strip()
+        other = {
+            "schema_version": 1,
+            "part": "elsewhere",
+            "by": "a merge of another part",
+            "pid": 7,
+            "since": "2026-10-08T00:00:00+00:00",
+            "branch": "main",
+            "before": head,
+            "merging": head,
+            "after": None,
+            "finish": ["elsewhere finish"],
+        }
+        write_marker(self.root / ".concorde", other)
+        before = store.load_task(self.root, "t1")
+        for argv in (
+            ("close", "t1", "--completed", "--note", "done"),
+            ("close", "t1", "--failed", "--reason", "wrong", "--no-error"),
+        ):
+            with self.subTest(argv[2]):
+                status, value = self.command(*argv)
+                self.assertEqual(1, status, value)
+                self.assertEqual("merge_incomplete", value["error"]["code"])
+                self.assertIn("elsewhere finish", value["error"]["detail"])
+        # Nothing was stopped: Claude Code was never asked, and the task is as it was.
+        self.assertEqual([], self.calls())
+        self.assertEqual(before, store.load_task(self.root, "t1"))
+        self.assertTrue(self.worktree.is_dir())
+        # A marker that cannot be read refuses as early, as what it is.
+        (self.root / ".concorde/unfinished-merge.json").write_text("{not json")
+        status, value = self.command("close", "t1", "--completed", "--note", "done")
+        self.assertEqual(1, status, value)
+        self.assertEqual("unreadable_merge_marker", value["error"]["code"])
+        self.assertEqual([], self.calls())
 
     @verifies("scenario.task-session.close-stops")
     def test_a_session_claude_code_no_longer_knows_counts_as_stopped(self):

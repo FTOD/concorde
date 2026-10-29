@@ -144,8 +144,10 @@ Before a task closes without a merge, Task sessions SHALL stop each of its task 
 stopped.
 
 A session Claude Code no longer knows counts as stopped. Stopping first keeps a session from going
-on working in, or starting runs in, the worktree the close removes. A merge stops nothing, since a
-delivered task's session has reported and waits.
+on working in, or starting runs in, the worktree the close removes. The stop comes after the
+refusals Tasks makes [before stopping anything](../tasks/contracts.md#commands), so a close Tasks
+refuses there stops no session. A merge stops nothing, since a delivered task's session has reported
+and waits.
 
 ### req.task-session.transcript-kept — A task session's transcript moves to the history
 

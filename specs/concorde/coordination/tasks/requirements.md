@@ -614,6 +614,11 @@ carries the marker's account of its merge and its recovery, as the
 [marker's contract](../../kernel/contracts.md#contract.kernel.unfinished-merge) requires of every
 part that commits on the primary branch.
 
+A close without a merge commits its decision log, so it refuses the same way before it stops any
+task session or run of the task, while no live process holds the merge lock. It checks again under
+the merge lock. A merge whose process still runs is waited for instead, since that merge removes its
+marker when it ends.
+
 ### req.tasks.merge-incomplete-refused — Nothing builds on an unchecked merge
 
 While a task is stored as `merging` and no live process holds the merge lock, `concorde task open`,

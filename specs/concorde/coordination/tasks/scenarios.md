@@ -536,8 +536,9 @@ This illustrates [a merge running the Concorde it started with](requirements.md#
 - THEN the command fails with `merge_incomplete`, carrying the marker's account and the commands
   that finish that merge
 - AND the marker, the primary branch, the records and the worktrees are unchanged
-- AND with a marker that cannot be read, the merge fails with `unreadable_merge_marker` and changes
-  nothing
+- AND the close stops none of the task sessions or runs of `typo`
+- AND with a marker that cannot be read, the merge and the close fail with `unreadable_merge_marker`
+  and change nothing
 
 ### scenario.tasks.merge-check-failed — A failed check undoes the merge
 
