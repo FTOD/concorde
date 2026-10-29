@@ -146,7 +146,8 @@ run:
 - the [runtime directory](../../glossary.json#concept.runtime-directory)
 - the runtime paths
 
-Workers asks the Harness for the configuration. Workers launches the worker with it.
+Workers asks the Harness for the configuration, through the entry points of
+[Calling the Harness](#calling-the-harness). Workers launches the worker with it.
 
 ```d2 illustrative
 direction: down
@@ -306,15 +307,18 @@ directory. The file keeps its own level in these mechanisms alike:
 - Workers' audit
 
 The Harness never computes or widens a grant. It only receives the grant frozen from Workers.
-From a malformed grant, the Harness generates nothing for either backend. A grant is malformed when
-it has no `entries` list, or when an entry breaks the shape of Workers'
-[grant input](../workers/contracts.md#contract.workers.grant-input), which gives the exact
-conditions. In short, each entry is an object with exactly the fields `path` and `level`. Its path
-is canonical and relative to the task worktree, and no other entry names it. Its level is `rw`,
-`ro` or `names`.
+From a grant it cannot read, the Harness generates nothing for either backend. A grant that is no
+object or has no `entries` is missing rather than malformed. Generation then raises a
+`SettingsError` with the code `grant_unavailable`, the code Workers'
+[grant input](../workers/contracts.md#contract.workers.grant-input) gives a grant without entries.
 
-Settings generation then raises a `SettingsError` with the code `grant_malformed`. The error names
-the first such entry and what is wrong with it. Workers reports the error as its
+A grant is malformed when its `entries` are no list, or when an entry breaks the shape of the grant
+input, which gives the exact conditions. In short, each entry is an object with exactly the fields
+`path` and `level`. Its path is canonical and relative to the task worktree, and no other entry
+names it. Its level is `rw`, `ro` or `names`. Generation then raises a `SettingsError` with the
+code `grant_malformed`. The error names the first such entry and what is wrong with it.
+
+Workers checks the grant itself before it asks the Harness. It reports either code as its
 [refusal to launch](../workers/launch.md#errors).
 
 **pi** supplies the extension API the Harness relies on. Its pinned copy under `references/pi/`
@@ -329,6 +333,63 @@ is the version used to write the pi harness. The Harness relies on these API beh
   result asks to terminate ends the run.
 
 The path decisions resolve a tool's path argument exactly as pi resolves it.
+
+### Calling the Harness
+
+Workers calls the Harness through the Python module `concorde.worker_harness.settings` and the two
+pi sources beside it. Workers calls it once per run, before the first round. These are its entry
+points:
+
+| Entry point | What it gives |
+| --- | --- |
+| `RunPaths(root)` | The paths of one run below its runtime directory |
+| `grant_view(grant)` | Each path's level under the grant |
+| `worker_settings(...)` | The complete worker settings of a Claude Code worker |
+| `write_hook_source(worktree, grant)` | The write hook with the grant's lists embedded |
+| `sandbox_filesystem(...)` | The sandbox lists both backends share |
+| `tool_set(tool_sets, task_type, grant)` | The tool set of a task type, from `TOOL_SETS` or `PI_TOOL_SETS` |
+| `pi_permission.ts`, `pi_policy.ts` | The permission extension, in which Workers embeds the run's policy |
+
+Each Python entry point returns a value and writes nothing. Workers writes the configuration into
+the runtime directory's `control/`. A grant the Harness cannot read raises a `SettingsError`, as
+[Around it](#around-it) says. Equal inputs over an unchanged file tree give equal configurations.
+The deny rules follow the file tree at the moment of the call. Therefore Workers keeps the first
+configuration for every round. [The library interface](library.md) states every input, return
+value, effect and failure exactly.
+
+The worked example's Claude Code worker gets its configuration from this call:
+
+```python
+from concorde.worker_harness.settings import (
+    TOOL_SETS, RunPaths, tool_set, worker_settings, write_hook_source,
+)
+
+run = RunPaths(runtime_directory)  # control/, config/, home/, tmp/, work/ already exist
+settings = worker_settings(
+    worktree,  # the task worktree bound to Checkout
+    grant,  # the grant input of the table above
+    run,
+    python=sys.executable,
+    runtime=runtime_paths,
+    home=home,
+    primary=primary_worktree,
+    git=git_paths,  # Placement's Git administrative paths
+)
+(run.control / "settings.json").write_text(json.dumps(settings))
+(run.control / "write_hook.py").write_text(write_hook_source(worktree, grant))
+tools = tool_set(TOOL_SETS, "implement", grant)  # "Read,Glob,Grep,Edit,Write,Bash"
+```
+
+The returned `settings["permissions"]["deny"]` holds these rules among others:
+
+- `Read` and `Edit` on `<worktree>/specs/shop/billing/**`
+- `Edit` on `<worktree>/specs/shop/checkout/module.md` and on `<worktree>/src/billing/invoice.py`
+- `Read` and `Edit` on each Git administrative path and on the runtime directory's `control/**`
+  and `config/**`
+
+Its `sandbox.filesystem.allowWrite` is `<worktree>/src/checkout/cart.py` and the run's `home/`,
+`tmp/` and `work/`. For a pi worker, Workers instead embeds a policy of `grant_view`'s lists and
+`sandbox_filesystem`'s lists into `pi_permission.ts`.
 
 ### Why the Harness is separate
 

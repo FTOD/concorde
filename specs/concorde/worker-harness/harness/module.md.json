@@ -10,7 +10,8 @@
     "owns": [
       "specs/concorde/worker-harness/harness/module.md",
       "specs/concorde/worker-harness/harness/claude-code.md",
-      "specs/concorde/worker-harness/harness/pi.md"
+      "specs/concorde/worker-harness/harness/pi.md",
+      "specs/concorde/worker-harness/harness/library.md"
     ],
     "contains": [],
     "uses": [

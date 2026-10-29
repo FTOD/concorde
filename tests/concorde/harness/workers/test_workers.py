@@ -294,6 +294,41 @@ class SettingsTests(unittest.TestCase):
             self.project.root, self.project.grant, self.run, home=self.project.home
         )
 
+    def test_the_library_writes_nothing_and_repeats_its_answer(self):
+        """The calling contract of harness/library.md: a generation writes nothing, equal inputs
+        over an unchanged file tree give an equal configuration, and the deny rules follow the
+        file tree at the moment of the call."""
+
+        def generate() -> tuple:
+            return (
+                worker_settings(
+                    self.project.root,
+                    self.project.grant,
+                    self.run,
+                    python=sys.executable,
+                    home=self.project.home,
+                ),
+                write_hook_source(self.project.root, self.project.grant),
+            )
+
+        def tree() -> dict:
+            return {
+                path: path.stat().st_mtime_ns
+                for base in (self.project.base, self.run.root)
+                for path in sorted(base.rglob("*"))
+                if not path.is_relative_to(self.project.root / ".git")
+            }
+
+        before = tree()
+        first = generate()
+        self.assertEqual(before, tree())
+        self.assertEqual(first, generate())
+        # A directory that appears later, holding nothing granted, gets a rule of its own.
+        (self.project.root / "later").mkdir()
+        later = f"Read(/{(self.project.root / 'later').as_posix()}/**)"
+        self.assertNotIn(later, first[0]["permissions"]["deny"])
+        self.assertIn(later, generate()[0]["permissions"]["deny"])
+
     @verifies("scenario.workers.read-denied")
     def test_withheld_and_names_files_are_denied_for_read(self):
         rules = self.rules()
@@ -702,8 +737,13 @@ class SettingsTests(unittest.TestCase):
                     )
                 self.assertEqual("grant_malformed", raised.exception.code)
                 self.assertIn(expected, str(raised.exception))
-        with self.assertRaises(SettingsError):
-            write_hook_source(self.project.root, {"context_identity": "x"})
+        # A grant without entries is no malformed grant but a missing one, as the grant input
+        # contract has it.
+        for incomplete in ({"context_identity": "x"}, ["entries"]):
+            with self.subTest(incomplete=incomplete):
+                with self.assertRaises(SettingsError) as raised:
+                    write_hook_source(self.project.root, incomplete)
+                self.assertEqual("grant_unavailable", raised.exception.code)
 
     @verifies("scenario.workers.bash-confined")
     def test_the_bash_sandbox_is_configured_closed(self):

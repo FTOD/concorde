@@ -27,7 +27,14 @@ from .claude_backend import (
     RoundOutcome,
     proxy_environment,
 )
-from .settings import SettingsError, grant_view, sandbox_filesystem, tool_set
+from .settings import (
+    PI_RESULT_TOOL,
+    PI_TOOL_SETS,
+    SettingsError,
+    grant_view,
+    sandbox_filesystem,
+    tool_set,
+)
 from .transient import transient
 
 ACTOR = "pi process (pi -p)"
@@ -38,20 +45,12 @@ POLICY_MARKER = "const POLICY: Policy = {} as Policy;"
 RUNTIME_MARKER = '"@concorde/sandbox-runtime"'
 RUNTIME_PACKAGE = "node_modules/@anthropic-ai/sandbox-runtime"
 RUNTIME_VERSION = "0.0.77"
-RESULT_TOOL = "concorde_result"
+RESULT_TOOL = PI_RESULT_TOOL
 LIMIT_ENTRY = "concorde-limit"
 # The variable that tells the permission extension what its round may still use of the run's limits.
 LIMITS_VARIABLE = "CONCORDE_ROUND_LIMITS"
-COMMON_TOOLS = "read,grep,find,ls"
-TOOL_SETS = {
-    "understand": f"{COMMON_TOOLS},{RESULT_TOOL}",
-    "review-spec": f"{COMMON_TOOLS},{RESULT_TOOL}",
-    "review-code": f"{COMMON_TOOLS},{RESULT_TOOL}",
-    "test": f"{COMMON_TOOLS},{RESULT_TOOL}",
-    "specify": f"{COMMON_TOOLS},edit,write,{RESULT_TOOL}",
-    "code-to-spec": f"{COMMON_TOOLS},edit,write,{RESULT_TOOL}",
-    "implement": f"{COMMON_TOOLS},edit,write,bash,{RESULT_TOOL}",
-}
+# The Harness chooses each task type's tool set (harness/pi.md#tool-sets).
+TOOL_SETS = PI_TOOL_SETS
 
 
 def _tail(data: bytes, size: int = 4000) -> str:
