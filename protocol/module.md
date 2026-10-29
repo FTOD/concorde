@@ -389,8 +389,9 @@ a schema alone. In selected readable context, these MUST be explained, never inf
   Dependencies may cross hierarchy levels. Two Modules may use each other.
 - `includes` states what else this Module reads, with a reason. It implies no ownership and no
   dependency. An inclusion of kind `bound` names a file of the Module's own realization whose text
-  its promises defer to, such as a standard it realizes. Its readers then read that file as part
-  of the Spec.
+  its promises defer to, such as a standard it realizes. It may also name a file of a Module it
+  uses, such as the text of rules its code follows. Its readers then read that file as part of the
+  Spec. They never write a used Module's file through it.
 
 When a Module relies on a few promises of a large provider, list them in the relation's
 `relies_on` and link them from the explanation of the collaboration.

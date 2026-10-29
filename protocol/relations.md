@@ -176,7 +176,8 @@ This Module reads something that no other declaration gives it to read. `kind` i
 
 - `module` (that Module's owned documents).
 - `document` (one document).
-- `bound` (a directory or file of this Module's own realization, read as its Spec).
+- `bound` (a directory or file of this Module's own realization, or of the realization of a
+  Module it uses, read as its Spec).
 - `external` (a directory or file of pinned third-party material).
 
 Because removing an inclusion changes provenance and context identity, `reason` records why.
@@ -186,6 +187,13 @@ example is a Module that realizes a written standard and states its rules by ref
 Module binds that text, so a task bound to the Module may only know its name. The inclusion makes
 the contents of those files part of the Module's Spec context, read only. It makes nothing
 writable. What a task may write stays what its task type grants on the Module's scopes.
+
+A `bound` inclusion also serves a Module whose code follows rules that a Module it uses realizes
+as text. An example is a Module that parses the documents a written standard describes, while the
+Module that realizes the standard binds its text. The consumer may include files that the
+provider's realizations bind. Only a direct `uses` admits them, since selection is one level. The
+inclusion never puts them in the consumer's `ImplementationScope`. A task bound to the consumer
+alone therefore reads a file that only the provider binds and never writes it.
 
 Specification inclusions, bound inclusions and external inclusions are one relation because they
 answer the same question, *what else does this Module read*. They differ only in what they select.

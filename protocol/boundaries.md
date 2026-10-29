@@ -33,8 +33,10 @@ same checkout get the same answer.
 `ProjectSpecification` are **read** sets. `SpecScope` and `ImplementationScope` are **write** sets.
 They are deliberately different. Because M `uses` a provider, M may read the provider's documents.
 Those documents stay in the provider's `SpecScope`, never in M's. Reading never widens what may be
-written. A bound inclusion follows the same rule. `Bound(M)` lies inside `ImplementationScope(M)`,
-and its read access adds nothing to what the task type lets a task write there.
+written. A bound inclusion follows the same rule. A file of `Bound(M)` lies inside
+`ImplementationScope(M)` or inside the `ImplementationScope` of a provider M uses. Its read access
+adds nothing to what the task type lets a task write there. A file that only a provider binds
+therefore stays outside every write set of M.
 
 Every declaration a Module makes lies in its own documents or in its own glossary entries. The
 documents make `SpecScope(M)` a plain set of files that a harness can enforce with file
@@ -246,4 +248,6 @@ A scenario-scoped task is bound to the scenario's owner. A task bound to several
 for each bound Module, that Module's sets at the levels its type assigns. When a path falls into
 several sets, it receives the highest level any of them assigns. The levels are ordered `none`,
 `names`, `read`, `write`. A file of a bound inclusion is thus readable for every task type. It is
-writable only where its type assigns `write` to `ImplementationScope`.
+writable only where its type assigns `write` to `ImplementationScope`, and only when the task is
+bound to a Module whose realization binds the file. A file that a provider binds is never writable
+for a task bound only to the Module that includes it.

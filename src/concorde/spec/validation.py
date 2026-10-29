@@ -623,22 +623,31 @@ class Checks:
 
     def bound_inclusion(self, module, item) -> None:
         """``CHK.includes.bound`` and the bound half of ``CHK.includes.redundant``: the path lies
-        within the Module's own realization and selects files no other bound inclusion selects."""
+        within the realization of the Module or of a Module it uses directly, and selects files no
+        other bound inclusion selects."""
         repository = self.repository
         source = metadata_path(module.entry)
         target = repository.modules[module.id]
         entry = item["target"]
+        binders = repository.bound_binders(target)
         if not entry_exists(repository.root, entry):
             problem = "does not exist" + (
                 " as a directory" if is_directory_entry(entry) else " as a file"
             )
-        elif not any(covers(own, entry) for own in target.files):
-            problem = "lies outside every entry of its own realizations"
+        elif not any(
+            covers(own, entry)
+            for binder in binders
+            for own in repository.modules[binder].files
+        ):
+            problem = (
+                "lies outside every entry of its own realizations and of the realizations "
+                "of the Modules it uses"
+            )
         else:
             problem = None
         selected = set(repository.bound_selection(target, entry))
         if problem is None and not selected:
-            problem = "selects no file its realizations bind"
+            problem = "selects no file that its realizations or those of the Modules it uses bind"
         if problem is not None:
             self.add(
                 "CHK.includes.bound",

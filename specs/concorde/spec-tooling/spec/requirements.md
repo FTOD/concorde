@@ -190,17 +190,22 @@ Modules and documents they select.
 
 Sharing a bound file with another Module adds nothing to either Module's Spec context.
 
-### req.spec.bound-inclusion — A bound inclusion adds only its Module's own files
+### req.spec.bound-inclusion — A bound inclusion adds only files of its Module or of a Module it uses
 
 An `includes` of kind `bound` SHALL add to its Module's Spec context exactly the files that the
-Module's realizations bind at or below its path, and nothing to the Spec context of any other
-Module.
+realizations of the Module, or of a Module it uses directly, bind at or below its path, and nothing
+to the Spec context of any other Module.
 
 The files add no document and no term.
-A grant gives them the highest level their boundary sets assign
+A Module reached only through a used Module's own `uses` adds no file, since selection is one level.
+A grant gives the files the highest level their boundary sets assign
 ([req.spec.grant-highest-level](#req.spec.grant-highest-level)).
-They are therefore `ro` for every task type that does not write the Module's implementation scope,
-and stay `rw` for one that does.
+A file of the Module's own realization is therefore `ro` for every task type that does not write
+the Module's implementation scope, and stays `rw` for one that does.
+A file that only a used Module binds lies in no implementation scope of the Module.
+A grant for the Module alone therefore gives it at most `ro`, whatever the task type.
+Only a grant that also binds a Module whose realization binds the file can make it `rw`, through
+that Module's own implementation scope.
 
 ### req.spec.term-selection — A context holds the definitions its documents use
 

@@ -15,7 +15,7 @@
 # CHK.registry.mirror requires to be equal; the registry is never a
 # declaration site.
 
-protocol: "16.5.0"
+protocol: "16.6.0"
 model_version: 1
 
 context_channels:
@@ -43,8 +43,8 @@ expressions:
     names as its explanation
   term(target): the glossary entry of the target concept
   bound(target): >
-    the contents of the files the declaring Module's realizations bind at or
-    below the target path
+    the contents of the files that the realizations of the declaring Module,
+    or of a Module it uses, bind at or below the target path
   external(target): the pinned material at the target path
   implementation(target): the name of the target path
 

@@ -148,7 +148,7 @@ global file.
   - A project-relative path, for kinds `bound` and `external`.
 
   For a directory, the path ends in `/`. The path of a `bound` inclusion lies at or below an entry
-  of one of the Module's own realizations.
+  of a realization of the Module or of a Module it uses.
 - `participates` entries have `contract`, `version`, `role` (`provided` or `required`), `peer` (a
   Module identity or `external`) and `meaning`.
 - `glossary` is optional. It appears only in the block of a Module without a parent.
@@ -843,8 +843,9 @@ a schema alone. In selected readable context, these MUST be explained, never inf
   Dependencies may cross hierarchy levels. Two Modules may use each other.
 - `includes` states what else this Module reads, with a reason. It implies no ownership and no
   dependency. An inclusion of kind `bound` names a file of the Module's own realization whose text
-  its promises defer to, such as a standard it realizes. Its readers then read that file as part
-  of the Spec.
+  its promises defer to, such as a standard it realizes. It may also name a file of a Module it
+  uses, such as the text of rules its code follows. Its readers then read that file as part of the
+  Spec. They never write a used Module's file through it.
 
 When a Module relies on a few promises of a large provider, list them in the relation's
 `relies_on` and link them from the explanation of the collaboration.
