@@ -276,6 +276,53 @@ class SpecMcpTests(unittest.TestCase):
         value = json.loads(result["content"][0]["text"])
         self.assertEqual(3, len(value["modules"]))
 
+    @verifies("scenario.spec-mcp.roots-pending")
+    def test_input_ending_before_the_roots_reply_ends_the_session(self):
+        client = self.client(roots=[])
+        for identity, method in ((41, "tools/call"), (42, "ping")):
+            client.send(
+                {
+                    "jsonrpc": "2.0",
+                    "id": identity,
+                    "method": method,
+                    "params": {"name": "modules", "arguments": {}},
+                }
+            )
+        message = json.loads(client.process.stdout.readline())
+        self.assertEqual("roots/list", message["method"])
+        client.process.stdin.close()
+        self.assertEqual(0, client.process.wait(10))
+        # The queued requests are never answered.
+        self.assertEqual("", client.process.stdout.read())
+
+    @verifies("scenario.spec-mcp.null-id")
+    def test_a_request_whose_id_is_null_is_answered(self):
+        client = self.client(root=self.root)
+        # Each null-id request is followed by a numbered ping, so that a server that drops the
+        # request answers the ping first instead of leaving the test waiting.
+        for request in (
+            {"jsonrpc": "2.0", "id": None, "method": "ping"},
+            {
+                "jsonrpc": "2.0",
+                "id": None,
+                "method": "tools/call",
+                "params": {"name": "modules", "arguments": {}},
+            },
+        ):
+            with self.subTest(method=request["method"]):
+                client.send(request)
+                client.send({"jsonrpc": "2.0", "id": 50, "method": "ping"})
+                answer = json.loads(client.process.stdout.readline())
+                self.assertIn("id", answer)
+                self.assertIsNone(answer["id"], answer)
+                if request["method"] == "ping":
+                    self.assertEqual({}, answer["result"])
+                else:
+                    self.assertFalse(answer["result"]["isError"], answer)
+                    value = json.loads(answer["result"]["content"][0]["text"])
+                    self.assertEqual(3, len(value["modules"]))
+                self.assertEqual(50, json.loads(client.process.stdout.readline())["id"])
+
     @verifies("scenario.spec-mcp.initialize-revision")
     def test_the_mcp_revision_is_negotiated(self):
         for requested, answered in (
@@ -315,6 +362,14 @@ class SpecMcpTests(unittest.TestCase):
             {"name": "modules", "arguments": ""},
             {"name": "modules", "arguments": None},
             {"name": "validate", "arguments": {"target": None}},
+            {
+                "name": "boundary",
+                "arguments": {"modules": ["module.a"], "task_type": "deploy"},
+            },
+            {
+                "name": "boundary",
+                "arguments": {"modules": ["module.a"], "task_type": ["implement"]},
+            },
         ):
             with self.subTest(params=params):
                 value, error = client.call_with(params)
@@ -325,6 +380,19 @@ class SpecMcpTests(unittest.TestCase):
                 self.assertFalse(error, value)
         value, error = client.call_with({"name": "modules"})
         self.assertFalse(error, value)
+
+    @verifies("scenario.spec-mcp.malformed-call")
+    def test_an_unknown_task_type_is_refused_before_loading_the_specs(self):
+        config = json.loads((self.root / ".concorde/config.json").read_text())
+        config["protocol"]["digest"] = "sha256:" + "0" * 64
+        (self.root / ".concorde/config.json").write_text(json.dumps(config))
+        value, error = self.client(root=self.root).call(
+            "boundary", modules=["module.a"], task_type="deploy"
+        )
+        self.assertTrue(error)
+        self.assertEqual("invalid_input", value["error"]["code"])
+        self.assertIn("task_type", json.dumps(value["error"]["location"]))
+        self.assertIn("deploy", value["error"]["message"])
 
     @verifies("scenario.spec-mcp.malformed-message")
     def test_a_malformed_message_is_answered_and_the_session_goes_on(self):

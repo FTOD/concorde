@@ -1211,6 +1211,18 @@ class CliTests(unittest.TestCase):
                     ("component", "binding_required"), (link["level"], link["code"])
                 )
                 self.assertIn(str(self.project.root), link["detail"])
+        # A malformed command line is the caller's, wherever it runs: it is refused before the
+        # binding is read.
+        for argv in (
+            ["step", "--json", "{}"],
+            ["step", "--json", "{not json"],
+            [*step, "--key", "survey"],
+            ["report", "--lost", "BAD key"],
+        ):
+            with self.subTest(argv=argv):
+                status, value = self.main(argv, self.project.root)
+                self.assertEqual(2, status, value)
+                self.assertEqual("invalid_request", value["error"]["code"])
 
     def test_a_report_before_any_step_says_there_is_nothing_to_report(self):
         self.project.open_task()

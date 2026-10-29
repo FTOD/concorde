@@ -33,6 +33,7 @@ class Session:
         self.resolved = False
         self.client_roots = False
         self.pending: list[dict] = []
+        self.ended = False
         self.next_id = 0
 
     # --- transport --------------------------------------------------------------------------
@@ -73,6 +74,8 @@ class Session:
 
     def receive(self) -> dict | None:
         """The next message, or ``None`` only at the end of the input."""
+        if self.ended:
+            return None
         if self.pending:
             return self.pending.pop(0)
         while line := self.reader.readline():
@@ -109,7 +112,9 @@ class Session:
             return
         response = self.request_client("roots/list")
         if response is None:
-            self.root_error = "the input ended before the client answered roots/list"
+            # The session ends: the requests queued while waiting are never answered.
+            self.ended = True
+            self.pending.clear()
             return
         if "error" in response:
             self.root_error = "the client refused roots/list with a JSON-RPC error"
@@ -143,7 +148,8 @@ class Session:
         identity = message.get("id")
         if method is None:
             return  # a stray response
-        if identity is None:
+        # A message is a request when it has an ``id`` member, even one whose value is null.
+        if "id" not in message:
             if method == "notifications/initialized" and not self.resolved:
                 self.resolved = True
                 self.resolve_root()
@@ -226,7 +232,7 @@ class Session:
             try:
                 self.handle(message)
             except Exception as error:  # noqa: BLE001 -- one bad message never ends the session
-                if message.get("method") is not None and message.get("id") is not None:
+                if message.get("method") is not None and "id" in message:
                     record = unexpected(error).record()
                     self.send(
                         {
